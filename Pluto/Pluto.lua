@@ -17,14 +17,9 @@ else
         else
             print(type(whitelist))  -- 打印类型
 
-            local customerlist = {
-                -- 顾客名单
-            }
-
             local player = game.Players.LocalPlayer
             local playerName = player.Name
             local isInWhitelist = false
-            local isInCustomer = false
 
             for _, allowedName in ipairs(whitelist) do
                 if playerName == allowedName then
@@ -33,30 +28,12 @@ else
                 end
             end
 
-            for _, customerName in ipairs(customerlist) do
-                if playerName == customerName then
-                    isInCustomer = true
-                    break
-                end
-            end
-
-            if isInCustomer then
-                Notification:Notify(
-                {Title = "Pluto", Description = "检测到顾客名单,正在加载"},
-                {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
-                {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
-            )
-            end
-
             if isInWhitelist then
                 Notification:Notify(
                 {Title = "Pluto", Description = "检测admin名单,正在加载"},
                 {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
                 {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
                 )
-            end
-
-            if isInWhitelist or isInCustomer then
 
                 game.Players.PlayerAdded:Connect(
                     function(player)
