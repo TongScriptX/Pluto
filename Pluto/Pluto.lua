@@ -30,7 +30,7 @@ else
 
             if isInWhitelist then
                 Notification:Notify(
-                {Title = "Pluto", Description = "检测admin名单,正在加载"},
+                {Title = "Pluto", Description = "感谢你测试到了这里，期待与你的下一次相遇"},
                 {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
                 {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
                 )
