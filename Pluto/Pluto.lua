@@ -4,11 +4,11 @@ local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/
 
 local whitelistScript = game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/main/Pluto/whitelist.lua")
 if not whitelistScript or whitelistScript == "" then
-    print("Failed to get whitelist script")
+    print("获取白名单失败")
 else
     local whitelistFunction = loadstring(whitelistScript)
     if not whitelistFunction then
-        print("Failed to load whitelist script")
+        print("加载白名单失败")
     else
         local whitelist = whitelistFunction()
         print(type(whitelist))  -- 打印类型
