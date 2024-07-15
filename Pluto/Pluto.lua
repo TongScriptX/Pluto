@@ -4,19 +4,14 @@ local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/
 
 local whitelistScript = game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/main/Pluto/whitelist.lua")
 if not whitelistScript or whitelistScript == "" then
-    print("Failed to get whitelist script")
+    print("获取白名单失败")
 else
-    print(whitelistScript)  -- 打印获取的内容
+    print("成功获取白名单")
     local whitelistFunction = loadstring(whitelistScript)
     if not whitelistFunction then
-        print("Failed to load whitelist script")
+        print("加载白名单失败")
     else
         local whitelist = whitelistFunction()
-        print(type(whitelist))  -- 打印类型
-
-        local customerlist = {
-            -- 顾客名单
-        }
 
         local player = game.Players.LocalPlayer
         local playerName = player.Name
@@ -37,14 +32,6 @@ else
             end
         end
 
-        if isInCustomer then
-            Notification:Notify(
-            {Title = "Pluto", Description = "检测到顾客名单,正在加载"},
-            {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
-            {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
-        )
-        end
-
         if isInWhitelist then
             Notification:Notify(
             {Title = "Pluto", Description = "检测admin名单,正在加载"},
@@ -53,7 +40,7 @@ else
             )
         end
 
-        if isInWhitelist or isInCustomer then
+        if isInWhitelist then
 
             game.Players.PlayerAdded:Connect(
                 function(player)
