@@ -39,16 +39,16 @@ else
 
         if isInCustomer then
             Notification:Notify(
-            {Title = "TX-BETA", Description = "检测到顾客名单,正在加载"},
-            {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "image"},
+            {Title = "Pluto", Description = "检测到顾客名单,正在加载"},
+            {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
             {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
         )
         end
 
         if isInWhitelist then
             Notification:Notify(
-            {Title = "TX-BETA", Description = "检测admin名单,正在加载"},
-            {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "image"},
+            {Title = "Pluto", Description = "检测admin名单,正在加载"},
+            {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
             {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
             )
         end
@@ -60,14 +60,14 @@ else
                     local owner = player.Name
                     if owner == "tongguheren090325" or owner == "Tongdscsh" then
                         Notification:Notify(
-                        {Title = "TX", Description = "TX作者-Tong进入了服务器"},
-                        {OutlineColor = Color3.fromRGB(80, 80, 80), Time = 5, Type = "image"},
+                        {Title = "Pluto", Description = "Pluto作者-Tong进入了服务器"},
+                        {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
                         {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
                         )
                     end
                 end
             )
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/TongScript/main/TXgames.lua"))()
+            print("hello pluto")
         else
             game.Players.LocalPlayer:Kick("未检测到白名单")
         end
