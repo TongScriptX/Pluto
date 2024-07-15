@@ -10,6 +10,7 @@ else
     if not whitelistFunction then
         print("加载白名单失败")
     else
+        print(type(whitelistFunction))  -- 打印类型
         local whitelist = whitelistFunction()
         if whitelist == nil then
             print("白名单函数返回 nil")
