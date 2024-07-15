@@ -3,7 +3,13 @@ local NotificationHolder = loadstring(game:HttpGet("https://raw.githubuserconten
 local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
 
 local whitelistScript = game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/main/Pluto/whitelist.lua")
+print(whitelistScript)  -- 打印获取的内容
 local whitelist = loadstring(whitelistScript)()
+print(type(whitelist))  -- 打印类型
+
+local customerlist = {
+    -- 顾客名单
+}
 
 local player = game.Players.LocalPlayer
 local playerName = player.Name
