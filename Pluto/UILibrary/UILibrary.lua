@@ -15,6 +15,9 @@ local THEME = {
     Error = Color3.fromRGB(255, 0, 0)
 }
 
+-- 默认字体
+local DEFAULT_FONT = Enum.Font.SourceSans -- 替换 SFPro 为 SourceSans
+
 -- 动画配置
 local TWEEN_INFO = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
@@ -41,7 +44,7 @@ function PlutoXUILibrary:CreateButton(parent, options)
     button.Text = options.Text or "Button"
     button.TextColor3 = options.TextColor or THEME.Text
     button.TextSize = options.TextSize or 14
-    button.Font = Enum.Font.SFPro
+    button.Font = options.Font or DEFAULT_FONT
     button.BackgroundTransparency = options.BackgroundTransparency or 0
     button.Parent = parent
     local corner = Instance.new("UICorner")
@@ -72,7 +75,7 @@ function PlutoXUILibrary:CreateLabel(parent, options)
     label.Text = options.Text or ""
     label.TextColor3 = options.TextColor or THEME.Text
     label.TextSize = options.TextSize or 13
-    label.Font = Enum.Font.SFPro
+    label.Font = options.Font or DEFAULT_FONT
     label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.TextWrapped = true
     label.Parent = parent
@@ -89,7 +92,7 @@ function PlutoXUILibrary:CreateTextBox(parent, options)
     textBox.BackgroundTransparency = options.BackgroundTransparency or 0.6
     textBox.TextColor3 = options.TextColor or THEME.Text
     textBox.TextSize = options.TextSize or 13
-    textBox.Font = Enum.Font.SFPro
+    textBox.Font = options.Font or DEFAULT_FONT
     textBox.PlaceholderText = options.PlaceholderText or "Input"
     textBox.TextWrapped = true
     textBox.TextTruncate = Enum.TextTruncate.None
@@ -117,7 +120,8 @@ function PlutoXUILibrary:CreateToggle(parent, options)
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "Toggle",
         Size = UDim2.new(0.6, 0, 1, 0),
-        TextSize = 12
+        TextSize = 12,
+        Font = options.Font or DEFAULT_FONT
     })
 
     local toggle = Instance.new("TextButton")
@@ -127,7 +131,7 @@ function PlutoXUILibrary:CreateToggle(parent, options)
     toggle.Text = options.DefaultState and "开" or "关"
     toggle.TextColor3 = THEME.Text
     toggle.TextSize = 12
-    toggle.Font = Enum.Font.SFPro
+    toggle.Font = options.Font or DEFAULT_FONT
     toggle.Parent = toggleFrame
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
@@ -161,7 +165,8 @@ function PlutoXUILibrary:CreateSlider(parent, options)
     local label = self:CreateLabel(sliderFrame, {
         Text = (options.Text or "Slider") .. ": " .. tostring(defaultValue),
         Size = UDim2.new(1, 0, 0, 15),
-        TextSize = 12
+        TextSize = 12,
+        Font = options.Font or DEFAULT_FONT
     })
 
     local sliderBar = Instance.new("Frame")
@@ -244,7 +249,8 @@ function PlutoXUILibrary:CreateTable(parent, options)
             self:CreateLabel(tableFrame, {
                 Text = tostring(cell),
                 Size = UDim2.new(0, options.CellWidth or 80, 0, options.CellHeight or 20),
-                TextSize = 12
+                TextSize = 12,
+                Font = options.Font or DEFAULT_FONT
             })
         end
     end
@@ -291,7 +297,8 @@ function PlutoXUILibrary:CreateModal(parent, options)
         Text = options.Title or "Modal",
         Size = UDim2.new(1, -20, 0, 25),
         Position = UDim2.new(0, 10, 0, 10),
-        TextSize = 16
+        TextSize = 16,
+        Font = options.Font or DEFAULT_FONT
     })
 
     local closeButton = self:CreateButton(modalFrame, {
@@ -379,7 +386,8 @@ function PlutoXUILibrary:CreateWindow(options)
         Text = options.Title or "Pluto-X UI",
         Size = UDim2.new(1, -20, 0, 25),
         Position = UDim2.new(0, 10, 0, 10),
-        TextSize = 18
+        TextSize = 18,
+        Font = options.Font or DEFAULT_FONT
     })
 
     return mainFrame, screenGui
@@ -402,7 +410,8 @@ function PlutoXUILibrary:CreateAuthorInfo(parent, options)
         Text = options.AuthorName or "作者: Unknown",
         Size = UDim2.new(0.5, 0, 0, 20),
         Position = UDim2.new(0, 5, 0, 5),
-        TextSize = 12
+        TextSize = 12,
+        Font = options.Font or DEFAULT_FONT
     })
 
     local socialButton = self:CreateButton(authorFrame, {
@@ -414,7 +423,8 @@ function PlutoXUILibrary:CreateAuthorInfo(parent, options)
         BackgroundTransparency = 1,
         Callback = options.SocialCallback or function()
             self:Notify("Social", "No link provided", 5, false)
-        end
+        end,
+        Font = options.Font or DEFAULT_FONT
     })
 
     -- 动画效果
