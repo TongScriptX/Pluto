@@ -32,33 +32,42 @@ local TOGGLE_TWEEN_INFO = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingD
 
 -- 通知容器
 local notificationContainer = nil
+local screenGui = nil
 
 -- 初始化通知容器（右下角）
-local function initNotificationContainer(screenGui)
+local function initNotificationContainer()
+    if not screenGui then
+        screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "UILibrary"
+        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+        screenGui.ResetOnSpawn = false
+        print("ScreenGui Created:", screenGui.Parent and "Parent exists" or "No parent")
+    end
+
     if not notificationContainer then
         local screenSize = UserInputService:GetPlatform() == Enum.Platform.Windows and Vector2.new(1280, 720) or game:GetService("GuiService"):GetScreenResolution()
         notificationContainer = Instance.new("Frame")
         notificationContainer.Size = UDim2.new(0, 300, 0, 360)
-        notificationContainer.Position = UDim2.new(1, -310, 1, -10)
+        notificationContainer.Position = UDim2.new(1, -310, 1, -370) -- 右下角
         notificationContainer.BackgroundTransparency = 1
         notificationContainer.Parent = screenGui
+        notificationContainer.Visible = true
+        notificationContainer.ClipsDescendants = false
 
         local layout = Instance.new("UIListLayout")
         layout.SortOrder = Enum.SortOrder.LayoutOrder
         layout.Padding = UDim.new(0, 10)
         layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
         layout.Parent = notificationContainer
+
+        print("Notification Container Created:", notificationContainer.Parent and "Parent exists" or "No parent")
     end
 end
 
 -- 通知模块
 function UILibrary:Notify(options)
     options = options or {}
-    local screenGui = Players.LocalPlayer:WaitForChild("PlayerGui"):FindFirstChild("UILibrary") or Instance.new("ScreenGui")
-    screenGui.Name = "UILibrary"
-    screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-    screenGui.ResetOnSpawn = false
-    initNotificationContainer(screenGui)
+    initNotificationContainer() -- 确保容器存在
 
     local notification = Instance.new("Frame")
     notification.Size = options.Size or UDim2.new(0, 280, 0, 60)
@@ -66,6 +75,8 @@ function UILibrary:Notify(options)
     notification.BackgroundTransparency = THEME.CardTransparency
     notification.Position = UDim2.new(0, 10, 0, 70)
     notification.Parent = notificationContainer
+    notification.Visible = true
+    notification.ClipsDescendants = false
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = notification
@@ -84,6 +95,7 @@ function UILibrary:Notify(options)
     icon.BackgroundTransparency = 1
     icon.Image = options.Icon or "rbxassetid://7072706667"
     icon.Parent = notification
+    icon.Visible = true
 
     local titleLabel = self:CreateLabel(notification, {
         Text = options.Title or "",
@@ -92,7 +104,8 @@ function UILibrary:Notify(options)
         TextSize = THEME.TextSizeTitle,
         TextColor3 = options.TitleColor or (options.IsWarning and THEME.Error or THEME.Text),
         Font = THEME.Font,
-        TextScaled = false
+        TextScaled = false,
+        TextTransparency = 0
     })
 
     local textLabel = self:CreateLabel(notification, {
@@ -102,26 +115,36 @@ function UILibrary:Notify(options)
         TextSize = THEME.TextSizeBody,
         TextColor3 = options.TextColor or THEME.Text,
         Font = THEME.Font,
-        TextScaled = false
+        TextScaled = false,
+        TextTransparency = 0
     })
 
     -- 滑入动画
     if options.EnableAnimation ~= false then
         notification.Position = UDim2.new(0, 10, 0, 130)
-        TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 70) }):Play()
+        local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 70) })
+        tween:Play()
+        print("Notification Animation Started: Position =", notification.Position)
     end
 
     -- 自动消失
     spawn(function()
         wait(options.Duration or 5)
         if options.EnableAnimation ~= false then
-            TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 130) }):Play()
-            wait(0.3)
+            local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 130) })
+            tween:Play()
+            tween.Completed:Wait()
+            print("Notification Animation Completed: Destroying")
         end
         notification:Destroy()
+        print("Notification Destroyed")
     end)
 
-    if options.IsWarning then warn(options.Text) else print(options.Text) end
+    if options.IsWarning then
+        warn("Notification: " .. options.Text)
+    else
+        print("Notification Created: Title =", options.Title, "Text =", options.Text, "Parent =", notification.Parent and "Exists" or "No parent")
+    end
     return notification
 end
 
@@ -493,7 +516,7 @@ function UILibrary:MakeDraggable(gui, options)
             if options.EnableAnimation ~= false then
                 TweenService:Create(gui, TWEEN_INFO, { Size = gui.Size }):Play()
             end
-        end
+        end)
     end)
 end
 
@@ -501,13 +524,13 @@ end
 function UILibrary:CreateWindow(options)
     options = options or {}
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = options.ScreenGuiName or "UILibrary"
+    screenGui.Name = options.ScreenGuiName or "UILibraryWindow"
     screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
     screenGui.ResetOnSpawn = false
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = options.Size or UDim2.new(0, 600, 0, 360)
-    mainFrame.Position = options.Position or UDim2.new(0.5, -300, 0.5, -180)
+    mainFrame.Position |options.Position or UDim2.new(0.5, -300, 0.5, -180)
     mainFrame.BackgroundColor3 = options.BackgroundColor or THEME.Background
     mainFrame.BackgroundTransparency = THEME.Transparency
     mainFrame.ClipsDescendants = true
@@ -576,11 +599,11 @@ function UILibrary:CreateWindow(options)
     -- 窗口动画
     if options.EnableAnimation ~= false then
         local originalSize = mainFrame.Size
-        mainFrame.Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)
+        mainFrame.Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y)
         TweenService:Create(mainFrame, TWEEN_INFO, { Size = originalSize }):Play()
     end
 
-    print("Window Created:", mainFrame.Parent and "Parent exists" or "No parent")
+    print("Window Created:", mainFrame)
     return mainFrame, screenGui, tabBar, leftFrame, rightFrame
 end
 
@@ -715,7 +738,7 @@ function UILibrary:SetTheme(newTheme)
         Background = newTheme.Background or DEFAULT_THEME.Background,
         SecondaryBackground = newTheme.SecondaryBackground or DEFAULT_THEME.SecondaryBackground,
         Accent = newTheme.Accent or DEFAULT_THEME.Accent,
-        Text = newTheme.Text or DEFAULT_THEME.Text,
+        Text = newTheme.Text or DEFAULT_TEXT.Text,
         Success = newTheme.Success or DEFAULT_THEME.Success,
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or DEFAULT_THEME.Font,
