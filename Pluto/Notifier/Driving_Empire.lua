@@ -3,6 +3,7 @@ local HttpService = game:GetService("HttpService")
 local CoreGui = game:GetService("StarterGui")
 local MarketplaceService = game:GetService("MarketplaceService")
 local VirtualUser = game:GetService("VirtualUser")
+local TweenService = game:GetService("TweenService")
 
 -- 加载 UI 模块
 local uiLibUrl = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/UILibrary.lua"
@@ -34,7 +35,8 @@ local config = {
     sendCash = false,
     sendLeaderboard = false,
     autoKick = false,
-    intervalMinutes = 5
+    intervalMinutes = 5,
+    welcomeSent = false
 }
 
 -- 颜色定义
@@ -120,6 +122,9 @@ local function checkPlayerRank()
             local placement = userIdFolder:FindFirstChild("Placement")
             if placement then
                 playerRank = rank
+                if placement:IsA("IntValue") then
+                    rank = placement.Value
+                end
                 break
             end
         end
@@ -167,6 +172,7 @@ end
 
 -- 欢迎消息
 local function sendWelcomeMessage()
+    if config.welcomeSent then return end
     local payload = {
         embeds = {{
             title = "Pluto-X Notifier",
@@ -176,7 +182,10 @@ local function sendWelcomeMessage()
             footer = { text = "作者: tongblx" }
         }}
     }
-    sendWebhook(payload)
+    if sendWebhook(payload) then
+        config.welcomeSent = true
+        saveConfig()
+    end
 end
 
 -- 创建 UI
@@ -195,19 +204,25 @@ local toggleButton = PlutoXUILibrary:CreateButton(screenGui, {
     Callback = function()
         mainFrame.Visible = not mainFrame.Visible
         toggleButton.Text = mainFrame.Visible and "T" or "≡"
+        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { BackgroundTransparency = mainFrame.Visible and 0.3 or 1 }):Play()
     end
 })
+PlutoXUILibrary:MakeDraggable(toggleButton, { PreventOffScreen = true })
 
--- 游戏信息
-local gameLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
-    Text = "游戏: " .. gameName,
-    Position = UDim2.new(0, 10, 0, 35)
+-- 卡片 1：游戏信息 + 已赚取金钱
+local infoCard = PlutoXUILibrary:CreateCard(mainFrame, {
+    Size = UDim2.new(1, -20, 0, 60),
+    Position = UDim2.new(0, 10, 0, 40)
 })
-
--- 已赚取金钱
-local earnedCashLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
+local gameLabel = PlutoXUILibrary:CreateLabel(infoCard, {
+    Text = "游戏: " .. gameName,
+    Position = UDim2.new(0, 5, 0, 5),
+    TextSize = 12
+})
+local earnedCashLabel = PlutoXUILibrary:CreateLabel(infoCard, {
     Text = "已赚取金钱: 0",
-    Position = UDim2.new(0, 10, 0, 50)
+    Position = UDim2.new(0, 5, 0, 25),
+    TextSize = 12
 })
 spawn(function()
     local leaderstats = player:WaitForChild("leaderstats", 5)
@@ -222,63 +237,77 @@ spawn(function()
     end
 end)
 
--- Webhook 输入框
-local webhookInput = PlutoXUILibrary:CreateTextBox(mainFrame, {
+-- 卡片 2：Webhook 输入框
+local webhookCard = PlutoXUILibrary:CreateCard(mainFrame, {
+    Size = UDim2.new(1, -20, 0, 40),
+    Position = UDim2.new(0, 10, 0, 110)
+})
+local webhookInput = PlutoXUILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "输入 Discord Webhook URL",
-    Position = UDim2.new(0, 10, 0, 70),
+    Position = UDim2.new(0, 5, 0, 5),
+    Size = UDim2.new(1, -10, 0, 30),
     OnFocusLost = function()
+        local oldUrl = config.webhookUrl
         config.webhookUrl = webhookInput.Text
+        if config.webhookUrl ~= "" and config.webhookUrl ~= oldUrl then
+            sendWelcomeMessage()
+        end
         PlutoXUILibrary:Notify("配置更新", "Webhook URL 已保存", 5, false)
         saveConfig()
     end
 })
 webhookInput.Text = config.webhookUrl
 
--- 开关
-local toggleCash = PlutoXUILibrary:CreateToggle(mainFrame, {
+-- 卡片 3：开关组
+local toggleCard = PlutoXUILibrary:CreateCard(mainFrame, {
+    Size = UDim2.new(1, -20, 0, 40),
+    Position = UDim2.new(0, 10, 0, 160)
+})
+local toggleCash = PlutoXUILibrary:CreateToggle(toggleCard, {
     Text = "发送金钱",
-    Position = UDim2.new(0, 10, 0, 110),
+    Position = UDim2.new(0, 5, 0, 5),
     DefaultState = config.sendCash,
     Callback = function(state)
         config.sendCash = state
         PlutoXUILibrary:Notify("配置更新", "发送金钱: " .. (state and "开" or "关"), 5, false)
         saveConfig()
-        if state then sendWelcomeMessage() end
     end
 })
-local toggleLeaderboard = PlutoXUILibrary:CreateToggle(mainFrame, {
+local toggleLeaderboard = PlutoXUILibrary:CreateToggle(toggleCard, {
     Text = "发送排行榜",
-    Position = UDim2.new(0, 100, 0, 110),
+    Position = UDim2.new(0, 100, 0, 5),
     DefaultState = config.sendLeaderboard,
     Callback = function(state)
         config.sendLeaderboard = state
         PlutoXUILibrary:Notify("配置更新", "发送排行榜: " .. (state and "开" or "关"), 5, false)
         saveConfig()
-        if state then sendWelcomeMessage() end
     end
 })
-local toggleAutoKick = PlutoXUILibrary:CreateToggle(mainFrame, {
+local toggleAutoKick = PlutoXUILibrary:CreateToggle(toggleCard, {
     Text = "自动踢出",
-    Position = UDim2.new(0, 190, 0, 110),
+    Position = UDim2.new(0, 190, 0, 5),
     DefaultState = config.autoKick,
     Callback = function(state)
         config.autoKick = state
         PlutoXUILibrary:Notify("配置更新", "自动踢出: " .. (state and "开" or "关"), 5, false)
         saveConfig()
-        if state then sendWelcomeMessage() end
     end
 })
 
--- 发送间隔
-local intervalLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
-    Text = "发送间隔（分钟）：",
-    Size = UDim2.new(0.5, 0, 0, 25),
-    Position = UDim2.new(0, 10, 0, 140)
+-- 卡片 4：发送间隔
+local intervalCard = PlutoXUILibrary:CreateCard(mainFrame, {
+    Size = UDim2.new(1, -20, 0, 40),
+    Position = UDim2.new(0, 10, 0, 210)
 })
-local intervalInput = PlutoXUILibrary:CreateTextBox(mainFrame, {
+local intervalLabel = PlutoXUILibrary:CreateLabel(intervalCard, {
+    Text = "发送间隔（分钟）：",
+    Size = UDim2.new(0.5, 0, 0, 30),
+    Position = UDim2.new(0, 5, 0, 5)
+})
+local intervalInput = PlutoXUILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "间隔",
-    Size = UDim2.new(0.4, 0, 0, 20),
-    Position = UDim2.new(0.55, 0, 0, 142.5),
+    Size = UDim2.new(0.4, 0, 0, 30),
+    Position = UDim2.new(0.55, 0, 0, 5),
     OnFocusLost = function()
         local num = tonumber(intervalInput.Text)
         if num and num > 0 then
@@ -294,11 +323,16 @@ local intervalInput = PlutoXUILibrary:CreateTextBox(mainFrame, {
 })
 intervalInput.Text = tostring(config.intervalMinutes)
 
--- 反挂机状态
-local antiAfkLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
+-- 卡片 5：反挂机状态
+local antiAfkCard = PlutoXUILibrary:CreateCard(mainFrame, {
+    Size = UDim2.new(1, -20, 0, 30),
+    Position = UDim2.new(0, 10, 0, 260)
+})
+local antiAfkLabel = PlutoXUILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已开启",
-    Size = UDim2.new(1, -20, 0, 15),
-    Position = UDim2.new(0, 10, 0, 170)
+    Size = UDim2.new(1, -10, 0, 20),
+    Position = UDim2.new(0, 5, 0, 5),
+    TextSize = 11
 })
 
 -- 作者介绍模块
