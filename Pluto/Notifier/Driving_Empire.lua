@@ -192,7 +192,9 @@ end
 local mainFrame, screenGui, tabBar, contentFrame = UILibrary:CreateWindow({
     Title = "[Pluto-X Notifier]",
     Size = UDim2.new(0, 300, 0, 360),
-    Gradient = true
+    Gradient = true,
+    EnableBlur = true,
+    AutoLayout = true
 })
 UILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
 
@@ -211,28 +213,30 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     StrokeTransparency = 0.8,
     EnableAnimation = true,
     EnableDrag = true,
+    EnableBlur = true,
     PreventOffScreen = true
 })
 
 -- 标签页：常规
 local generalTab, generalContent = UILibrary:CreateTab(tabBar, contentFrame, {
     Text = "常规",
-    Active = true
+    Active = true,
+    AutoLayout = true
 })
 
 -- 卡片 1：游戏信息 + 已赚取金钱
 local infoCard = UILibrary:CreateCard(generalContent, {
     Size = UDim2.new(1, -10, 0, 60),
-    Position = UDim2.new(0, 5, 0, 5)
+    AutoLayout = true
 })
 local gameLabel = UILibrary:CreateLabel(infoCard, {
     Text = "游戏: " .. gameName,
-    Position = UDim2.new(0, 5, 0, 5),
+    Size = UDim2.new(1, -10, 0, 20),
     TextSize = 12
 })
 local earnedCashLabel = UILibrary:CreateLabel(infoCard, {
     Text = "已赚取金钱: 0",
-    Position = UDim2.new(0, 5, 0, 25),
+    Size = UDim2.new(1, -10, 0, 20),
     TextSize = 12
 })
 spawn(function()
@@ -251,28 +255,27 @@ end)
 -- 卡片 2：反挂机状态
 local antiAfkCard = UILibrary:CreateCard(generalContent, {
     Size = UDim2.new(1, -10, 0, 30),
-    Position = UDim2.new(0, 5, 0, 75)
+    AutoLayout = true
 })
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已开启",
     Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5),
     TextSize = 11
 })
 
 -- 标签页：设置
 local settingsTab, settingsContent = UILibrary:CreateTab(tabBar, contentFrame, {
-    Text = "设置"
+    Text = "设置",
+    AutoLayout = true
 })
 
 -- 卡片 3：Webhook 输入框
 local webhookCard = UILibrary:CreateCard(settingsContent, {
     Size = UDim2.new(1, -10, 0, 40),
-    Position = UDim2.new(0, 5, 0, 5)
+    AutoLayout = true
 })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "输入 Discord Webhook URL",
-    Position = UDim2.new(0, 5, 0, 5),
     Size = UDim2.new(1, -10, 0, 30),
     OnFocusLost = function()
         local oldUrl = config.webhookUrl
@@ -288,12 +291,11 @@ webhookInput.Text = config.webhookUrl
 
 -- 卡片 4：开关组
 local toggleCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -10, 0, 40),
-    Position = UDim2.new(0, 5, 0, 55)
+    Size = UDim2.new(1, -10, 0, 60),
+    AutoLayout = true
 })
 local toggleCash = UILibrary:CreateToggle(toggleCard, {
     Text = "发送金钱",
-    Position = UDim2.new(0, 5, 0, 5),
     DefaultState = config.sendCash,
     OnText = "开",
     OffText = "关",
@@ -305,7 +307,6 @@ local toggleCash = UILibrary:CreateToggle(toggleCard, {
 })
 local toggleLeaderboard = UILibrary:CreateToggle(toggleCard, {
     Text = "发送排行榜",
-    Position = UDim2.new(0, 100, 0, 5),
     DefaultState = config.sendLeaderboard,
     OnText = "开",
     OffText = "关",
@@ -317,7 +318,6 @@ local toggleLeaderboard = UILibrary:CreateToggle(toggleCard, {
 })
 local toggleAutoKick = UILibrary:CreateToggle(toggleCard, {
     Text = "自动踢出",
-    Position = UDim2.new(0, 190, 0, 5),
     DefaultState = config.autoKick,
     OnText = "开",
     OffText = "关",
@@ -331,17 +331,15 @@ local toggleAutoKick = UILibrary:CreateToggle(toggleCard, {
 -- 卡片 5：发送间隔
 local intervalCard = UILibrary:CreateCard(settingsContent, {
     Size = UDim2.new(1, -10, 0, 40),
-    Position = UDim2.new(0, 5, 0, 105)
+    AutoLayout = true
 })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
     Text = "发送间隔（分钟）：",
-    Size = UDim2.new(0.5, 0, 0, 30),
-    Position = UDim2.new(0, 5, 0, 5)
+    Size = UDim2.new(0.5, 0, 0, 30)
 })
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "间隔",
-    Size = UDim2.new(0.4, 0, 0, 30),
-    Position = UDim2.new(0.55, 0, 0, 5),
+    Size = UDim2.new(0.5, -5, 0, 30),
     OnFocusLost = function()
         local num = tonumber(intervalInput.Text)
         if num and num > 0 then
@@ -359,7 +357,8 @@ intervalInput.Text = tostring(config.intervalMinutes)
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, contentFrame, {
-    Text = "关于"
+    Text = "关于",
+    AutoLayout = true
 })
 
 -- 作者介绍
@@ -382,8 +381,7 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
             UILibrary:Notify({ Title = "复制 Discord", Text = "已复制链接", Duration = 5 })
         end)
     end,
-    Size = UDim2.new(1, -10, 0, 30),
-    Position = UDim2.new(0, 5, 0, 5)
+    Size = UDim2.new(1, -10, 0, 30)
 })
 
 -- 定时发送
