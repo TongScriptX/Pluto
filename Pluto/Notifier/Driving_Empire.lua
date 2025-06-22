@@ -191,8 +191,8 @@ local function sendWelcomeMessage()
 end
 
 -- 创建 UI
-local mainFrame, screenGui, tabBar, contentFrame = UILibrary:CreateWindow({
-    Size = UDim2.new(0, 300, 0, 360)
+local mainFrame, screenGui, tabBar, leftFrame, rightFrame = UILibrary:CreateWindow({
+    Size = UDim2.new(0, 600, 0, 360)
 })
 UILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
 
@@ -206,45 +206,38 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     PreventOffScreen = true
 })
 
--- 标签页：常规
-local generalTab, generalContent = UILibrary:CreateTab(tabBar, contentFrame, {
-    Text = "常规",
-    Active = true,
-    Icon = "rbxassetid://7072706667"
+-- 左侧：常规内容
+local generalCard = UILibrary:CreateCard(leftFrame, {
+    Size = UDim2.new(0, 260, 0, 60)
 })
-
--- 卡片 1：游戏信息
-local infoCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(0, 130, 0, 60)
-})
-local gameLabel = UILibrary:CreateLabel(infoCard, {
+local gameLabel = UILibrary:CreateLabel(generalCard, {
     Text = "游戏: " .. gameName,
     Size = UDim2.new(1, -10, 0, 20)
 })
-local earnedCashLabel = UILibrary:CreateLabel(infoCard, {
+local earnedCashLabel = UILibrary:CreateLabel(generalCard, {
     Text = "已赚取金钱: 0",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 25)
 })
 
--- 卡片 2：反挂机状态
-local antiAfkCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(0, 130, 0, 30)
+local antiAfkCard = UILibrary:CreateCard(leftFrame, {
+    Size = UDim2.new(0, 260, 0, 30)
 })
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已开启",
     Size = UDim2.new(1, -10, 0, 20)
 })
 
--- 标签页：设置
-local settingsTab, settingsContent = UILibrary:CreateTab(tabBar, contentFrame, {
-    Text = "设置",
+-- 右侧：通知标签页
+local notifyTab, notifyContent = UILibrary:CreateTab(tabBar, rightFrame, {
+    Text = "通知",
+    Active = true,
     Icon = "rbxassetid://7072706667"
 })
 
--- 卡片 3：Webhook 输入框
-local webhookCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 130, 0, 60)
+-- 卡片 1：Webhook 输入框
+local webhookCard = UILibrary:CreateCard(notifyContent, {
+    Size = UDim2.new(0, 260, 0, 60)
 })
 local webhookLabel = UILibrary:CreateLabel(webhookCard, {
     Text = "Webhook URL",
@@ -265,9 +258,9 @@ local webhookInput = UILibrary:CreateTextBox(webhookCard, {
 webhookInput.Text = config.webhookUrl
 print("Webhook Input Created:", webhookInput.Parent and "Parent exists" or "No parent")
 
--- 卡片 4：通知金钱变化
-local cashNotifyCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 130, 0, 40)
+-- 卡片 2：通知金钱变化
+local cashNotifyCard = UILibrary:CreateCard(notifyContent, {
+    Size = UDim2.new(0, 260, 0, 40)
 })
 local toggleCash = UILibrary:CreateToggle(cashNotifyCard, {
     Text = "通知金钱变化",
@@ -280,9 +273,9 @@ local toggleCash = UILibrary:CreateToggle(cashNotifyCard, {
 })
 print("Cash Toggle Created:", toggleCash.Parent and "Parent exists" or "No parent")
 
--- 卡片 5：通知排行榜状态
-local leaderboardNotifyCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 130, 0, 40)
+-- 卡片 3：通知排行榜状态
+local leaderboardNotifyCard = UILibrary:CreateCard(notifyContent, {
+    Size = UDim2.new(0, 260, 0, 40)
 })
 local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
     Text = "通知排行榜",
@@ -295,9 +288,9 @@ local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
 })
 print("Leaderboard Toggle Created:", toggleLeaderboard.Parent and "Parent exists" or "No parent")
 
--- 卡片 6：上榜踢出
-local leaderboardKickCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 130, 0, 40)
+-- 卡片 4：上榜踢出
+local leaderboardKickCard = UILibrary:CreateCard(notifyContent, {
+    Size = UDim2.new(0, 260, 0, 40)
 })
 local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
     Text = "上榜踢出",
@@ -310,9 +303,9 @@ local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
 })
 print("Leaderboard Kick Toggle Created:", toggleLeaderboardKick.Parent and "Parent exists" or "No parent")
 
--- 卡片 7：通知间隔
-local intervalCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 130, 0, 60)
+-- 卡片 5：通知间隔
+local intervalCard = UILibrary:CreateCard(notifyContent, {
+    Size = UDim2.new(0, 260, 0, 60)
 })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
     Text = "通知间隔（分钟）",
@@ -335,14 +328,21 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
 intervalInput.Text = tostring(config.notificationInterval)
 print("Interval Input Created:", intervalInput.Parent and "Parent exists" or "No parent")
 
--- 卡片 8：目标金钱
-local targetCashCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 130, 0, 80)
+-- 卡片 6：目标金钱
+local targetCashCard = UILibrary:CreateCard(notifyContent, {
+    Size = UDim2.new(0, 260, 0, 80)
 })
-local targetCashToggle = UILibrary:CreateToggle(targetCashCard, {
+local targetCashToggle
+targetCashToggle = UILibrary:CreateToggle(targetCashCard, {
     Text = "目标金钱踢出",
     DefaultState = config.enableTargetKick,
     Callback = function(state)
+        if state and config.targetCash <= 0 then
+            config.enableTargetKick = false
+            targetCashToggle[2] = false -- 更新 Toggle 状态
+            UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标金额（大于 0）", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            return
+        end
         config.enableTargetKick = state
         UILibrary:Notify({ Title = "配置更新", Text = "目标金钱踢出: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
@@ -359,21 +359,28 @@ local targetCashInput = UILibrary:CreateTextBox(targetCashCard, {
     Position = UDim2.new(0, 5, 0, 50),
     OnFocusLost = function()
         local num = tonumber(targetCashInput.Text)
-        if num and num >= 0 then
+        if num and num > 0 then
             config.targetCash = num
             UILibrary:Notify({ Title = "配置更新", Text = "目标金钱: " .. num, Duration = 5, Icon = "rbxassetid://7072706667" })
             saveConfig()
         else
             targetCashInput.Text = tostring(config.targetCash)
-            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效数字", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            config.targetCash = math.max(config.targetCash, 0)
+            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效正整数", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            if config.enableTargetKick then
+                config.enableTargetKick = false
+                targetCashToggle[2] = false
+                UILibrary:Notify({ Title = "配置更新", Text = "目标金钱踢出已关闭，请设置有效目标金额", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+                saveConfig()
+            end
         end
     end
 })
 targetCashInput.Text = tostring(config.targetCash)
 print("Target Cash Input Created:", targetCashInput.Parent and "Parent exists" or "No parent")
 
--- 标签页：关于
-local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, contentFrame, {
+-- 右侧：关于标签页
+local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, rightFrame, {
     Text = "关于",
     Icon = "rbxassetid://7072706667"
 })
@@ -412,18 +419,23 @@ spawn(function()
         earnedCashLabel.Text = "已赚取金钱: " .. tostring(earnedCash)
 
         -- 检查目标金钱
-        if config.enableTargetKick and currentCash and currentCash >= config.targetCash then
-            local payload = {
-                embeds = {{
-                    title = "目标金钱达成",
-                    description = "**游戏**: " .. gameName .. "\n**用户**: " .. username .. "\n**当前金钱**: " .. currentCash .. "\n**目标金钱**: " .. config.targetCash,
-                    color = MAIN_COLOR_DECIMAL,
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "作者: tongblx" }
-                }}
-            }
-            dispatchWebhook(payload)
-            game:Shutdown()
+        if config.enableTargetKick and currentCash and config.targetCash > 0 then
+            print("Checking Target Cash: Current =", currentCash, "Target =", config.targetCash)
+            if currentCash >= config.targetCash then
+                local payload = {
+                    embeds = {{
+                        title = "目标金钱达成",
+                        description = "**游戏**: " .. gameName .. "\n**用户**: " .. username .. "\n**当前金钱**: " .. currentCash .. "\n**目标金钱**: " .. config.targetCash,
+                        color = MAIN_COLOR_DECIMAL,
+                        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                        footer = { text = "作者: tongblx" }
+                    }}
+                }
+                UILibrary:Notify({ Title = "目标达成", Text = "已达到目标金钱 " .. config.targetCash .. "，即将退出", Duration = 5, Icon = "rbxassetid://7072706667" })
+                dispatchWebhook(payload)
+                wait(1) -- 延迟确保 Webhook 发送
+                game:Shutdown()
+            end
         end
 
         -- 定期通知
@@ -480,7 +492,9 @@ spawn(function()
                         footer = { text = "作者: tongblx" }
                     }}
                 }
+                UILibrary:Notify({ Title = "上榜通知", Text = "排名 #" .. currentRank .. "，即将退出", Duration = 5, Icon = "rbxassetid://7072706667" })
                 dispatchWebhook(payload)
+                wait(1) -- 延迟确保 Webhook 发送
                 game:Shutdown()
             end
         end
