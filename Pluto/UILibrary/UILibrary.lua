@@ -16,14 +16,14 @@ local THEME = {
 }
 
 -- 默认字体
-local DEFAULT_FONT = Enum.Font.SourceSans -- 替换 SFPro 为 SourceSans
+local DEFAULT_FONT = Enum.Font.SourceSans
 
 -- 动画配置
 local TWEEN_INFO = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
 -- 通知模块
 function PlutoXUILibrary:Notify(title, text, duration, isWarn)
-    pcall(function()
+    local success, err = pcall(function()
         CoreGui:SetCore("SendNotification", {
             Title = isWarn and "警告: " .. title or title,
             Text = tostring(text),
@@ -31,6 +31,9 @@ function PlutoXUILibrary:Notify(title, text, duration, isWarn)
             Duration = duration or 5
         })
     end)
+    if not success then
+        warn("通知失败: " .. tostring(err))
+    end
     if isWarn then warn(text) else print(text) end
 end
 
