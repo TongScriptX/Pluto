@@ -2,6 +2,7 @@
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local Lighting = game:GetService("Lighting")
 
 local UILibrary = {}
 
@@ -14,8 +15,9 @@ local DEFAULT_THEME = {
     Success = Color3.fromRGB(0, 255, 0),
     Error = Color3.fromRGB(255, 0, 0),
     Font = Enum.Font.SourceSans,
-    Transparency = 0.6,
-    CornerRadius = 8
+    Transparency = 0.4, -- 调整透明度以配合毛玻璃
+    CornerRadius = 8,
+    BlurSize = 10
 }
 
 -- 当前主题
@@ -68,7 +70,8 @@ function UILibrary:Notify(options)
         Position = UDim2.new(0, 5, 0, 5),
         TextSize = options.TitleSize or 12,
         TextColor3 = options.TitleColor or (options.IsWarning and THEME.Error or THEME.Text),
-        Font = options.Font or THEME.Font
+        Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true
     })
 
     local textLabel = self:CreateLabel(notification, {
@@ -77,7 +80,8 @@ function UILibrary:Notify(options)
         Position = UDim2.new(0, 5, 0, 25),
         TextSize = options.TextSize or 11,
         TextColor3 = options.TextColor or THEME.Text,
-        Font = options.Font or THEME.Font
+        Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true
     })
 
     -- 滑入动画
@@ -105,7 +109,7 @@ end
 function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
-    card.Size = options.Size or UDim2.new(1, -10, 0, 60)
+    card.Size = options.Size or UDim2.new(1, -10, 0, options.Height or 60)
     card.Position = options.Position or UDim2.new(0, 5, 0, 0)
     card.BackgroundColor3 = options.BackgroundColor or THEME.Background
     card.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
@@ -114,6 +118,20 @@ function UILibrary:CreateCard(parent, options)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, options.CornerRadius or THEME.CornerRadius)
     corner.Parent = card
+
+    -- 自动布局
+    if options.AutoLayout ~= false then
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, options.Spacing or 5)
+        layout.Parent = card
+        local padding = Instance.new("UIPadding")
+        padding.PaddingLeft = UDim.new(0, 5)
+        padding.PaddingRight = UDim.new(0, 5)
+        padding.PaddingTop = UDim.new(0, 5)
+        padding.PaddingBottom = UDim.new(0, 5)
+        padding.Parent = card
+    end
 
     -- 淡入动画
     if options.EnableAnimation ~= false then
@@ -142,7 +160,7 @@ end
 function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
-    button.Size = options.Size or UDim2.new(0, 100, 0, 30)
+    button.Size = options.Size or UDim2.new(1, -10, 0, 30)
     button.Position = options.Position or UDim2.new(0, 0, 0, 0)
     button.BackgroundColor3 = options.BackgroundColor or THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0
@@ -150,6 +168,7 @@ function UILibrary:CreateButton(parent, options)
     button.TextColor3 = options.TextColor or THEME.Text
     button.TextSize = options.TextSize or 14
     button.Font = options.Font or THEME.Font
+    button.TextScaled = options.TextScaled or true
     button.Parent = parent
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, options.CornerRadius or THEME.CornerRadius)
@@ -192,6 +211,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.TextColor3 = options.TextColor or THEME.Text
     button.TextSize = options.TextSize or 14
     button.Font = options.Font or THEME.Font
+    button.TextScaled = options.TextScaled or true
     button.Parent = parent
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, options.CornerRadius or 22)
@@ -204,25 +224,45 @@ function UILibrary:CreateFloatingButton(parent, options)
     stroke.Transparency = options.StrokeTransparency or 0.8
     stroke.Parent = button
 
+    -- 毛玻璃效果
+    local blurEffect = nil
+    if options.EnableBlur ~= false then
+        blurEffect = Instance.new("BlurEffect")
+        blurEffect.Name = "UILibraryBlur"
+        blurEffect.Size = options.BlurSize or THEME.BlurSize
+        blurEffect.Parent = Lighting
+    end
+
     -- 默认回调：切换主窗口显隐
     local mainFrame = options.MainFrame
     if mainFrame then
         button.MouseButton1Click:Connect(function()
-            mainFrame.Visible = not mainFrame.Visible
-            button.Text = mainFrame.Visible and (options.CloseText or "✕") or (options.Text or "☰")
-            local targetTransparency = mainFrame.Visible and (options.MainFrameTransparency or THEME.Transparency) or 1
-            local targetSize = mainFrame.Visible and (options.MainFrameSize or UDim2.new(0, 300, 0, 360)) or
+            local isVisible = not mainFrame.Visible
+            button.Text = isVisible and (options.CloseText or "✕") or (options.Text or "☰")
+            local targetTransparency = isVisible and (options.MainFrameTransparency or THEME.Transparency) or 1
+            local targetSize = isVisible and (options.MainFrameSize or UDim2.new(0, 300, 0, 360)) or
                               UDim2.new(0, mainFrame.Size.X.Offset * 0.95, 0, mainFrame.Size.Y.Offset * 0.95)
             if options.EnableAnimation ~= false then
-                TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = targetTransparency, Size = targetSize }):Play()
-                TweenService:Create(button, TWEEN_INFO, { Rotation = mainFrame.Visible and 45 or 0 }):Play()
+                if isVisible then
+                    mainFrame.Visible = true
+                    TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = targetTransparency, Size = targetSize }):Play()
+                else
+                    TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = targetTransparency, Size = targetSize }):Play()
+                    wait(0.3)
+                    mainFrame.Visible = false
+                end
+                TweenService:Create(button, TWEEN_INFO, { Rotation = isVisible and 45 or 0 }):Play()
             else
                 mainFrame.BackgroundTransparency = targetTransparency
                 mainFrame.Size = targetSize
-                button.Rotation = mainFrame.Visible and 45 or 0
+                mainFrame.Visible = isVisible
+                button.Rotation = isVisible and 45 or 0
+            end
+            if blurEffect then
+                blurEffect.Enabled = isVisible
             end
             if options.Callback then
-                options.Callback(mainFrame.Visible)
+                options.Callback(isVisible)
             end
         end)
     end
@@ -261,6 +301,7 @@ function UILibrary:CreateLabel(parent, options)
     label.Font = options.Font or THEME.Font
     label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.TextWrapped = true
+    label.TextScaled = options.TextScaled or true
     label.TextTruncate = Enum.TextTruncate.AtEnd
     label.Parent = parent
 
@@ -286,6 +327,7 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.Font = options.Font or THEME.Font
     textBox.PlaceholderText = options.PlaceholderText or ""
     textBox.TextWrapped = true
+    textBox.TextScaled = options.TextScaled or true
     textBox.TextTruncate = Enum.TextTruncate.None
     textBox.BorderSizePixel = 1
     textBox.BorderColor3 = options.BorderColor or THEME.Background
@@ -297,7 +339,7 @@ function UILibrary:CreateTextBox(parent, options)
     -- 聚焦动画
     if options.EnableAnimation ~= false then
         textBox.Focused:Connect(function()
-            TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = options.FocusBorderColor or THEME.Accent, Size = UDim2.new(textBox.Size.X.Scale, textBox.Size.X.Offset + 2, textBox.Size.Y.Scale, textBox.Size.Y.Offset + 2) }):Play()
+            TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = options.FocusBorderColor or THEME.Accent, Size = UDim2.new(textBox.Size.X.Scale, textBox.Size.X.Offset + 2, textBox.Size.Y.Scale, textBox.Y.Offset + 2) }):Play()
         end)
         textBox.FocusLost:Connect(function()
             TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = options.BorderColor or THEME.Background, Size = textBox.Size }):Play()
@@ -318,7 +360,7 @@ end
 function UILibrary:CreateToggle(parent, options)
     options = options or {}
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = options.Size or UDim2.new(0, 90, 0, 25)
+    toggleFrame.Size = options.Size or UDim2.new(1, -10, 0, 25)
     toggleFrame.Position = options.Position or UDim2.new(0, 0, 0, 0)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
@@ -329,6 +371,7 @@ function UILibrary:CreateToggle(parent, options)
         TextSize = options.TextSize or 11,
         TextColor3 = options.TextColor or THEME.Text,
         Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true,
         EnableAnimation = options.EnableAnimation
     })
 
@@ -340,6 +383,7 @@ function UILibrary:CreateToggle(parent, options)
     toggle.TextColor3 = options.TextColor or THEME.Text
     toggle.TextSize = options.TextSize or 11
     toggle.Font = options.Font or THEME.Font
+    toggle.TextScaled = options.TextScaled or true
     toggle.Parent = toggleFrame
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, options.CornerRadius or 6)
@@ -382,6 +426,7 @@ function UILibrary:CreateSlider(parent, options)
         TextSize = options.TextSize or 11,
         TextColor3 = options.TextColor or THEME.Text,
         Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true,
         EnableAnimation = options.EnableAnimation
     })
 
@@ -479,6 +524,7 @@ function UILibrary:CreateTable(parent, options)
                 TextSize = options.TextSize or 11,
                 TextColor3 = options.TextColor or THEME.Text,
                 Font = options.Font or THEME.Font,
+                TextScaled = options.TextScaled or true,
                 EnableAnimation = options.EnableAnimation
             })
         end
@@ -504,8 +550,11 @@ function UILibrary:CreateScrollingFrame(parent, options)
     corner.Parent = scrollingFrame
 
     local layout = Instance.new("UIListLayout")
-    layout.Padding = UDim.new(0, 5)
+    layout.Padding = UDim.new(0, options.Spacing or 5)
     layout.Parent = scrollingFrame
+    layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+    end)
 
     return scrollingFrame
 end
@@ -531,6 +580,7 @@ function UILibrary:CreateModal(parent, options)
         TextSize = options.TextSize or 16,
         TextColor3 = options.TextColor or THEME.Text,
         Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true,
         EnableAnimation = options.EnableAnimation
     })
 
@@ -552,6 +602,15 @@ function UILibrary:CreateModal(parent, options)
             end
         end
     })
+
+    -- 毛玻璃效果
+    local blurEffect = nil
+    if options.EnableBlur ~= false then
+        blurEffect = Instance.new("BlurEffect")
+        blurEffect.Name = "UILibraryModalBlur"
+        blurEffect.Size = options.BlurSize or THEME.BlurSize
+        blurEffect.Parent = Lighting
+    end
 
     -- 淡入动画
     if options.EnableAnimation ~= false then
@@ -627,6 +686,16 @@ function UILibrary:CreateWindow(options)
     corner.CornerRadius = UDim.new(0, options.CornerRadius or 14)
     corner.Parent = mainFrame
 
+    -- 毛玻璃效果
+    local blurEffect = nil
+    if options.EnableBlur ~= false then
+        blurEffect = Instance.new("BlurEffect")
+        blurEffect.Name = "UILibraryWindowBlur"
+        blurEffect.Size = options.BlurSize or THEME.BlurSize
+        blurEffect.Parent = Lighting
+        blurEffect.Enabled = false -- 默认隐藏
+    end
+
     if options.Gradient then
         local gradient = Instance.new("UIGradient")
         gradient.Color = options.GradientColor or ColorSequence.new({
@@ -660,6 +729,17 @@ function UILibrary:CreateWindow(options)
     contentFrame.ClipsDescendants = true
     contentFrame.Parent = mainFrame
 
+    -- 自动布局
+    if options.AutoLayout ~= false then
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, options.Spacing or 5)
+        layout.Parent = contentFrame
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            contentFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        end)
+    end
+
     local titleLabel = self:CreateLabel(mainFrame, {
         Text = options.Title or "",
         Size = options.TitleSize or UDim2.new(1, -20, 0, 25),
@@ -667,6 +747,7 @@ function UILibrary:CreateWindow(options)
         TextSize = options.TitleTextSize or 14,
         TextColor3 = options.TitleColor or THEME.Text,
         Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true,
         EnableAnimation = options.EnableAnimation
     })
 
@@ -675,9 +756,22 @@ function UILibrary:CreateWindow(options)
         local originalSize = mainFrame.Size
         mainFrame.Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)
         TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency, Size = originalSize }):Play()
+        if blurEffect then
+            blurEffect.Enabled = true
+        end
     else
         mainFrame.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
+        if blurEffect then
+            blurEffect.Enabled = true
+        end
     end
+
+    -- 清理 BlurEffect
+    screenGui.AncestryChanged:Connect(function()
+        if not screenGui:IsDescendantOf(game) and blurEffect then
+            blurEffect:Destroy()
+        end
+    end)
 
     return mainFrame, screenGui, tabBar, contentFrame
 end
@@ -693,6 +787,7 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
         TextSize = options.TextSize or 12,
         TextColor3 = options.TextColor or THEME.Text,
         Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true,
         EnableAnimation = options.EnableAnimation,
         Callback = function()
             for _, child in ipairs(contentFrame:GetChildren()) do
@@ -733,8 +828,19 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
     content.BackgroundTransparency = 1
     content.Visible = options.Active or false
     content.Parent = contentFrame
-    options.ContentFrame = content
 
+    -- 自动布局
+    if options.AutoLayout ~= false then
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = UDim.new(0, options.Spacing or 5)
+        layout.Parent = content
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            content.Size = UDim2.new(1, 0, 0, layout.AbsoluteContentSize.Y + 10)
+        end)
+    end
+
+    options.ContentFrame = content
     return tabButton, content
 end
 
@@ -759,6 +865,7 @@ function UILibrary:CreateAuthorInfo(parent, options)
         TextSize = options.TextSize or 11,
         TextColor3 = options.TextColor or THEME.Text,
         Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true,
         EnableAnimation = options.EnableAnimation
     })
 
@@ -772,6 +879,7 @@ function UILibrary:CreateAuthorInfo(parent, options)
         BackgroundTransparency = options.SocialBackgroundTransparency or 1,
         BackgroundColor3 = options.SocialBackgroundColor or THEME.Primary,
         Font = options.Font or THEME.Font,
+        TextScaled = options.TextScaled or true,
         EnableAnimation = options.EnableAnimation,
         Callback = options.SocialCallback
     })
@@ -791,7 +899,8 @@ function UILibrary:SetTheme(newTheme)
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or DEFAULT_THEME.Font,
         Transparency = newTheme.Transparency or DEFAULT_THEME.Transparency,
-        CornerRadius = newTheme.CornerRadius or DEFAULT_THEME.CornerRadius
+        CornerRadius = newTheme.CornerRadius or DEFAULT_THEME.CornerRadius,
+        BlurSize = newTheme.BlurSize or DEFAULT_THEME.BlurSize
     }
 end
 
