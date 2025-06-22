@@ -19,7 +19,7 @@ local THEME = {
 local DEFAULT_FONT = Enum.Font.SourceSans
 
 -- 动画配置
-local TWEEN_INFO = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local TWEEN_INFO = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
 -- 通知模块
 function PlutoXUILibrary:Notify(title, text, duration, isWarn)
@@ -35,6 +35,26 @@ function PlutoXUILibrary:Notify(title, text, duration, isWarn)
         warn("通知失败: " .. tostring(err))
     end
     if isWarn then warn(text) else print(text) end
+end
+
+-- 创建卡片
+function PlutoXUILibrary:CreateCard(parent, options)
+    options = options or {}
+    local card = Instance.new("Frame")
+    card.Size = options.Size or UDim2.new(1, -20, 0, 60)
+    card.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    card.BackgroundColor3 = THEME.Background
+    card.BackgroundTransparency = 0.6
+    card.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = card
+
+    -- 淡入动画
+    card.BackgroundTransparency = 0.8
+    TweenService:Create(card, TWEEN_INFO, { BackgroundTransparency = 0.6 }):Play()
+
+    return card
 end
 
 -- 按钮模块
@@ -55,14 +75,20 @@ function PlutoXUILibrary:CreateButton(parent, options)
     corner.Parent = button
 
     if options.Callback then
-        button.MouseButton1Click:Connect(options.Callback)
+        button.MouseButton1Click:Connect(function()
+            -- 点击动画
+            TweenService:Create(button, TWEEN_INFO, { Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset, button.Size.Y.Scale, button.Size.Y.Offset - 2) }):Play()
+            wait(0.1)
+            TweenService:Create(button, TWEEN_INFO, { Size = button.Size }):Play()
+            options.Callback()
+        end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = 0.1 }):Play()
+        TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = 0.1, Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset + 2, button.Size.Y.Scale, button.Size.Y.Offset + 2) }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or 0 }):Play()
+        TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or 0, Size = button.Size }):Play()
     end)
 
     return button
@@ -72,16 +98,21 @@ end
 function PlutoXUILibrary:CreateLabel(parent, options)
     options = options or {}
     local label = Instance.new("TextLabel")
-    label.Size = options.Size or UDim2.new(1, -20, 0, 15)
-    label.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    label.Size = options.Size or UDim2.new(1, -10, 0, 15)
+    label.Position = options.Position or UDim2.new(0, 5, 0, 5)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
     label.TextColor3 = options.TextColor or THEME.Text
-    label.TextSize = options.TextSize or 13
+    label.TextSize = options.TextSize or 12
     label.Font = options.Font or DEFAULT_FONT
     label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.TextWrapped = true
     label.Parent = parent
+
+    -- 淡入动画
+    label.TextTransparency = 1
+    TweenService:Create(label, TWEEN_INFO, { TextTransparency = 0 }):Play()
+
     return label
 end
 
@@ -89,24 +120,33 @@ end
 function PlutoXUILibrary:CreateTextBox(parent, options)
     options = options or {}
     local textBox = Instance.new("TextBox")
-    textBox.Size = options.Size or UDim2.new(1, -20, 0, 30)
-    textBox.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    textBox.Size = options.Size or UDim2.new(1, -10, 0, 30)
+    textBox.Position = options.Position or UDim2.new(0, 5, 0, 5)
     textBox.BackgroundColor3 = options.BackgroundColor or THEME.Background
     textBox.BackgroundTransparency = options.BackgroundTransparency or 0.6
     textBox.TextColor3 = options.TextColor or THEME.Text
-    textBox.TextSize = options.TextSize or 13
+    textBox.TextSize = options.TextSize or 12
     textBox.Font = options.Font or DEFAULT_FONT
     textBox.PlaceholderText = options.PlaceholderText or "Input"
     textBox.TextWrapped = true
     textBox.TextTruncate = Enum.TextTruncate.None
+    textBox.BorderSizePixel = 1
+    textBox.BorderColor3 = THEME.Background
     textBox.Parent = parent
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or 8)
+    corner.CornerRadius = UDim.new(0, 8)
     corner.Parent = textBox
 
-    if options.OnFocusLost then
-        textBox.FocusLost:Connect(options.OnFocusLost)
-    end
+    -- 聚焦动画
+    textBox.Focused:Connect(function()
+        TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = THEME.Accent, Size = UDim2.new(textBox.Size.X.Scale, textBox.Size.X.Offset + 2, textBox.Size.Y.Scale, textBox.Size.Y.Offset + 2) }):Play()
+    end)
+    textBox.FocusLost:Connect(function()
+        TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = THEME.Background, Size = textBox.Size }):Play()
+        if options.OnFocusLost then
+            options.OnFocusLost()
+        end
+    end)
 
     return textBox
 end
@@ -123,7 +163,7 @@ function PlutoXUILibrary:CreateToggle(parent, options)
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "Toggle",
         Size = UDim2.new(0.6, 0, 1, 0),
-        TextSize = 12,
+        TextSize = 11,
         Font = options.Font or DEFAULT_FONT
     })
 
@@ -133,7 +173,7 @@ function PlutoXUILibrary:CreateToggle(parent, options)
     toggle.BackgroundColor3 = options.DefaultState and THEME.Success or THEME.Error
     toggle.Text = options.DefaultState and "开" or "关"
     toggle.TextColor3 = THEME.Text
-    toggle.TextSize = 12
+    toggle.TextSize = 11
     toggle.Font = options.Font or DEFAULT_FONT
     toggle.Parent = toggleFrame
     local corner = Instance.new("UICorner")
@@ -143,7 +183,8 @@ function PlutoXUILibrary:CreateToggle(parent, options)
     local state = options.DefaultState or false
     toggle.MouseButton1Click:Connect(function()
         state = not state
-        toggle.BackgroundColor3 = state and THEME.Success or THEME.Error
+        local targetPos = state and UDim2.new(0.65, 0, 0, 2.5) or UDim2.new(0.65, -10, 0, 2.5)
+        TweenService:Create(toggle, TWEEN_INFO, { BackgroundColor3 = state and THEME.Success or THEME.Error, Position = targetPos }):Play()
         toggle.Text = state and "开" or "关"
         if options.Callback then
             options.Callback(state)
@@ -160,15 +201,15 @@ function PlutoXUILibrary:CreateSlider(parent, options)
     local defaultValue = math.clamp(options.DefaultValue or min, min, max)
 
     local sliderFrame = Instance.new("Frame")
-    sliderFrame.Size = options.Size or UDim2.new(1, -20, 0, 30)
-    sliderFrame.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    sliderFrame.Size = options.Size or UDim2.new(1, -10, 0, 30)
+    sliderFrame.Position = options.Position or UDim2.new(0, 5, 0, 0)
     sliderFrame.BackgroundTransparency = 1
     sliderFrame.Parent = parent
 
     local label = self:CreateLabel(sliderFrame, {
         Text = (options.Text or "Slider") .. ": " .. tostring(defaultValue),
         Size = UDim2.new(1, 0, 0, 15),
-        TextSize = 12,
+        TextSize = 11,
         Font = options.Font or DEFAULT_FONT
     })
 
@@ -200,7 +241,7 @@ function PlutoXUILibrary:CreateSlider(parent, options)
         local newPos = math.clamp(delta, 0, maxWidth)
         value = min + (newPos / maxWidth) * (max - min)
         value = math.round(value)
-        sliderButton.Position = UDim2.new(newPos / maxWidth, -5, 0, 17.5)
+        TweenService:Create(sliderButton, TWEEN_INFO, { Position = UDim2.new(newPos / maxWidth, -5, 0, 17.5) }):Play()
         label.Text = (options.Text or "Slider") .. ": " .. value
         if options.Callback then
             options.Callback(value)
@@ -210,6 +251,7 @@ function PlutoXUILibrary:CreateSlider(parent, options)
     sliderButton.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
+            TweenService:Create(sliderButton, TWEEN_INFO, { Size = UDim2.new(0, 12, 0, 12) }):Play()
             updateSlider(input)
         end
     end)
@@ -217,6 +259,7 @@ function PlutoXUILibrary:CreateSlider(parent, options)
     sliderButton.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
+            TweenService:Create(sliderButton, TWEEN_INFO, { Size = UDim2.new(0, 10, 0, 10) }):Play()
         end
     end)
 
@@ -233,8 +276,8 @@ end
 function PlutoXUILibrary:CreateTable(parent, options)
     options = options or {}
     local tableFrame = Instance.new("Frame")
-    tableFrame.Size = options.Size or UDim2.new(1, -20, 0, 100)
-    tableFrame.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    tableFrame.Size = options.Size or UDim2.new(1, -10, 0, 100)
+    tableFrame.Position = options.Position or UDim2.new(0, 5, 0, 0)
     tableFrame.BackgroundColor3 = THEME.Background
     tableFrame.BackgroundTransparency = 0.6
     tableFrame.Parent = parent
@@ -252,7 +295,7 @@ function PlutoXUILibrary:CreateTable(parent, options)
             self:CreateLabel(tableFrame, {
                 Text = tostring(cell),
                 Size = UDim2.new(0, options.CellWidth or 80, 0, options.CellHeight or 20),
-                TextSize = 12,
+                TextSize = 11,
                 Font = options.Font or DEFAULT_FONT
             })
         end
@@ -265,8 +308,8 @@ end
 function PlutoXUILibrary:CreateScrollingFrame(parent, options)
     options = options or {}
     local scrollingFrame = Instance.new("ScrollingFrame")
-    scrollingFrame.Size = options.Size or UDim2.new(1, -20, 0, 100)
-    scrollingFrame.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    scrollingFrame.Size = options.Size or UDim2.new(1, -10, 0, 100)
+    scrollingFrame.Position = options.Position or UDim2.new(0, 5, 0, 0)
     scrollingFrame.BackgroundColor3 = THEME.Background
     scrollingFrame.BackgroundTransparency = 0.6
     scrollingFrame.ScrollBarThickness = 6
@@ -309,9 +352,15 @@ function PlutoXUILibrary:CreateModal(parent, options)
         Size = UDim2.new(0, 25, 0, 25),
         Position = UDim2.new(1, -35, 0, 10),
         Callback = function()
+            TweenService:Create(modalFrame, TWEEN_INFO, { BackgroundTransparency = 1 }):Play()
+            wait(0.3)
             modalFrame:Destroy()
         end
     })
+
+    -- 淡入动画
+    modalFrame.BackgroundTransparency = 1
+    TweenService:Create(modalFrame, TWEEN_INFO, { BackgroundTransparency = 0.3 }):Play()
 
     return modalFrame
 end
@@ -327,6 +376,7 @@ function PlutoXUILibrary:MakeDraggable(gui, options)
             dragging = true
             startPos = input.Position
             startGuiPos = gui.Position
+            TweenService:Create(gui, TWEEN_INFO, { Size = UDim2.new(gui.Size.X.Scale, gui.Size.X.Offset + 2, gui.Size.Y.Scale, gui.Size.Y.Offset + 2) }):Play()
         end
     end)
 
@@ -352,6 +402,7 @@ function PlutoXUILibrary:MakeDraggable(gui, options)
     gui.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
+            TweenService:Create(gui, TWEEN_INFO, { Size = gui.Size }):Play()
         end
     end)
 end
@@ -368,7 +419,7 @@ function PlutoXUILibrary:CreateWindow(options)
     mainFrame.Size = options.Size or UDim2.new(0, 300, 0, 360)
     mainFrame.Position = options.Position or UDim2.new(0, 60, 0, 10)
     mainFrame.BackgroundColor3 = THEME.Background
-    mainFrame.BackgroundTransparency = 0.3
+    mainFrame.BackgroundTransparency = 1 -- 初始透明
     mainFrame.Parent = screenGui
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 14)
@@ -389,9 +440,12 @@ function PlutoXUILibrary:CreateWindow(options)
         Text = options.Title or "Pluto-X UI",
         Size = UDim2.new(1, -20, 0, 25),
         Position = UDim2.new(0, 10, 0, 10),
-        TextSize = 18,
+        TextSize = 14,
         Font = options.Font or DEFAULT_FONT
     })
+
+    -- 窗口淡入
+    TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = 0.3 }):Play()
 
     return mainFrame, screenGui
 end
@@ -413,7 +467,7 @@ function PlutoXUILibrary:CreateAuthorInfo(parent, options)
         Text = options.AuthorName or "作者: Unknown",
         Size = UDim2.new(0.5, 0, 0, 20),
         Position = UDim2.new(0, 5, 0, 5),
-        TextSize = 12,
+        TextSize = 11,
         Font = options.Font or DEFAULT_FONT
     })
 
@@ -421,7 +475,7 @@ function PlutoXUILibrary:CreateAuthorInfo(parent, options)
         Text = options.SocialText or "Social: Join",
         Size = UDim2.new(0.5, -5, 0, 20),
         Position = UDim2.new(0.5, 0, 0, 5),
-        TextSize = 12,
+        TextSize = 11,
         TextXAlignment = Enum.TextXAlignment.Right,
         BackgroundTransparency = 1,
         Callback = options.SocialCallback or function()
@@ -432,14 +486,14 @@ function PlutoXUILibrary:CreateAuthorInfo(parent, options)
 
     -- 动画效果
     socialButton.MouseEnter:Connect(function()
-        TweenService:Create(socialButton, TWEEN_INFO, { TextSize = 13, TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
+        TweenService:Create(socialButton, TWEEN_INFO, { TextSize = 12, TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
     end)
     socialButton.MouseLeave:Connect(function()
-        TweenService:Create(socialButton, TWEEN_INFO, { TextSize = 12, TextColor3 = THEME.Text }):Play()
+        TweenService:Create(socialButton, TWEEN_INFO, { TextSize = 11, TextColor3 = THEME.Text }):Play()
     end)
     socialButton.MouseButton1Click:Connect(function()
         TweenService:Create(socialButton, TWEEN_INFO, { TextColor3 = THEME.Success }):Play()
-        wait(0.5)
+        wait(0.3)
         TweenService:Create(socialButton, TWEEN_INFO, { TextColor3 = THEME.Text }):Play()
     end)
 
