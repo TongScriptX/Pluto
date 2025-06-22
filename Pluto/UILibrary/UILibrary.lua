@@ -5,19 +5,20 @@ local Players = game:GetService("Players")
 
 local UILibrary = {}
 
--- 默认主题
+-- 默认主题（参考 Luminosity）
 local DEFAULT_THEME = {
-    Primary = Color3.fromRGB(74, 78, 170), -- #4A4EAA
-    Background = Color3.fromRGB(28, 37, 38), -- #1C2526
-    Accent = Color3.fromRGB(114, 137, 218), -- #7289DA
-    Text = Color3.new(1, 1, 1),
-    Success = Color3.fromRGB(0, 255, 0),
-    Error = Color3.fromRGB(255, 0, 0),
-    Font = Enum.Font.Roboto,
-    Transparency = 0.7, -- Glassmorphism 增强透明度
-    CornerRadius = 8,
-    ShadowTransparency = 0.8,
-    TextStrokeTransparency = 0.4
+    Primary = Color3.fromRGB(63, 81, 181), -- #3F51B5
+    Background = Color3.fromRGB(30, 30, 30), -- #1E1E1E
+    Accent = Color3.fromRGB(92, 107, 192), -- #5C6BC0
+    Text = Color3.fromRGB(255, 255, 255),
+    Success = Color3.fromRGB(76, 175, 80),
+    Error = Color3.fromRGB(244, 67, 54),
+    Font = Enum.Font.Gotham, -- 切换为 Gotham
+    Transparency = 0, -- 纯色背景
+    CornerRadius = 6, -- 统一圆角
+    ShadowTransparency = 0.2, -- Material Design 阴影
+    TextSizeTitle = 18,
+    TextSizeBody = 14
 }
 
 -- 当前主题
@@ -60,31 +61,19 @@ function UILibrary:Notify(options)
     local notification = Instance.new("Frame")
     notification.Size = options.Size or UDim2.new(0, 280, 0, 60)
     notification.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    notification.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
+    notification.BackgroundTransparency = THEME.Transparency
     notification.Position = UDim2.new(0, 10, 0, 70)
     notification.Parent = notificationContainer
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or THEME.CornerRadius)
+    corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = notification
 
-    -- 阴影
+    -- Material Design 阴影
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 1
-    stroke.Transparency = options.ShadowTransparency or THEME.ShadowTransparency
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = THEME.ShadowTransparency
     stroke.Parent = notification
-
-    -- Glassmorphism 渐变
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)),
-        ColorSequenceKeypoint.new(1, THEME.Background)
-    })
-    gradient.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.8),
-        NumberSequenceKeypoint.new(1, THEME.Transparency)
-    })
-    gradient.Parent = notification
 
     -- 图标
     local icon = Instance.new("ImageLabel")
@@ -98,22 +87,20 @@ function UILibrary:Notify(options)
         Text = options.Title or "",
         Size = UDim2.new(1, -40, 0, 20),
         Position = UDim2.new(0, 35, 0, 5),
-        TextSize = 16,
+        TextSize = THEME.TextSizeTitle,
         TextColor3 = options.TitleColor or (options.IsWarning and THEME.Error or THEME.Text),
-        Font = options.Font or THEME.Font,
-        TextScaled = true,
-        TextContainer = true
+        Font = THEME.Font,
+        TextScaled = false
     })
 
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
         Size = UDim2.new(1, -40, 0, 20),
         Position = UDim2.new(0, 35, 0, 25),
-        TextSize = 14,
+        TextSize = THEME.TextSizeBody,
         TextColor3 = options.TextColor or THEME.Text,
-        Font = options.Font or THEME.Font,
-        TextScaled = true,
-        TextContainer = true
+        Font = THEME.Font,
+        TextScaled = false
     })
 
     -- 滑入动画
@@ -140,40 +127,27 @@ end
 function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
-    card.Size = options.Size or UDim2.new(1, -20, 0, options.Height or 60)
-    card.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    card.Size = options.Size or UDim2.new(0, 220, 0, options.Height or 80)
     card.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    card.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
+    card.BackgroundTransparency = THEME.Transparency
     card.ClipsDescendants = true
     card.Parent = parent
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or THEME.CornerRadius)
+    corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = card
 
-    -- 阴影
+    -- Material Design 阴影
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 1
-    stroke.Transparency = options.ShadowTransparency or THEME.ShadowTransparency
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = THEME.ShadowTransparency
     stroke.Parent = card
-
-    -- Glassmorphism 渐变
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)),
-        ColorSequenceKeypoint.new(1, THEME.Background)
-    })
-    gradient.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.8),
-        NumberSequenceKeypoint.new(1, THEME.Transparency)
-    })
-    gradient.Parent = card
 
     -- 自动布局
     if options.AutoLayout ~= false then
         local layout = Instance.new("UIListLayout")
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, options.Spacing or 10)
+        layout.Padding = UDim.new(0, 10)
         layout.Parent = card
         local padding = Instance.new("UIPadding")
         padding.PaddingLeft = UDim.new(0, 10)
@@ -185,8 +159,8 @@ function UILibrary:CreateCard(parent, options)
 
     -- 淡入动画
     if options.EnableAnimation ~= false then
-        card.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency + 0.2
-        TweenService:Create(card, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency }):Play()
+        card.Position = UDim2.new(0, 0, 0, 10)
+        TweenService:Create(card, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 0) }):Play()
     end
 
     return card
@@ -196,25 +170,32 @@ end
 function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
-    button.Size = options.Size or UDim2.new(1, -20, 0, 30)
-    button.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    button.Size = options.Size or UDim2.new(1, -10, 0, 30)
+    button.Position = options.Position or UDim2.new(0, 5, 0, 0)
     button.BackgroundColor3 = options.BackgroundColor or THEME.Primary
-    button.BackgroundTransparency = options.BackgroundTransparency or 0
+    button.BackgroundTransparency = THEME.Transparency
     button.Text = options.Text or ""
     button.TextColor3 = options.TextColor or THEME.Text
-    button.TextSize = options.TextSize or 14
+    button.TextSize = options.TextSize or THEME.TextSizeBody
     button.Font = options.Font or THEME.Font
-    button.TextScaled = options.TextScaled or true
+    button.TextScaled = false
     button.Parent = parent
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or THEME.CornerRadius)
+    corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = button
+
+    -- Material Design 阴影
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = THEME.ShadowTransparency
+    stroke.Parent = button
 
     -- 图标
     if options.Icon then
         local icon = Instance.new("ImageLabel")
         icon.Size = UDim2.new(0, 20, 0, 20)
-        icon.Position = UDim2.new(0, 10, 0, 5)
+        icon.Position = UDim2.new(0, 5, 0, 5)
         icon.BackgroundTransparency = 1
         icon.Image = options.Icon
         icon.Parent = button
@@ -233,12 +214,13 @@ function UILibrary:CreateButton(parent, options)
         end)
     end
 
+    -- 悬停动画（参考 Luminosity）
     if options.EnableHoverAnimation ~= false then
         button.MouseEnter:Connect(function()
-            TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = (options.BackgroundTransparency or 0) + 0.1, Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset * 1.05, button.Size.Y.Scale, button.Size.Y.Offset * 1.05) }):Play()
+            TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Accent }):Play()
         end)
         button.MouseLeave:Connect(function()
-            TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or 0, Size = button.Size }):Play()
+            TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Primary }):Play()
         end)
     end
 
@@ -251,38 +233,26 @@ function UILibrary:CreateFloatingButton(parent, options)
     local screenSize = UserInputService:GetPlatform() == Enum.Platform.Windows and Vector2.new(1280, 720) or game:GetService("GuiService"):GetScreenResolution()
     
     local button = Instance.new("TextButton")
-    button.Size = options.Size or UDim2.new(0, 44, 0, 44)
-    button.Position = options.Position or UDim2.new(0, screenSize.X - 54, 0, 10)
-    button.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    button.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
+    button.Size = options.Size or UDim2.new(0, 50, 0, 50)
+    button.Position = options.Position or UDim2.new(0, screenSize.X - 60, 0, screenSize.Y - 60) -- 右下角
+    button.BackgroundColor3 = options.BackgroundColor or THEME.Primary
+    button.BackgroundTransparency = THEME.Transparency
     button.Text = options.Text or "T"
     button.TextColor3 = options.TextColor or THEME.Text
-    button.TextSize = options.TextSize or 18
+    button.TextSize = THEME.TextSizeBody
     button.Font = options.Font or THEME.Font
-    button.TextScaled = options.TextScaled or true
+    button.TextScaled = false
     button.Parent = parent
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or 22)
+    corner.CornerRadius = UDim.new(0, 25)
     corner.Parent = button
 
-    -- 阴影
+    -- Material Design 阴影
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 1
-    stroke.Transparency = options.ShadowTransparency or THEME.ShadowTransparency
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = THEME.ShadowTransparency
     stroke.Parent = button
-
-    -- Glassmorphism 渐变
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)),
-        ColorSequenceKeypoint.new(1, THEME.Background)
-    })
-    gradient.Transparency = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.8),
-        NumberSequenceKeypoint.new(1, THEME.Transparency)
-    })
-    gradient.Parent = button
 
     -- 默认回调：切换主窗口显隐
     local mainFrame = options.MainFrame
@@ -290,21 +260,19 @@ function UILibrary:CreateFloatingButton(parent, options)
         button.MouseButton1Click:Connect(function()
             local isVisible = not mainFrame.Visible
             button.Text = isVisible and (options.CloseText or "✕") or (options.Text or "T")
-            local targetTransparency = isVisible and (options.MainFrameTransparency or THEME.Transparency) or 1
-            local targetSize = isVisible and (options.MainFrameSize or UDim2.new(0, 300, 0, 360)) or
+            local targetSize = isVisible and (options.MainFrameSize or UDim2.new(0, 600, 0, 300)) or
                               UDim2.new(0, mainFrame.Size.X.Offset * 0.95, 0, mainFrame.Size.Y.Offset * 0.95)
             if options.EnableAnimation ~= false then
                 if isVisible then
                     mainFrame.Visible = true
-                    TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = targetTransparency, Size = targetSize }):Play()
+                    TweenService:Create(mainFrame, TWEEN_INFO, { Size = targetSize }):Play()
                 else
-                    TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = targetTransparency, Size = targetSize }):Play()
+                    TweenService:Create(mainFrame, TWEEN_INFO, { Size = targetSize }):Play()
                     wait(0.3)
                     mainFrame.Visible = false
                 end
                 TweenService:Create(button, TWEEN_INFO, { Rotation = isVisible and 45 or 0 }):Play()
             else
-                mainFrame.BackgroundTransparency = targetTransparency
                 mainFrame.Size = targetSize
                 mainFrame.Visible = isVisible
                 button.Rotation = isVisible and 45 or 0
@@ -318,13 +286,10 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 悬停动画
     if options.EnableHoverAnimation ~= false then
         button.MouseEnter:Connect(function()
-            TweenService:Create(button, TWEEN_INFO, {
-                BackgroundTransparency = (options.BackgroundTransparency or THEME.Transparency) + 0.1,
-                Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset * 1.05, button.Size.Y.Scale, button.Size.Y.Offset * 1.05)
-            }):Play()
+            TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Accent }):Play()
         end)
         button.MouseLeave:Connect(function()
-            TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency, Size = button.Size }):Play()
+            TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Primary }):Play()
         end)
     end
 
@@ -339,74 +304,66 @@ end
 -- 文本标签模块
 function UILibrary:CreateLabel(parent, options)
     options = options or {}
-    local container = Instance.new("Frame")
-    container.Size = options.Size or UDim2.new(1, -10, 0, 20)
-    container.Position = options.Position or UDim2.new(0, 5, 0, 5)
-    container.BackgroundTransparency = options.TextContainer ~= false and 0.8 or 1
-    container.BackgroundColor3 = THEME.Background
-    container.Parent = parent
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = container
-
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 1, 0)
-    label.Position = UDim2.new(0, 5, 0, 0)
+    label.Size = options.Size or UDim2.new(1, -10, 0, 20)
+    label.Position = options.Position or UDim2.new(0, 5, 0, 5)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
     label.TextColor3 = options.TextColor or THEME.Text
-    label.TextSize = options.TextSize or 14
+    label.TextSize = options.TextSize or THEME.TextSizeBody
     label.Font = options.Font or THEME.Font
     label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.TextWrapped = true
-    label.TextScaled = options.TextScaled or true
+    label.TextScaled = false
     label.TextTruncate = Enum.TextTruncate.AtEnd
-    label.TextStrokeTransparency = options.TextStrokeTransparency or THEME.TextStrokeTransparency
-    label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    label.Parent = container
+    label.Parent = parent
 
     -- 淡入动画
     if options.EnableAnimation ~= false then
         label.TextTransparency = 1
-        container.BackgroundTransparency = options.TextContainer ~= false and 1 or 0.8
         TweenService:Create(label, TWEEN_INFO, { TextTransparency = 0 }):Play()
-        if options.TextContainer ~= false then
-            TweenService:Create(container, TWEEN_INFO, { BackgroundTransparency = 0.8 }):Play()
-        end
     end
 
-    return container
+    return label
 end
 
 -- 输入框模块
 function UILibrary:CreateTextBox(parent, options)
     options = options or {}
     local textBox = Instance.new("TextBox")
-    textBox.Size = options.Size or UDim2.new(1, -20, 0, 30)
-    textBox.Position = options.Position or UDim2.new(0, 10, 0, 5)
+    textBox.Size = options.Size or UDim2.new(1, -10, 0, 30)
+    textBox.Position = options.Position or UDim2.new(0, 5, 0, 25)
     textBox.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    textBox.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
+    textBox.BackgroundTransparency = THEME.Transparency
     textBox.TextColor3 = options.TextColor or THEME.Text
-    textBox.TextSize = options.TextSize or 14
+    textBox.TextSize = THEME.TextSizeBody
     textBox.Font = options.Font or THEME.Font
     textBox.PlaceholderText = options.PlaceholderText or ""
     textBox.TextWrapped = true
-    textBox.TextScaled = options.TextScaled or true
-    textBox.TextTruncate = Enum.TextTruncate.None
+    textBox.TextScaled = false
+    textBox.TextTruncate = Enum.TextTruncate.AtEnd
     textBox.BorderSizePixel = 1
-    textBox.BorderColor3 = options.BorderColor or THEME.Background
+    textBox.BorderColor3 = THEME.Background
+    textBox.ClipsDescendants = true
     textBox.Parent = parent
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or THEME.CornerRadius)
+    corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = textBox
+
+    -- Material Design 阴影
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = THEME.ShadowTransparency
+    stroke.Parent = textBox
 
     -- 聚焦动画
     if options.EnableAnimation ~= false then
         textBox.Focused:Connect(function()
-            TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = options.FocusBorderColor or THEME.Accent, Size = UDim2.new(textBox.Size.X.Scale, textBox.Size.X.Offset * 1.05, textBox.Size.Y.Scale, textBox.Y.Offset * 1.05) }):Play()
+            TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = THEME.Primary }):Play()
         end)
         textBox.FocusLost:Connect(function()
-            TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = options.BorderColor or THEME.Background, Size = textBox.Size }):Play()
+            TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = THEME.Background }):Play()
             if options.OnFocusLost then
                 options.OnFocusLost()
             end
@@ -424,26 +381,25 @@ end
 function UILibrary:CreateToggle(parent, options)
     options = options or {}
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = options.Size or UDim2.new(1, -20, 0, 25)
-    toggleFrame.Position = options.Position or UDim2.new(0, 10, 0, 0)
+    toggleFrame.Size = options.Size or UDim2.new(1, -10, 0, 30)
+    toggleFrame.Position = options.Position or UDim2.new(0, 5, 0, 0)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
 
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "",
         Size = UDim2.new(0.6, 0, 1, 0),
-        TextSize = 14,
+        TextSize = THEME.TextSizeBody,
         TextColor3 = options.TextColor or THEME.Text,
-        Font = options.Font or THEME.Font,
-        TextScaled = true,
-        TextContainer = true,
+        Font = THEME.Font,
+        TextScaled = false,
         EnableAnimation = options.EnableAnimation
     })
 
     local track = Instance.new("Frame")
     track.Size = UDim2.new(0, 40, 0, 10)
-    track.Position = UDim2.new(0.65, 0, 0, 7.5)
-    track.BackgroundColor3 = options.DefaultState and (options.OnColor or THEME.Success) or (options.OffColor or THEME.Error)
+    track.Position = UDim2.new(0.65, 0, 0, 10)
+    track.BackgroundColor3 = options.DefaultState and THEME.Success or THEME.Error
     track.Parent = toggleFrame
     local trackCorner = Instance.new("UICorner")
     trackCorner.CornerRadius = UDim.new(0, 5)
@@ -453,10 +409,7 @@ function UILibrary:CreateToggle(parent, options)
     thumb.Size = UDim2.new(0, 20, 0, 20)
     thumb.Position = options.DefaultState and UDim2.new(0, 20, 0, -5) or UDim2.new(0, 0, 0, -5)
     thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    thumb.Text = options.DefaultState and "✔" or "✕"
-    thumb.TextColor3 = options.DefaultState and THEME.Success or THEME.Error
-    thumb.TextSize = 12
-    thumb.Font = THEME.Font
+    thumb.Text = ""
     thumb.Parent = track
     local thumbCorner = Instance.new("UICorner")
     thumbCorner.CornerRadius = UDim.new(0, 10)
@@ -466,7 +419,7 @@ function UILibrary:CreateToggle(parent, options)
     thumb.MouseButton1Click:Connect(function()
         state = not state
         local targetPos = state and UDim2.new(0, 20, 0, -5) or UDim2.new(0, 0, 0, -5)
-        local targetColor = state and (options.OnColor or THEME.Success) or (options.OffColor or THEME.Error)
+        local targetColor = state and THEME.Success or THEME.Error
         if options.EnableAnimation ~= false then
             TweenService:Create(thumb, TOGGLE_TWEEN_INFO, { Position = targetPos }):Play()
             TweenService:Create(track, TOGGLE_TWEEN_INFO, { BackgroundColor3 = targetColor }):Play()
@@ -474,8 +427,6 @@ function UILibrary:CreateToggle(parent, options)
             thumb.Position = targetPos
             track.BackgroundColor3 = targetColor
         end
-        thumb.Text = state and "✔" or "✕"
-        thumb.TextColor3 = targetColor
         if options.Callback then
             options.Callback(state)
         end
@@ -536,131 +487,87 @@ function UILibrary:CreateWindow(options)
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = options.ScreenGuiName or "UILibrary"
     screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
-    screenGui.ResetOnSpawn = options.ResetOnSpawn or false
-
-    -- 遮罩层
-    local mask = nil
-    if options.EnableMask ~= false then
-        mask = Instance.new("Frame")
-        mask.Size = UDim2.new(1, 0, 1, 0)
-        mask.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-        mask.BackgroundTransparency = 0.7
-        mask.Parent = screenGui
-    end
+    screenGui.ResetOnSpawn = false
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = options.Size or UDim2.new(0, 300, 0, 360)
-    mainFrame.Position = options.Position or UDim2.new(0.5, -150, 0, 10)
+    mainFrame.Size = options.Size or UDim2.new(0, 600, 0, 300)
+    mainFrame.Position = options.Position or UDim2.new(0.5, -300, 0.5, -150)
     mainFrame.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    mainFrame.BackgroundTransparency = 1
+    mainFrame.BackgroundTransparency = THEME.Transparency
     mainFrame.ClipsDescendants = true
     mainFrame.Parent = screenGui
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or 14)
+    corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = mainFrame
 
-    -- 阴影
+    -- Material Design 阴影
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 1
-    stroke.Transparency = options.ShadowTransparency or THEME.ShadowTransparency
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = THEME.ShadowTransparency
     stroke.Parent = mainFrame
 
-    -- Glassmorphism 渐变
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = options.GradientColor or ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)),
-        ColorSequenceKeypoint.new(1, THEME.Background)
-    })
-    gradient.Transparency = options.GradientTransparency or NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.8),
-        NumberSequenceKeypoint.new(1, THEME.Transparency)
-    })
-    gradient.Parent = mainFrame
+    -- 侧边栏（参考 Luminosity）
+    local sidebar = Instance.new("Frame")
+    sidebar.Size = UDim2.new(0, 100, 1, -10)
+    sidebar.Position = UDim2.new(0, 5, 0, 5)
+    sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    sidebar.BackgroundTransparency = THEME.Transparency
+    sidebar.Parent = mainFrame
+    local sidebarCorner = Instance.new("UICorner")
+    sidebarCorner.CornerRadius = UDim.new(0, THEME.CornerRadius)
+    sidebarCorner.Parent = sidebar
 
-    -- 标签栏
-    local tabBar = Instance.new("Frame")
-    tabBar.Size = options.TabBarSize or UDim2.new(0, 60, 1, -40)
-    tabBar.Position = options.TabBarPosition or UDim2.new(0, 10, 0, 40)
-    tabBar.BackgroundTransparency = 1
-    tabBar.Parent = mainFrame
+    local sidebarLayout = Instance.new("UIListLayout")
+    sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    sidebarLayout.Padding = UDim.new(0, 10)
+    sidebarLayout.Parent = sidebar
+    local sidebarPadding = Instance.new("UIPadding")
+    sidebarPadding.PaddingTop = UDim.new(0, 10)
+    sidebarPadding.Parent = sidebar
 
-    local tabLayout = Instance.new("UIListLayout")
-    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    tabLayout.Padding = UDim.new(0, options.TabPadding or 10)
-    tabLayout.Parent = tabBar
-
-    -- 内容区域（滚动框架）
+    -- 内容区域
     local contentFrame = Instance.new("ScrollingFrame")
-    contentFrame.Size = options.ContentSize or UDim2.new(0, 220, 1, -40)
-    contentFrame.Position = options.ContentPosition or UDim2.new(0, 80, 0, 40)
+    contentFrame.Size = UDim2.new(0, 480, 1, -10)
+    contentFrame.Position = UDim2.new(0, 110, 0, 5)
     contentFrame.BackgroundTransparency = 1
-    contentFrame.ScrollBarThickness = options.EnableScrolling ~= false and 6 or 0
+    contentFrame.ScrollBarThickness = 6
     contentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
     contentFrame.ClipsDescendants = true
     contentFrame.Parent = mainFrame
 
-    -- 自动布局
-    if options.AutoLayout ~= false then
-        local layout = Instance.new("UIListLayout")
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, options.Spacing or 10)
-        layout.Parent = contentFrame
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            contentFrame.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
-        end)
-    end
-
-    local titleLabel = self:CreateLabel(mainFrame, {
-        Text = options.Title or "",
-        Size = options.TitleSize or UDim2.new(1, -20, 0, 25),
-        Position = options.TitlePosition or UDim2.new(0, 10, 0, 10),
-        TextSize = 16,
-        TextColor3 = options.TitleColor or THEME.Text,
-        Font = options.Font or THEME.Font,
-        TextScaled = true,
-        TextContainer = true,
-        EnableAnimation = options.EnableAnimation
-    })
+    -- 自动布局（网格）
+    local gridLayout = Instance.new("UIGridLayout")
+    gridLayout.CellSize = UDim2.new(0, 220, 0, 80)
+    gridLayout.CellPadding = UDim2.new(0, 15, 0, 15)
+    gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    gridLayout.Parent = contentFrame
+    gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        contentFrame.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
+    end)
 
     -- 窗口动画
     if options.EnableAnimation ~= false then
         local originalSize = mainFrame.Size
         mainFrame.Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)
-        TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency, Size = originalSize }):Play()
-        if mask then
-            mask.BackgroundTransparency = 1
-            TweenService:Create(mask, TWEEN_INFO, { BackgroundTransparency = 0.7 }):Play()
-        end
-    else
-        mainFrame.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
-        if mask then
-            mask.BackgroundTransparency = 0.7
-        end
+        TweenService:Create(mainFrame, TWEEN_INFO, { Size = originalSize }):Play()
     end
 
-    -- 清理
-    screenGui.AncestryChanged:Connect(function()
-        if not screenGui:IsDescendantOf(game) and mask then
-            mask:Destroy()
-        end
-    end)
-
-    return mainFrame, screenGui, tabBar, contentFrame
+    return mainFrame, screenGui, sidebar, contentFrame
 end
 
 -- 标签页模块
-function UILibrary:CreateTab(tabBar, contentFrame, options)
+function UILibrary:CreateTab(sidebar, contentFrame, options)
     options = options or {}
-    local tabButton = self:CreateButton(tabBar, {
+    local tabButton = self:CreateButton(sidebar, {
         Text = options.Text or "",
-        Size = options.Size or UDim2.new(1, -10, 0, 40),
-        BackgroundTransparency = options.Active and 0 or (options.BackgroundTransparency or THEME.Transparency),
-        BackgroundColor3 = options.BackgroundColor or THEME.Primary,
-        TextSize = 14,
-        TextColor3 = options.TextColor or THEME.Text,
-        Font = options.Font or THEME.Font,
-        TextScaled = true,
+        Size = UDim2.new(1, -10, 0, 30),
+        BackgroundTransparency = options.Active and 0 or 0.2,
+        BackgroundColor3 = THEME.Primary,
+        TextSize = THEME.TextSizeBody,
+        TextColor3 = THEME.Text,
+        Font = THEME.Font,
+        TextScaled = false,
         Icon = options.Icon,
         EnableAnimation = options.EnableAnimation,
         Callback = function()
@@ -671,7 +578,6 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
                         wait(0.3)
                         child.Visible = false
                     else
-                        child.Position = UDim2.new(1, 0, 0, 0)
                         child.Visible = false
                     end
                 end
@@ -684,12 +590,12 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
             else
                 content.Position = UDim2.new(0, 0, 0, 0)
             end
-            for _, btn in ipairs(tabBar:GetChildren()) do
+            for _, btn in ipairs(sidebar:GetChildren()) do
                 if btn:IsA("TextButton") then
                     if options.EnableAnimation ~= false then
-                        TweenService:Create(btn, TWEEN_INFO, { BackgroundTransparency = btn == tabButton and 0 or (options.BackgroundTransparency or THEME.Transparency) }):Play()
+                        TweenService:Create(btn, TWEEN_INFO, { BackgroundTransparency = btn == tabButton and 0 or 0.2 }):Play()
                     else
-                        btn.BackgroundTransparency = btn == tabButton and 0 or (options.BackgroundTransparency or THEME.Transparency)
+                        btn.BackgroundTransparency = btn == tabButton and 0 or 0.2
                     end
                 end
             end
@@ -700,24 +606,23 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
     })
 
     local content = Instance.new("ScrollingFrame")
-    content.Size = options.ContentSize or UDim2.new(1, 0, 1, 0)
+    content.Size = UDim2.new(1, 0, 1, 0)
     content.Position = UDim2.new(options.Active and 0 or 1, 0, 0, 0)
     content.BackgroundTransparency = 1
-    content.ScrollBarThickness = options.EnableScrolling ~= false and 6 or 0
+    content.ScrollBarThickness = 6
     content.CanvasSize = UDim2.new(0, 0, 0, 0)
     content.Visible = options.Active or false
     content.Parent = contentFrame
 
-    -- 自动布局
-    if options.AutoLayout ~= false then
-        local layout = Instance.new("UIListLayout")
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, options.Spacing or 10)
-        layout.Parent = content
-        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
-        end)
-    end
+    -- 自动布局（网格）
+    local gridLayout = Instance.new("UIGridLayout")
+    gridLayout.CellSize = UDim2.new(0, 220, 0, 80)
+    gridLayout.CellPadding = UDim2.new(0, 15, 0, 15)
+    gridLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    gridLayout.Parent = content
+    gridLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        content.CanvasSize = UDim2.new(0, 0, 0, gridLayout.AbsoluteContentSize.Y + 20)
+    end)
 
     options.ContentFrame = content
     return tabButton, content
@@ -727,46 +632,43 @@ end
 function UILibrary:CreateAuthorInfo(parent, options)
     options = options or {}
     local authorFrame = Instance.new("Frame")
-    authorFrame.Size = options.Size or UDim2.new(1, -20, 0, 30)
-    authorFrame.Position = options.Position or UDim2.new(0, 10, 0, 0)
-    authorFrame.BackgroundColor3 = options.BackgroundColor or THEME.Accent
-    authorFrame.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
+    authorFrame.Size = options.Size or UDim2.new(0, 220, 0, 30)
+    authorFrame.BackgroundColor3 = THEME.Background
+    authorFrame.BackgroundTransparency = THEME.Transparency
     authorFrame.ClipsDescendants = true
     authorFrame.Parent = parent
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, options.CornerRadius or THEME.CornerRadius)
+    corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = authorFrame
 
-    -- 阴影
+    -- Material Design 阴影
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Thickness = 1
-    stroke.Transparency = options.ShadowTransparency or THEME.ShadowTransparency
+    stroke.Color = Color3.fromRGB(0, 0, 0)
+    stroke.Thickness = 2
+    stroke.Transparency = THEME.ShadowTransparency
     stroke.Parent = authorFrame
 
     local authorLabel = self:CreateLabel(authorFrame, {
         Text = options.AuthorText or "",
         Size = UDim2.new(0.5, 0, 0, 20),
-        Position = UDim2.new(0, 10, 0, 5),
-        TextSize = 14,
-        TextColor3 = options.TextColor or THEME.Text,
-        Font = options.Font or THEME.Font,
-        TextScaled = true,
-        TextContainer = true,
+        Position = UDim2.new(0, 5, 0, 5),
+        TextSize = THEME.TextSizeBody,
+        TextColor3 = THEME.Text,
+        Font = THEME.Font,
+        TextScaled = false,
         EnableAnimation = options.EnableAnimation
     })
 
     local socialButton = self:CreateButton(authorFrame, {
         Text = options.SocialText or "",
-        Size = UDim2.new(0.5, -10, 0, 20),
+        Size = UDim2.new(0.5, -5, 0, 20),
         Position = UDim2.new(0.5, 0, 0, 5),
-        TextSize = 14,
-        TextColor3 = options.TextColor or THEME.Text,
+        TextSize = THEME.TextSizeBody,
+        TextColor3 = THEME.Text,
         TextXAlignment = Enum.TextXAlignment.Right,
-        BackgroundTransparency = options.SocialBackgroundTransparency or 1,
-        BackgroundColor3 = options.SocialBackgroundColor or THEME.Primary,
-        Font = options.Font or THEME.Font,
-        TextScaled = true,
+        BackgroundColor3 = THEME.Primary,
+        Font = THEME.Font,
+        TextScaled = false,
         Icon = options.SocialIcon or "rbxassetid://7072706667",
         EnableAnimation = options.EnableAnimation,
         Callback = options.SocialCallback
@@ -789,7 +691,8 @@ function UILibrary:SetTheme(newTheme)
         Transparency = newTheme.Transparency or DEFAULT_THEME.Transparency,
         CornerRadius = newTheme.CornerRadius or DEFAULT_THEME.CornerRadius,
         ShadowTransparency = newTheme.ShadowTransparency or DEFAULT_THEME.ShadowTransparency,
-        TextStrokeTransparency = newTheme.TextStrokeTransparency or DEFAULT_THEME.TextStrokeTransparency
+        TextSizeTitle = newTheme.TextSizeTitle or DEFAULT_THEME.TextSizeTitle,
+        TextSizeBody = newTheme.TextSizeBody or DEFAULT_THEME.TextSizeBody
     }
 end
 
