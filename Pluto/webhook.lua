@@ -30,6 +30,10 @@ local config = {
     intervalMinutes = 5
 }
 
+-- 主要颜色
+local MAIN_COLOR = Color3.fromRGB(40, 38, 89) -- #282659
+local MAIN_COLOR_DECIMAL = 2631705 -- 十进制，用于 Discord 嵌入
+
 -- 自定义输出函数
 local function notifyOutput(title, text, isWarn)
     local notification = {
@@ -169,7 +173,7 @@ end
 
 -- 创建现代 UI
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "WebhookUI"
+screenGui.Name = "PlutoSyncUI"
 screenGui.Parent = player:WaitForChild("PlayerGui")
 screenGui.ResetOnSpawn = false
 
@@ -177,7 +181,7 @@ screenGui.ResetOnSpawn = false
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 50, 0, 50)
 toggleButton.Position = UDim2.new(0, 10, 0, 10)
-toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+toggleButton.BackgroundColor3 = MAIN_COLOR
 toggleButton.Text = "≡"
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
 toggleButton.TextSize = 24
@@ -189,15 +193,27 @@ corner.Parent = toggleButton
 
 -- 主界面
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 350)
+mainFrame.Size = UDim2.new(0, 300, 0, 380)
 mainFrame.Position = UDim2.new(0, 70, 0, 10)
-mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BackgroundColor3 = MAIN_COLOR
 mainFrame.BackgroundTransparency = 0.2
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
 local frameCorner = Instance.new("UICorner")
 frameCorner.CornerRadius = UDim.new(0, 12)
 frameCorner.Parent = mainFrame
+
+-- 标题
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Size = UDim2.new(1, -20, 0, 30)
+titleLabel.Position = UDim2.new(0, 10, 0, 10)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "[Pluto Sync]"
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.TextSize = 20
+titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = mainFrame
 
 -- 动画
 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
@@ -255,8 +271,9 @@ end
 
 local webhookInput = Instance.new("TextBox")
 webhookInput.Size = UDim2.new(1, -20, 0, 40)
-webhookInput.Position = UDim2.new(0, 10, 0, 10)
-webhookInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+webhookInput.Position = UDim2.new(0, 10, 0, 50)
+webhookInput.BackgroundColor3 = MAIN_COLOR
+webhookInput.BackgroundTransparency = 0.5
 webhookInput.TextColor3 = Color3.new(1, 1, 1)
 webhookInput.TextSize = 14
 webhookInput.Font = Enum.Font.SourceSans
@@ -274,13 +291,13 @@ webhookInput.FocusLost:Connect(function()
     saveConfig()
 end)
 
-createToggle("发送金钱", "sendCash", 60)
-createToggle("发送排行榜", "sendLeaderboard", 100)
-createToggle("上榜自动踢出", "autoKick", 140)
+createToggle("发送金钱", "sendCash", 100)
+createToggle("发送排行榜", "sendLeaderboard", 140)
+createToggle("上榜自动踢出", "autoKick", 180)
 
 local intervalLabel = Instance.new("TextLabel")
 intervalLabel.Size = UDim2.new(0.5, 0, 0, 30)
-intervalLabel.Position = UDim2.new(0, 10, 0, 180)
+intervalLabel.Position = UDim2.new(0, 10, 0, 220)
 intervalLabel.BackgroundTransparency = 1
 intervalLabel.Text = "发送间隔（分钟）："
 intervalLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -291,8 +308,9 @@ intervalLabel.Parent = mainFrame
 
 local intervalInput = Instance.new("TextBox")
 intervalInput.Size = UDim2.new(0.4, 0, 0, 24)
-intervalInput.Position = UDim2.new(0.55, 0, 0, 183)
-intervalInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+intervalInput.Position = UDim2.new(0.55, 0, 0, 223)
+intervalInput.BackgroundColor3 = MAIN_COLOR
+intervalInput.BackgroundTransparency = 0.5
 intervalInput.TextColor3 = Color3.new(1, 1, 1)
 intervalInput.TextSize = 14
 intervalInput.Font = Enum.Font.SourceSans
@@ -321,7 +339,7 @@ end)
 -- 作者信息
 local authorLabel = Instance.new("TextLabel")
 authorLabel.Size = UDim2.new(1, -20, 0, 30)
-authorLabel.Position = UDim2.new(0, 10, 0, 310)
+authorLabel.Position = UDim2.new(0, 10, 0, 340)
 authorLabel.BackgroundTransparency = 1
 authorLabel.Text = "作者: tongblx"
 authorLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -332,7 +350,7 @@ authorLabel.Parent = mainFrame
 
 local discordLabel = Instance.new("TextButton")
 discordLabel.Size = UDim2.new(1, -20, 0, 30)
-discordLabel.Position = UDim2.new(0, 10, 0, 340)
+discordLabel.Position = UDim2.new(0, 10, 0, 370)
 discordLabel.BackgroundTransparency = 1
 discordLabel.Text = "Discord: https://discord.gg/8MW6eWU8uf"
 discordLabel.TextColor3 = Color3.fromRGB(114, 137, 218)
@@ -347,33 +365,34 @@ discordLabel.MouseButton1Click:Connect(function()
     end)
 end)
 
--- 拖动悬浮按钮
-local dragging
+-- 拖动悬浮按钮（支持 PC 和手机）
+local dragging = false
+local startPos, startGuiPos
 toggleButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true
-        local startPos = input.Position
-        local startGuiPos = toggleButton.Position
-        local connection
-        connection = UserInputService.InputChanged:Connect(function(inputChanged)
-            if inputChanged.UserInputType == Enum.UserInputType.MouseMovement and dragging then
-                local delta = inputChanged.Position - startPos
-                toggleButton.Position = UDim2.new(
-                    startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X,
-                    startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
-                )
-                mainFrame.Position = UDim2.new(
-                    startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X + 60,
-                    startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
-                )
-            end
-        end)
-        input.InputEnded:Connect(function()
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-                connection:Disconnect()
-            end
-        end)
+        startPos = input.Position
+        startGuiPos = toggleButton.Position
+    end
+end)
+
+toggleButton.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - startPos
+        toggleButton.Position = UDim2.new(
+            startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X,
+            startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
+        )
+        mainFrame.Position = UDim2.new(
+            startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X + 60,
+            startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
+        )
+    end
+end)
+
+toggleButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
     end
 end)
 
@@ -397,7 +416,7 @@ spawn(function()
                 if config.sendCash or config.sendLeaderboard then
                     local embed = {
                         title = "玩家 " .. username .. " 的数据",
-                        color = 2631705,
+                        color = MAIN_COLOR_DECIMAL,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                         footer = { text = "用户: " .. username .. " | 作者: tongblx" },
                         fields = {}
