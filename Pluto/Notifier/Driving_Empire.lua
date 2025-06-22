@@ -42,7 +42,7 @@ local config = {
 }
 
 -- 颜色定义
-local MAIN_COLOR_DECIMAL = 4873786 -- #4A4EAA
+local MAIN_COLOR_DECIMAL = 4149685 -- #3F51B5
 
 -- 获取游戏信息
 local gameName = "未知游戏"
@@ -191,13 +191,8 @@ local function sendWelcomeMessage()
 end
 
 -- 创建 UI
-local mainFrame, screenGui, tabBar, contentFrame = UILibrary:CreateWindow({
-    Title = "[Pluto-X Notifier]",
-    Size = UDim2.new(0, 300, 0, 360),
-    Gradient = true,
-    EnableMask = true,
-    AutoLayout = true,
-    EnableScrolling = true
+local mainFrame, screenGui, sidebar, contentFrame = UILibrary:CreateWindow({
+    Size = UDim2.new(0, 600, 0, 300)
 })
 UILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
 
@@ -206,71 +201,57 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     MainFrame = mainFrame,
     Text = "T",
     CloseText = "✕",
-    Size = UDim2.new(0, 44, 0, 44),
-    CornerRadius = 22,
-    BackgroundColor = UILibrary.Background,
-    BackgroundTransparency = UILibrary.Transparency,
-    TextColor = UILibrary.Text,
-    StrokeColor = Color3.fromRGB(255, 255, 255),
-    StrokeThickness = 1,
-    StrokeTransparency = 0.8,
     EnableAnimation = true,
     EnableDrag = true,
     PreventOffScreen = true
 })
 
 -- 标签页：常规
-local generalTab, generalContent = UILibrary:CreateTab(tabBar, contentFrame, {
+local generalTab, generalContent = UILibrary:CreateTab(sidebar, contentFrame, {
     Text = "常规",
     Active = true,
-    AutoLayout = true,
-    EnableScrolling = true,
     Icon = "rbxassetid://7072706667"
 })
 
--- 卡片 1：游戏信息 + 已赚取金钱
+-- 卡片 1：游戏信息
 local infoCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(1, -20, 0, 60),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 60)
 })
 local gameLabel = UILibrary:CreateLabel(infoCard, {
     Text = "游戏: " .. gameName,
-    Size = UDim2.new(1, -10, 0, 20),
-    TextSize = 14
+    Size = UDim2.new(1, -10, 0, 20)
 })
 local earnedCashLabel = UILibrary:CreateLabel(infoCard, {
     Text = "已赚取金钱: 0",
     Size = UDim2.new(1, -10, 0, 20),
-    TextSize = 14
+    Position = UDim2.new(0, 5, 0, 25)
 })
 
 -- 卡片 2：反挂机状态
 local antiAfkCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(1, -20, 0, 30),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 30)
 })
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已开启",
-    Size = UDim2.new(1, -10, 0, 20),
-    TextSize = 14
+    Size = UDim2.new(1, -10, 0, 20)
 })
 
 -- 标签页：设置
-local settingsTab, settingsContent = UILibrary:CreateTab(tabBar, contentFrame, {
+local settingsTab, settingsContent = UILibrary:CreateTab(sidebar, contentFrame, {
     Text = "设置",
-    AutoLayout = true,
-    EnableScrolling = true,
     Icon = "rbxassetid://7072706667"
 })
 
 -- 卡片 3：Webhook 输入框
 local webhookCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -20, 0, 40),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 60)
+})
+local webhookLabel = UILibrary:CreateLabel(webhookCard, {
+    Text = "Webhook URL",
+    Size = UDim2.new(1, -10, 0, 20)
 })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "输入 Discord Webhook URL",
-    Size = UDim2.new(1, -10, 0, 30),
     OnFocusLost = function()
         local oldUrl = config.webhookUrl
         config.webhookUrl = webhookInput.Text
@@ -282,17 +263,15 @@ local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     end
 })
 webhookInput.Text = config.webhookUrl
+print("Webhook Input Created:", webhookInput.Parent and "Parent exists" or "No parent")
 
 -- 卡片 4：通知金钱变化
 local cashNotifyCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -20, 0, 40),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 40)
 })
 local toggleCash = UILibrary:CreateToggle(cashNotifyCard, {
     Text = "通知金钱变化",
     DefaultState = config.notifyCash,
-    OnText = "✔",
-    OffText = "✕",
     Callback = function(state)
         config.notifyCash = state
         UILibrary:Notify({ Title = "配置更新", Text = "通知金钱变化: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
@@ -302,14 +281,11 @@ local toggleCash = UILibrary:CreateToggle(cashNotifyCard, {
 
 -- 卡片 5：通知排行榜状态
 local leaderboardNotifyCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -20, 0, 40),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 40)
 })
 local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
     Text = "通知排行榜状态",
     DefaultState = config.notifyLeaderboard,
-    OnText = "✔",
-    OffText = "✕",
     Callback = function(state)
         config.notifyLeaderboard = state
         UILibrary:Notify({ Title = "配置更新", Text = "通知排行榜状态: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
@@ -319,14 +295,11 @@ local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
 
 -- 卡片 6：上榜踢出
 local leaderboardKickCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -20, 0, 40),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 40)
 })
 local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
     Text = "上榜踢出",
     DefaultState = config.leaderboardKick,
-    OnText = "✔",
-    OffText = "✕",
     Callback = function(state)
         config.leaderboardKick = state
         UILibrary:Notify({ Title = "配置更新", Text = "上榜踢出: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
@@ -336,17 +309,14 @@ local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
 
 -- 卡片 7：通知间隔
 local intervalCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -20, 0, 40),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 60)
 })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
-    Text = "通知间隔（分钟）：",
-    Size = UDim2.new(0.5, 0, 0, 30),
-    TextSize = 14
+    Text = "通知间隔（分钟）",
+    Size = UDim2.new(1, -10, 0, 20)
 })
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "间隔",
-    Size = UDim2.new(0.5, -5, 0, 30),
     OnFocusLost = function()
         local num = tonumber(intervalInput.Text)
         if num and num > 0 then
@@ -360,17 +330,15 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     end
 })
 intervalInput.Text = tostring(config.notificationInterval)
+print("Interval Input Created:", intervalInput.Parent and "Parent exists" or "No parent")
 
 -- 卡片 8：目标金钱
 local targetCashCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -20, 0, 80),
-    AutoLayout = true
+    Size = UDim2.new(0, 220, 0, 80)
 })
 local targetCashToggle = UILibrary:CreateToggle(targetCashCard, {
     Text = "目标金钱踢出",
     DefaultState = config.enableTargetKick,
-    OnText = "✔",
-    OffText = "✕",
     Callback = function(state)
         config.enableTargetKick = state
         UILibrary:Notify({ Title = "配置更新", Text = "目标金钱踢出: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
@@ -378,13 +346,13 @@ local targetCashToggle = UILibrary:CreateToggle(targetCashCard, {
     end
 })
 local targetCashLabel = UILibrary:CreateLabel(targetCashCard, {
-    Text = "目标金钱：",
-    Size = UDim2.new(0.5, 0, 0, 30),
-    TextSize = 14
+    Text = "目标金钱",
+    Size = UDim2.new(1, -10, 0, 20),
+    Position = UDim2.new(0, 5, 0, 30)
 })
 local targetCashInput = UILibrary:CreateTextBox(targetCashCard, {
     PlaceholderText = "输入目标金钱",
-    Size = UDim2.new(0.5, -5, 0, 30),
+    Position = UDim2.new(0, 5, 0, 50),
     OnFocusLost = function()
         local num = tonumber(targetCashInput.Text)
         if num and num >= 0 then
@@ -398,12 +366,11 @@ local targetCashInput = UILibrary:CreateTextBox(targetCashCard, {
     end
 })
 targetCashInput.Text = tostring(config.targetCash)
+print("Target Cash Input Created:", targetCashInput.Parent and "Parent exists" or "No parent")
 
 -- 标签页：关于
-local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, contentFrame, {
+local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, contentFrame, {
     Text = "关于",
-    AutoLayout = true,
-    EnableScrolling = true,
     Icon = "rbxassetid://7072706667"
 })
 
