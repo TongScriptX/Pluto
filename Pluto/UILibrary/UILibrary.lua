@@ -9,14 +9,16 @@ local UILibrary = {}
 local DEFAULT_THEME = {
     Primary = Color3.fromRGB(63, 81, 181), -- #3F51B5
     Background = Color3.fromRGB(30, 30, 30), -- #1E1E1E
+    SecondaryBackground = Color3.fromRGB(46, 46, 46), -- #2E2E2E
     Accent = Color3.fromRGB(92, 107, 192), -- #5C6BC0
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Gotham, -- Gotham 字体
-    Transparency = 0, -- 纯色背景
-    CornerRadius = 6, -- 统一圆角
-    ShadowTransparency = 0.2, -- Material Design 阴影
+    Font = Enum.Font.Gotham,
+    Transparency = 0.5, -- 半透明
+    CardTransparency = 0.3, -- 卡片半透明
+    CornerRadius = 6,
+    ShadowTransparency = 0.2,
     TextSizeTitle = 18,
     TextSizeBody = 14
 }
@@ -61,7 +63,7 @@ function UILibrary:Notify(options)
     local notification = Instance.new("Frame")
     notification.Size = options.Size or UDim2.new(0, 280, 0, 60)
     notification.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    notification.BackgroundTransparency = THEME.Transparency
+    notification.BackgroundTransparency = THEME.CardTransparency
     notification.Position = UDim2.new(0, 10, 0, 70)
     notification.Parent = notificationContainer
     local corner = Instance.new("UICorner")
@@ -127,11 +129,12 @@ end
 function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
-    card.Size = options.Size or UDim2.new(0, 130, 0, options.Height or 80) -- 小窗口适配
-    card.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    card.BackgroundTransparency = THEME.Transparency
-    card.ClipsDescendants = false -- 防止裁剪
+    card.Size = options.Size or UDim2.new(0, 260, 0, options.Height or 80)
+    card.BackgroundColor3 = options.BackgroundColor or THEME.SecondaryBackground
+    card.BackgroundTransparency = THEME.CardTransparency
+    card.ClipsDescendants = false
     card.Parent = parent
+    card.Visible = true
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = card
@@ -181,7 +184,7 @@ function UILibrary:CreateButton(parent, options)
     button.Font = options.Font or THEME.Font
     button.TextScaled = false
     button.Parent = parent
-    button.Visible = true -- 确保可见
+    button.Visible = true
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, THEME.CornerRadius)
     corner.Parent = button
@@ -236,7 +239,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     local screenSize = UserInputService:GetPlatform() == Enum.Platform.Windows and Vector2.new(1280, 720) or game:GetService("GuiService"):GetScreenResolution()
     
     local button = Instance.new("TextButton")
-    button.Size = options.Size or UDim2.new(0, 40, 0, 40) -- 小窗口适配
+    button.Size = options.Size or UDim2.new(0, 40, 0, 40)
     button.Position = options.Position or UDim2.new(0, screenSize.X - 50, 0, screenSize.Y - 50)
     button.BackgroundColor3 = options.BackgroundColor or THEME.Primary
     button.BackgroundTransparency = THEME.Transparency
@@ -264,7 +267,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         button.MouseButton1Click:Connect(function()
             local isVisible = not mainFrame.Visible
             button.Text = isVisible and (options.CloseText or "✕") or (options.Text or "T")
-            local targetSize = isVisible and (options.MainFrameSize or UDim2.new(0, 300, 0, 360)) or
+            local targetSize = isVisible and (options.MainFrameSize or UDim2.new(0, 600, 0, 360)) or
                               UDim2.new(0, mainFrame.Size.X.Offset * 0.95, 0, mainFrame.Size.Y.Offset * 0.95)
             if options.EnableAnimation ~= false then
                 if isVisible then
@@ -340,8 +343,8 @@ function UILibrary:CreateTextBox(parent, options)
     local textBox = Instance.new("TextBox")
     textBox.Size = options.Size or UDim2.new(1, -10, 0, 30)
     textBox.Position = options.Position or UDim2.new(0, 5, 0, 25)
-    textBox.BackgroundColor3 = options.BackgroundColor or THEME.Background
-    textBox.BackgroundTransparency = THEME.Transparency
+    textBox.BackgroundColor3 = options.BackgroundColor or THEME.SecondaryBackground
+    textBox.BackgroundTransparency = THEME.CardTransparency
     textBox.TextColor3 = options.TextColor or THEME.Text
     textBox.TextSize = THEME.TextSizeBody
     textBox.Font = options.Font or THEME.Font
@@ -503,8 +506,8 @@ function UILibrary:CreateWindow(options)
     screenGui.ResetOnSpawn = false
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = options.Size or UDim2.new(0, 300, 0, 360) -- 小窗口
-    mainFrame.Position = options.Position or UDim2.new(0.5, -150, 0.5, -180)
+    mainFrame.Size = options.Size or UDim2.new(0, 600, 0, 360)
+    mainFrame.Position = options.Position or UDim2.new(0.5, -300, 0.5, -180)
     mainFrame.BackgroundColor3 = options.BackgroundColor or THEME.Background
     mainFrame.BackgroundTransparency = THEME.Transparency
     mainFrame.ClipsDescendants = true
@@ -521,10 +524,10 @@ function UILibrary:CreateWindow(options)
     stroke.Transparency = THEME.ShadowTransparency
     stroke.Parent = mainFrame
 
-    -- 标签栏（顶部）
+    -- 标签栏（顶部，控制右侧）
     local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(1, -10, 0, 40)
-    tabBar.Position = UDim2.new(0, 5, 0, 5)
+    tabBar.Size = UDim2.new(0, 290, 0, 40)
+    tabBar.Position = UDim2.new(0, 305, 0, 5)
     tabBar.BackgroundTransparency = 1
     tabBar.Parent = mainFrame
 
@@ -534,24 +537,41 @@ function UILibrary:CreateWindow(options)
     tabLayout.FillDirection = Enum.FillDirection.Horizontal
     tabLayout.Parent = tabBar
 
-    -- 内容区域
-    local contentFrame = Instance.new("ScrollingFrame")
-    contentFrame.Size = UDim2.new(1, -10, 0, 300)
-    contentFrame.Position = UDim2.new(0, 5, 0, 50)
-    contentFrame.BackgroundTransparency = 1
-    contentFrame.ScrollBarThickness = 6
-    contentFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    contentFrame.ClipsDescendants = true
-    contentFrame.Parent = mainFrame
+    -- 左侧功能区域
+    local leftFrame = Instance.new("ScrollingFrame")
+    leftFrame.Size = UDim2.new(0, 290, 0, 300)
+    leftFrame.Position = UDim2.new(0, 5, 0, 50)
+    leftFrame.BackgroundColor3 = THEME.Background
+    leftFrame.BackgroundTransparency = THEME.Transparency
+    leftFrame.ScrollBarThickness = 6
+    leftFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    leftFrame.ClipsDescendants = true
+    leftFrame.Parent = mainFrame
+    local leftCorner = Instance.new("UICorner")
+    leftCorner.CornerRadius = UDim.new(0, THEME.CornerRadius)
+    leftCorner.Parent = leftFrame
 
-    -- 自动布局（垂直）
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, 10)
-    listLayout.Parent = contentFrame
-    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        contentFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 20)
+    local leftLayout = Instance.new("UIListLayout")
+    leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    leftLayout.Padding = UDim.new(0, 10)
+    leftLayout.Parent = leftFrame
+    leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        leftFrame.CanvasSize = UDim2.new(0, 0, 0, leftLayout.AbsoluteContentSize.Y + 20)
     end)
+
+    -- 右侧设置区域
+    local rightFrame = Instance.new("ScrollingFrame")
+    rightFrame.Size = UDim2.new(0, 290, 0, 300)
+    rightFrame.Position = UDim2.new(0, 305, 0, 50)
+    rightFrame.BackgroundColor3 = THEME.SecondaryBackground
+    rightFrame.BackgroundTransparency = THEME.Transparency
+    rightFrame.ScrollBarThickness = 6
+    rightFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+    rightFrame.ClipsDescendants = true
+    rightFrame.Parent = mainFrame
+    local rightCorner = Instance.new("UICorner")
+    rightCorner.CornerRadius = UDim.new(0, THEME.CornerRadius)
+    rightCorner.Parent = rightFrame
 
     -- 窗口动画
     if options.EnableAnimation ~= false then
@@ -561,15 +581,15 @@ function UILibrary:CreateWindow(options)
     end
 
     print("Window Created:", mainFrame.Parent and "Parent exists" or "No parent")
-    return mainFrame, screenGui, tabBar, contentFrame
+    return mainFrame, screenGui, tabBar, leftFrame, rightFrame
 end
 
--- 标签页模块
-function UILibrary:CreateTab(tabBar, contentFrame, options)
+-- 标签页模块（仅控制右侧）
+function UILibrary:CreateTab(tabBar, rightFrame, options)
     options = options or {}
     local tabButton = self:CreateButton(tabBar, {
         Text = options.Text or "",
-        Size = UDim2.new(0, 80, 0, 30), -- 小窗口适配
+        Size = UDim2.new(0, 100, 0, 30),
         BackgroundTransparency = options.Active and 0 or 0.2,
         BackgroundColor3 = THEME.Primary,
         TextSize = THEME.TextSizeBody,
@@ -579,7 +599,7 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
         Icon = options.Icon,
         EnableAnimation = options.EnableAnimation,
         Callback = function()
-            for _, child in ipairs(contentFrame:GetChildren()) do
+            for _, child in ipairs(rightFrame:GetChildren()) do
                 if child:IsA("Frame") or child:IsA("ScrollingFrame") then
                     if options.EnableAnimation ~= false then
                         TweenService:Create(child, TWEEN_INFO, { Position = UDim2.new(1, 0, 0, 0) }):Play()
@@ -620,7 +640,7 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
     content.ScrollBarThickness = 6
     content.CanvasSize = UDim2.new(0, 0, 0, 0)
     content.Visible = options.Active or false
-    content.Parent = contentFrame
+    content.Parent = rightFrame
 
     -- 自动布局（垂直）
     local listLayout = Instance.new("UIListLayout")
@@ -640,9 +660,9 @@ end
 function UILibrary:CreateAuthorInfo(parent, options)
     options = options or {}
     local authorFrame = Instance.new("Frame")
-    authorFrame.Size = options.Size or UDim2.new(0, 130, 0, 30)
-    authorFrame.BackgroundColor3 = THEME.Background
-    authorFrame.BackgroundTransparency = THEME.Transparency
+    authorFrame.Size = options.Size or UDim2.new(0, 260, 0, 30)
+    authorFrame.BackgroundColor3 = THEME.SecondaryBackground
+    authorFrame.BackgroundTransparency = THEME.CardTransparency
     authorFrame.ClipsDescendants = false
     authorFrame.Parent = parent
     authorFrame.Visible = true
@@ -693,12 +713,14 @@ function UILibrary:SetTheme(newTheme)
     THEME = {
         Primary = newTheme.Primary or DEFAULT_THEME.Primary,
         Background = newTheme.Background or DEFAULT_THEME.Background,
+        SecondaryBackground = newTheme.SecondaryBackground or DEFAULT_THEME.SecondaryBackground,
         Accent = newTheme.Accent or DEFAULT_THEME.Accent,
         Text = newTheme.Text or DEFAULT_THEME.Text,
         Success = newTheme.Success or DEFAULT_THEME.Success,
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or DEFAULT_THEME.Font,
         Transparency = newTheme.Transparency or DEFAULT_THEME.Transparency,
+        CardTransparency = newTheme.CardTransparency or DEFAULT_THEME.CardTransparency,
         CornerRadius = newTheme.CornerRadius or DEFAULT_THEME.CornerRadius,
         ShadowTransparency = newTheme.ShadowTransparency or DEFAULT_THEME.ShadowTransparency,
         TextSizeTitle = newTheme.TextSizeTitle or DEFAULT_THEME.TextSizeTitle,
