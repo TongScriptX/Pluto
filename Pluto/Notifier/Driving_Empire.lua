@@ -9,7 +9,7 @@ local UserInputService = game:GetService("UserInputService")
 local uiLibUrl = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/UILibrary.lua"
 local success, UILibrary = pcall(function()
     return loadstring(game:HttpGet(uiLibUrl))()
-end
+end)
 if not success then
     error("Failed to load UI library: " .. tostring(UILibrary))
 end
@@ -183,8 +183,7 @@ local function sendWelcomeMessage()
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "By: tongBlx" }
         }}
-        
-    )
+    }
     if dispatchWebhook(payload) then
         config.welcomeSent = true
         saveConfig()
