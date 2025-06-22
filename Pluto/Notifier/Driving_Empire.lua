@@ -208,7 +208,7 @@ local function sendWelcomeMessage()
     sendWebhook(payload)
 end
 
--- 创建现代 UI
+-- 创建现代 UI（苹果风格）
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PlutoSyncUI"
 screenGui.Parent = player:WaitForChild("PlayerGui")
@@ -216,64 +216,76 @@ screenGui.ResetOnSpawn = false
 
 -- 悬浮按钮
 local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 50, 0, 50)
+toggleButton.Size = UDim2.new(0, 44, 0, 44)
 toggleButton.Position = UDim2.new(0, 10, 0, 10)
 toggleButton.BackgroundColor3 = MAIN_COLOR
 toggleButton.Text = "≡"
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
-toggleButton.TextSize = 24
-toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.TextSize = 20
+toggleButton.Font = Enum.Font.SFPro
 toggleButton.Parent = screenGui
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 8)
+corner.CornerRadius = UDim.new(0, 10)
 corner.Parent = toggleButton
 
 -- 主界面
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 440)
-mainFrame.Position = UDim2.new(0, 70, 0, 10)
+mainFrame.Size = UDim2.new(0, 300, 0, 360)
+mainFrame.Position = UDim2.new(0, 60, 0, 10)
 mainFrame.BackgroundColor3 = BACKGROUND_COLOR
-mainFrame.BackgroundTransparency = 0.5
+mainFrame.BackgroundTransparency = 0.3 -- 增强毛玻璃效果
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
 local frameCorner = Instance.new("UICorner")
-frameCorner.CornerRadius = UDim.new(0, 12)
+frameCorner.CornerRadius = UDim.new(0, 14) -- 更柔和圆角
 frameCorner.Parent = mainFrame
+
+-- 模拟毛玻璃渐变
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 37, 38)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 48, 50))
+})
+gradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0.3),
+    NumberSequenceKeypoint.new(1, 0.4)
+})
+gradient.Parent = mainFrame
 
 -- 标题
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -20, 0, 30)
+titleLabel.Size = UDim2.new(1, -20, 0, 25)
 titleLabel.Position = UDim2.new(0, 10, 0, 10)
 titleLabel.BackgroundTransparency = 1
 titleLabel.Text = "[Pluto-X Notifier]"
 titleLabel.TextColor3 = Color3.new(1, 1, 1)
-titleLabel.TextSize = 20
-titleLabel.Font = Enum.Font.SourceSansBold
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.SFPro
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = mainFrame
 
 -- 游戏信息
 local gameLabel = Instance.new("TextLabel")
-gameLabel.Size = UDim2.new(1, -20, 0, 20)
-gameLabel.Position = UDim2.new(0, 10, 0, 40)
+gameLabel.Size = UDim2.new(1, -20, 0, 15)
+gameLabel.Position = UDim2.new(0, 10, 0, 35)
 gameLabel.BackgroundTransparency = 1
 gameLabel.Text = "游戏: " .. gameName
 gameLabel.TextColor3 = Color3.new(1, 1, 1)
-gameLabel.TextSize = 14
-gameLabel.Font = Enum.Font.SourceSans
+gameLabel.TextSize = 13
+gameLabel.Font = Enum.Font.SFPro
 gameLabel.TextXAlignment = Enum.TextXAlignment.Left
 gameLabel.TextWrapped = true
 gameLabel.Parent = mainFrame
 
 -- 已赚取金钱
 local earnedCashLabel = Instance.new("TextLabel")
-earnedCashLabel.Size = UDim2.new(1, -20, 0, 20)
-earnedCashLabel.Position = UDim2.new(0, 10, 0, 60)
+earnedCashLabel.Size = UDim2.new(1, -20, 0, 15)
+earnedCashLabel.Position = UDim2.new(0, 10, 0, 50)
 earnedCashLabel.BackgroundTransparency = 1
 earnedCashLabel.Text = "已赚取金钱: 0"
 earnedCashLabel.TextColor3 = Color3.new(1, 1, 1)
-earnedCashLabel.TextSize = 14
-earnedCashLabel.Font = Enum.Font.SourceSans
+earnedCashLabel.TextSize = 13
+earnedCashLabel.Font = Enum.Font.SFPro
 earnedCashLabel.TextXAlignment = Enum.TextXAlignment.Left
 earnedCashLabel.Parent = mainFrame
 
@@ -291,59 +303,55 @@ spawn(function()
     end
 end)
 
--- 反挂机状态
-local antiAfkLabel = Instance.new("TextLabel")
-antiAfkLabel.Size = UDim2.new(1, -20, 0, 20)
-antiAfkLabel.Position = UDim2.new(0, 10, 0, 410)
-antiAfkLabel.BackgroundTransparency = 1
-antiAfkLabel.Text = "反挂机已开启"
-antiAfkLabel.TextColor3 = Color3.new(1, 1, 1)
-antiAfkLabel.TextSize = 14
-antiAfkLabel.Font = Enum.Font.SourceSans
-antiAfkLabel.TextXAlignment = Enum.TextXAlignment.Left
-antiAfkLabel.Parent = mainFrame
+-- Webhook 输入框
+local webhookInput = Instance.new("TextBox")
+webhookInput.Size = UDim2.new(1, -20, 0, 30)
+webhookInput.Position = UDim2.new(0, 10, 0, 70)
+webhookInput.BackgroundColor3 = BACKGROUND_COLOR
+webhookInput.BackgroundTransparency = 0.6
+webhookInput.TextColor3 = Color3.new(1, 1, 1)
+webhookInput.TextSize = 13
+webhookInput.Font = Enum.Font.SFPro
+webhookInput.PlaceholderText = "输入 Discord Webhook URL"
+webhookInput.Text = config.webhookUrl
+webhookInput.TextWrapped = true
+webhookInput.TextTruncate = Enum.TextTruncate.None
+webhookInput.Parent = mainFrame
+local webhookCorner = Instance.new("UICorner")
+webhookCorner.CornerRadius = UDim.new(0, 8)
+webhookCorner.Parent = webhookInput
+webhookInput.FocusLost:Connect(function()
+    config.webhookUrl = webhookInput.Text
+    notifyOutput("配置更新", "Webhook URL 已保存", false)
+    saveConfig()
+end)
 
--- 动画
-local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-local function toggleMainFrame(visible)
-    if visible then
-        toggleButton.Text = "T"
-        mainFrame.Visible = true
-        mainFrame.Position = UDim2.new(0, toggleButton.Position.X.Offset + 60, 0, toggleButton.Position.Y.Offset)
-        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 0.5, Position = UDim2.new(0, toggleButton.Position.X.Offset + 60, 0, toggleButton.Position.Y.Offset) }):Play()
-    else
-        toggleButton.Text = "≡"
-        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 1, Position = UDim2.new(0, toggleButton.Position.X.Offset + 60, 0, toggleButton.Position.Y.Offset - 10) }):Play()
-        wait(0.3)
-        mainFrame.Visible = false
-    end
-end
-
-local function createToggle(labelText, configKey, yOffset)
+-- 开关组
+local function createToggle(labelText, configKey, xOffset, yOffset)
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, -20, 0, 30)
-    toggleFrame.Position = UDim2.new(0, 10, 0, yOffset)
+    toggleFrame.Size = UDim2.new(0, 90, 0, 25)
+    toggleFrame.Position = UDim2.new(0, xOffset, 0, yOffset)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = mainFrame
 
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.7, 0, 1, 0)
+    label.Size = UDim2.new(0.6, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = labelText
     label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextSize = 14
-    label.Font = Enum.Font.SourceSans
+    label.TextSize = 12
+    label.Font = Enum.Font.SFPro
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = toggleFrame
 
     local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(0, 50, 0, 24)
-    toggle.Position = UDim2.new(0.8, -10, 0, 3)
+    toggle.Size = UDim2.new(0, 40, 0, 20)
+    toggle.Position = UDim2.new(0.65, 0, 0, 2.5)
     toggle.BackgroundColor3 = config[configKey] and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
     toggle.Text = config[configKey] and "开" or "关"
     toggle.TextColor3 = Color3.new(1, 1, 1)
-    toggle.TextSize = 14
-    toggle.Font = Enum.Font.SourceSans
+    toggle.TextSize = 12
+    toggle.Font = Enum.Font.SFPro
     toggle.Parent = toggleFrame
     local toggleCorner = Instance.new("UICorner")
     toggleCorner.CornerRadius = UDim.new(0, 6)
@@ -361,51 +369,30 @@ local function createToggle(labelText, configKey, yOffset)
     end)
 end
 
-local webhookInput = Instance.new("TextBox")
-webhookInput.Size = UDim2.new(1, -20, 0, 40)
-webhookInput.Position = UDim2.new(0, 10, 0, 90)
-webhookInput.BackgroundColor3 = BACKGROUND_COLOR
-webhookInput.BackgroundTransparency = 0.5
-webhookInput.TextColor3 = Color3.new(1, 1, 1)
-webhookInput.TextSize = 14
-webhookInput.Font = Enum.Font.SourceSans
-webhookInput.PlaceholderText = "输入 Discord Webhook URL"
-webhookInput.Text = config.webhookUrl
-webhookInput.TextWrapped = true
-webhookInput.TextTruncate = Enum.TextTruncate.None
-webhookInput.Parent = mainFrame
-local webhookCorner = Instance.new("UICorner")
-webhookCorner.CornerRadius = UDim.new(0, 6)
-webhookCorner.Parent = webhookInput
-webhookInput.FocusLost:Connect(function()
-    config.webhookUrl = webhookInput.Text
-    notifyOutput("配置更新", "Webhook URL 已保存", false)
-    saveConfig()
-end)
+createToggle("发送金钱", "sendCash", 10, 110)
+createToggle("发送排行榜", "sendLeaderboard", 100, 110)
+createToggle("自动踢出", "autoKick", 190, 110)
 
-createToggle("发送金钱", "sendCash", 140)
-createToggle("发送排行榜", "sendLeaderboard", 180)
-createToggle("上榜自动踢出", "autoKick", 220)
-
+-- 发送间隔
 local intervalLabel = Instance.new("TextLabel")
-intervalLabel.Size = UDim2.new(0.5, 0, 0, 30)
-intervalLabel.Position = UDim2.new(0, 10, 0, 260)
+intervalLabel.Size = UDim2.new(0.5, 0, 0, 25)
+intervalLabel.Position = UDim2.new(0, 10, 0, 140)
 intervalLabel.BackgroundTransparency = 1
 intervalLabel.Text = "发送间隔（分钟）："
 intervalLabel.TextColor3 = Color3.new(1, 1, 1)
-intervalLabel.TextSize = 14
-intervalLabel.Font = Enum.Font.SourceSans
+intervalLabel.TextSize = 13
+intervalLabel.Font = Enum.Font.SFPro
 intervalLabel.TextXAlignment = Enum.TextXAlignment.Left
 intervalLabel.Parent = mainFrame
 
 local intervalInput = Instance.new("TextBox")
-intervalInput.Size = UDim2.new(0.4, 0, 0, 24)
-intervalInput.Position = UDim2.new(0.55, 0, 0, 263)
+intervalInput.Size = UDim2.new(0.4, 0, 0, 20)
+intervalInput.Position = UDim2.new(0.55, 0, 0, 142.5)
 intervalInput.BackgroundColor3 = BACKGROUND_COLOR
-intervalInput.BackgroundTransparency = 0.5
+intervalInput.BackgroundTransparency = 0.6
 intervalInput.TextColor3 = Color3.new(1, 1, 1)
-intervalInput.TextSize = 14
-intervalInput.Font = Enum.Font.SourceSans
+intervalInput.TextSize = 13
+intervalInput.Font = Enum.Font.SFPro
 intervalInput.Text = tostring(config.intervalMinutes)
 intervalInput.Parent = mainFrame
 local intervalCorner = Instance.new("UICorner")
@@ -428,45 +415,56 @@ intervalInput.FocusLost:Connect(function()
     end
 end)
 
--- 作者信息（高级样式）
-local authorFrame = Instance.new("Frame")
-authorFrame.Size = UDim2.new(1, -20, 0, 60)
-authorFrame.Position = UDim2.new(0, 10, 0, 350)
-authorFrame.BackgroundColor3 = Color3.fromRGB(114, 137, 218) -- #7289DA，Discord 蓝色
-authorFrame.BackgroundTransparency = 0.7
-authorFrame.Parent = mainFrame
-local authorFrameCorner = Instance.new("UICorner")
-authorFrameCorner.CornerRadius = UDim.new(0, 8)
-authorFrameCorner.Parent = authorFrame
+-- 作者信息和反挂机状态
+local bottomFrame = Instance.new("Frame")
+bottomFrame.Size = UDim2.new(1, -20, 0, 50)
+bottomFrame.Position = UDim2.new(0, 10, 0, 300)
+bottomFrame.BackgroundColor3 = Color3.fromRGB(114, 137, 218) -- #7289DA
+bottomFrame.BackgroundTransparency = 0.7
+bottomFrame.Parent = mainFrame
+local bottomFrameCorner = Instance.new("UICorner")
+bottomFrameCorner.CornerRadius = UDim.new(0, 8)
+bottomFrameCorner.Parent = bottomFrame
 
 local authorLabel = Instance.new("TextLabel")
-authorLabel.Size = UDim2.new(1, 0, 0, 30)
-authorLabel.Position = UDim2.new(0, 0, 0, 5)
+authorLabel.Size = UDim2.new(0.5, 0, 0, 20)
+authorLabel.Position = UDim2.new(0, 5, 0, 5)
 authorLabel.BackgroundTransparency = 1
 authorLabel.Text = "作者: tongblx"
 authorLabel.TextColor3 = Color3.new(1, 1, 1)
-authorLabel.TextSize = 14
-authorLabel.Font = Enum.Font.SourceSansBold
-authorLabel.TextXAlignment = Enum.TextXAlignment.Center
-authorLabel.Parent = authorFrame
+authorLabel.TextSize = 12
+authorLabel.Font = Enum.Font.SFPro
+authorLabel.TextXAlignment = Enum.TextXAlignment.Left
+authorLabel.Parent = bottomFrame
 
 local discordLabel = Instance.new("TextButton")
-discordLabel.Size = UDim2.new(1, -10, 0, 20)
-discordLabel.Position = UDim2.new(0, 5, 0, 35)
+discordLabel.Size = UDim2.new(0.5, -5, 0, 20)
+discordLabel.Position = UDim2.new(0.5, 0, 0, 5)
 discordLabel.BackgroundTransparency = 1
-discordLabel.Text = "Discord: https://discord.gg/8MW6eWU8uf"
+discordLabel.Text = "Discord: 加入服务器"
 discordLabel.TextColor3 = Color3.new(1, 1, 1)
 discordLabel.TextSize = 12
-discordLabel.Font = Enum.Font.SourceSans
-discordLabel.TextXAlignment = Enum.TextXAlignment.Center
+discordLabel.Font = Enum.Font.SFPro
+discordLabel.TextXAlignment = Enum.TextXAlignment.Right
 discordLabel.TextWrapped = true
 discordLabel.TextScaled = true
-discordLabel.Parent = authorFrame
+discordLabel.Parent = bottomFrame
+
+local antiAfkLabel = Instance.new("TextLabel")
+antiAfkLabel.Size = UDim2.new(1, -10, 0, 20)
+antiAfkLabel.Position = UDim2.new(0, 5, 0, 25)
+antiAfkLabel.BackgroundTransparency = 1
+antiAfkLabel.Text = "反挂机已开启"
+antiAfkLabel.TextColor3 = Color3.new(1, 1, 1)
+antiAfkLabel.TextSize = 12
+antiAfkLabel.Font = Enum.Font.SFPro
+antiAfkLabel.TextXAlignment = Enum.TextXAlignment.Left
+antiAfkLabel.Parent = bottomFrame
 
 -- 作者信息交互动画
 local hoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 discordLabel.MouseEnter:Connect(function()
-    TweenService:Create(discordLabel, hoverTweenInfo, { TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
+    TweenService:Create(discordLabel, hoverTweenInfo, { TextSize = 13, TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
 end)
 discordLabel.MouseLeave:Connect(function()
     TweenService:Create(discordLabel, hoverTweenInfo, { TextSize = 12, TextColor3 = Color3.new(1, 1, 1) }):Play()
@@ -480,6 +478,22 @@ discordLabel.MouseButton1Click:Connect(function()
         TweenService:Create(discordLabel, hoverTweenInfo, { TextColor3 = Color3.new(1, 1, 1) }):Play()
     end)
 end)
+
+-- 动画
+local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local function toggleMainFrame(visible)
+    if visible then
+        toggleButton.Text = "T"
+        mainFrame.Visible = true
+        mainFrame.Position = UDim2.new(0, toggleButton.Position.X.Offset + 50, 0, toggleButton.Position.Y.Offset)
+        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 0.3, Position = UDim2.new(0, toggleButton.Position.X.Offset + 50, 0, toggleButton.Position.Y.Offset) }):Play()
+    else
+        toggleButton.Text = "≡"
+        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 1, Position = UDim2.new(0, toggleButton.Position.X.Offset + 50, 0, toggleButton.Position.Y.Offset - 10) }):Play()
+        wait(0.3)
+        mainFrame.Visible = false
+    end
+end
 
 -- 拖动悬浮按钮（支持 PC 和手机）
 local dragging = false
