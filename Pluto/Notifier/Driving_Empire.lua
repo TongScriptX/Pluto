@@ -1,10 +1,17 @@
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
-local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("StarterGui")
-local TweenService = game:GetService("TweenService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local VirtualUser = game:GetService("VirtualUser")
+
+-- 加载 UI 模块
+local uiLibUrl = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/UILibrary.lua"
+local success, PlutoXUILibrary = pcall(function()
+    return loadstring(game:HttpGet(uiLibUrl))()
+end)
+if not success then
+    error("无法加载 UI 库: " .. tostring(PlutoXUILibrary))
+end
 
 -- 获取当前玩家
 local player = Players.LocalPlayer
@@ -14,7 +21,7 @@ end
 local userId = player.UserId
 local username = player.Name
 
--- HTTP 请求兼容 Synapse X
+-- HTTP 请求兼容
 local http_request = syn and syn.request or http and http.request or http_request
 if not http_request then
     error("当前执行器不支持 HTTP 请求")
@@ -22,8 +29,6 @@ end
 
 -- 配置文件
 local configFile = "pluto_config.json"
-
--- 配置表
 local config = {
     webhookUrl = "",
     sendCash = false,
@@ -33,9 +38,7 @@ local config = {
 }
 
 -- 颜色定义
-local MAIN_COLOR = Color3.fromRGB(40, 38, 89) -- #282659
-local MAIN_COLOR_DECIMAL = 2631705 -- 十进制，用于 Discord 嵌入
-local BACKGROUND_COLOR = Color3.fromRGB(28, 37, 38) -- #1C2526，毛玻璃背景
+local MAIN_COLOR_DECIMAL = 2631705 -- #282659
 
 -- 获取游戏信息
 local gameName = "未知游戏"
@@ -56,7 +59,7 @@ local function getPlayerCash()
             return cash.Value
         end
     end
-    notifyOutput("获取 Cash", "未找到 leaderstats 或 Cash", true)
+    PlutoXUILibrary:Notify("获取 Cash", "未找到 leaderstats 或 Cash", 5, true)
     return nil
 end
 local success, cashValue = pcall(getPlayerCash)
@@ -64,78 +67,49 @@ if success and cashValue then
     initialCash = cashValue
 end
 
--- 反挂机功能
+-- 反挂机
 player.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- 自定义输出函数
-local function notifyOutput(title, text, isWarn)
-    local notification = {
-        Title = isWarn and "警告: " .. title or title,
-        Text = tostring(text),
-        Icon = "",
-        Duration = 5
-    }
-    pcall(function()
-        CoreGui:SetCore("SendNotification", notification)
-    end)
-    if isWarn then
-        warn(text)
-    else
-        print(text)
-    end
-end
-
 -- 保存配置
 local function saveConfig()
     pcall(function()
         writefile(configFile, HttpService:JSONEncode(config))
-        notifyOutput("配置保存", "配置已成功保存至 " .. configFile, false)
+        PlutoXUILibrary:Notify("配置保存", "配置已保存到 " .. configFile, 5, false)
     end)
 end
 
--- 读取配置
+-- 加载配置
 local function loadConfig()
     if isfile(configFile) then
         local success, result = pcall(function()
             return HttpService:JSONDecode(readfile(configFile))
         end)
         if success then
-            if result.webhookUrl ~= nil then config.webhookUrl = result.webhookUrl end
-            if result.sendCash ~= nil then config.sendCash = result.sendCash end
-            if result.sendLeaderboard ~= nil then config.sendLeaderboard = result.sendLeaderboard end
-            if result.autoKick ~= nil then config.autoKick = result.autoKick end
-            if result.intervalMinutes ~= nil and result.intervalMinutes > 0 then
-                config.intervalMinutes = result.intervalMinutes
+            for k, v in pairs(result) do
+                config[k] = v
             end
-            notifyOutput("配置加载", "已加载保存的配置，自动开启相关功能", false)
+            PlutoXUILibrary:Notify("配置加载", "已加载配置", 5, false)
         else
-            notifyOutput("配置加载", "无法解析配置文件，使用默认配置", true)
+            PlutoXUILibrary:Notify("配置加载", "无法解析配置文件", 5, true)
             saveConfig()
         end
     else
-        notifyOutput("配置加载", "未找到配置文件，保存默认配置", false)
         saveConfig()
     end
 end
+pcall(loadConfig)
 
--- 加载配置
-local success, errorMsg = pcall(loadConfig)
-if not success then
-    notifyOutput("配置加载错误", "加载配置失败: " .. tostring(errorMsg), true)
-    saveConfig()
-end
-
--- 检查玩家是否上榜
+-- 检查排行榜
 local function checkPlayerRank()
     local playerRank = nil
     local success, contentsPath = pcall(function()
         return game:GetService("Workspace"):WaitForChild("Game"):WaitForChild("Leaderboards"):WaitForChild("weekly_money"):WaitForChild("Screen"):WaitForChild("Leaderboard"):WaitForChild("Contents")
     end)
     if not success or not contentsPath then
-        notifyOutput("获取排行榜", "无法找到排行榜路径", true)
+        PlutoXUILibrary:Notify("获取排行榜", "无法找到排行榜路径", 5, true)
         return nil
     end
 
@@ -154,18 +128,17 @@ local function checkPlayerRank()
     return playerRank
 end
 
--- 计算下次发送时间
+-- 下次发送时间
 local function getNextSendTime()
     local currentTime = os.time()
     local intervalSeconds = config.intervalMinutes * 60
-    local nextTime = currentTime + intervalSeconds
-    return os.date("%Y-%m-%d %H:%M:%S", nextTime)
+    return os.date("%Y-%m-%d %H:%M:%S", currentTime + intervalSeconds)
 end
 
--- 发送 webhook
+-- 发送 Webhook
 local function sendWebhook(payload)
     if config.webhookUrl == "" then
-        notifyOutput("发送 Webhook", "Webhook URL 未设置", true)
+        PlutoXUILibrary:Notify("发送 Webhook", "Webhook URL 未设置", 5, true)
         return false
     end
     local payloadJson = HttpService:JSONEncode(payload)
@@ -173,28 +146,26 @@ local function sendWebhook(payload)
         return http_request({
             Url = config.webhookUrl,
             Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
+            Headers = { ["Content-Type"] = "application/json" },
             Body = payloadJson
         })
     end)
     if success then
         if res.StatusCode == 204 or res.code == 204 then
-            notifyOutput("发送 Webhook", "发送成功", false)
+            PlutoXUILibrary:Notify("发送 Webhook", "发送成功", 5, false)
             return true
         else
             local errorMsg = "发送失败: " .. (res.StatusCode or res.code or "未知") .. " " .. (res.Body or res.data or "")
-            notifyOutput("发送 Webhook", errorMsg, true)
+            PlutoXUILibrary:Notify("发送 Webhook", errorMsg, 5, true)
             return false
         end
     else
-        notifyOutput("发送 Webhook", "请求失败: " .. tostring(res), true)
+        PlutoXUILibrary:Notify("发送 Webhook", "请求失败: " .. tostring(res), 5, true)
         return false
     end
 end
 
--- 发送欢迎消息
+-- 欢迎消息
 local function sendWelcomeMessage()
     local payload = {
         embeds = {{
@@ -208,88 +179,36 @@ local function sendWelcomeMessage()
     sendWebhook(payload)
 end
 
--- 创建现代 UI（苹果风格）
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "PlutoSyncUI"
-screenGui.Parent = player:WaitForChild("PlayerGui")
-screenGui.ResetOnSpawn = false
+-- 创建 UI
+local mainFrame, screenGui = PlutoXUILibrary:CreateWindow({
+    Title = "[Pluto-X Notifier]",
+    Size = UDim2.new(0, 300, 0, 360)
+})
+PlutoXUILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
 
 -- 悬浮按钮
-local toggleButton = Instance.new("TextButton")
-toggleButton.Size = UDim2.new(0, 44, 0, 44)
-toggleButton.Position = UDim2.new(0, 10, 0, 10)
-toggleButton.BackgroundColor3 = MAIN_COLOR
-toggleButton.Text = "≡"
-toggleButton.TextColor3 = Color3.new(1, 1, 1)
-toggleButton.TextSize = 20
-toggleButton.Font = Enum.Font.SFPro
-toggleButton.Parent = screenGui
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = toggleButton
-
--- 主界面
-local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 360)
-mainFrame.Position = UDim2.new(0, 60, 0, 10)
-mainFrame.BackgroundColor3 = BACKGROUND_COLOR
-mainFrame.BackgroundTransparency = 0.3 -- 增强毛玻璃效果
-mainFrame.Visible = false
-mainFrame.Parent = screenGui
-local frameCorner = Instance.new("UICorner")
-frameCorner.CornerRadius = UDim.new(0, 14) -- 更柔和圆角
-frameCorner.Parent = mainFrame
-
--- 模拟毛玻璃渐变
-local gradient = Instance.new("UIGradient")
-gradient.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 37, 38)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(40, 48, 50))
+local toggleButton = PlutoXUILibrary:CreateButton(screenGui, {
+    Text = "≡",
+    Size = UDim2.new(0, 44, 0, 44),
+    Position = UDim2.new(0, 10, 0, 10),
+    CornerRadius = 10,
+    Callback = function()
+        mainFrame.Visible = not mainFrame.Visible
+        toggleButton.Text = mainFrame.Visible and "T" or "≡"
+    end
 })
-gradient.Transparency = NumberSequence.new({
-    NumberSequenceKeypoint.new(0, 0.3),
-    NumberSequenceKeypoint.new(1, 0.4)
-})
-gradient.Parent = mainFrame
-
--- 标题
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -20, 0, 25)
-titleLabel.Position = UDim2.new(0, 10, 0, 10)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "[Pluto-X Notifier]"
-titleLabel.TextColor3 = Color3.new(1, 1, 1)
-titleLabel.TextSize = 18
-titleLabel.Font = Enum.Font.SFPro
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
-titleLabel.Parent = mainFrame
 
 -- 游戏信息
-local gameLabel = Instance.new("TextLabel")
-gameLabel.Size = UDim2.new(1, -20, 0, 15)
-gameLabel.Position = UDim2.new(0, 10, 0, 35)
-gameLabel.BackgroundTransparency = 1
-gameLabel.Text = "游戏: " .. gameName
-gameLabel.TextColor3 = Color3.new(1, 1, 1)
-gameLabel.TextSize = 13
-gameLabel.Font = Enum.Font.SFPro
-gameLabel.TextXAlignment = Enum.TextXAlignment.Left
-gameLabel.TextWrapped = true
-gameLabel.Parent = mainFrame
+local gameLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
+    Text = "游戏: " .. gameName,
+    Position = UDim2.new(0, 10, 0, 35)
+})
 
 -- 已赚取金钱
-local earnedCashLabel = Instance.new("TextLabel")
-earnedCashLabel.Size = UDim2.new(1, -20, 0, 15)
-earnedCashLabel.Position = UDim2.new(0, 10, 0, 50)
-earnedCashLabel.BackgroundTransparency = 1
-earnedCashLabel.Text = "已赚取金钱: 0"
-earnedCashLabel.TextColor3 = Color3.new(1, 1, 1)
-earnedCashLabel.TextSize = 13
-earnedCashLabel.Font = Enum.Font.SFPro
-earnedCashLabel.TextXAlignment = Enum.TextXAlignment.Left
-earnedCashLabel.Parent = mainFrame
-
--- 实时更新已赚取金钱
+local earnedCashLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
+    Text = "已赚取金钱: 0",
+    Position = UDim2.new(0, 10, 0, 50)
+})
 spawn(function()
     local leaderstats = player:WaitForChild("leaderstats", 5)
     if leaderstats then
@@ -304,230 +223,100 @@ spawn(function()
 end)
 
 -- Webhook 输入框
-local webhookInput = Instance.new("TextBox")
-webhookInput.Size = UDim2.new(1, -20, 0, 30)
-webhookInput.Position = UDim2.new(0, 10, 0, 70)
-webhookInput.BackgroundColor3 = BACKGROUND_COLOR
-webhookInput.BackgroundTransparency = 0.6
-webhookInput.TextColor3 = Color3.new(1, 1, 1)
-webhookInput.TextSize = 13
-webhookInput.Font = Enum.Font.SFPro
-webhookInput.PlaceholderText = "输入 Discord Webhook URL"
-webhookInput.Text = config.webhookUrl
-webhookInput.TextWrapped = true
-webhookInput.TextTruncate = Enum.TextTruncate.None
-webhookInput.Parent = mainFrame
-local webhookCorner = Instance.new("UICorner")
-webhookCorner.CornerRadius = UDim.new(0, 8)
-webhookCorner.Parent = webhookInput
-webhookInput.FocusLost:Connect(function()
-    config.webhookUrl = webhookInput.Text
-    notifyOutput("配置更新", "Webhook URL 已保存", false)
-    saveConfig()
-end)
-
--- 开关组
-local function createToggle(labelText, configKey, xOffset, yOffset)
-    local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(0, 90, 0, 25)
-    toggleFrame.Position = UDim2.new(0, xOffset, 0, yOffset)
-    toggleFrame.BackgroundTransparency = 1
-    toggleFrame.Parent = mainFrame
-
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.6, 0, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = labelText
-    label.TextColor3 = Color3.new(1, 1, 1)
-    label.TextSize = 12
-    label.Font = Enum.Font.SFPro
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = toggleFrame
-
-    local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(0, 40, 0, 20)
-    toggle.Position = UDim2.new(0.65, 0, 0, 2.5)
-    toggle.BackgroundColor3 = config[configKey] and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-    toggle.Text = config[configKey] and "开" or "关"
-    toggle.TextColor3 = Color3.new(1, 1, 1)
-    toggle.TextSize = 12
-    toggle.Font = Enum.Font.SFPro
-    toggle.Parent = toggleFrame
-    local toggleCorner = Instance.new("UICorner")
-    toggleCorner.CornerRadius = UDim.new(0, 6)
-    toggleCorner.Parent = toggle
-
-    toggle.MouseButton1Click:Connect(function()
-        config[configKey] = not config[configKey]
-        toggle.BackgroundColor3 = config[configKey] and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-        toggle.Text = config[configKey] and "开" or "关"
-        notifyOutput("配置更新", labelText .. " 已设置为 " .. (config[configKey] and "开" or "关"), false)
+local webhookInput = PlutoXUILibrary:CreateTextBox(mainFrame, {
+    PlaceholderText = "输入 Discord Webhook URL",
+    Position = UDim2.new(0, 10, 0, 70),
+    OnFocusLost = function()
+        config.webhookUrl = webhookInput.Text
+        PlutoXUILibrary:Notify("配置更新", "Webhook URL 已保存", 5, false)
         saveConfig()
-        if config[configKey] then
-            sendWelcomeMessage()
-        end
-    end)
-end
+    end
+})
+webhookInput.Text = config.webhookUrl
 
-createToggle("发送金钱", "sendCash", 10, 110)
-createToggle("发送排行榜", "sendLeaderboard", 100, 110)
-createToggle("自动踢出", "autoKick", 190, 110)
+-- 开关
+local toggleCash = PlutoXUILibrary:CreateToggle(mainFrame, {
+    Text = "发送金钱",
+    Position = UDim2.new(0, 10, 0, 110),
+    DefaultState = config.sendCash,
+    Callback = function(state)
+        config.sendCash = state
+        PlutoXUILibrary:Notify("配置更新", "发送金钱: " .. (state and "开" or "关"), 5, false)
+        saveConfig()
+        if state then sendWelcomeMessage() end
+    end
+})
+local toggleLeaderboard = PlutoXUILibrary:CreateToggle(mainFrame, {
+    Text = "发送排行榜",
+    Position = UDim2.new(0, 100, 0, 110),
+    DefaultState = config.sendLeaderboard,
+    Callback = function(state)
+        config.sendLeaderboard = state
+        PlutoXUILibrary:Notify("配置更新", "发送排行榜: " .. (state and "开" or "关"), 5, false)
+        saveConfig()
+        if state then sendWelcomeMessage() end
+    end
+})
+local toggleAutoKick = PlutoXUILibrary:CreateToggle(mainFrame, {
+    Text = "自动踢出",
+    Position = UDim2.new(0, 190, 0, 110),
+    DefaultState = config.autoKick,
+    Callback = function(state)
+        config.autoKick = state
+        PlutoXUILibrary:Notify("配置更新", "自动踢出: " .. (state and "开" or "关"), 5, false)
+        saveConfig()
+        if state then sendWelcomeMessage() end
+    end
+})
 
 -- 发送间隔
-local intervalLabel = Instance.new("TextLabel")
-intervalLabel.Size = UDim2.new(0.5, 0, 0, 25)
-intervalLabel.Position = UDim2.new(0, 10, 0, 140)
-intervalLabel.BackgroundTransparency = 1
-intervalLabel.Text = "发送间隔（分钟）："
-intervalLabel.TextColor3 = Color3.new(1, 1, 1)
-intervalLabel.TextSize = 13
-intervalLabel.Font = Enum.Font.SFPro
-intervalLabel.TextXAlignment = Enum.TextXAlignment.Left
-intervalLabel.Parent = mainFrame
-
-local intervalInput = Instance.new("TextBox")
-intervalInput.Size = UDim2.new(0.4, 0, 0, 20)
-intervalInput.Position = UDim2.new(0.55, 0, 0, 142.5)
-intervalInput.BackgroundColor3 = BACKGROUND_COLOR
-intervalInput.BackgroundTransparency = 0.6
-intervalInput.TextColor3 = Color3.new(1, 1, 1)
-intervalInput.TextSize = 13
-intervalInput.Font = Enum.Font.SFPro
+local intervalLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
+    Text = "发送间隔（分钟）：",
+    Size = UDim2.new(0.5, 0, 0, 25),
+    Position = UDim2.new(0, 10, 0, 140)
+})
+local intervalInput = PlutoXUILibrary:CreateTextBox(mainFrame, {
+    PlaceholderText = "间隔",
+    Size = UDim2.new(0.4, 0, 0, 20),
+    Position = UDim2.new(0.55, 0, 0, 142.5),
+    OnFocusLost = function()
+        local num = tonumber(intervalInput.Text)
+        if num and num > 0 then
+            config.intervalMinutes = num
+            PlutoXUILibrary:Notify("配置更新", "发送间隔: " .. num .. " 分钟", 5, false)
+            saveConfig()
+            lastSendTime = os.time()
+        else
+            intervalInput.Text = tostring(config.intervalMinutes)
+            PlutoXUILibrary:Notify("配置错误", "请输入有效数字", 5, true)
+        end
+    end
+})
 intervalInput.Text = tostring(config.intervalMinutes)
-intervalInput.Parent = mainFrame
-local intervalCorner = Instance.new("UICorner")
-intervalCorner.CornerRadius = UDim.new(0, 6)
-intervalCorner.Parent = intervalInput
 
--- 跟踪最后发送时间
+-- 反挂机状态
+local antiAfkLabel = PlutoXUILibrary:CreateLabel(mainFrame, {
+    Text = "反挂机已开启",
+    Size = UDim2.new(1, -20, 0, 15),
+    Position = UDim2.new(0, 10, 0, 170)
+})
+
+-- 作者介绍模块
+local authorInfo = PlutoXUILibrary:CreateAuthorInfo(mainFrame, {
+    AuthorName = "作者: tongblx",
+    SocialText = "Discord: 加入服务器",
+    SocialCallback = function()
+        pcall(function()
+            setclipboard("https://discord.gg/8MW6eWU8uf")
+            PlutoXUILibrary:Notify("复制 Discord", "已复制链接", 5, false)
+        end)
+    end,
+    Size = UDim2.new(1, -20, 0, 30),
+    Position = UDim2.new(0, 10, 0, 300)
+})
+
+-- 定时发送
 local lastSendTime = os.time()
-
-intervalInput.FocusLost:Connect(function()
-    local num = tonumber(intervalInput.Text)
-    if num and num > 0 then
-        config.intervalMinutes = num
-        notifyOutput("配置更新", "发送间隔已设置为 " .. num .. " 分钟", false)
-        saveConfig()
-        lastSendTime = os.time()
-    else
-        intervalInput.Text = tostring(config.intervalMinutes)
-        notifyOutput("配置错误", "请输入有效数字", true)
-    end
-end)
-
--- 作者信息和反挂机状态
-local bottomFrame = Instance.new("Frame")
-bottomFrame.Size = UDim2.new(1, -20, 0, 50)
-bottomFrame.Position = UDim2.new(0, 10, 0, 300)
-bottomFrame.BackgroundColor3 = Color3.fromRGB(114, 137, 218) -- #7289DA
-bottomFrame.BackgroundTransparency = 0.7
-bottomFrame.Parent = mainFrame
-local bottomFrameCorner = Instance.new("UICorner")
-bottomFrameCorner.CornerRadius = UDim.new(0, 8)
-bottomFrameCorner.Parent = bottomFrame
-
-local authorLabel = Instance.new("TextLabel")
-authorLabel.Size = UDim2.new(0.5, 0, 0, 20)
-authorLabel.Position = UDim2.new(0, 5, 0, 5)
-authorLabel.BackgroundTransparency = 1
-authorLabel.Text = "作者: tongblx"
-authorLabel.TextColor3 = Color3.new(1, 1, 1)
-authorLabel.TextSize = 12
-authorLabel.Font = Enum.Font.SFPro
-authorLabel.TextXAlignment = Enum.TextXAlignment.Left
-authorLabel.Parent = bottomFrame
-
-local discordLabel = Instance.new("TextButton")
-discordLabel.Size = UDim2.new(0.5, -5, 0, 20)
-discordLabel.Position = UDim2.new(0.5, 0, 0, 5)
-discordLabel.BackgroundTransparency = 1
-discordLabel.Text = "Discord: 加入服务器"
-discordLabel.TextColor3 = Color3.new(1, 1, 1)
-discordLabel.TextSize = 12
-discordLabel.Font = Enum.Font.SFPro
-discordLabel.TextXAlignment = Enum.TextXAlignment.Right
-discordLabel.TextWrapped = true
-discordLabel.TextScaled = true
-discordLabel.Parent = bottomFrame
-
-local antiAfkLabel = Instance.new("TextLabel")
-antiAfkLabel.Size = UDim2.new(1, -10, 0, 20)
-antiAfkLabel.Position = UDim2.new(0, 5, 0, 25)
-antiAfkLabel.BackgroundTransparency = 1
-antiAfkLabel.Text = "反挂机已开启"
-antiAfkLabel.TextColor3 = Color3.new(1, 1, 1)
-antiAfkLabel.TextSize = 12
-antiAfkLabel.Font = Enum.Font.SFPro
-antiAfkLabel.TextXAlignment = Enum.TextXAlignment.Left
-antiAfkLabel.Parent = bottomFrame
-
--- 作者信息交互动画
-local hoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-discordLabel.MouseEnter:Connect(function()
-    TweenService:Create(discordLabel, hoverTweenInfo, { TextSize = 13, TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
-end)
-discordLabel.MouseLeave:Connect(function()
-    TweenService:Create(discordLabel, hoverTweenInfo, { TextSize = 12, TextColor3 = Color3.new(1, 1, 1) }):Play()
-end)
-discordLabel.MouseButton1Click:Connect(function()
-    pcall(function()
-        setclipboard("https://discord.gg/8MW6eWU8uf")
-        notifyOutput("复制 Discord", "已复制 Discord 链接到剪贴板", false)
-        TweenService:Create(discordLabel, hoverTweenInfo, { TextColor3 = Color3.fromRGB(0, 255, 0) }):Play()
-        wait(0.5)
-        TweenService:Create(discordLabel, hoverTweenInfo, { TextColor3 = Color3.new(1, 1, 1) }):Play()
-    end)
-end)
-
--- 动画
-local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-local function toggleMainFrame(visible)
-    if visible then
-        toggleButton.Text = "T"
-        mainFrame.Visible = true
-        mainFrame.Position = UDim2.new(0, toggleButton.Position.X.Offset + 50, 0, toggleButton.Position.Y.Offset)
-        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 0.3, Position = UDim2.new(0, toggleButton.Position.X.Offset + 50, 0, toggleButton.Position.Y.Offset) }):Play()
-    else
-        toggleButton.Text = "≡"
-        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 1, Position = UDim2.new(0, toggleButton.Position.X.Offset + 50, 0, toggleButton.Position.Y.Offset - 10) }):Play()
-        wait(0.3)
-        mainFrame.Visible = false
-    end
-end
-
--- 拖动悬浮按钮（支持 PC 和手机）
-local dragging = false
-local startPos, startGuiPos
-toggleButton.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        startPos = input.Position
-        startGuiPos = toggleButton.Position
-    end
-end)
-
-toggleButton.InputChanged:Connect(function(input)
-    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        local delta = input.Position - startPos
-        toggleButton.Position = UDim2.new(
-            startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X,
-            startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
-        )
-    end
-end)
-
-toggleButton.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = false
-    end
-end)
-
--- 切换 UI 显示
-toggleButton.MouseButton1Click:Connect(function()
-    toggleMainFrame(not mainFrame.Visible)
-end)
-
--- 定时发送和检测
 spawn(function()
     while true do
         if config.sendCash or config.sendLeaderboard or config.autoKick then
@@ -538,7 +327,6 @@ spawn(function()
                 local cashValue = getPlayerCash()
                 local playerRank = checkPlayerRank()
 
-                -- 合并 Cash 和排行榜嵌入
                 if config.sendCash or config.sendLeaderboard then
                     local embed = {
                         title = "Pluto-X Notifier",
@@ -567,7 +355,7 @@ spawn(function()
                             value = playerRank and "已上榜，排名: " .. playerRank or "未上榜",
                             inline = true
                         })
-                        notifyOutput("排行榜", playerRank and "已上榜，排名: " .. playerRank or "未上榜", false)
+                        PlutoXUILibrary:Notify("排行榜", playerRank and "已上榜，排名: " .. playerRank or "未上榜", 5, false)
                     end
                     table.insert(embed.fields, {
                         name = "**下次发送**",
@@ -587,7 +375,7 @@ spawn(function()
                 end
 
                 if config.autoKick and playerRank then
-                    notifyOutput("自动踢出", "因上榜触发 game:Shutdown()", false)
+                    PlutoXUILibrary:Notify("自动踢出", "因上榜触发 game:Shutdown()", 5, false)
                     game:Shutdown()
                 end
 
