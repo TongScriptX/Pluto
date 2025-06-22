@@ -1,17 +1,17 @@
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("StarterGui")
 local MarketplaceService = game:GetService("MarketplaceService")
 local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
 -- 加载 UI 模块
 local uiLibUrl = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/UILibrary.lua"
-local success, PlutoXUILibrary = pcall(function()
+local success, UILibrary = pcall(function()
     return loadstring(game:HttpGet(uiLibUrl))()
 end)
 if not success then
-    error("无法加载 UI 库: " .. tostring(PlutoXUILibrary))
+    error("无法加载 UI 库: " .. tostring(UILibrary))
 end
 
 -- 获取当前玩家
@@ -61,7 +61,7 @@ local function getPlayerCash()
             return cash.Value
         end
     end
-    PlutoXUILibrary:Notify("获取 Cash", "未找到 leaderstats 或 Cash", 5, true)
+    UILibrary:Notify({ Title = "错误", Text = "未找到 leaderstats 或 Cash", Duration = 5, IsWarning = true })
     return nil
 end
 local success, cashValue = pcall(getPlayerCash)
@@ -79,7 +79,7 @@ end)
 local function saveConfig()
     pcall(function()
         writefile(configFile, HttpService:JSONEncode(config))
-        PlutoXUILibrary:Notify("配置保存", "配置已保存到 " .. configFile, 5, false)
+        UILibrary:Notify({ Title = "配置保存", Text = "配置已保存到 " .. configFile, Duration = 5 })
     end)
 end
 
@@ -93,9 +93,9 @@ local function loadConfig()
             for k, v in pairs(result) do
                 config[k] = v
             end
-            PlutoXUILibrary:Notify("配置加载", "已加载配置", 5, false)
+            UILibrary:Notify({ Title = "配置加载", Text = "已加载配置", Duration = 5 })
         else
-            PlutoXUILibrary:Notify("配置加载", "无法解析配置文件", 5, true)
+            UILibrary:Notify({ Title = "配置错误", Text = "无法解析配置文件", Duration = 5, IsWarning = true })
             saveConfig()
         end
     else
@@ -111,7 +111,7 @@ local function checkPlayerRank()
         return game:GetService("Workspace"):WaitForChild("Game"):WaitForChild("Leaderboards"):WaitForChild("weekly_money"):WaitForChild("Screen"):WaitForChild("Leaderboard"):WaitForChild("Contents")
     end)
     if not success or not contentsPath then
-        PlutoXUILibrary:Notify("获取排行榜", "无法找到排行榜路径", 5, true)
+        UILibrary:Notify({ Title = "排行榜错误", Text = "无法找到排行榜路径", Duration = 5, IsWarning = true })
         return nil
     end
 
@@ -143,7 +143,7 @@ end
 -- 发送 Webhook
 local function sendWebhook(payload)
     if config.webhookUrl == "" then
-        PlutoXUILibrary:Notify("发送 Webhook", "Webhook URL 未设置", 5, true)
+        UILibrary:Notify({ Title = "Webhook 错误", Text = "Webhook URL 未设置", Duration = 5, IsWarning = true })
         return false
     end
     local payloadJson = HttpService:JSONEncode(payload)
@@ -157,15 +157,15 @@ local function sendWebhook(payload)
     end)
     if success then
         if res.StatusCode == 204 or res.code == 204 then
-            PlutoXUILibrary:Notify("发送 Webhook", "发送成功", 5, false)
+            UILibrary:Notify({ Title = "Webhook", Text = "发送成功", Duration = 5 })
             return true
         else
             local errorMsg = "发送失败: " .. (res.StatusCode or res.code or "未知") .. " " .. (res.Body or res.data or "")
-            PlutoXUILibrary:Notify("发送 Webhook", errorMsg, 5, true)
+            UILibrary:Notify({ Title = "Webhook 错误", Text = errorMsg, Duration = 5, IsWarning = true })
             return false
         end
     else
-        PlutoXUILibrary:Notify("发送 Webhook", "请求失败: " .. tostring(res), 5, true)
+        UILibrary:Notify({ Title = "Webhook 错误", Text = "请求失败: " .. tostring(res), Duration = 5, IsWarning = true })
         return false
     end
 end
@@ -175,8 +175,8 @@ local function sendWelcomeMessage()
     if config.welcomeSent then return end
     local payload = {
         embeds = {{
-            title = "Pluto-X Notifier",
-            description = "**欢迎使用 Pluto-X Notifier**\n**游戏**: " .. gameName .. "\n**用户**: " .. username,
+            title = "欢迎使用 Notifier",
+            description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
             color = MAIN_COLOR_DECIMAL,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "作者: tongblx" }
@@ -189,37 +189,48 @@ local function sendWelcomeMessage()
 end
 
 -- 创建 UI
-local mainFrame, screenGui = PlutoXUILibrary:CreateWindow({
+local mainFrame, screenGui, tabBar, contentFrame = UILibrary:CreateWindow({
     Title = "[Pluto-X Notifier]",
-    Size = UDim2.new(0, 300, 0, 360)
+    Size = UDim2.new(0, 300, 0, 360),
+    Gradient = true
 })
-PlutoXUILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
+UILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
 
 -- 悬浮按钮
-local toggleButton = PlutoXUILibrary:CreateButton(screenGui, {
-    Text = "≡",
+local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
+    MainFrame = mainFrame,
+    Text = "☰",
+    CloseText = "✕",
     Size = UDim2.new(0, 44, 0, 44),
-    Position = UDim2.new(0, 10, 0, 10),
-    CornerRadius = 10,
-    Callback = function()
-        mainFrame.Visible = not mainFrame.Visible
-        toggleButton.Text = mainFrame.Visible and "T" or "≡"
-        TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut), { BackgroundTransparency = mainFrame.Visible and 0.3 or 1 }):Play()
-    end
+    CornerRadius = 22,
+    BackgroundColor = UILibrary.Background,
+    BackgroundTransparency = UILibrary.Transparency,
+    TextColor = UILibrary.Text,
+    StrokeColor = Color3.fromRGB(255, 255, 255),
+    StrokeThickness = 1,
+    StrokeTransparency = 0.8,
+    EnableAnimation = true,
+    EnableDrag = true,
+    PreventOffScreen = true
 })
-PlutoXUILibrary:MakeDraggable(toggleButton, { PreventOffScreen = true })
+
+-- 标签页：常规
+local generalTab, generalContent = UILibrary:CreateTab(tabBar, contentFrame, {
+    Text = "常规",
+    Active = true
+})
 
 -- 卡片 1：游戏信息 + 已赚取金钱
-local infoCard = PlutoXUILibrary:CreateCard(mainFrame, {
-    Size = UDim2.new(1, -20, 0, 60),
-    Position = UDim2.new(0, 10, 0, 40)
+local infoCard = UILibrary:CreateCard(generalContent, {
+    Size = UDim2.new(1, -10, 0, 60),
+    Position = UDim2.new(0, 5, 0, 5)
 })
-local gameLabel = PlutoXUILibrary:CreateLabel(infoCard, {
+local gameLabel = UILibrary:CreateLabel(infoCard, {
     Text = "游戏: " .. gameName,
     Position = UDim2.new(0, 5, 0, 5),
     TextSize = 12
 })
-local earnedCashLabel = PlutoXUILibrary:CreateLabel(infoCard, {
+local earnedCashLabel = UILibrary:CreateLabel(infoCard, {
     Text = "已赚取金钱: 0",
     Position = UDim2.new(0, 5, 0, 25),
     TextSize = 12
@@ -237,12 +248,29 @@ spawn(function()
     end
 end)
 
--- 卡片 2：Webhook 输入框
-local webhookCard = PlutoXUILibrary:CreateCard(mainFrame, {
-    Size = UDim2.new(1, -20, 0, 40),
-    Position = UDim2.new(0, 10, 0, 110)
+-- 卡片 2：反挂机状态
+local antiAfkCard = UILibrary:CreateCard(generalContent, {
+    Size = UDim2.new(1, -10, 0, 30),
+    Position = UDim2.new(0, 5, 0, 75)
 })
-local webhookInput = PlutoXUILibrary:CreateTextBox(webhookCard, {
+local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
+    Text = "反挂机已开启",
+    Size = UDim2.new(1, -10, 0, 20),
+    Position = UDim2.new(0, 5, 0, 5),
+    TextSize = 11
+})
+
+-- 标签页：设置
+local settingsTab, settingsContent = UILibrary:CreateTab(tabBar, contentFrame, {
+    Text = "设置"
+})
+
+-- 卡片 3：Webhook 输入框
+local webhookCard = UILibrary:CreateCard(settingsContent, {
+    Size = UDim2.new(1, -10, 0, 40),
+    Position = UDim2.new(0, 5, 0, 5)
+})
+local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "输入 Discord Webhook URL",
     Position = UDim2.new(0, 5, 0, 5),
     Size = UDim2.new(1, -10, 0, 30),
@@ -252,59 +280,65 @@ local webhookInput = PlutoXUILibrary:CreateTextBox(webhookCard, {
         if config.webhookUrl ~= "" and config.webhookUrl ~= oldUrl then
             sendWelcomeMessage()
         end
-        PlutoXUILibrary:Notify("配置更新", "Webhook URL 已保存", 5, false)
+        UILibrary:Notify({ Title = "配置更新", Text = "Webhook URL 已保存", Duration = 5 })
         saveConfig()
     end
 })
 webhookInput.Text = config.webhookUrl
 
--- 卡片 3：开关组
-local toggleCard = PlutoXUILibrary:CreateCard(mainFrame, {
-    Size = UDim2.new(1, -20, 0, 40),
-    Position = UDim2.new(0, 10, 0, 160)
+-- 卡片 4：开关组
+local toggleCard = UILibrary:CreateCard(settingsContent, {
+    Size = UDim2.new(1, -10, 0, 40),
+    Position = UDim2.new(0, 5, 0, 55)
 })
-local toggleCash = PlutoXUILibrary:CreateToggle(toggleCard, {
+local toggleCash = UILibrary:CreateToggle(toggleCard, {
     Text = "发送金钱",
     Position = UDim2.new(0, 5, 0, 5),
     DefaultState = config.sendCash,
+    OnText = "开",
+    OffText = "关",
     Callback = function(state)
         config.sendCash = state
-        PlutoXUILibrary:Notify("配置更新", "发送金钱: " .. (state and "开" or "关"), 5, false)
+        UILibrary:Notify({ Title = "配置更新", Text = "发送金钱: " .. (state and "开" or "关"), Duration = 5 })
         saveConfig()
     end
 })
-local toggleLeaderboard = PlutoXUILibrary:CreateToggle(toggleCard, {
+local toggleLeaderboard = UILibrary:CreateToggle(toggleCard, {
     Text = "发送排行榜",
     Position = UDim2.new(0, 100, 0, 5),
     DefaultState = config.sendLeaderboard,
+    OnText = "开",
+    OffText = "关",
     Callback = function(state)
         config.sendLeaderboard = state
-        PlutoXUILibrary:Notify("配置更新", "发送排行榜: " .. (state and "开" or "关"), 5, false)
+        UILibrary:Notify({ Title = "配置更新", Text = "发送排行榜: " .. (state and "开" or "关"), Duration = 5 })
         saveConfig()
     end
 })
-local toggleAutoKick = PlutoXUILibrary:CreateToggle(toggleCard, {
+local toggleAutoKick = UILibrary:CreateToggle(toggleCard, {
     Text = "自动踢出",
     Position = UDim2.new(0, 190, 0, 5),
     DefaultState = config.autoKick,
+    OnText = "开",
+    OffText = "关",
     Callback = function(state)
         config.autoKick = state
-        PlutoXUILibrary:Notify("配置更新", "自动踢出: " .. (state and "开" or "关"), 5, false)
+        UILibrary:Notify({ Title = "配置更新", Text = "自动踢出: " .. (state and "开" or "关"), Duration = 5 })
         saveConfig()
     end
 })
 
--- 卡片 4：发送间隔
-local intervalCard = PlutoXUILibrary:CreateCard(mainFrame, {
-    Size = UDim2.new(1, -20, 0, 40),
-    Position = UDim2.new(0, 10, 0, 210)
+-- 卡片 5：发送间隔
+local intervalCard = UILibrary:CreateCard(settingsContent, {
+    Size = UDim2.new(1, -10, 0, 40),
+    Position = UDim2.new(0, 5, 0, 105)
 })
-local intervalLabel = PlutoXUILibrary:CreateLabel(intervalCard, {
+local intervalLabel = UILibrary:CreateLabel(intervalCard, {
     Text = "发送间隔（分钟）：",
     Size = UDim2.new(0.5, 0, 0, 30),
     Position = UDim2.new(0, 5, 0, 5)
 })
-local intervalInput = PlutoXUILibrary:CreateTextBox(intervalCard, {
+local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "间隔",
     Size = UDim2.new(0.4, 0, 0, 30),
     Position = UDim2.new(0.55, 0, 0, 5),
@@ -312,32 +346,25 @@ local intervalInput = PlutoXUILibrary:CreateTextBox(intervalCard, {
         local num = tonumber(intervalInput.Text)
         if num and num > 0 then
             config.intervalMinutes = num
-            PlutoXUILibrary:Notify("配置更新", "发送间隔: " .. num .. " 分钟", 5, false)
+            UILibrary:Notify({ Title = "配置更新", Text = "发送间隔: " .. num .. " 分钟", Duration = 5 })
             saveConfig()
             lastSendTime = os.time()
         else
             intervalInput.Text = tostring(config.intervalMinutes)
-            PlutoXUILibrary:Notify("配置错误", "请输入有效数字", 5, true)
+            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效数字", Duration = 5, IsWarning = true })
         end
     end
 })
 intervalInput.Text = tostring(config.intervalMinutes)
 
--- 卡片 5：反挂机状态
-local antiAfkCard = PlutoXUILibrary:CreateCard(mainFrame, {
-    Size = UDim2.new(1, -20, 0, 30),
-    Position = UDim2.new(0, 10, 0, 260)
-})
-local antiAfkLabel = PlutoXUILibrary:CreateLabel(antiAfkCard, {
-    Text = "反挂机已开启",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5),
-    TextSize = 11
+-- 标签页：关于
+local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, contentFrame, {
+    Text = "关于"
 })
 
--- 作者介绍模块
-local authorInfo = PlutoXUILibrary:CreateAuthorInfo(mainFrame, {
-    AuthorName = "作者: tongblx",
+-- 作者介绍
+local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
+    AuthorText = "作者: tongblx",
     SocialText = "Discord: 加入服务器",
     SocialCallback = function()
         pcall(function()
@@ -349,14 +376,14 @@ local authorInfo = PlutoXUILibrary:CreateAuthorInfo(mainFrame, {
             elseif clipboard and clipboard.set then
                 clipboard.set(link)
             else
-                PlutoXUILibrary:Notify("复制 Discord", "剪贴板功能不受支持，请手动复制: " .. link, 5, true)
+                UILibrary:Notify({ Title = "复制 Discord", Text = "剪贴板功能不受支持，请手动复制: " .. link, Duration = 5, IsWarning = true })
                 return
             end
-            PlutoXUILibrary:Notify("复制 Discord", "已复制链接", 5, false)
+            UILibrary:Notify({ Title = "复制 Discord", Text = "已复制链接", Duration = 5 })
         end)
     end,
-    Size = UDim2.new(1, -20, 0, 30),
-    Position = UDim2.new(0, 10, 0, 300)
+    Size = UDim2.new(1, -10, 0, 30),
+    Position = UDim2.new(0, 5, 0, 5)
 })
 
 -- 定时发送
@@ -373,41 +400,41 @@ spawn(function()
 
                 if config.sendCash or config.sendLeaderboard then
                     local embed = {
-                        title = "Pluto-X Notifier",
+                        title = "Notifier 更新",
                         color = MAIN_COLOR_DECIMAL,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                         footer = { text = "用户: " .. username .. " | 作者: tongblx" },
                         fields = {
-                            { name = "**游戏**", value = gameName, inline = true },
+                            { name = "游戏", value = gameName, inline = true },
                         }
                     }
                     if config.sendCash and cashValue then
                         table.insert(embed.fields, {
-                            name = "**金钱**",
+                            name = "金钱",
                             value = "Cash: " .. cashValue,
                             inline = true
                         })
                         table.insert(embed.fields, {
-                            name = "**已赚取**",
+                            name = "已赚取",
                             value = "Earned: " .. (cashValue - initialCash),
                             inline = true
                         })
                     end
                     if config.sendLeaderboard then
                         table.insert(embed.fields, {
-                            name = "**排行榜状态**",
+                            name = "排行榜状态",
                             value = playerRank and "已上榜，排名: " .. playerRank or "未上榜",
                             inline = true
                         })
-                        PlutoXUILibrary:Notify("排行榜", playerRank and "已上榜，排名: " .. playerRank or "未上榜", 5, false)
+                        UILibrary:Notify({ Title = "排行榜", Text = playerRank and "已上榜，排名: " .. playerRank or "未上榜", Duration = 5 })
                     end
                     table.insert(embed.fields, {
-                        name = "**下次发送**",
+                        name = "下次发送",
                         value = getNextSendTime(),
                         inline = true
                     })
                     table.insert(embed.fields, {
-                        name = "**Discord**",
+                        name = "Discord",
                         value = "[加入服务器](https://discord.gg/8MW6eWU8uf)",
                         inline = true
                     })
@@ -419,7 +446,7 @@ spawn(function()
                 end
 
                 if config.autoKick and playerRank then
-                    PlutoXUILibrary:Notify("自动踢出", "因上榜触发 game:Shutdown()", 5, false)
+                    UILibrary:Notify({ Title = "自动踢出", Text = "因上榜触发 game:Shutdown()", Duration = 5 })
                     game:Shutdown()
                 end
 
@@ -428,4 +455,32 @@ spawn(function()
         end
         wait(1)
     end
+end)
+
+-- 组件加载动画
+local function animateComponents(frame)
+    local delay = 0
+    for _, child in ipairs(frame:GetChildren()) do
+        if child:IsA("Frame") or child:IsA("TextLabel") or child:IsA("TextBox") or child:IsA("TextButton") then
+            local originalPos = child.Position
+            child.Position = UDim2.new(originalPos.X.Scale, originalPos.X.Offset, originalPos.Y.Scale, originalPos.Y.Offset + 10)
+            child.BackgroundTransparency = child.BackgroundTransparency or 1
+            if child:IsA("TextLabel") or child:IsA("TextBox") or child:IsA("TextButton") then
+                child.TextTransparency = child.TextTransparency or 1
+            end
+            TweenService:Create(child, TWEEN_INFO, {
+                Position = originalPos,
+                BackgroundTransparency = child.BackgroundTransparency - 0.2,
+                TextTransparency = child:IsA("TextLabel") or child:IsA("TextBox") or child:IsA("TextButton") and 0 or nil
+            }):Play()
+            wait(0.05)
+            delay = delay + 0.05
+        end
+    end
+end
+
+spawn(function()
+    animateComponents(generalContent)
+    animateComponents(settingsContent)
+    animateComponents(aboutContent)
 end)
