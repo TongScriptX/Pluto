@@ -40,7 +40,7 @@ local config = {
 }
 
 -- 颜色定义
-local MAIN_COLOR_DECIMAL = 2631705 -- #282659
+local MAIN_COLOR_DECIMAL = 4873786 -- #4A4EAA
 
 -- 获取游戏信息
 local gameName = "未知游戏"
@@ -61,7 +61,7 @@ local function getPlayerCash()
             return cash.Value
         end
     end
-    UILibrary:Notify({ Title = "错误", Text = "未找到 leaderstats 或 Cash", Duration = 5, IsWarning = true })
+    UILibrary:Notify({ Title = "错误", Text = "未找到 leaderstats 或 Cash", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
     return nil
 end
 local success, cashValue = pcall(getPlayerCash)
@@ -79,7 +79,7 @@ end)
 local function saveConfig()
     pcall(function()
         writefile(configFile, HttpService:JSONEncode(config))
-        UILibrary:Notify({ Title = "配置保存", Text = "配置已保存到 " .. configFile, Duration = 5 })
+        UILibrary:Notify({ Title = "配置保存", Text = "配置已保存到 " .. configFile, Duration = 5, Icon = "rbxassetid://7072706667" })
     end)
 end
 
@@ -93,9 +93,9 @@ local function loadConfig()
             for k, v in pairs(result) do
                 config[k] = v
             end
-            UILibrary:Notify({ Title = "配置加载", Text = "已加载配置", Duration = 5 })
+            UILibrary:Notify({ Title = "配置加载", Text = "已加载配置", Duration = 5, Icon = "rbxassetid://7072706667" })
         else
-            UILibrary:Notify({ Title = "配置错误", Text = "无法解析配置文件", Duration = 5, IsWarning = true })
+            UILibrary:Notify({ Title = "配置错误", Text = "无法解析配置文件", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
             saveConfig()
         end
     else
@@ -111,7 +111,7 @@ local function checkPlayerRank()
         return game:GetService("Workspace"):WaitForChild("Game"):WaitForChild("Leaderboards"):WaitForChild("weekly_money"):WaitForChild("Screen"):WaitForChild("Leaderboard"):WaitForChild("Contents")
     end)
     if not success or not contentsPath then
-        UILibrary:Notify({ Title = "排行榜错误", Text = "无法找到排行榜路径", Duration = 5, IsWarning = true })
+        UILibrary:Notify({ Title = "排行榜错误", Text = "无法找到排行榜路径", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         return nil
     end
 
@@ -143,7 +143,7 @@ end
 -- 发送 Webhook
 local function sendWebhook(payload)
     if config.webhookUrl == "" then
-        UILibrary:Notify({ Title = "Webhook 错误", Text = "Webhook URL 未设置", Duration = 5, IsWarning = true })
+        UILibrary:Notify({ Title = "Webhook 错误", Text = "Webhook URL 未设置", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         return false
     end
     local payloadJson = HttpService:JSONEncode(payload)
@@ -157,15 +157,15 @@ local function sendWebhook(payload)
     end)
     if success then
         if res.StatusCode == 204 or res.code == 204 then
-            UILibrary:Notify({ Title = "Webhook", Text = "发送成功", Duration = 5 })
+            UILibrary:Notify({ Title = "Webhook", Text = "发送成功", Duration = 5, Icon = "rbxassetid://7072706667" })
             return true
         else
             local errorMsg = "发送失败: " .. (res.StatusCode or res.code or "未知") .. " " .. (res.Body or res.data or "")
-            UILibrary:Notify({ Title = "Webhook 错误", Text = errorMsg, Duration = 5, IsWarning = true })
+            UILibrary:Notify({ Title = "Webhook 错误", Text = errorMsg, Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
             return false
         end
     else
-        UILibrary:Notify({ Title = "Webhook 错误", Text = "请求失败: " .. tostring(res), Duration = 5, IsWarning = true })
+        UILibrary:Notify({ Title = "Webhook 错误", Text = "请求失败: " .. tostring(res), Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         return false
     end
 end
@@ -194,7 +194,9 @@ local mainFrame, screenGui, tabBar, contentFrame = UILibrary:CreateWindow({
     Size = UDim2.new(0, 300, 0, 360),
     Gradient = true,
     EnableBlur = true,
-    AutoLayout = true
+    EnableMask = true,
+    AutoLayout = true,
+    EnableScrolling = true
 })
 UILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
 
@@ -221,12 +223,14 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
 local generalTab, generalContent = UILibrary:CreateTab(tabBar, contentFrame, {
     Text = "常规",
     Active = true,
-    AutoLayout = true
+    AutoLayout = true,
+    EnableScrolling = true,
+    Icon = "rbxassetid://7072706667" -- Home Icon
 })
 
 -- 卡片 1：游戏信息 + 已赚取金钱
 local infoCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(1, -10, 0, 60),
+    Size = UDim2.new(1, -20, 0, 60),
     AutoLayout = true
 })
 local gameLabel = UILibrary:CreateLabel(infoCard, {
@@ -254,24 +258,26 @@ end)
 
 -- 卡片 2：反挂机状态
 local antiAfkCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(1, -10, 0, 30),
+    Size = UDim2.new(1, -20, 0, 30),
     AutoLayout = true
 })
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已开启",
     Size = UDim2.new(1, -10, 0, 20),
-    TextSize = 11
+    TextSize = 12
 })
 
 -- 标签页：设置
 local settingsTab, settingsContent = UILibrary:CreateTab(tabBar, contentFrame, {
     Text = "设置",
-    AutoLayout = true
+    AutoLayout = true,
+    EnableScrolling = true,
+    Icon = "rbxassetid://7072706667" -- Settings Icon
 })
 
 -- 卡片 3：Webhook 输入框
 local webhookCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -10, 0, 40),
+    Size = UDim2.new(1, -20, 0, 40),
     AutoLayout = true
 })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
@@ -283,7 +289,7 @@ local webhookInput = UILibrary:CreateTextBox(webhookCard, {
         if config.webhookUrl ~= "" and config.webhookUrl ~= oldUrl then
             sendWelcomeMessage()
         end
-        UILibrary:Notify({ Title = "配置更新", Text = "Webhook URL 已保存", Duration = 5 })
+        UILibrary:Notify({ Title = "配置更新", Text = "Webhook URL 已保存", Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
@@ -291,7 +297,7 @@ webhookInput.Text = config.webhookUrl
 
 -- 卡片 4：开关组
 local toggleCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -10, 0, 60),
+    Size = UDim2.new(1, -20, 0, 90),
     AutoLayout = true
 })
 local toggleCash = UILibrary:CreateToggle(toggleCard, {
@@ -301,7 +307,7 @@ local toggleCash = UILibrary:CreateToggle(toggleCard, {
     OffText = "关",
     Callback = function(state)
         config.sendCash = state
-        UILibrary:Notify({ Title = "配置更新", Text = "发送金钱: " .. (state and "开" or "关"), Duration = 5 })
+        UILibrary:Notify({ Title = "配置更新", Text = "发送金钱: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
@@ -312,7 +318,7 @@ local toggleLeaderboard = UILibrary:CreateToggle(toggleCard, {
     OffText = "关",
     Callback = function(state)
         config.sendLeaderboard = state
-        UILibrary:Notify({ Title = "配置更新", Text = "发送排行榜: " .. (state and "开" or "关"), Duration = 5 })
+        UILibrary:Notify({ Title = "配置更新", Text = "发送排行榜: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
@@ -323,19 +329,20 @@ local toggleAutoKick = UILibrary:CreateToggle(toggleCard, {
     OffText = "关",
     Callback = function(state)
         config.autoKick = state
-        UILibrary:Notify({ Title = "配置更新", Text = "自动踢出: " .. (state and "开" or "关"), Duration = 5 })
+        UILibrary:Notify({ Title = "配置更新", Text = "自动踢出: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
 
 -- 卡片 5：发送间隔
 local intervalCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(1, -10, 0, 40),
+    Size = UDim2.new(1, -20, 0, 40),
     AutoLayout = true
 })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
     Text = "发送间隔（分钟）：",
-    Size = UDim2.new(0.5, 0, 0, 30)
+    Size = UDim2.new(0.5, 0, 0, 30),
+    TextSize = 12
 })
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "间隔",
@@ -344,12 +351,12 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
         local num = tonumber(intervalInput.Text)
         if num and num > 0 then
             config.intervalMinutes = num
-            UILibrary:Notify({ Title = "配置更新", Text = "发送间隔: " .. num .. " 分钟", Duration = 5 })
+            UILibrary:Notify({ Title = "配置更新", Text = "发送间隔: " .. num .. " 分钟", Duration = 5, Icon = "rbxassetid://7072706667" })
             saveConfig()
             lastSendTime = os.time()
         else
             intervalInput.Text = tostring(config.intervalMinutes)
-            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效数字", Duration = 5, IsWarning = true })
+            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效数字", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         end
     end
 })
@@ -358,13 +365,16 @@ intervalInput.Text = tostring(config.intervalMinutes)
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, contentFrame, {
     Text = "关于",
-    AutoLayout = true
+    AutoLayout = true,
+    EnableScrolling = true,
+    Icon = "rbxassetid://7072706667" -- Info Icon
 })
 
 -- 作者介绍
 local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
     AuthorText = "作者: tongblx",
     SocialText = "Discord: 加入服务器",
+    SocialIcon = "rbxassetid://7072706667",
     SocialCallback = function()
         pcall(function()
             local link = "https://discord.gg/8MW6eWU8uf"
@@ -375,13 +385,13 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
             elseif clipboard and clipboard.set then
                 clipboard.set(link)
             else
-                UILibrary:Notify({ Title = "复制 Discord", Text = "剪贴板功能不受支持，请手动复制: " .. link, Duration = 5, IsWarning = true })
+                UILibrary:Notify({ Title = "复制 Discord", Text = "剪贴板功能不受支持，请手动复制: " .. link, Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
                 return
             end
-            UILibrary:Notify({ Title = "复制 Discord", Text = "已复制链接", Duration = 5 })
+            UILibrary:Notify({ Title = "复制 Discord", Text = "已复制链接", Duration = 5, Icon = "rbxassetid://7072706667" })
         end)
     end,
-    Size = UDim2.new(1, -10, 0, 30)
+    Size = UDim2.new(1, -20, 0, 30)
 })
 
 -- 定时发送
@@ -424,7 +434,7 @@ spawn(function()
                             value = playerRank and "已上榜，排名: " .. playerRank or "未上榜",
                             inline = true
                         })
-                        UILibrary:Notify({ Title = "排行榜", Text = playerRank and "已上榜，排名: " .. playerRank or "未上榜", Duration = 5 })
+                        UILibrary:Notify({ Title = "排行榜", Text = playerRank and "已上榜，排名: " .. playerRank or "未上榜", Duration = 5, Icon = "rbxassetid://7072706667" })
                     end
                     table.insert(embed.fields, {
                         name = "下次发送",
@@ -444,7 +454,7 @@ spawn(function()
                 end
 
                 if config.autoKick and playerRank then
-                    UILibrary:Notify({ Title = "自动踢出", Text = "因上榜触发 game:Shutdown()", Duration = 5 })
+                    UILibrary:Notify({ Title = "自动踢出", Text = "因上榜触发 game:Shutdown()", Duration = 5, Icon = "rbxassetid://7072706667" })
                     game:Shutdown()
                 end
 
