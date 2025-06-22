@@ -178,6 +178,76 @@ function UILibrary:CreateButton(parent, options)
     return button
 end
 
+-- 悬浮按钮模块
+function UILibrary:CreateFloatingButton(parent, options)
+    options = options or {}
+    local screenSize = UserInputService:GetPlatform() == Enum.Platform.Windows and Vector2.new(1280, 720) or game:GetService("GuiService"):GetScreenResolution()
+    
+    local button = Instance.new("TextButton")
+    button.Size = options.Size or UDim2.new(0, 44, 0, 44)
+    button.Position = options.Position or UDim2.new(0, screenSize.X - 54, 0, 10)
+    button.BackgroundColor3 = options.BackgroundColor or THEME.Background
+    button.BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency
+    button.Text = options.Text or "☰"
+    button.TextColor3 = options.TextColor or THEME.Text
+    button.TextSize = options.TextSize or 14
+    button.Font = options.Font or THEME.Font
+    button.Parent = parent
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, options.CornerRadius or 22)
+    corner.Parent = button
+
+    -- 添加边框
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = options.StrokeColor or Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = options.StrokeThickness or 1
+    stroke.Transparency = options.StrokeTransparency or 0.8
+    stroke.Parent = button
+
+    -- 默认回调：切换主窗口显隐
+    local mainFrame = options.MainFrame
+    if mainFrame then
+        button.MouseButton1Click:Connect(function()
+            mainFrame.Visible = not mainFrame.Visible
+            button.Text = mainFrame.Visible and (options.CloseText or "✕") or (options.Text or "☰")
+            local targetTransparency = mainFrame.Visible and (options.MainFrameTransparency or THEME.Transparency) or 1
+            local targetSize = mainFrame.Visible and (options.MainFrameSize or UDim2.new(0, 300, 0, 360)) or
+                              UDim2.new(0, mainFrame.Size.X.Offset * 0.95, 0, mainFrame.Size.Y.Offset * 0.95)
+            if options.EnableAnimation ~= false then
+                TweenService:Create(mainFrame, TWEEN_INFO, { BackgroundTransparency = targetTransparency, Size = targetSize }):Play()
+                TweenService:Create(button, TWEEN_INFO, { Rotation = mainFrame.Visible and 45 or 0 }):Play()
+            else
+                mainFrame.BackgroundTransparency = targetTransparency
+                mainFrame.Size = targetSize
+                button.Rotation = mainFrame.Visible and 45 or 0
+            end
+            if options.Callback then
+                options.Callback(mainFrame.Visible)
+            end
+        end)
+    end
+
+    -- 悬停动画
+    if options.EnableHoverAnimation ~= false then
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, TWEEN_INFO, {
+                BackgroundTransparency = (options.BackgroundTransparency or THEME.Transparency) + 0.1,
+                Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset + 2, button.Size.Y.Scale, button.Size.Y.Offset + 2)
+            }):Play()
+        end)
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TWEEN_INFO, { BackgroundTransparency = options.BackgroundTransparency or THEME.Transparency, Size = button.Size }):Play()
+        end)
+    end
+
+    -- 拖拽支持
+    if options.EnableDrag ~= false then
+        self:MakeDraggable(button, { PreventOffScreen = options.PreventOffScreen ~= false })
+    end
+
+    return button
+end
+
 -- 文本标签模块
 function UILibrary:CreateLabel(parent, options)
     options = options or {}
@@ -668,7 +738,7 @@ function UILibrary:CreateTab(tabBar, contentFrame, options)
     return tabButton, content
 end
 
--- 作者介绍模块（可选，保持灵活）
+-- 作者介绍模块
 function UILibrary:CreateAuthorInfo(parent, options)
     options = options or {}
     local authorFrame = Instance.new("Frame")
