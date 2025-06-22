@@ -191,8 +191,8 @@ local function sendWelcomeMessage()
 end
 
 -- 创建 UI
-local mainFrame, screenGui, sidebar, contentFrame = UILibrary:CreateWindow({
-    Size = UDim2.new(0, 600, 0, 300)
+local mainFrame, screenGui, tabBar, contentFrame = UILibrary:CreateWindow({
+    Size = UDim2.new(0, 300, 0, 360)
 })
 UILibrary:MakeDraggable(mainFrame, { PreventOffScreen = true })
 
@@ -207,7 +207,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
 })
 
 -- 标签页：常规
-local generalTab, generalContent = UILibrary:CreateTab(sidebar, contentFrame, {
+local generalTab, generalContent = UILibrary:CreateTab(tabBar, contentFrame, {
     Text = "常规",
     Active = true,
     Icon = "rbxassetid://7072706667"
@@ -215,7 +215,7 @@ local generalTab, generalContent = UILibrary:CreateTab(sidebar, contentFrame, {
 
 -- 卡片 1：游戏信息
 local infoCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(0, 220, 0, 60)
+    Size = UDim2.new(0, 130, 0, 60)
 })
 local gameLabel = UILibrary:CreateLabel(infoCard, {
     Text = "游戏: " .. gameName,
@@ -229,7 +229,7 @@ local earnedCashLabel = UILibrary:CreateLabel(infoCard, {
 
 -- 卡片 2：反挂机状态
 local antiAfkCard = UILibrary:CreateCard(generalContent, {
-    Size = UDim2.new(0, 220, 0, 30)
+    Size = UDim2.new(0, 130, 0, 30)
 })
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已开启",
@@ -237,21 +237,21 @@ local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
 })
 
 -- 标签页：设置
-local settingsTab, settingsContent = UILibrary:CreateTab(sidebar, contentFrame, {
+local settingsTab, settingsContent = UILibrary:CreateTab(tabBar, contentFrame, {
     Text = "设置",
     Icon = "rbxassetid://7072706667"
 })
 
 -- 卡片 3：Webhook 输入框
 local webhookCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 220, 0, 60)
+    Size = UDim2.new(0, 130, 0, 60)
 })
 local webhookLabel = UILibrary:CreateLabel(webhookCard, {
     Text = "Webhook URL",
     Size = UDim2.new(1, -10, 0, 20)
 })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
-    PlaceholderText = "输入 Discord Webhook URL",
+    PlaceholderText = "输入 Webhook URL",
     OnFocusLost = function()
         local oldUrl = config.webhookUrl
         config.webhookUrl = webhookInput.Text
@@ -267,7 +267,7 @@ print("Webhook Input Created:", webhookInput.Parent and "Parent exists" or "No p
 
 -- 卡片 4：通知金钱变化
 local cashNotifyCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 220, 0, 40)
+    Size = UDim2.new(0, 130, 0, 40)
 })
 local toggleCash = UILibrary:CreateToggle(cashNotifyCard, {
     Text = "通知金钱变化",
@@ -278,13 +278,14 @@ local toggleCash = UILibrary:CreateToggle(cashNotifyCard, {
         saveConfig()
     end
 })
+print("Cash Toggle Created:", toggleCash.Parent and "Parent exists" or "No parent")
 
 -- 卡片 5：通知排行榜状态
 local leaderboardNotifyCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 220, 0, 40)
+    Size = UDim2.new(0, 130, 0, 40)
 })
 local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
-    Text = "通知排行榜状态",
+    Text = "通知排行榜",
     DefaultState = config.notifyLeaderboard,
     Callback = function(state)
         config.notifyLeaderboard = state
@@ -292,10 +293,11 @@ local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
         saveConfig()
     end
 })
+print("Leaderboard Toggle Created:", toggleLeaderboard.Parent and "Parent exists" or "No parent")
 
 -- 卡片 6：上榜踢出
 local leaderboardKickCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 220, 0, 40)
+    Size = UDim2.new(0, 130, 0, 40)
 })
 local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
     Text = "上榜踢出",
@@ -306,10 +308,11 @@ local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
         saveConfig()
     end
 })
+print("Leaderboard Kick Toggle Created:", toggleLeaderboardKick.Parent and "Parent exists" or "No parent")
 
 -- 卡片 7：通知间隔
 local intervalCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 220, 0, 60)
+    Size = UDim2.new(0, 130, 0, 60)
 })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
     Text = "通知间隔（分钟）",
@@ -334,7 +337,7 @@ print("Interval Input Created:", intervalInput.Parent and "Parent exists" or "No
 
 -- 卡片 8：目标金钱
 local targetCashCard = UILibrary:CreateCard(settingsContent, {
-    Size = UDim2.new(0, 220, 0, 80)
+    Size = UDim2.new(0, 130, 0, 80)
 })
 local targetCashToggle = UILibrary:CreateToggle(targetCashCard, {
     Text = "目标金钱踢出",
@@ -345,6 +348,7 @@ local targetCashToggle = UILibrary:CreateToggle(targetCashCard, {
         saveConfig()
     end
 })
+print("Target Cash Toggle Created:", targetCashToggle.Parent and "Parent exists" or "No parent")
 local targetCashLabel = UILibrary:CreateLabel(targetCashCard, {
     Text = "目标金钱",
     Size = UDim2.new(1, -10, 0, 20),
@@ -369,7 +373,7 @@ targetCashInput.Text = tostring(config.targetCash)
 print("Target Cash Input Created:", targetCashInput.Parent and "Parent exists" or "No parent")
 
 -- 标签页：关于
-local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, contentFrame, {
+local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, contentFrame, {
     Text = "关于",
     Icon = "rbxassetid://7072706667"
 })
