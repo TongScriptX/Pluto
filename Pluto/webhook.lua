@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 -- 获取当前玩家
 local player = Players.LocalPlayer
@@ -166,11 +167,13 @@ local function sendWebhook(payload)
     end
 end
 
--- 创建 UI
+-- 创建现代 UI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "WebhookUI"
 screenGui.Parent = player:WaitForChild("PlayerGui")
+screenGui.ResetOnSpawn = false
 
+-- 悬浮按钮
 local toggleButton = Instance.new("TextButton")
 toggleButton.Size = UDim2.new(0, 50, 0, 50)
 toggleButton.Position = UDim2.new(0, 10, 0, 10)
@@ -178,19 +181,43 @@ toggleButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 toggleButton.Text = "≡"
 toggleButton.TextColor3 = Color3.new(1, 1, 1)
 toggleButton.TextSize = 24
+toggleButton.Font = Enum.Font.SourceSansBold
 toggleButton.Parent = screenGui
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 8)
+corner.Parent = toggleButton
 
+-- 主界面
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 350, 0, 400)
-mainFrame.Position = UDim2.new(0, 60, 0, 10)
+mainFrame.Size = UDim2.new(0, 300, 0, 350)
+mainFrame.Position = UDim2.new(0, 70, 0, 10)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+mainFrame.BackgroundTransparency = 0.2
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
+local frameCorner = Instance.new("UICorner")
+frameCorner.CornerRadius = UDim.new(0, 12)
+frameCorner.Parent = mainFrame
+
+-- 动画
+local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local function toggleMainFrame(visible)
+    if visible then
+        toggleButton.Text = "T"
+        mainFrame.Visible = true
+        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 0.2, Position = UDim2.new(0, 70, 0, 10) }):Play()
+    else
+        toggleButton.Text = "≡"
+        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 1, Position = UDim2.new(0, 70, 0, -10) }):Play()
+        wait(0.3)
+        mainFrame.Visible = false
+    end
+end
 
 local function createToggle(labelText, configKey, yOffset)
     local toggleFrame = Instance.new("Frame")
-    toggleFrame.Size = UDim2.new(1, 0, 0, 30)
-    toggleFrame.Position = UDim2.new(0, 0, 0, yOffset)
+    toggleFrame.Size = UDim2.new(1, -20, 0, 30)
+    toggleFrame.Position = UDim2.new(0, 10, 0, yOffset)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = mainFrame
 
@@ -200,16 +227,22 @@ local function createToggle(labelText, configKey, yOffset)
     label.Text = labelText
     label.TextColor3 = Color3.new(1, 1, 1)
     label.TextSize = 14
+    label.Font = Enum.Font.SourceSans
+    label.TextXAlignment = Enum.TextXAlignment.Left
     label.Parent = toggleFrame
 
     local toggle = Instance.new("TextButton")
-    toggle.Size = UDim2.new(0.2, 0, 0.8, 0)
-    toggle.Position = UDim2.new(0.75, 0, 0.1, 0)
+    toggle.Size = UDim2.new(0, 50, 0, 24)
+    toggle.Position = UDim2.new(0.8, -10, 0, 3)
     toggle.BackgroundColor3 = config[configKey] and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
     toggle.Text = config[configKey] and "开" or "关"
     toggle.TextColor3 = Color3.new(1, 1, 1)
     toggle.TextSize = 14
+    toggle.Font = Enum.Font.SourceSans
     toggle.Parent = toggleFrame
+    local toggleCorner = Instance.new("UICorner")
+    toggleCorner.CornerRadius = UDim.new(0, 6)
+    toggleCorner.Parent = toggle
 
     toggle.MouseButton1Click:Connect(function()
         config[configKey] = not config[configKey]
@@ -221,44 +254,53 @@ local function createToggle(labelText, configKey, yOffset)
 end
 
 local webhookInput = Instance.new("TextBox")
-webhookInput.Size = UDim2.new(0.9, 0, 0, 50)
-webhookInput.Position = UDim2.new(0.05, 0, 0, 10)
+webhookInput.Size = UDim2.new(1, -20, 0, 40)
+webhookInput.Position = UDim2.new(0, 10, 0, 10)
 webhookInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 webhookInput.TextColor3 = Color3.new(1, 1, 1)
 webhookInput.TextSize = 14
+webhookInput.Font = Enum.Font.SourceSans
 webhookInput.PlaceholderText = "输入 Discord Webhook URL"
 webhookInput.Text = config.webhookUrl
-webhookInput.MultiLine = true
 webhookInput.TextWrapped = true
 webhookInput.TextTruncate = Enum.TextTruncate.None
 webhookInput.Parent = mainFrame
+local webhookCorner = Instance.new("UICorner")
+webhookCorner.CornerRadius = UDim.new(0, 6)
+webhookCorner.Parent = webhookInput
 webhookInput.FocusLost:Connect(function()
     config.webhookUrl = webhookInput.Text
     notifyOutput("配置更新", "Webhook URL 已保存", false)
     saveConfig()
 end)
 
-createToggle("发送金钱", "sendCash", 70)
+createToggle("发送金钱", "sendCash", 60)
 createToggle("发送排行榜", "sendLeaderboard", 100)
-createToggle("上榜自动踢出", "autoKick", 130)
+createToggle("上榜自动踢出", "autoKick", 140)
 
 local intervalLabel = Instance.new("TextLabel")
 intervalLabel.Size = UDim2.new(0.5, 0, 0, 30)
-intervalLabel.Position = UDim2.new(0.05, 0, 0, 160)
+intervalLabel.Position = UDim2.new(0, 10, 0, 180)
 intervalLabel.BackgroundTransparency = 1
 intervalLabel.Text = "发送间隔（分钟）："
 intervalLabel.TextColor3 = Color3.new(1, 1, 1)
 intervalLabel.TextSize = 14
+intervalLabel.Font = Enum.Font.SourceSans
+intervalLabel.TextXAlignment = Enum.TextXAlignment.Left
 intervalLabel.Parent = mainFrame
 
 local intervalInput = Instance.new("TextBox")
-intervalInput.Size = UDim2.new(0.4, 0, 0, 30)
-intervalInput.Position = UDim2.new(0.55, 0, 0, 160)
+intervalInput.Size = UDim2.new(0.4, 0, 0, 24)
+intervalInput.Position = UDim2.new(0.55, 0, 0, 183)
 intervalInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 intervalInput.TextColor3 = Color3.new(1, 1, 1)
 intervalInput.TextSize = 14
+intervalInput.Font = Enum.Font.SourceSans
 intervalInput.Text = tostring(config.intervalMinutes)
 intervalInput.Parent = mainFrame
+local intervalCorner = Instance.new("UICorner")
+intervalCorner.CornerRadius = UDim.new(0, 6)
+intervalCorner.Parent = intervalInput
 
 -- 跟踪最后发送时间
 local lastSendTime = os.time()
@@ -269,12 +311,40 @@ intervalInput.FocusLost:Connect(function()
         config.intervalMinutes = num
         notifyOutput("配置更新", "发送间隔已设置为 " .. num .. " 分钟", false)
         saveConfig()
-        -- 重置最后发送时间以立即应用新间隔
         lastSendTime = os.time()
     else
         intervalInput.Text = tostring(config.intervalMinutes)
         notifyOutput("配置错误", "请输入有效数字", true)
     end
+end)
+
+-- 作者信息
+local authorLabel = Instance.new("TextLabel")
+authorLabel.Size = UDim2.new(1, -20, 0, 30)
+authorLabel.Position = UDim2.new(0, 10, 0, 310)
+authorLabel.BackgroundTransparency = 1
+authorLabel.Text = "作者: tongblx"
+authorLabel.TextColor3 = Color3.new(1, 1, 1)
+authorLabel.TextSize = 14
+authorLabel.Font = Enum.Font.SourceSans
+authorLabel.TextXAlignment = Enum.TextXAlignment.Left
+authorLabel.Parent = mainFrame
+
+local discordLabel = Instance.new("TextButton")
+discordLabel.Size = UDim2.new(1, -20, 0, 30)
+discordLabel.Position = UDim2.new(0, 10, 0, 340)
+discordLabel.BackgroundTransparency = 1
+discordLabel.Text = "Discord: https://discord.gg/8MW6eWU8uf"
+discordLabel.TextColor3 = Color3.fromRGB(114, 137, 218)
+discordLabel.TextSize = 14
+discordLabel.Font = Enum.Font.SourceSans
+discordLabel.TextXAlignment = Enum.TextXAlignment.Left
+discordLabel.Parent = mainFrame
+discordLabel.MouseButton1Click:Connect(function()
+    pcall(function()
+        setclipboard("https://discord.gg/8MW6eWU8uf")
+        notifyOutput("复制 Discord", "已复制 Discord 链接到剪贴板", false)
+    end)
 end)
 
 -- 拖动悬浮按钮
@@ -309,7 +379,7 @@ end)
 
 -- 切换 UI 显示
 toggleButton.MouseButton1Click:Connect(function()
-    mainFrame.Visible = not mainFrame.Visible
+    toggleMainFrame(not mainFrame.Visible)
 end)
 
 -- 定时发送和检测
@@ -329,7 +399,7 @@ spawn(function()
                         title = "玩家 " .. username .. " 的数据",
                         color = 16711680,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                        footer = { text = "用户: " .. username },
+                        footer = { text = "用户: " .. username .. " | 作者: tongblx" },
                         fields = {}
                     }
                     if config.sendCash and cashValue then
@@ -352,6 +422,11 @@ spawn(function()
                         value = getNextSendTime(),
                         inline = true
                     })
+                    table.insert(embed.fields, {
+                        name = "Discord",
+                        value = "[加入服务器](https://discord.gg/8MW6eWU8uf)",
+                        inline = true
+                    })
                     table.insert(payload.embeds, embed)
                 end
 
@@ -367,6 +442,6 @@ spawn(function()
                 lastSendTime = currentTime
             end
         end
-        wait(1) -- 每秒检查一次，降低 CPU 使用
+        wait(1)
     end
 end)
