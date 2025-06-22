@@ -397,7 +397,7 @@ spawn(function()
                 if config.sendCash or config.sendLeaderboard then
                     local embed = {
                         title = "玩家 " .. username .. " 的数据",
-                        color = 16711680,
+                        color = 2631705,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                         footer = { text = "用户: " .. username .. " | 作者: tongblx" },
                         fields = {}
