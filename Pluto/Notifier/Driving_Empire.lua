@@ -307,7 +307,17 @@ local authorInfo = PlutoXUILibrary:CreateAuthorInfo(mainFrame, {
     SocialText = "Discord: 加入服务器",
     SocialCallback = function()
         pcall(function()
-            setclipboard("https://discord.gg/8MW6eWU8uf")
+            local link = "https://discord.gg/8MW6eWU8uf"
+            if setclipboard then
+                setclipboard(link)
+            elseif syn and syn.set_clipboard then
+                syn.set_clipboard(link)
+            elseif clipboard and clipboard.set then
+                clipboard.set(link)
+            else
+                PlutoXUILibrary:Notify("复制 Discord", "剪贴板功能不受支持，请手动复制: " .. link, 5, true)
+                return
+            end
             PlutoXUILibrary:Notify("复制 Discord", "已复制链接", 5, false)
         end)
     end,
