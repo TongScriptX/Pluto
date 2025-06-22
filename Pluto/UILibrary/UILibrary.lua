@@ -36,15 +36,16 @@ local screenGui = nil
 
 -- 初始化通知容器（右下角）
 local function initNotificationContainer()
-    if not screenGui then
+    if not screenGui or not screenGui.Parent then
         screenGui = Instance.new("ScreenGui")
         screenGui.Name = "UILibrary"
-        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 5)
         screenGui.ResetOnSpawn = false
-        print("ScreenGui Created:", screenGui.Parent and "Parent exists" or "No parent")
+        screenGui.Enabled = true
+        print("ScreenGui Created: Parent =", screenGui.Parent and screenGui.Parent.Name or "No parent")
     end
 
-    if not notificationContainer then
+    if not notificationContainer or not notificationContainer.Parent then
         local screenSize = UserInputService:GetPlatform() == Enum.Platform.Windows and Vector2.new(1280, 720) or game:GetService("GuiService"):GetScreenResolution()
         notificationContainer = Instance.new("Frame")
         notificationContainer.Size = UDim2.new(0, 300, 0, 360)
@@ -60,7 +61,7 @@ local function initNotificationContainer()
         layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
         layout.Parent = notificationContainer
 
-        print("Notification Container Created:", notificationContainer.Parent and "Parent exists" or "No parent")
+        print("Notification Container Created: Parent =", notificationContainer.Parent and notificationContainer.Parent.Name or "No parent")
     end
 end
 
@@ -68,6 +69,11 @@ end
 function UILibrary:Notify(options)
     options = options or {}
     initNotificationContainer() -- 确保容器存在
+
+    if not screenGui.Parent or not notificationContainer.Parent then
+        warn("Notification Failed: ScreenGui or notificationContainer has no parent")
+        return nil
+    end
 
     local notification = Instance.new("Frame")
     notification.Size = options.Size or UDim2.new(0, 280, 0, 60)
@@ -120,30 +126,44 @@ function UILibrary:Notify(options)
     })
 
     -- 滑入动画
-    if options.EnableAnimation ~= false then
+    if options.EnableAnimation ~= false and notification.Parent then
         notification.Position = UDim2.new(0, 10, 0, 130)
-        local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 70) })
-        tween:Play()
-        print("Notification Animation Started: Position =", notification.Position)
+        wait(0.1) -- 确保 Parent 设置生效
+        local success, err = pcall(function()
+            local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 70) })
+            tween:Play()
+            print("Notification Animation Started: Position =", notification.Position, "Parent =", notification.Parent and notification.Parent.Name or "No parent")
+        end)
+        if not success then
+            warn("Notification Animation Failed: " .. tostring(err))
+            notification.Position = UDim2.new(0, 10, 0, 70) -- 直接设置位置
+        end
     end
 
     -- 自动消失
     spawn(function()
         wait(options.Duration or 5)
-        if options.EnableAnimation ~= false then
-            local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 130) })
-            tween:Play()
-            tween.Completed:Wait()
-            print("Notification Animation Completed: Destroying")
+        if notification.Parent then
+            if options.EnableAnimation ~= false then
+                local success, err = pcall(function()
+                    local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 10, 0, 130) })
+                    tween:Play()
+                    tween.Completed:Wait()
+                    print("Notification Animation Completed: Destroying")
+                end)
+                if not success then
+                    warn("Notification Animation (Exit) Failed: " .. tostring(err))
+                end
+            end
+            notification:Destroy()
+            print("Notification Destroyed")
         end
-        notification:Destroy()
-        print("Notification Destroyed")
     end)
 
     if options.IsWarning then
         warn("Notification: " .. options.Text)
     else
-        print("Notification Created: Title =", options.Title, "Text =", options.Text, "Parent =", notification.Parent and "Exists" or "No parent")
+        print("Notification Created: Title =", options.Title, "Text =", options.Text, "Parent =", notification.Parent and notification.Parent.Name or "No parent")
     end
     return notification
 end
@@ -488,8 +508,8 @@ function UILibrary:MakeDraggable(gui, options)
             if options.EnableAnimation ~= false then
                 TweenService:Create(gui, TWEEN_INFO, { Size = UDim2.new(gui.Size.X.Scale, gui.Size.X.Offset * 1.05, gui.Size.Y.Scale, gui.Size.Y.Offset * 1.05) }):Play()
             end
-        end
-    end)
+        end)
+    end
 
     gui.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
@@ -516,7 +536,7 @@ function UILibrary:MakeDraggable(gui, options)
             if options.EnableAnimation ~= false then
                 TweenService:Create(gui, TWEEN_INFO, { Size = gui.Size }):Play()
             end
-        end)
+        end
     end)
 end
 
@@ -530,7 +550,7 @@ function UILibrary:CreateWindow(options)
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Size = options.Size or UDim2.new(0, 600, 0, 360)
-    mainFrame.Position |options.Position or UDim2.new(0.5, -300, 0.5, -180)
+    mainFrame.Position = options.Position or UDim2.new(0.5, -300, 0.5, -180)
     mainFrame.BackgroundColor3 = options.BackgroundColor or THEME.Background
     mainFrame.BackgroundTransparency = THEME.Transparency
     mainFrame.ClipsDescendants = true
@@ -738,7 +758,7 @@ function UILibrary:SetTheme(newTheme)
         Background = newTheme.Background or DEFAULT_THEME.Background,
         SecondaryBackground = newTheme.SecondaryBackground or DEFAULT_THEME.SecondaryBackground,
         Accent = newTheme.Accent or DEFAULT_THEME.Accent,
-        Text = newTheme.Text or DEFAULT_TEXT.Text,
+        Text = newTheme.Text or DEFAULT_THEME.Text,
         Success = newTheme.Success or DEFAULT_THEME.Success,
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or DEFAULT_THEME.Font,
