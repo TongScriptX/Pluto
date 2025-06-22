@@ -4,6 +4,7 @@ local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
 local MarketplaceService = game:GetService("MarketplaceService")
+local VirtualUser = game:GetService("VirtualUser")
 
 -- 获取当前玩家
 local player = Players.LocalPlayer
@@ -44,6 +45,30 @@ end)
 if success and info then
     gameName = info.Name
 end
+
+-- 获取初始 Cash
+local initialCash = 0
+local function getPlayerCash()
+    local leaderstats = player:WaitForChild("leaderstats", 5)
+    if leaderstats then
+        local cash = leaderstats:FindFirstChild("Cash")
+        if cash then
+            return cash.Value
+        end
+    end
+    notifyOutput("获取 Cash", "未找到 leaderstats 或 Cash", true)
+    return nil
+end
+local success, cashValue = pcall(getPlayerCash)
+if success and cashValue then
+    initialCash = cashValue
+end
+
+-- 反挂机功能
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
 
 -- 自定义输出函数
 local function notifyOutput(title, text, isWarn)
@@ -101,19 +126,6 @@ local success, errorMsg = pcall(loadConfig)
 if not success then
     notifyOutput("配置加载错误", "加载配置失败: " .. tostring(errorMsg), true)
     saveConfig()
-end
-
--- 获取玩家 Cash
-local function getPlayerCash()
-    local leaderstats = player:WaitForChild("leaderstats", 5)
-    if leaderstats then
-        local cash = leaderstats:FindFirstChild("Cash")
-        if cash then
-            return cash.Value
-        end
-    end
-    notifyOutput("获取 Cash", "未找到 leaderstats 或 Cash", true)
-    return nil
 end
 
 -- 检查玩家是否上榜
@@ -186,8 +198,8 @@ end
 local function sendWelcomeMessage()
     local payload = {
         embeds = {{
-            title = "Pluto Notifier",
-            description = "**欢迎使用 Pluto Notifier**\n**游戏**: " .. gameName .. "\n**用户**: " .. username,
+            title = "Pluto-X Notifier",
+            description = "**欢迎使用 Pluto-X Notifier**\n**游戏**: " .. gameName .. "\n**用户**: " .. username,
             color = MAIN_COLOR_DECIMAL,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "作者: tongblx" }
@@ -218,7 +230,7 @@ corner.Parent = toggleButton
 
 -- 主界面
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 400)
+mainFrame.Size = UDim2.new(0, 300, 0, 440)
 mainFrame.Position = UDim2.new(0, 70, 0, 10)
 mainFrame.BackgroundColor3 = BACKGROUND_COLOR
 mainFrame.BackgroundTransparency = 0.5
@@ -233,7 +245,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -20, 0, 30)
 titleLabel.Position = UDim2.new(0, 10, 0, 10)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "[Pluto Sync]"
+titleLabel.Text = "[Pluto-X Notifier]"
 titleLabel.TextColor3 = Color3.new(1, 1, 1)
 titleLabel.TextSize = 20
 titleLabel.Font = Enum.Font.SourceSansBold
@@ -252,6 +264,44 @@ gameLabel.Font = Enum.Font.SourceSans
 gameLabel.TextXAlignment = Enum.TextXAlignment.Left
 gameLabel.TextWrapped = true
 gameLabel.Parent = mainFrame
+
+-- 已赚取金钱
+local earnedCashLabel = Instance.new("TextLabel")
+earnedCashLabel.Size = UDim2.new(1, -20, 0, 20)
+earnedCashLabel.Position = UDim2.new(0, 10, 0, 60)
+earnedCashLabel.BackgroundTransparency = 1
+earnedCashLabel.Text = "已赚取金钱: 0"
+earnedCashLabel.TextColor3 = Color3.new(1, 1, 1)
+earnedCashLabel.TextSize = 14
+earnedCashLabel.Font = Enum.Font.SourceSans
+earnedCashLabel.TextXAlignment = Enum.TextXAlignment.Left
+earnedCashLabel.Parent = mainFrame
+
+-- 实时更新已赚取金钱
+spawn(function()
+    local leaderstats = player:WaitForChild("leaderstats", 5)
+    if leaderstats then
+        local cash = leaderstats:FindFirstChild("Cash")
+        if cash then
+            cash.Changed:Connect(function(newValue)
+                earnedCashLabel.Text = "已赚取金钱: " .. (newValue - initialCash)
+            end)
+            earnedCashLabel.Text = "已赚取金钱: " .. (cash.Value - initialCash)
+        end
+    end
+end)
+
+-- 反挂机状态
+local antiAfkLabel = Instance.new("TextLabel")
+antiAfkLabel.Size = UDim2.new(1, -20, 0, 20)
+antiAfkLabel.Position = UDim2.new(0, 10, 0, 410)
+antiAfkLabel.BackgroundTransparency = 1
+antiAfkLabel.Text = "反挂机已开启"
+antiAfkLabel.TextColor3 = Color3.new(1, 1, 1)
+antiAfkLabel.TextSize = 14
+antiAfkLabel.Font = Enum.Font.SourceSans
+antiAfkLabel.TextXAlignment = Enum.TextXAlignment.Left
+antiAfkLabel.Parent = mainFrame
 
 -- 动画
 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
@@ -313,7 +363,7 @@ end
 
 local webhookInput = Instance.new("TextBox")
 webhookInput.Size = UDim2.new(1, -20, 0, 40)
-webhookInput.Position = UDim2.new(0, 10, 0, 70)
+webhookInput.Position = UDim2.new(0, 10, 0, 90)
 webhookInput.BackgroundColor3 = BACKGROUND_COLOR
 webhookInput.BackgroundTransparency = 0.5
 webhookInput.TextColor3 = Color3.new(1, 1, 1)
@@ -333,13 +383,13 @@ webhookInput.FocusLost:Connect(function()
     saveConfig()
 end)
 
-createToggle("发送金钱", "sendCash", 120)
-createToggle("发送排行榜", "sendLeaderboard", 160)
-createToggle("上榜自动踢出", "autoKick", 200)
+createToggle("发送金钱", "sendCash", 140)
+createToggle("发送排行榜", "sendLeaderboard", 180)
+createToggle("上榜自动踢出", "autoKick", 220)
 
 local intervalLabel = Instance.new("TextLabel")
 intervalLabel.Size = UDim2.new(0.5, 0, 0, 30)
-intervalLabel.Position = UDim2.new(0, 10, 0, 240)
+intervalLabel.Position = UDim2.new(0, 10, 0, 260)
 intervalLabel.BackgroundTransparency = 1
 intervalLabel.Text = "发送间隔（分钟）："
 intervalLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -350,7 +400,7 @@ intervalLabel.Parent = mainFrame
 
 local intervalInput = Instance.new("TextBox")
 intervalInput.Size = UDim2.new(0.4, 0, 0, 24)
-intervalInput.Position = UDim2.new(0.55, 0, 0, 243)
+intervalInput.Position = UDim2.new(0.55, 0, 0, 263)
 intervalInput.BackgroundColor3 = BACKGROUND_COLOR
 intervalInput.BackgroundTransparency = 0.5
 intervalInput.TextColor3 = Color3.new(1, 1, 1)
@@ -381,7 +431,7 @@ end)
 -- 作者信息（高级样式）
 local authorFrame = Instance.new("Frame")
 authorFrame.Size = UDim2.new(1, -20, 0, 60)
-authorFrame.Position = UDim2.new(0, 10, 0, 330)
+authorFrame.Position = UDim2.new(0, 10, 0, 350)
 authorFrame.BackgroundColor3 = Color3.fromRGB(114, 137, 218) -- #7289DA，Discord 蓝色
 authorFrame.BackgroundTransparency = 0.7
 authorFrame.Parent = mainFrame
@@ -477,7 +527,7 @@ spawn(function()
                 -- 合并 Cash 和排行榜嵌入
                 if config.sendCash or config.sendLeaderboard then
                     local embed = {
-                        title = "Pluto Notifier",
+                        title = "Pluto-X Notifier",
                         color = MAIN_COLOR_DECIMAL,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                         footer = { text = "用户: " .. username .. " | 作者: tongblx" },
@@ -489,6 +539,11 @@ spawn(function()
                         table.insert(embed.fields, {
                             name = "**金钱**",
                             value = "Cash: " .. cashValue,
+                            inline = true
+                        })
+                        table.insert(embed.fields, {
+                            name = "**已赚取**",
+                            value = "Earned: " .. (cashValue - initialCash),
                             inline = true
                         })
                     end
