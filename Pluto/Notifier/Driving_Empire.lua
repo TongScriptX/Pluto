@@ -9,43 +9,43 @@ local UserInputService = game:GetService("UserInputService")
 local uiLibUrl = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/UILibrary.lua"
 local success, UILibrary = pcall(function()
     return loadstring(game:HttpGet(uiLibUrl))()
-end)
+end
 if not success then
-    error("无法加载 UI 库: " .. tostring(UILibrary))
+    error("Failed to load UI library: " .. tostring(UILibrary))
 end
 
 -- 获取当前玩家
 local player = Players.LocalPlayer
 if not player then
-    error("无法获取当前玩家")
+    error("Unable to get current player")
 end
 local userId = player.UserId
 local username = player.Name
 
--- HTTP 请求兼容
+-- HTTP 请求配置
 local http_request = syn and syn.request or http and http.request or http_request
 if not http_request then
-    error("当前执行器不支持 HTTP 请求")
+    error("HTTP requests not supported by this executor")
 end
 
 -- 配置文件
 local configFile = "pluto_config.json"
 local config = {
     webhookUrl = "",
-    notifyCash = false,
+    notifyCash = true,
     notifyLeaderboard = false,
     leaderboardKick = false,
     notificationInterval = 5,
     welcomeSent = false,
-    targetCash = 0,
+    targetCurrency = 0,
     enableTargetKick = false
 }
 
 -- 颜色定义
-local MAIN_COLOR_DECIMAL = 4149685 -- #3F51B5
+local PRIMARY_COLOR = 4149685 -- #3F51B5
 
 -- 获取游戏信息
-local gameName = "未知游戏"
+local gameName = "Unknown Game"
 local success, info = pcall(function()
     return MarketplaceService:GetProductInfo(game.PlaceId)
 end)
@@ -53,22 +53,22 @@ if success and info then
     gameName = info.Name
 end
 
--- 获取初始 Cash
-local initialCash = 0
-local function fetchPlayerCash()
+-- 获取初始货币
+local initialCurrency = 0
+local function fetchCurrentCurrency()
     local leaderstats = player:WaitForChild("leaderstats", 5)
     if leaderstats then
-        local cash = leaderstats:FindFirstChild("Cash")
-        if cash then
-            return cash.Value
+        local currency = leaderstats:FindFirstChild("Cash")
+        if currency then
+            return currency.Value
         end
     end
-    UILibrary:Notify({ Title = "错误", Text = "未找到 leaderstats 或 Cash", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+    UILibrary:Notify({ Title = "Error", Text = "Unable to find leaderstats or Cash", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
     return nil
 end
-local success, cashValue = pcall(fetchPlayerCash)
-if success and cashValue then
-    initialCash = cashValue
+local success, currencyValue = pcall(fetchCurrentCurrency)
+if success and currencyValue then
+    initialCurrency = currencyValue
 end
 
 -- 反挂机
@@ -81,7 +81,7 @@ end)
 local function saveConfig()
     pcall(function()
         writefile(configFile, HttpService:JSONEncode(config))
-        UILibrary:Notify({ Title = "配置保存", Text = "配置已保存到 " .. configFile, Duration = 5, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Config Saved", Text = "Configuration saved to " .. configFile, Duration = 5, Icon = "rbxassetid://7072706667" })
     end)
 end
 
@@ -95,9 +95,9 @@ local function loadConfig()
             for k, v in pairs(result) do
                 config[k] = v
             end
-            UILibrary:Notify({ Title = "配置加载", Text = "已加载配置", Duration = 5, Icon = "rbxassetid://7072706667" })
+            UILibrary:Notify({ Title = "Config Loaded", Text = "Configuration loaded successfully", Duration = 5, Icon = "rbxassetid://7072706667" })
         else
-            UILibrary:Notify({ Title = "配置错误", Text = "无法解析配置文件", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            UILibrary:Notify({ Title = "Config Error", Text = "Unable to parse config file", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
             saveConfig()
         end
     else
@@ -113,7 +113,7 @@ local function fetchPlayerRank()
         return game:GetService("Workspace"):WaitForChild("Game"):WaitForChild("Leaderboards"):WaitForChild("weekly_money"):WaitForChild("Screen"):WaitForChild("Leaderboard"):WaitForChild("Contents")
     end)
     if not success or not contentsPath then
-        UILibrary:Notify({ Title = "排行榜错误", Text = "无法找到排行榜路径", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Leaderboard Error", Text = "Unable to find leaderboard path", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         return nil
     end
 
@@ -142,10 +142,10 @@ local function getNextNotificationTime()
     return os.date("%Y-%m-%d %H:%M:%S", currentTime + intervalSeconds)
 end
 
--- 发送 Webhook
+-- 发送Webhook
 local function dispatchWebhook(payload)
     if config.webhookUrl == "" then
-        UILibrary:Notify({ Title = "Webhook 错误", Text = "Webhook URL 未设置", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Webhook Error", Text = "Webhook URL not set", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         return false
     end
     local payloadJson = HttpService:JSONEncode(payload)
@@ -159,15 +159,15 @@ local function dispatchWebhook(payload)
     end)
     if success then
         if res.StatusCode == 204 or res.code == 204 then
-            UILibrary:Notify({ Title = "Webhook", Text = "发送成功", Duration = 5, Icon = "rbxassetid://7072706667" })
+            UILibrary:Notify({ Title = "Webhook", Text = "Webhook sent successfully", Duration = 5, Icon = "rbxassetid://7072706667" })
             return true
         else
-            local errorMsg = "发送失败: " .. (res.StatusCode or res.code or "未知") .. " " .. (res.Body or res.data or "")
-            UILibrary:Notify({ Title = "Webhook 错误", Text = errorMsg, Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            local errorMsg = "Webhook failed: " .. (res.StatusCode or res.code or "unknown") .. " " .. (res.Body or res.data or "")
+            UILibrary:Notify({ Title = "Webhook Error", Text = errorMsg, Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
             return false
         end
     else
-        UILibrary:Notify({ Title = "Webhook 错误", Text = "请求失败: " .. tostring(res), Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Webhook Error", Text = "Request failed: " .. tostring(res), Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         return false
     end
 end
@@ -177,20 +177,21 @@ local function sendWelcomeMessage()
     if config.welcomeSent then return end
     local payload = {
         embeds = {{
-            title = "欢迎使用 Notifier",
-            description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
-            color = MAIN_COLOR_DECIMAL,
+            title = "Welcome to Notifier",
+            description = "**Game**: " .. gameName .. "\n**User**: " .. username,
+            color = PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            footer = { text = "作者: tongblx" }
+            footer = { text = "By: tongBlx" }
         }}
-    }
+        
+    )
     if dispatchWebhook(payload) then
         config.welcomeSent = true
         saveConfig()
     end
 end
 
--- 创建 UI
+-- 创建主窗口
 local mainFrame, screenGui, tabBar, leftFrame, rightFrame = UILibrary:CreateWindow({
     Size = UDim2.new(0, 600, 0, 360)
 })
@@ -211,11 +212,11 @@ local generalCard = UILibrary:CreateCard(leftFrame, {
     Size = UDim2.new(0, 260, 0, 60)
 })
 local gameLabel = UILibrary:CreateLabel(generalCard, {
-    Text = "游戏: " .. gameName,
+    Text = "Game: " .. gameName,
     Size = UDim2.new(1, -10, 0, 20)
 })
-local earnedCashLabel = UILibrary:CreateLabel(generalCard, {
-    Text = "已赚取金钱: 0",
+local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
+    Text = "Earned Currency: 0",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 25)
 })
@@ -224,18 +225,18 @@ local antiAfkCard = UILibrary:CreateCard(leftFrame, {
     Size = UDim2.new(0, 260, 0, 30)
 })
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
-    Text = "反挂机已开启",
+    Text = "Anti-AFK Enabled",
     Size = UDim2.new(1, -10, 0, 20)
 })
 
 -- 右侧：通知标签页
 local notifyTab, notifyContent = UILibrary:CreateTab(tabBar, rightFrame, {
-    Text = "通知",
+    Text = "Notifications",
     Active = true,
     Icon = "rbxassetid://7072706667"
 })
 
--- 卡片 1：Webhook 输入框
+-- 卡片：Webhook 配置
 local webhookCard = UILibrary:CreateCard(notifyContent, {
     Size = UDim2.new(0, 260, 0, 60)
 })
@@ -244,151 +245,151 @@ local webhookLabel = UILibrary:CreateLabel(webhookCard, {
     Size = UDim2.new(1, -10, 0, 20)
 })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
-    PlaceholderText = "输入 Webhook URL",
+    PlaceholderText = "Enter Webhook URL",
     OnFocusLost = function()
         local oldUrl = config.webhookUrl
         config.webhookUrl = webhookInput.Text
         if config.webhookUrl ~= "" and config.webhookUrl ~= oldUrl then
             sendWelcomeMessage()
         end
-        UILibrary:Notify({ Title = "配置更新", Text = "Webhook URL 已保存", Duration = 5, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Webhook Updated", Text = "Webhook URL saved", Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
 webhookInput.Text = config.webhookUrl
-print("Webhook Input Created:", webhookInput.Parent and "Parent exists" or "No parent")
+print("Webhook Input Created:", webhookInput.Parent and "Configured" or "No parent")
 
--- 卡片 2：通知金钱变化
-local cashNotifyCard = UILibrary:CreateCard(notifyContent, {
+-- 卡片：通知货币变化
+local currencyNotifyCard = UILibrary:CreateCard(notifyContent, {
     Size = UDim2.new(0, 260, 0, 40)
 })
-local toggleCash = UILibrary:CreateToggle(cashNotifyCard, {
-    Text = "通知金钱变化",
+local toggleCurrency = UILibrary:CreateToggle(currencyNotifyCard, {
+    Text = "Notify Currency Changes",
     DefaultState = config.notifyCash,
     Callback = function(state)
         config.notifyCash = state
-        UILibrary:Notify({ Title = "配置更新", Text = "通知金钱变化: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Config Updated", Text = "Notify currency changes: " .. (state and "On" or "Off"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
-print("Cash Toggle Created:", toggleCash.Parent and "Parent exists" or "No parent")
+print("Currency Toggle Created:", toggleCurrency.Parent and "Parent exists" or "No parent")
 
--- 卡片 3：通知排行榜状态
+-- 卡片：通知排行榜状态
 local leaderboardNotifyCard = UILibrary:CreateCard(notifyContent, {
     Size = UDim2.new(0, 260, 0, 40)
 })
 local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
-    Text = "通知排行榜",
+    Text = "Notify Leaderboard",
     DefaultState = config.notifyLeaderboard,
     Callback = function(state)
         config.notifyLeaderboard = state
-        UILibrary:Notify({ Title = "配置更新", Text = "通知排行榜状态: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Config Updated", Text = "Notify leaderboard status: " .. (state and "On" or "Off"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
 print("Leaderboard Toggle Created:", toggleLeaderboard.Parent and "Parent exists" or "No parent")
 
--- 卡片 4：上榜踢出
+-- 卡片：上榜踢出
 local leaderboardKickCard = UILibrary:CreateCard(notifyContent, {
     Size = UDim2.new(0, 260, 0, 40)
 })
 local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
-    Text = "上榜踢出",
+    Text = "Leaderboard Kick",
     DefaultState = config.leaderboardKick,
     Callback = function(state)
         config.leaderboardKick = state
-        UILibrary:Notify({ Title = "配置更新", Text = "上榜踢出: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Config Updated", Text = "Leaderboard kick: " .. (state and "On" or "Off"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
 print("Leaderboard Kick Toggle Created:", toggleLeaderboardKick.Parent and "Parent exists" or "No parent")
 
--- 卡片 5：通知间隔
+-- 卡片：通知间隔
 local intervalCard = UILibrary:CreateCard(notifyContent, {
     Size = UDim2.new(0, 260, 0, 60)
 })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
-    Text = "通知间隔（分钟）",
+    Text = "Notification Interval (Minutes)",
     Size = UDim2.new(1, -10, 0, 20)
 })
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
-    PlaceholderText = "间隔",
+    PlaceholderText = "Interval",
     OnFocusLost = function()
         local num = tonumber(intervalInput.Text)
         if num and num > 0 then
             config.notificationInterval = num
-            UILibrary:Notify({ Title = "配置更新", Text = "通知间隔: " .. num .. " 分钟", Duration = 5, Icon = "rbxassetid://7072706667" })
+            UILibrary:Notify({ Title = "Config Updated", Text = "Notification interval: " .. num .. " minutes", Duration = 5, Icon = "rbxassetid://7072706667" })
             saveConfig()
         else
             intervalInput.Text = tostring(config.notificationInterval)
-            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效数字", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            UILibrary:Notify({ Title = "Config Error", Text = "Please enter a valid number", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
         end
     end
 })
 intervalInput.Text = tostring(config.notificationInterval)
 print("Interval Input Created:", intervalInput.Parent and "Parent exists" or "No parent")
 
--- 卡片 6：目标金钱
-local targetCashCard = UILibrary:CreateCard(notifyContent, {
+-- 卡片：目标货币
+local targetCurrencyCard = UILibrary:CreateCard(notifyContent, {
     Size = UDim2.new(0, 260, 0, 80)
 })
-local targetCashToggle
-targetCashToggle = UILibrary:CreateToggle(targetCashCard, {
-    Text = "目标金钱踢出",
+local targetCurrencyToggle
+targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
+    Text = "Target Currency Kick",
     DefaultState = config.enableTargetKick,
     Callback = function(state)
-        if state and config.targetCash <= 0 then
+        if state and config.targetCurrency <= 0 then
             config.enableTargetKick = false
-            targetCashToggle[2] = false -- 更新 Toggle 状态
-            UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标金额（大于 0）", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            targetCurrencyToggle[2] = false
+            UILibrary:Notify({ Title = "Config Error", Text = "Please set a valid target currency (greater than 0)", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
             return
         end
         config.enableTargetKick = state
-        UILibrary:Notify({ Title = "配置更新", Text = "目标金钱踢出: " .. (state and "开" or "关"), Duration = 5, Icon = "rbxassetid://7072706667" })
+        UILibrary:Notify({ Title = "Config Updated", Text = "Target currency kick: " .. (state and "On" or "Off"), Duration = 5, Icon = "rbxassetid://7072706667" })
         saveConfig()
     end
 })
-print("Target Cash Toggle Created:", targetCashToggle.Parent and "Parent exists" or "No parent")
-local targetCashLabel = UILibrary:CreateLabel(targetCashCard, {
-    Text = "目标金钱",
+print("Target Currency Toggle Created:", targetCurrencyToggle.Parent and "Parent exists" or "No parent")
+local targetCurrencyLabel = UILibrary:CreateLabel(targetCurrencyCard, {
+    Text = "Target Currency",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 30)
 })
-local targetCashInput = UILibrary:CreateTextBox(targetCashCard, {
-    PlaceholderText = "输入目标金钱",
+local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
+    PlaceholderText = "Enter target currency",
     Position = UDim2.new(0, 5, 0, 50),
     OnFocusLost = function()
-        local num = tonumber(targetCashInput.Text)
+        local num = tonumber(targetCurrencyInput.Text)
         if num and num > 0 then
-            config.targetCash = num
-            UILibrary:Notify({ Title = "配置更新", Text = "目标金钱: " .. num, Duration = 5, Icon = "rbxassetid://7072706667" })
+            config.targetCurrency = num
+            UILibrary:Notify({ Title = "Config Updated", Text = "Target currency: " .. num, Duration = 5, Icon = "rbxassetid://7072706667" })
             saveConfig()
         else
-            targetCashInput.Text = tostring(config.targetCash)
-            config.targetCash = math.max(config.targetCash, 0)
-            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效正整数", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+            targetCurrencyInput.Text = tostring(config.targetCurrency)
+            config.targetCurrency = math.max(config.targetCurrency, 0)
+            UILibrary:Notify({ Title = "Config Error", Text = "Please enter a valid positive integer", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
             if config.enableTargetKick then
                 config.enableTargetKick = false
-                targetCashToggle[2] = false
-                UILibrary:Notify({ Title = "配置更新", Text = "目标金钱踢出已关闭，请设置有效目标金额", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+                targetCurrencyToggle[2] = false
+                UILibrary:Notify({ Title = "Config Updated", Text = "Target currency kick disabled, please set a valid target currency", Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
                 saveConfig()
             end
         end
     end
 })
-targetCashInput.Text = tostring(config.targetCash)
-print("Target Cash Input Created:", targetCashInput.Parent and "Parent exists" or "No parent")
+targetCurrencyInput.Text = tostring(config.targetCurrency)
+print("Target Currency Input Created:", targetCurrencyInput.Parent and "Parent exists" or "No parent")
 
 -- 右侧：关于标签页
 local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, rightFrame, {
-    Text = "关于",
+    Text = "About",
     Icon = "rbxassetid://7072706667"
 })
 
--- 作者介绍
+-- 作者信息
 local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
-    AuthorText = "作者: tongblx",
-    SocialText = "Discord: 加入服务器",
+    AuthorText = "Author: tongblx",
+    SocialText = "Discord: Join Server",
     SocialIcon = "rbxassetid://7072706667",
     SocialCallback = function()
         pcall(function()
@@ -400,40 +401,40 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
             elseif clipboard and clipboard.set then
                 clipboard.set(link)
             else
-                UILibrary:Notify({ Title = "复制 Discord", Text = "剪贴板功能不受支持，请手动复制: " .. link, Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
+                UILibrary:Notify({ Title = "Copy Discord", Text = "Clipboard not supported, please copy manually: " .. link, Duration = 5, IsWarning = true, Icon = "rbxassetid://7072706667" })
             end
-            UILibrary:Notify({ Title = "复制 Discord", Text = "已复制 Discord 链接到剪贴板", Duration = 5, Icon = "rbxassetid://7072706667" })
+            UILibrary:Notify({ Title = "Copy Discord", Text = "Discord link copied to clipboard", Duration = 5, Icon = "rbxassetid://7072706667" })
         end)
     end
 })
 
 -- 主循环
 local lastSendTime = os.time()
-local lastCash = initialCash
+local lastCurrency = initialCurrency
 local lastRank = nil
 spawn(function()
     while wait(1) do
         local currentTime = os.time()
-        local currentCash = fetchPlayerCash()
-        local earnedCash = currentCash and (currentCash - initialCash) or 0
-        earnedCashLabel.Text = "已赚取金钱: " .. tostring(earnedCash)
+        local currentCurrency = fetchCurrentCurrency()
+        local earnedCurrency = currentCurrency and (currentCurrency - initialCurrency) or 0
+        earnedCurrencyLabel.Text = "Earned Currency: " .. tostring(earnedCurrency)
 
-        -- 检查目标金钱
-        if config.enableTargetKick and currentCash and config.targetCash > 0 then
-            print("Checking Target Cash: Current =", currentCash, "Target =", config.targetCash)
-            if currentCash >= config.targetCash then
+        -- 检查目标货币
+        if config.enableTargetKick and currentCurrency and config.targetCurrency > 0 then
+            print("Checking Target Currency: Current =", currentCurrency, "Target =", config.targetCurrency)
+            if currentCurrency >= config.targetCurrency then
                 local payload = {
                     embeds = {{
-                        title = "目标金钱达成",
-                        description = "**游戏**: " .. gameName .. "\n**用户**: " .. username .. "\n**当前金钱**: " .. currentCash .. "\n**目标金钱**: " .. config.targetCash,
-                        color = MAIN_COLOR_DECIMAL,
+                        title = "Target Currency Reached",
+                        description = "**Game**: " .. gameName .. "\n**User**: " .. username .. "\n**Current Currency**: " .. currentCurrency .. "\n**Target Currency**: " .. config.targetCurrency,
+                        color = PRIMARY_COLOR,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                        footer = { text = "作者: tongblx" }
+                        footer = { text = "By: tongblx" }
                     }}
                 }
-                UILibrary:Notify({ Title = "目标达成", Text = "已达到目标金钱 " .. config.targetCash .. "，即将退出", Duration = 5, Icon = "rbxassetid://7072706667" })
+                UILibrary:Notify({ Title = "Target Reached", Text = "Reached target currency " .. config.targetCurrency .. ", exiting game", Duration = 5, Icon = "rbxassetid://7072706667" })
                 dispatchWebhook(payload)
-                wait(1) -- 延迟确保 Webhook 发送
+                wait(1) -- 确保Webhook发送
                 game:Shutdown()
             end
         end
@@ -442,31 +443,31 @@ spawn(function()
         if currentTime - lastSendTime >= config.notificationInterval * 60 then
             local payload = {
                 embeds = {{
-                    title = "Notifier 更新",
-                    description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
-                    color = MAIN_COLOR_DECIMAL,
+                    title = "Notifier Update",
+                    description = "**Game**: " .. gameName .. "\n**User**: " .. username,
+                    color = PRIMARY_COLOR,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "作者: tongblx" },
+                    footer = { text = "By: tongblx" },
                     fields = {}
                 }}
             }
 
-            if config.notifyCash and currentCash then
-                local cashChange = currentCash - lastCash
+            if config.notifyCash and currentCurrency then
+                local currencyChange = currentCurrency - lastCurrency
                 table.insert(payload.embeds[1].fields, {
-                    name = "金钱更新",
-                    value = "当前金钱: " .. currentCash .. "\n变化: " .. (cashChange >= 0 and "+" or "") .. cashChange,
+                    name = "Currency Update",
+                    value = "Current Currency: " .. currentCurrency .. "\nChange: " .. (currencyChange >= 0 and "+" or "") .. currencyChange,
                     inline = true
                 })
-                lastCash = currentCash
+                lastCurrency = currentCurrency
             end
 
             if config.notifyLeaderboard then
                 local currentRank = fetchPlayerRank()
                 if currentRank then
                     table.insert(payload.embeds[1].fields, {
-                        name = "排行榜",
-                        value = "当前排名: #" .. currentRank .. (lastRank and "\n变化: " .. (lastRank - currentRank >= 0 and "+" or "") .. (lastRank - currentRank) or ""),
+                        name = "Leaderboard",
+                        value = "Current Rank: #" .. currentRank .. (lastRank and "\nChange: " .. (lastRank - currentRank >= 0 and "+" or "") .. (lastRank - currentRank) or ""),
                         inline = true
                     })
                     lastRank = currentRank
@@ -485,16 +486,16 @@ spawn(function()
             if currentRank and currentRank <= 10 then
                 local payload = {
                     embeds = {{
-                        title = "上榜通知",
-                        description = "**游戏**: " .. gameName .. "\n**用户**: " .. username .. "\n**排名**: #" .. currentRank,
-                        color = MAIN_COLOR_DECIMAL,
+                        title = "Leaderboard Notification",
+                        description = "**Game**: " .. gameName .. "\n**User**: " .. username .. "\n**Rank**: #" .. currentRank,
+                        color = PRIMARY_COLOR,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                        footer = { text = "作者: tongblx" }
+                        footer = { text = "By: tongblx" }
                     }}
                 }
-                UILibrary:Notify({ Title = "上榜通知", Text = "排名 #" .. currentRank .. "，即将退出", Duration = 5, Icon = "rbxassetid://7072706667" })
+                UILibrary:Notify({ Title = "Leaderboard Notification", Text = "Rank #" .. currentRank .. ", exiting game", Duration = 5, Icon = "rbxassetid://7072706667" })
                 dispatchWebhook(payload)
-                wait(1) -- 延迟确保 Webhook 发送
+                wait(1) -- 确保Webhook发送
                 game:Shutdown()
             end
         end
