@@ -3,6 +3,7 @@ local HttpService = game:GetService("HttpService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 -- 获取当前玩家
 local player = Players.LocalPlayer
@@ -34,6 +35,15 @@ local config = {
 local MAIN_COLOR = Color3.fromRGB(40, 38, 89) -- #282659
 local MAIN_COLOR_DECIMAL = 2631705 -- 十进制，用于 Discord 嵌入
 local BACKGROUND_COLOR = Color3.fromRGB(28, 37, 38) -- #1C2526，毛玻璃背景
+
+-- 获取游戏信息
+local gameName = "未知游戏"
+local success, info = pcall(function()
+    return MarketplaceService:GetProductInfo(game.PlaceId)
+end)
+if success and info then
+    gameName = info.Name
+end
 
 -- 自定义输出函数
 local function notifyOutput(title, text, isWarn)
@@ -172,6 +182,20 @@ local function sendWebhook(payload)
     end
 end
 
+-- 发送欢迎消息
+local function sendWelcomeMessage()
+    local payload = {
+        embeds = {{
+            title = "Pluto Notifier",
+            description = "**欢迎使用 Pluto Notifier**\n**游戏**: " .. gameName .. "\n**用户**: " .. username,
+            color = MAIN_COLOR_DECIMAL,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            footer = { text = "作者: tongblx" }
+        }}
+    }
+    sendWebhook(payload)
+end
+
 -- 创建现代 UI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "PlutoSyncUI"
@@ -194,7 +218,7 @@ corner.Parent = toggleButton
 
 -- 主界面
 local mainFrame = Instance.new("Frame")
-mainFrame.Size = UDim2.new(0, 300, 0, 380)
+mainFrame.Size = UDim2.new(0, 300, 0, 400)
 mainFrame.Position = UDim2.new(0, 70, 0, 10)
 mainFrame.BackgroundColor3 = BACKGROUND_COLOR
 mainFrame.BackgroundTransparency = 0.5
@@ -215,6 +239,19 @@ titleLabel.TextSize = 20
 titleLabel.Font = Enum.Font.SourceSansBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = mainFrame
+
+-- 游戏信息
+local gameLabel = Instance.new("TextLabel")
+gameLabel.Size = UDim2.new(1, -20, 0, 20)
+gameLabel.Position = UDim2.new(0, 10, 0, 40)
+gameLabel.BackgroundTransparency = 1
+gameLabel.Text = "游戏: " .. gameName
+gameLabel.TextColor3 = Color3.new(1, 1, 1)
+gameLabel.TextSize = 14
+gameLabel.Font = Enum.Font.SourceSans
+gameLabel.TextXAlignment = Enum.TextXAlignment.Left
+gameLabel.TextWrapped = true
+gameLabel.Parent = mainFrame
 
 -- 动画
 local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
@@ -268,12 +305,15 @@ local function createToggle(labelText, configKey, yOffset)
         toggle.Text = config[configKey] and "开" or "关"
         notifyOutput("配置更新", labelText .. " 已设置为 " .. (config[configKey] and "开" or "关"), false)
         saveConfig()
+        if config[configKey] then
+            sendWelcomeMessage()
+        end
     end)
 end
 
 local webhookInput = Instance.new("TextBox")
 webhookInput.Size = UDim2.new(1, -20, 0, 40)
-webhookInput.Position = UDim2.new(0, 10, 0, 50)
+webhookInput.Position = UDim2.new(0, 10, 0, 70)
 webhookInput.BackgroundColor3 = BACKGROUND_COLOR
 webhookInput.BackgroundTransparency = 0.5
 webhookInput.TextColor3 = Color3.new(1, 1, 1)
@@ -293,13 +333,13 @@ webhookInput.FocusLost:Connect(function()
     saveConfig()
 end)
 
-createToggle("发送金钱", "sendCash", 100)
-createToggle("发送排行榜", "sendLeaderboard", 140)
-createToggle("上榜自动踢出", "autoKick", 180)
+createToggle("发送金钱", "sendCash", 120)
+createToggle("发送排行榜", "sendLeaderboard", 160)
+createToggle("上榜自动踢出", "autoKick", 200)
 
 local intervalLabel = Instance.new("TextLabel")
 intervalLabel.Size = UDim2.new(0.5, 0, 0, 30)
-intervalLabel.Position = UDim2.new(0, 10, 0, 220)
+intervalLabel.Position = UDim2.new(0, 10, 0, 240)
 intervalLabel.BackgroundTransparency = 1
 intervalLabel.Text = "发送间隔（分钟）："
 intervalLabel.TextColor3 = Color3.new(1, 1, 1)
@@ -310,7 +350,7 @@ intervalLabel.Parent = mainFrame
 
 local intervalInput = Instance.new("TextBox")
 intervalInput.Size = UDim2.new(0.4, 0, 0, 24)
-intervalInput.Position = UDim2.new(0.55, 0, 0, 223)
+intervalInput.Position = UDim2.new(0.55, 0, 0, 243)
 intervalInput.BackgroundColor3 = BACKGROUND_COLOR
 intervalInput.BackgroundTransparency = 0.5
 intervalInput.TextColor3 = Color3.new(1, 1, 1)
@@ -341,7 +381,7 @@ end)
 -- 作者信息（高级样式）
 local authorFrame = Instance.new("Frame")
 authorFrame.Size = UDim2.new(1, -20, 0, 60)
-authorFrame.Position = UDim2.new(0, 10, 0, 310)
+authorFrame.Position = UDim2.new(0, 10, 0, 330)
 authorFrame.BackgroundColor3 = Color3.fromRGB(114, 137, 218) -- #7289DA，Discord 蓝色
 authorFrame.BackgroundTransparency = 0.7
 authorFrame.Parent = mainFrame
@@ -437,34 +477,36 @@ spawn(function()
                 -- 合并 Cash 和排行榜嵌入
                 if config.sendCash or config.sendLeaderboard then
                     local embed = {
-                        title = "玩家 " .. username .. " 的数据",
+                        title = "Pluto Notifier",
                         color = MAIN_COLOR_DECIMAL,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                         footer = { text = "用户: " .. username .. " | 作者: tongblx" },
-                        fields = {}
+                        fields = {
+                            { name = "**游戏**", value = gameName, inline = true },
+                        }
                     }
                     if config.sendCash and cashValue then
                         table.insert(embed.fields, {
-                            name = "金钱",
+                            name = "**金钱**",
                             value = "Cash: " .. cashValue,
                             inline = true
                         })
-                    }
+                    end
                     if config.sendLeaderboard then
                         table.insert(embed.fields, {
-                            name = "排行榜状态",
+                            name = "**排行榜状态**",
                             value = playerRank and "已上榜，排名: " .. playerRank or "未上榜",
                             inline = true
                         })
                         notifyOutput("排行榜", playerRank and "已上榜，排名: " .. playerRank or "未上榜", false)
                     end
                     table.insert(embed.fields, {
-                        name = "下次发送",
+                        name = "**下次发送**",
                         value = getNextSendTime(),
                         inline = true
                     })
                     table.insert(embed.fields, {
-                        name = "Discord",
+                        name = "**Discord**",
                         value = "[加入服务器](https://discord.gg/8MW6eWU8uf)",
                         inline = true
                     })
