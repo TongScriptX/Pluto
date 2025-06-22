@@ -30,9 +30,10 @@ local config = {
     intervalMinutes = 5
 }
 
--- 主要颜色
+-- 颜色定义
 local MAIN_COLOR = Color3.fromRGB(40, 38, 89) -- #282659
 local MAIN_COLOR_DECIMAL = 2631705 -- 十进制，用于 Discord 嵌入
+local BACKGROUND_COLOR = Color3.fromRGB(28, 37, 38) -- #1C2526，毛玻璃背景
 
 -- 自定义输出函数
 local function notifyOutput(title, text, isWarn)
@@ -195,8 +196,8 @@ corner.Parent = toggleButton
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 300, 0, 380)
 mainFrame.Position = UDim2.new(0, 70, 0, 10)
-mainFrame.BackgroundColor3 = MAIN_COLOR
-mainFrame.BackgroundTransparency = 0.2
+mainFrame.BackgroundColor3 = BACKGROUND_COLOR
+mainFrame.BackgroundTransparency = 0.5
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
 local frameCorner = Instance.new("UICorner")
@@ -221,10 +222,11 @@ local function toggleMainFrame(visible)
     if visible then
         toggleButton.Text = "T"
         mainFrame.Visible = true
-        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 0.2, Position = UDim2.new(0, 70, 0, 10) }):Play()
+        mainFrame.Position = UDim2.new(0, toggleButton.Position.X.Offset + 60, 0, toggleButton.Position.Y.Offset)
+        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 0.5, Position = UDim2.new(0, toggleButton.Position.X.Offset + 60, 0, toggleButton.Position.Y.Offset) }):Play()
     else
         toggleButton.Text = "≡"
-        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 1, Position = UDim2.new(0, 70, 0, -10) }):Play()
+        TweenService:Create(mainFrame, tweenInfo, { BackgroundTransparency = 1, Position = UDim2.new(0, toggleButton.Position.X.Offset + 60, 0, toggleButton.Position.Y.Offset - 10) }):Play()
         wait(0.3)
         mainFrame.Visible = false
     end
@@ -272,7 +274,7 @@ end
 local webhookInput = Instance.new("TextBox")
 webhookInput.Size = UDim2.new(1, -20, 0, 40)
 webhookInput.Position = UDim2.new(0, 10, 0, 50)
-webhookInput.BackgroundColor3 = MAIN_COLOR
+webhookInput.BackgroundColor3 = BACKGROUND_COLOR
 webhookInput.BackgroundTransparency = 0.5
 webhookInput.TextColor3 = Color3.new(1, 1, 1)
 webhookInput.TextSize = 14
@@ -309,7 +311,7 @@ intervalLabel.Parent = mainFrame
 local intervalInput = Instance.new("TextBox")
 intervalInput.Size = UDim2.new(0.4, 0, 0, 24)
 intervalInput.Position = UDim2.new(0.55, 0, 0, 223)
-intervalInput.BackgroundColor3 = MAIN_COLOR
+intervalInput.BackgroundColor3 = BACKGROUND_COLOR
 intervalInput.BackgroundTransparency = 0.5
 intervalInput.TextColor3 = Color3.new(1, 1, 1)
 intervalInput.TextSize = 14
@@ -336,32 +338,56 @@ intervalInput.FocusLost:Connect(function()
     end
 end)
 
--- 作者信息
+-- 作者信息（高级样式）
+local authorFrame = Instance.new("Frame")
+authorFrame.Size = UDim2.new(1, -20, 0, 60)
+authorFrame.Position = UDim2.new(0, 10, 0, 310)
+authorFrame.BackgroundColor3 = Color3.fromRGB(114, 137, 218) -- #7289DA，Discord 蓝色
+authorFrame.BackgroundTransparency = 0.7
+authorFrame.Parent = mainFrame
+local authorFrameCorner = Instance.new("UICorner")
+authorFrameCorner.CornerRadius = UDim.new(0, 8)
+authorFrameCorner.Parent = authorFrame
+
 local authorLabel = Instance.new("TextLabel")
-authorLabel.Size = UDim2.new(1, -20, 0, 30)
-authorLabel.Position = UDim2.new(0, 10, 0, 340)
+authorLabel.Size = UDim2.new(1, 0, 0, 30)
+authorLabel.Position = UDim2.new(0, 0, 0, 5)
 authorLabel.BackgroundTransparency = 1
 authorLabel.Text = "作者: tongblx"
 authorLabel.TextColor3 = Color3.new(1, 1, 1)
 authorLabel.TextSize = 14
-authorLabel.Font = Enum.Font.SourceSans
-authorLabel.TextXAlignment = Enum.TextXAlignment.Left
-authorLabel.Parent = mainFrame
+authorLabel.Font = Enum.Font.SourceSansBold
+authorLabel.TextXAlignment = Enum.TextXAlignment.Center
+authorLabel.Parent = authorFrame
 
 local discordLabel = Instance.new("TextButton")
-discordLabel.Size = UDim2.new(1, -20, 0, 30)
-discordLabel.Position = UDim2.new(0, 10, 0, 370)
+discordLabel.Size = UDim2.new(1, -10, 0, 20)
+discordLabel.Position = UDim2.new(0, 5, 0, 35)
 discordLabel.BackgroundTransparency = 1
 discordLabel.Text = "Discord: https://discord.gg/8MW6eWU8uf"
-discordLabel.TextColor3 = Color3.fromRGB(114, 137, 218)
-discordLabel.TextSize = 14
+discordLabel.TextColor3 = Color3.new(1, 1, 1)
+discordLabel.TextSize = 12
 discordLabel.Font = Enum.Font.SourceSans
-discordLabel.TextXAlignment = Enum.TextXAlignment.Left
-discordLabel.Parent = mainFrame
+discordLabel.TextXAlignment = Enum.TextXAlignment.Center
+discordLabel.TextWrapped = true
+discordLabel.TextScaled = true
+discordLabel.Parent = authorFrame
+
+-- 作者信息交互动画
+local hoverTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+discordLabel.MouseEnter:Connect(function()
+    TweenService:Create(discordLabel, hoverTweenInfo, { TextSize = 14, TextColor3 = Color3.fromRGB(255, 255, 255) }):Play()
+end)
+discordLabel.MouseLeave:Connect(function()
+    TweenService:Create(discordLabel, hoverTweenInfo, { TextSize = 12, TextColor3 = Color3.new(1, 1, 1) }):Play()
+end)
 discordLabel.MouseButton1Click:Connect(function()
     pcall(function()
         setclipboard("https://discord.gg/8MW6eWU8uf")
         notifyOutput("复制 Discord", "已复制 Discord 链接到剪贴板", false)
+        TweenService:Create(discordLabel, hoverTweenInfo, { TextColor3 = Color3.fromRGB(0, 255, 0) }):Play()
+        wait(0.5)
+        TweenService:Create(discordLabel, hoverTweenInfo, { TextColor3 = Color3.new(1, 1, 1) }):Play()
     end)
 end)
 
@@ -381,10 +407,6 @@ toggleButton.InputChanged:Connect(function(input)
         local delta = input.Position - startPos
         toggleButton.Position = UDim2.new(
             startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X,
-            startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
-        )
-        mainFrame.Position = UDim2.new(
-            startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X + 60,
             startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
         )
     end
@@ -427,7 +449,7 @@ spawn(function()
                             value = "Cash: " .. cashValue,
                             inline = true
                         })
-                    end
+                    }
                     if config.sendLeaderboard then
                         table.insert(embed.fields, {
                             name = "排行榜状态",
