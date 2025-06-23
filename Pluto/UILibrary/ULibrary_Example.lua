@@ -299,7 +299,7 @@ if settingsTab and settingsContent then
                 UILibrary:SetTheme(THEME_DARK)
                 config.currentTheme = "Dark"
                 themeButton.Text = "Switch to Light Theme"
-                UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme. Duration = 3 })
+                UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
             end
             print("[Button]: Theme Switched to:", config.currentTheme)
         end
