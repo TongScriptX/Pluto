@@ -385,7 +385,7 @@ function UILibrary:CreateToggle(parent, options)
     if not parent then
         warn("[Toggle]: Creation Failed: Parent is nil")
         return nil
-    }
+    end
     options = options or {}
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
