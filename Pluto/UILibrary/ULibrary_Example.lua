@@ -1,16 +1,28 @@
--- MainScript.lua: 示例 UI 模板（带错误处理）
+-- MainScript.lua: 示例 UI 模板
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+
+-- 加载 LogCapture
+local LogCapture = require(script.Parent.LogCapture) or { Start = function() end }
+LogCapture:Start()
 
 -- 加载 UI 库
 local UILibrary
 local success, result = pcall(function()
-    return game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua")
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local response = game:HttpGet(url)
+    print("HttpGet Response Length:", #response)
+    print("HttpGet Response Preview:", string.sub(response, 1, 100))
+    return response
 end)
 
-if success then
+if success and result then
     local success2, module = pcall(function()
-        return loadstring(result)()
+        local loaded = loadstring(result)
+        if not loaded then
+            error("loadstring returned nil")
+        end
+        return loaded()
     end)
     if success2 and module then
         UILibrary = module
@@ -49,7 +61,7 @@ local THEME_DARK = {
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.SourceSansPro -- 替换为 SourceSansPro，以防 Gotham 不可用
+    Font = Enum.Font.SourceSansPro
 }
 
 local THEME_LIGHT = {
