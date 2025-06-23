@@ -268,7 +268,7 @@ if settingsTab and settingsContent then
                 UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
             end
             print("[Button]: Theme Switched to:", config.currentTheme)
-        }
+        end
     })
     print("[Init]: Settings Tab Created")
 else
