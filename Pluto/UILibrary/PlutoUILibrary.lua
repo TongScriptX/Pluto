@@ -1,4 +1,4 @@
--- UILibrary.lua
+-- PlutoUILibrary.lua
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
@@ -14,7 +14,7 @@ local DEFAULT_THEME = {
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Gotham
+    Font = Enum.Font.SourceSansPro -- 替换为 SourceSansPro
 }
 
 -- 当前主题
@@ -158,7 +158,7 @@ function UILibrary:CreateCard(parent, options)
 end
 
 -- 按钮模块
-function UILibrary:the CreateButton(parent, options)
+function UILibrary:CreateButton(parent, options) -- 修复 :the 语法错误
     options = options or {}
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, -10, 0, 30)
