@@ -643,6 +643,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         warn("[Tab]: Creation Failed: Invalid sidebar, mainPage, or titleLabel")
         return nil, nil
     end
+
     options = options or {}
     local tabButton = self:CreateButton(sidebar, {
         Text = options.Text or "",
@@ -650,9 +651,12 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         BackgroundColor3 = options.Active and THEME.Accent or THEME.Primary,
         BackgroundTransparency = options.Active and 0 or 0.5
     })
+
     if not tabButton then
         warn("[Tab]: Creation Failed: tabButton is nil")
         return nil, nil
+    end  -- 修复点：补上这个 `end`
+
     local content = Instance.new("ScrollingFrame")
     content.Name = "TabContent_" .. (options.Text or "Unnamed")
     content.Size = UDim2.new(1, -10, 0, 0)
