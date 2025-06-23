@@ -1,75 +1,25 @@
--- MainScript.lua: 示例 UI 模板（修复加载错误，添加控制台输出复制）
+-- MainScript.lua: 示例 UI 模板（带错误处理）
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-
--- 日志记录表
-local consoleOutput = {}
-local startTime = os.time()
-
--- 重定向 print 和 warn
-local oldPrint = print
-local oldWarn = warn
-print = function(...)
-    local msg = table.concat({ ... }, " ")
-    table.insert(consoleOutput, string.format("[%s] %s", os.date("%H:%M:%S"), msg))
-    oldPrint(...)
-end
-warn = function(...)
-    local msg = table.concat({ ... }, " ")
-    table.insert(consoleOutput, string.format("[%s] WARN: %s", os.date("%H:%M:%S"), msg))
-    oldWarn(...)
-end
-
--- 复制控制台输出到剪贴板
-local function copyConsoleOutput()
-    local outputText = table.concat(consoleOutput, "\n")
-    local success, err = pcall(function()
-        if setclipboard then
-            setclipboard(outputText)
-            print("Console output copied to clipboard!")
-        else
-            warn("setclipboard not supported. Please copy manually:")
-            oldPrint(outputText)
-        end
-    end)
-    if not success then
-        warn("Failed to copy console output: " .. tostring(err))
-        oldPrint(outputText)
-    end
-end
 
 -- 加载 UI 库
 local UILibrary
 local success, result = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/main/Pluto/UILibrary/PlutoUILibrary.lua"
-    local response = game:HttpGet(url)
-    if response and #response > 0 then
-        local func = loadstring(response)
-        if func then
-            return func()
-        else
-            error("loadstring failed: invalid Lua code")
-        end
-    else
-        error("HttpGet failed: empty response or invalid URL")
-    end
+    return game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua")
 end)
 
-if success and result then
-    UILibrary = result
-    print("PlutoUILibrary loaded successfully")
-else
-    warn("Failed to load PlutoUILibrary: " .. tostring(result))
-    warn("Falling back to local module (if available)")
-    local successLocal, localResult = pcall(function()
-        return require(script.Parent:WaitForChild("PlutoUILibrary", 5))
+if success then
+    local success2, module = pcall(function()
+        return loadstring(result)()
     end)
-    if successLocal and localResult then
-        UILibrary = localResult
-        print("Local PlutoUILibrary loaded successfully")
+    if success2 and module then
+        UILibrary = module
+        print("PlutoUILibrary loaded successfully")
     else
-        error("Failed to load PlutoUILibrary: " .. tostring(localResult or result))
+        error("Failed to execute PlutoUILibrary: " .. tostring(module))
     end
+else
+    error("Failed to fetch PlutoUILibrary: " .. tostring(result))
 end
 
 -- 获取当前玩家
@@ -99,7 +49,7 @@ local THEME_DARK = {
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Gotham
+    Font = Enum.Font.SourceSansPro -- 替换为 SourceSansPro，以防 Gotham 不可用
 }
 
 local THEME_LIGHT = {
@@ -110,16 +60,21 @@ local THEME_LIGHT = {
     Text = Color3.fromRGB(33, 33, 33),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Gotham
+    Font = Enum.Font.SourceSansPro
 }
 
 -- 创建主窗口
-local mainFrame, screenGui, tabBar, leftFrame, rightFrame = UILibrary:CreateWindow()
-if not mainFrame then
-    error("Failed to create main window")
+local mainFrame, screenGui, tabBar, leftFrame, rightFrame
+local success, result = pcall(function()
+    return UILibrary:CreateWindow()
+end)
+if success and result then
+    mainFrame, screenGui, tabBar, leftFrame, rightFrame = result
+    UILibrary:MakeDraggable(mainFrame)
+    print("Main Window Created")
+else
+    error("Failed to create main window: " .. tostring(result))
 end
-UILibrary:MakeDraggable(mainFrame)
-print("Main Window Created")
 
 -- 悬浮按钮
 local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
@@ -306,9 +261,3 @@ UILibrary:Notify({
     Duration = 3
 })
 print("UI Initialization Complete")
-
--- 等待 3 秒后复制控制台输出
-spawn(function()
-    wait(3)
-    copyConsoleOutput()
-end)
