@@ -64,13 +64,13 @@ local function initNotificationContainer()
             screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 5)
         end)
         if not success then
-            warn("ScreenGui Initialization Failed: " .. tostring(err))
+            warn("[Notification]: ScreenGui Initialization Failed: " .. tostring(err))
             return false
         end
         screenGui.ResetOnSpawn = false
         screenGui.Enabled = true
         screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        print("ScreenGui Created: Parent =", screenGui.Parent and screenGui.Parent.Name or "nil", "Enabled =", screenGui.Enabled)
+        print("[Notification]: ScreenGui Created: Parent =", screenGui.Parent and screenGui.Parent.Name or "nil", "Enabled =", screenGui.Enabled)
     end
 
     if not notificationContainer or not notificationContainer.Parent then
@@ -89,7 +89,7 @@ local function initNotificationContainer()
         layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
         layout.Parent = notificationContainer
 
-        print("Notification Container Created: Parent =", notificationContainer.Parent.Name, "Visible =", notificationContainer.Visible)
+        print("[Notification]: Container Created: Parent =", notificationContainer.Parent and notificationContainer.Parent.Name or "nil", "Visible =", notificationContainer.Visible)
     end
     return true
 end
@@ -98,7 +98,7 @@ end
 function UILibrary:Notify(options)
     options = options or {}
     if not initNotificationContainer() then
-        warn("Notification Failed: Unable to initialize ScreenGui")
+        warn("[Notification]: Failed: Unable to initialize ScreenGui")
         return nil
     end
 
@@ -135,7 +135,7 @@ function UILibrary:Notify(options)
         tween:Play()
     end)
     if not success then
-        warn("Notification Animation Failed: " .. tostring(err))
+        warn("[Notification]: Animation Failed: " .. tostring(err))
         notification.Position = UDim2.new(0, 0, 0, 50)
     end
 
@@ -148,19 +148,23 @@ function UILibrary:Notify(options)
                 tween.Completed:Wait()
             end)
             if not success then
-                warn("Notification Exit Animation Failed: " .. tostring(err))
+                warn("[Notification]: Exit Animation Failed: " .. tostring(err))
             end
             notification:Destroy()
-            print("Notification Destroyed: Title =", options.Title)
+            print("[Notification]: Destroyed: Title =", options.Title)
         end
     end)
 
-    print("Notification Created: Title =", options.Title, "Text =", options.Text, "Visible =", notification.Visible)
+    print("[Notification]: Created: Title =", options.Title, "Text =", options.Text, "Visible =", notification.Visible)
     return notification
 end
 
 -- 创建卡片
 function UILibrary:CreateCard(parent, options)
+    if not parent then
+        warn("[Card]: Creation Failed: Parent is nil")
+        return nil
+    end
     options = options or {}
     local card = Instance.new("Frame")
     card.Name = "Card"
@@ -188,12 +192,16 @@ function UILibrary:CreateCard(parent, options)
     card.Position = UDim2.new(0, 5, 0, 5)
     TweenService:Create(card, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 0) }):Play()
 
-    print("Card Created: Parent =", parent and parent.Name or "nil", "Visible =", card.Visible, "Position =", card.Position)
+    print("[Card]: Created: Parent =", parent and parent.Name or "nil", "Visible =", card.Visible, "Position =", card.Position, "Size =", card.Size)
     return card
 end
 
 -- 按钮模块
 function UILibrary:CreateButton(parent, options)
+    if not parent then
+        warn("[Button]: Creation Failed: Parent is nil")
+        return nil
+    end
     options = options or {}
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
@@ -227,24 +235,23 @@ function UILibrary:CreateButton(parent, options)
         TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary }):Play()
     end)
 
-    print("Button Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", button.Position)
+    print("[Button]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", button.Position)
     return button
 end
 
 -- 悬浮按钮模块
 function UILibrary:CreateFloatingButton(parent, options)
-    options = options or {}
     if not parent then
-        warn("CreateFloatingButton Failed: Parent is nil")
+        warn("[FloatingButton]: Creation Failed: Parent is nil")
         return nil
     end
-
+    options = options or {}
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
-        warn("Failed to get screen resolution, using default: 720x1280")
+        warn("[FloatingButton]: Failed to get screen resolution, using default: 720x1280")
     end
-    print("Screen Resolution:", screenSize)
+    print("[FloatingButton]: Screen Resolution:", screenSize)
 
     local button = Instance.new("TextButton")
     button.Name = "FloatingButton"
@@ -270,7 +277,7 @@ function UILibrary:CreateFloatingButton(parent, options)
             button.Text = isVisible and "X" or options.Text
             mainFrame.Visible = isVisible
             TweenService:Create(button, TWEEN_INFO, { Rotation = isVisible and 45 or 0 }):Play()
-            print("Floating Button Clicked: MainFrame Visible =", isVisible)
+            print("[FloatingButton]: Clicked: MainFrame Visible =", isVisible)
         end)
     end
 
@@ -282,12 +289,16 @@ function UILibrary:CreateFloatingButton(parent, options)
     end)
 
     self:MakeDraggable(button)
-    print("Floating Button Created: Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", button.Position)
+    print("[FloatingButton]: Created: Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", button.Position)
     return button
 end
 
 -- 文本标签模块
 function UILibrary:CreateLabel(parent, options)
+    if not parent then
+        warn("[Label]: Creation Failed: Parent is nil")
+        return nil
+    end
     options = options or {}
     local label = Instance.new("TextLabel")
     label.Name = "Label_" .. (options.Text or "Unnamed")
@@ -307,12 +318,16 @@ function UILibrary:CreateLabel(parent, options)
 
     TweenService:Create(label, TWEEN_INFO, { TextTransparency = 0 }):Play()
 
-    print("Label Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", label.Visible, "Position =", label.Position)
+    print("[Label]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", label.Visible, "Position =", label.Position)
     return label
 end
 
 -- 输入框模块
 function UILibrary:CreateTextBox(parent, options)
+    if not parent then
+        warn("[TextBox]: Creation Failed: Parent is nil")
+        return nil
+    end
     options = options or {}
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
@@ -344,12 +359,16 @@ function UILibrary:CreateTextBox(parent, options)
         end
     end)
 
-    print("TextBox Created: Placeholder =", options.PlaceholderText, "Parent =", parent and parent.Name or "nil", "Visible =", textBox.Visible)
+    print("[TextBox]: Created: Placeholder =", options.PlaceholderText, "Parent =", parent and parent.Name or "nil", "Visible =", textBox.Visible)
     return textBox
 end
 
 -- 开关模块
 function UILibrary:CreateToggle(parent, options)
+    if not parent then
+        warn("[Toggle]: Creation Failed: Parent is nil")
+        return nil
+    end
     options = options or {}
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
@@ -402,12 +421,16 @@ function UILibrary:CreateToggle(parent, options)
         end
     end)
 
-    print("Toggle Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", toggleFrame.Visible)
+    print("[Toggle]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", toggleFrame.Visible)
     return toggleFrame, state
 end
 
 -- 拖拽模块
 function UILibrary:MakeDraggable(gui)
+    if not gui then
+        warn("[MakeDraggable]: Failed: GUI is nil")
+        return
+    end
     local dragging = false
     local startPos, startGuiPos
 
@@ -429,7 +452,7 @@ function UILibrary:MakeDraggable(gui)
             local screenSize = GuiService:GetScreenResolution()
             if screenSize == Vector2.new(0, 0) then
                 screenSize = Vector2.new(720, 1280)
-                warn("Invalid screenSize in MakeDraggable, using default: 720x1280")
+                warn("[MakeDraggable]: Invalid screenSize, using default: 720x1280")
             end
             local guiSize = gui.AbsoluteSize
             local maxX = math.max(0, screenSize.X - math.max(guiSize.X, 1))
@@ -448,7 +471,7 @@ function UILibrary:MakeDraggable(gui)
         end
     end)
 
-    print("MakeDraggable Applied: GUI =", gui.Name)
+    print("[MakeDraggable]: Applied: GUI =", gui.Name)
 end
 
 -- 主窗口模块
@@ -457,10 +480,11 @@ function UILibrary:CreateWindow(options)
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
-        warn("Failed to get screen resolution, using default: 720x1280")
+        warn("[Window]: Failed to get screen resolution, using default: 720x1280")
     end
     local windowWidth = math.min(400, screenSize.X * 0.9)
     local windowHeight = math.min(300, screenSize.Y * 0.9)
+    print("[Window]: Screen Resolution:", screenSize, "Window Size:", windowWidth, "x", windowHeight)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "UILibraryWindow"
@@ -468,7 +492,7 @@ function UILibrary:CreateWindow(options)
         screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 5)
     end)
     if not success then
-        warn("Window ScreenGui Initialization Failed: " .. tostring(err))
+        warn("[Window]: ScreenGui Initialization Failed: " .. tostring(err))
         return nil
     end
     screenGui.ResetOnSpawn = false
@@ -484,12 +508,11 @@ function UILibrary:CreateWindow(options)
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 1
-    mainFrame.ClipsDescendants = true
+    mainFrame.ClipsDescendants = false -- 临时禁用裁剪
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = mainFrame
 
-    -- 侧边栏
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, 80, 1, 0)
@@ -510,7 +533,6 @@ function UILibrary:CreateWindow(options)
     sidebarPadding.PaddingTop = UDim.new(0, 5)
     sidebarPadding.Parent = sidebar
 
-    -- 标题栏
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Size = UDim2.new(0, windowWidth - 80, 0, 30)
@@ -530,7 +552,6 @@ function UILibrary:CreateWindow(options)
         TextSize = 14
     })
 
-    -- 主要页面
     local mainPage = Instance.new("ScrollingFrame")
     mainPage.Name = "MainPage"
     mainPage.Size = UDim2.new(0, windowWidth - 80, 0, windowHeight - 30)
@@ -538,7 +559,7 @@ function UILibrary:CreateWindow(options)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground
     mainPage.BackgroundTransparency = 0.5
     mainPage.ScrollBarThickness = 4
-    mainPage.CanvasSize = UDim2.new(0, 0, 0, 100) -- 初始值防止裁剪
+    mainPage.CanvasSize = UDim2.new(0, 0, 0, 100)
     mainPage.Parent = mainFrame
     mainPage.Visible = true
     mainPage.ZIndex = 2
@@ -558,15 +579,19 @@ function UILibrary:CreateWindow(options)
     mainFrame.Size = UDim2.new(0, windowWidth - 20, 0, windowHeight - 15)
     TweenService:Create(mainFrame, TWEEN_INFO, { Size = originalSize }):Play()
 
-    print("Window Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", mainFrame.Size)
-    print("Sidebar Created: Visible =", sidebar.Visible, "Position =", sidebar.Position)
-    print("TitleBar Created: Visible =", titleBar.Visible, "Position =", titleBar.Position)
-    print("MainPage Created: Visible =", mainPage.Visible, "Position =", mainPage.Position)
+    print("[Window]: Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", mainFrame.Size, "Position =", mainFrame.Position)
+    print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", sidebar.Position, "ZIndex =", sidebar.ZIndex)
+    print("[TitleBar]: Created: Visible =", titleBar.Visible, "Position =", titleBar.Position, "ZIndex =", titleBar.ZIndex)
+    print("[MainPage]: Created: Visible =", mainPage.Visible, "Position =", mainPage.Position, "ZIndex =", mainPage.ZIndex)
     return mainFrame, screenGui, sidebar, titleLabel, mainPage
 end
 
 -- 标签页模块
 function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
+    if not sidebar or not mainPage or not titleLabel then
+        warn("[Tab]: Creation Failed: Invalid sidebar, mainPage, or titleLabel")
+        return nil, nil
+    end
     options = options or {}
     local tabButton = self:CreateButton(sidebar, {
         Text = options.Text or "",
@@ -574,6 +599,10 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         BackgroundColor3 = options.Active and THEME.Accent or THEME.Primary,
         BackgroundTransparency = options.Active and 0 or 0.5
     })
+    if not tabButton then
+        warn("[Tab]: Creation Failed: tabButton is nil")
+        return nil, nil
+    end
 
     local content = Instance.new("ScrollingFrame")
     content.Name = "TabContent_" .. (options.Text or "Unnamed")
@@ -614,15 +643,19 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
             end
         end
         titleLabel.Text = options.Text
-        print("Tab Switched: Text =", options.Text, "Content Visible =", content.Visible)
+        print("[Tab]: Switched: Text =", options.Text, "Content Visible =", content.Visible)
     end)
 
-    print("Tab Created: Text =", options.Text, "Content Visible =", content.Visible, "Parent =", content.Parent.Name)
+    print("[Tab]: Created: Text =", options.Text, "Content Visible =", content.Visible, "Parent =", content.Parent and content.Parent.Name or "nil")
     return tabButton, content
 end
 
 -- 作者介绍模块
 function UILibrary:CreateAuthorInfo(parent, options)
+    if not parent then
+        warn("[AuthorInfo]: Creation Failed: Parent is nil")
+        return nil
+    end
     options = options or {}
     local authorFrame = Instance.new("Frame")
     authorFrame.Name = "AuthorFrame"
@@ -649,7 +682,7 @@ function UILibrary:CreateAuthorInfo(parent, options)
         Callback = options.SocialCallback
     })
 
-    print("Author Info Created: Parent =", parent and parent.Name or "nil", "Visible =", authorFrame.Visible)
+    print("[AuthorInfo]: Created: Parent =", parent and parent.Name or "nil", "Visible =", authorFrame.Visible)
     return authorFrame
 end
 
@@ -666,7 +699,7 @@ function UILibrary:SetTheme(newTheme)
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or getAvailableFont()
     }
-    print("Theme Set: Primary =", THEME.Primary)
+    print("[Theme]: Set: Primary =", THEME.Primary)
 end
 
 return UILibrary
