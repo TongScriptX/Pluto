@@ -133,7 +133,7 @@ function UILibrary:Notify(options)
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
         Position = UDim2.new(0, 5, 0, 20),
-        Size = UDim2.new一提，UDim2.new(1, -10, 0, 15),
+        Size = UDim2.new(1, -10, 0, 15),
         TextSize = 12
     })
 
