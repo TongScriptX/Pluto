@@ -1,6 +1,7 @@
 -- MainScript.lua: 示例 UI 模板
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 -- 加载 UI 库
 local UILibrary
@@ -216,16 +217,24 @@ if settingsTab and settingsContent then
 
     local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { Height = 60 })
     if targetCurrencyCard then
-        local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
+        local targetCurrencyToggle, targetCurrencyState = UILibrary:CreateToggle(targetCurrencyCard, {
             Text = "Target Currency",
             DefaultState = config.targetCurrencyEnabled,
             Callback = function(state)
                 if state and config.targetCurrency <= 0 then
                     config.targetCurrencyEnabled = false
-                    targetCurrencyToggle[2] = false
+                    targetCurrencyState = false
                     UILibrary:Notify({ Title = "Error", Text = "Set a valid target currency", Duration = 3 })
+                    -- Update toggle UI to reflect state
+                    local thumb = targetCurrencyToggle:FindFirstChild("Thumb", true)
+                    local track = targetCurrencyToggle:FindFirstChild("Track", true)
+                    if thumb and track then
+                        TweenService:Create(thumb, UILibrary.TWEEN_INFO_BUTTON, { Position = UDim2.new(0, 0, 0, -4) }):Play()
+                        TweenService:Create(track, UILibrary.TWEEN_INFO_BUTTON, { BackgroundColor3 = UILibrary.THEME.Error }):Play()
+                    end
                 else
                     config.targetCurrencyEnabled = state
+                    targetCurrencyState = state
                     UILibrary:Notify({ Title = "Config Updated", Text = "Target Currency: " .. (state and "On" or "Off"), Duration = 3 })
                 end
                 print("[Toggle]: Target Currency Set:", state)
@@ -296,7 +305,7 @@ if authorTab and authorContent then
         SocialCallback = function()
             UILibrary:Notify({ Title = "Discord", Text = "Discord link copied to clipboard!", Duration = 3 })
             print("[Button]: Discord Link Clicked")
-        }
+        end
     })
     print("[Author]: Author Tab Created")
 else
