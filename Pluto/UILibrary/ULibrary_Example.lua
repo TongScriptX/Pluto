@@ -77,10 +77,10 @@ local success, a, b, c, d, e = pcall(UILibrary.CreateWindow, UILibrary)
 if success then
     mainFrame, screenGui, sidebar, titleLabel, mainPage = a, b, c, d, e
     if not mainFrame or not screenGui or not sidebar or not titleLabel or not mainPage then
-        error("[Init]: CreateWindow returned incomplete values")
+        error("[Init]: CreateWindow returned incomplete values: mainFrame = " .. tostring(mainFrame) .. ", screenGui = " .. tostring(screenGui) .. ", sidebar = " .. tostring(sidebar) .. ", titleLabel = " .. tostring(titleLabel) .. ", mainPage = " .. tostring(mainPage))
     end
     UILibrary:MakeDraggable(mainFrame)
-    print("[Init]: Main Window Created: Size =", mainFrame.Size, "Position =", mainFrame.Position)
+    print("[Init]: Main Window Created: Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
 else
     error("[Init]: Failed to create main window: " .. tostring(a))
 end
@@ -91,7 +91,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     Text = "O"
 })
 if not toggleButton then
-    warn("[Init]: Floating Button Creation Failed")
+    warn("[UI]: Floating Button Creation Failed")
 else
     print("[Init]: Floating Button Created")
 end
@@ -107,7 +107,7 @@ local function createTabSafe(text, active)
     if success and tabButton and content then
         return tabButton, content
     else
-        warn("[Tab]: Failed to create tab: " .. text .. ", Error: " .. tostring(tabButton or content))
+        warn("[Tab]: Failed to create tab: " .. text .. ", Error: " .. tostring(content or tabButton))
         return nil, nil
     end
 end
@@ -249,7 +249,7 @@ if settingsTab and settingsContent then
                     UILibrary:Notify({ Title = "Error", Text = "Invalid amount", Duration = 3 })
                 end
                 print("[TextBox]: Target Currency Amount Set:", config.targetCurrency)
-            end
+            }
         })
     end
 
@@ -268,7 +268,7 @@ if settingsTab and settingsContent then
                 UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
             end
             print("[Button]: Theme Switched to:", config.currentTheme)
-        end
+        }
     })
     print("[Init]: Settings Tab Created")
 else
@@ -278,7 +278,7 @@ end
 -- 其他
 local othersTab, othersContent = createTabSafe("Others", false)
 if othersTab and othersContent then
-    local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 50 })
+    local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 40 })
     if placeholderCard then
         local placeholderLabel = UILibrary:CreateLabel(placeholderCard, { Text = "More features coming soon!" })
     end
@@ -296,17 +296,17 @@ if authorTab and authorContent then
         SocialCallback = function()
             UILibrary:Notify({ Title = "Discord", Text = "Discord link copied to clipboard!", Duration = 3 })
             print("[Button]: Discord Link Clicked")
-        end
+        }
     })
-    print("[Init]: Author Tab Created")
+    print("[Author]: Author Tab Created")
 else
-    warn("[Init]: Author Tab Creation Failed")
+    warn("[Author]: Author Tab Creation Failed")
 end
 
 -- 模拟在线时间更新
 if homeContent and onlineTimeLabel then
     spawn(function()
-        local startTime = os.time()
+        local startTime = time()
         while wait(1) do
             local elapsed = os.time() - startTime
             local hours = math.floor(elapsed / 3600)
