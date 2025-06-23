@@ -14,11 +14,38 @@ local DEFAULT_THEME = {
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.SourceSansPro -- 替换为 SourceSansPro
+    Font = Enum.Font.Roboto -- 使用 Roboto
 }
 
+-- 备选字体
+local function getAvailableFont()
+    local fonts = {Enum.Font.Roboto, Enum.Font.Arial}
+    for _, font in ipairs(fonts) do
+        local success = pcall(function()
+            local label = Instance.new("TextLabel")
+            label.Font = font
+            label.Text = "Test"
+            label.Parent = nil
+            label:Destroy()
+        end)
+        if success then
+            return font
+        end
+    end
+    return Enum.Font.SourceSans -- 最终备选
+end
+
 -- 当前主题
-local THEME = DEFAULT_THEME
+local THEME = {
+    Primary = DEFAULT_THEME.Primary,
+    Background = DEFAULT_THEME.Background,
+    SecondaryBackground = DEFAULT_THEME.SecondaryBackground,
+    Accent = DEFAULT_THEME.Accent,
+    Text = DEFAULT_THEME.Text,
+    Success = DEFAULT_THEME.Success,
+    Error = DEFAULT_THEME.Error,
+    Font = getAvailableFont() -- 动态选择可用字体
+}
 
 -- 动画配置
 local TWEEN_INFO = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
@@ -158,7 +185,7 @@ function UILibrary:CreateCard(parent, options)
 end
 
 -- 按钮模块
-function UILibrary:CreateButton(parent, options) -- 修复 :the 语法错误
+function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, -10, 0, 30)
@@ -556,7 +583,7 @@ function UILibrary:SetTheme(newTheme)
         Text = newTheme.Text or DEFAULT_THEME.Text,
         Success = newTheme.Success or DEFAULT_THEME.Success,
         Error = newTheme.Error or DEFAULT_THEME.Error,
-        Font = newTheme.Font or DEFAULT_THEME.Font
+        Font = newTheme.Font or getAvailableFont() -- 使用动态字体
     }
 end
 
