@@ -44,7 +44,7 @@ local THEME = {
     Text = DEFAULT_THEME.Text,
     Success = DEFAULT_THEME.Success,
     Error = DEFAULT_THEME.Error,
-    Font = getAvailableFont() -- 动态选择可用字体
+    Font = getAvailableFont()
 }
 
 -- 动画配置
@@ -156,7 +156,7 @@ end
 function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
-    card.Size = UDim2.new(0, 260, 0, options.Height or 80)
+    card.Size = UDim2.new(1, -20, 0, options.Height or 80)
     card.BackgroundColor3 = THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
     card.Parent = parent
@@ -188,9 +188,9 @@ end
 function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
-    button.Size = UDim2.new(1, -10, 0, 30)
-    button.BackgroundColor3 = THEME.Primary
-    button.BackgroundTransparency = 0.5
+    button.Size = options.Size or UDim2.new(1, -10, 0, 30)
+    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary
+    button.BackgroundTransparency = options.BackgroundTransparency or 0.5
     button.Text = options.Text or ""
     button.TextColor3 = THEME.Text
     button.TextSize = 14
@@ -203,9 +203,9 @@ function UILibrary:CreateButton(parent, options)
 
     if options.Callback then
         button.MouseButton1Click:Connect(function()
-            TweenService:Create(button, TWEEN_INFO, { Size = UDim2.new(1, -10 * 0.95, 0, 30 * 0.95) }):Play()
+            TweenService:Create(button, TWEEN_INFO, { Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset * 0.95, button.Size.Y.Scale, button.Size.Y.Offset * 0.95) }):Play()
             wait(0.1)
-            TweenService:Create(button, TWEEN_INFO, { Size = UDim2.new(1, -10, 0, 30) }):Play()
+            TweenService:Create(button, TWEEN_INFO, { Size = button.Size }):Play()
             options.Callback()
         end)
     end
@@ -214,7 +214,7 @@ function UILibrary:CreateButton(parent, options)
         TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Accent }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Primary }):Play()
+        TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary }):Play()
     end)
 
     print("Button Created")
@@ -274,7 +274,7 @@ end
 function UILibrary:CreateLabel(parent, options)
     options = options or {}
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, -10, 0, 20)
+    label.Size = options.Size or UDim2.new(1, -10, 0, 20)
     label.Position = options.Position or UDim2.new(0, 5, 0, 5)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
@@ -283,6 +283,7 @@ function UILibrary:CreateLabel(parent, options)
     label.Font = THEME.Font
     label.TextWrapped = true
     label.TextTruncate = Enum.TextTruncate.AtEnd
+    label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.Parent = parent
     label.Visible = true
 
@@ -443,65 +444,77 @@ function UILibrary:CreateWindow(options)
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = mainFrame
 
-    local tabBar = Instance.new("Frame")
-    tabBar.Size = UDim2.new(0, 290, 0, 40)
-    tabBar.Position = UDim2.new(0, 305, 0, 5)
-    tabBar.BackgroundTransparency = 1
-    tabBar.Parent = mainFrame
+    -- 侧边栏
+    local sidebar = Instance.new("Frame")
+    sidebar.Size = UDim2.new(0, 150, 1, 0)
+    sidebar.Position = UDim2.new(0, 0, 0, 0)
+    sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- 深灰
+    sidebar.Parent = mainFrame
+    local sidebarCorner = Instance.new("UICorner")
+    sidebarCorner.CornerRadius = UDim.new(0, 6)
+    sidebarCorner.Parent = sidebar
 
-    local tabLayout = Instance.new("UIListLayout")
-    tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    tabLayout.Padding = UDim.new(0, 10)
-    tabLayout.FillDirection = Enum.FillDirection.Horizontal
-    tabLayout.Parent = tabBar
+    local sidebarLayout = Instance.new("UIListLayout")
+    sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    sidebarLayout.Padding = UDim.new(0, 10)
+    sidebarLayout.Parent = sidebar
+    local sidebarPadding = Instance.new("UIPadding")
+    sidebarPadding.PaddingTop = UDim.new(0, 10)
+    sidebarPadding.Parent = sidebar
 
-    local leftFrame = Instance.new("ScrollingFrame")
-    leftFrame.Size = UDim2.new(0, 290, 0, 300)
-    leftFrame.Position = UDim2.new(0, 5, 0, 50)
-    leftFrame.BackgroundColor3 = THEME.Background
-    leftFrame.BackgroundTransparency = 0.5
-    leftFrame.ScrollBarThickness = 6
-    leftFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    leftFrame.Parent = mainFrame
-    local leftCorner = Instance.new("UICorner")
-    leftCorner.CornerRadius = UDim.new(0, 6)
-    leftCorner.Parent = leftFrame
+    -- 标题栏
+    local titleBar = Instance.new("Frame")
+    titleBar.Size = UDim2.new(0, 450, 0, 40)
+    titleBar.Position = UDim2.new(0, 150, 0, 0)
+    titleBar.BackgroundColor3 = THEME.Primary
+    titleBar.Parent = mainFrame
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 6)
+    titleCorner.Parent = titleBar
 
-    local leftLayout = Instance.new("UIListLayout")
-    leftLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    leftLayout.Padding = UDim.new(0, 10)
-    leftLayout.Parent = leftFrame
-    leftLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        leftFrame.CanvasSize = UDim2.new(0, 0, 0, leftLayout.AbsoluteContentSize.Y + 20)
+    local titleLabel = self:CreateLabel(titleBar, {
+        Text = "主页",
+        Size = UDim2.new(1, 0, 1, 0),
+        TextXAlignment = Enum.TextXAlignment.Center
+    })
+
+    -- 主要页面
+    local mainPage = Instance.new("ScrollingFrame")
+    mainPage.Size = UDim2.new(0, 450, 0, 320)
+    mainPage.Position = UDim2.new(0, 150, 0, 40)
+    mainPage.BackgroundColor3 = THEME.SecondaryBackground
+    mainPage.BackgroundTransparency = 0.5
+    mainPage.ScrollBarThickness = 6
+    mainPage.CanvasSize = UDim2.new(0, 0, 0, 0)
+    mainPage.Parent = mainFrame
+    local pageCorner = Instance.new("UICorner")
+    pageCorner.CornerRadius = UDim.new(0, 6)
+    pageCorner.Parent = mainPage
+
+    local pageLayout = Instance.new("UIListLayout")
+    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    pageLayout.Padding = UDim.new(0, 10)
+    pageLayout.Parent = mainPage
+    pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 20)
     end)
-
-    local rightFrame = Instance.new("ScrollingFrame")
-    rightFrame.Size = UDim2.new(0, 290, 0, 300)
-    rightFrame.Position = UDim2.new(0, 305, 0, 50)
-    rightFrame.BackgroundColor3 = THEME.SecondaryBackground
-    rightFrame.BackgroundTransparency = 0.5
-    rightFrame.ScrollBarThickness = 6
-    rightFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    rightFrame.Parent = mainFrame
-    local rightCorner = Instance.new("UICorner")
-    rightCorner.CornerRadius = UDim.new(0, 6)
-    rightCorner.Parent = rightFrame
 
     local originalSize = mainFrame.Size
     mainFrame.Size = UDim2.new(0, 570, 0, 342)
     TweenService:Create(mainFrame, TWEEN_INFO, { Size = originalSize }):Play()
 
     print("Window Created")
-    return mainFrame, screenGui, tabBar, leftFrame, rightFrame
+    return mainFrame, screenGui, sidebar, titleLabel, mainPage
 end
 
 -- 标签页模块
-function UILibrary:CreateTab(tabBar, rightFrame, options)
+function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     options = options or {}
-    local tabButton = self:CreateButton(tabBar, {
+    local tabButton = self:CreateButton(sidebar, {
         Text = options.Text or "",
-        Size = UDim2.new(0, 100, 0, 30),
-        BackgroundTransparency = options.Active and 0 or 0.2
+        Size = UDim2.new(1, -10, 0, 40),
+        BackgroundColor3 = options.Active and THEME.Accent or THEME.Primary,
+        BackgroundTransparency = options.Active and 0 or 0.5
     })
 
     local content = Instance.new("ScrollingFrame")
@@ -511,7 +524,7 @@ function UILibrary:CreateTab(tabBar, rightFrame, options)
     content.ScrollBarThickness = 6
     content.CanvasSize = UDim2.new(0, 0, 0, 0)
     content.Visible = options.Active or false
-    content.Parent = rightFrame
+    content.Parent = mainPage
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -522,8 +535,8 @@ function UILibrary:CreateTab(tabBar, rightFrame, options)
     end)
 
     tabButton.MouseButton1Click:Connect(function()
-        for _, child in ipairs(rightFrame:GetChildren()) do
-            if child:IsA("Frame") or child:IsA("ScrollingFrame") then
+        for _, child in ipairs(mainPage:GetChildren()) do
+            if child:IsA("ScrollingFrame") then
                 TweenService:Create(child, TWEEN_INFO, { Position = UDim2.new(1, 0, 0, 0) }):Play()
                 wait(0.3)
                 child.Visible = false
@@ -532,11 +545,15 @@ function UILibrary:CreateTab(tabBar, rightFrame, options)
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
         TweenService:Create(content, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 0) }):Play()
-        for _, btn in ipairs(tabBar:GetChildren()) do
+        for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
-                TweenService:Create(btn, TWEEN_INFO, { BackgroundTransparency = btn == tabButton and 0 or 0.2 }):Play()
+                TweenService:Create(btn, TWEEN_INFO, {
+                    BackgroundColor3 = btn == tabButton and THEME.Accent or THEME.Primary,
+                    BackgroundTransparency = btn == tabButton and 0 or 0.5
+                }):Play()
             end
         end
+        titleLabel.Text = options.Text
     end)
 
     print("Tab Created")
@@ -547,7 +564,7 @@ end
 function UILibrary:CreateAuthorInfo(parent, options)
     options = options or {}
     local authorFrame = Instance.new("Frame")
-    authorFrame.Size = UDim2.new(0, 260, 0, 60)
+    authorFrame.Size = UDim2.new(1, -20, 0, 60)
     authorFrame.BackgroundColor3 = THEME.SecondaryBackground
     authorFrame.BackgroundTransparency = 0.3
     authorFrame.Parent = parent
@@ -583,7 +600,7 @@ function UILibrary:SetTheme(newTheme)
         Text = newTheme.Text or DEFAULT_THEME.Text,
         Success = newTheme.Success or DEFAULT_THEME.Success,
         Error = newTheme.Error or DEFAULT_THEME.Error,
-        Font = newTheme.Font or getAvailableFont() -- 使用动态字体
+        Font = newTheme.Font or getAvailableFont()
     }
 end
 
