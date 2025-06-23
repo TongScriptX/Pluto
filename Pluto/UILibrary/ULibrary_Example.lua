@@ -1,13 +1,75 @@
--- MainScript.lua: 示例 UI 模板
+-- MainScript.lua: 示例 UI 模板（修复加载错误，添加控制台输出复制）
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
+-- 日志记录表
+local consoleOutput = {}
+local startTime = os.time()
+
+-- 重定向 print 和 warn
+local oldPrint = print
+local oldWarn = warn
+print = function(...)
+    local msg = table.concat({ ... }, " ")
+    table.insert(consoleOutput, string.format("[%s] %s", os.date("%H:%M:%S"), msg))
+    oldPrint(...)
+end
+warn = function(...)
+    local msg = table.concat({ ... }, " ")
+    table.insert(consoleOutput, string.format("[%s] WARN: %s", os.date("%H:%M:%S"), msg))
+    oldWarn(...)
+end
+
+-- 复制控制台输出到剪贴板
+local function copyConsoleOutput()
+    local outputText = table.concat(consoleOutput, "\n")
+    local success, err = pcall(function()
+        if setclipboard then
+            setclipboard(outputText)
+            print("Console output copied to clipboard!")
+        else
+            warn("setclipboard not supported. Please copy manually:")
+            oldPrint(outputText)
+        end
+    end)
+    if not success then
+        warn("Failed to copy console output: " .. tostring(err))
+        oldPrint(outputText)
+    end
+end
+
 -- 加载 UI 库
-local success, UILibrary = pcall(function()
-    return loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"))()
+local UILibrary
+local success, result = pcall(function()
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local response = game:HttpGet(url)
+    if response and #response > 0 then
+        local func = loadstring(response)
+        if func then
+            return func()
+        else
+            error("loadstring failed: invalid Lua code")
+        end
+    else
+        error("HttpGet failed: empty response or invalid URL")
+    end
 end)
-if not success or not UILibrary then
-    error("Failed to load PlutoUILibrary: " .. tostring(UILibrary))
+
+if success and result then
+    UILibrary = result
+    print("PlutoUILibrary loaded successfully")
+else
+    warn("Failed to load PlutoUILibrary: " .. tostring(result))
+    warn("Falling back to local module (if available)")
+    local successLocal, localResult = pcall(function()
+        return require(script.Parent:WaitForChild("PlutoUILibrary", 5))
+    end)
+    if successLocal and localResult then
+        UILibrary = localResult
+        print("Local PlutoUILibrary loaded successfully")
+    else
+        error("Failed to load PlutoUILibrary: " .. tostring(localResult or result))
+    end
 end
 
 -- 获取当前玩家
@@ -244,3 +306,9 @@ UILibrary:Notify({
     Duration = 3
 })
 print("UI Initialization Complete")
+
+-- 等待 3 秒后复制控制台输出
+spawn(function()
+    wait(3)
+    copyConsoleOutput()
+end)
