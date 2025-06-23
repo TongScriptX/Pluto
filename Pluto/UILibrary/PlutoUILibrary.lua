@@ -61,7 +61,7 @@ local function initNotificationContainer()
         screenGui = Instance.new("ScreenGui")
         screenGui.Name = "UILibrary"
         local success, err = pcall(function()
-            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 5)
+            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 10)
         end)
         if not success then
             warn("[Notification]: ScreenGui Initialization Failed: " .. tostring(err))
@@ -251,7 +251,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         screenSize = Vector2.new(720, 1280)
         warn("[FloatingButton]: Failed to get screen resolution, using default: 720x1280")
     end
-    print("[FloatingButton]: Screen Resolution:", screenSize)
+    print("[FloatingButton]: Screen Resolution:", screenSize.X, screenSize.Y)
 
     local button = Instance.new("TextButton")
     button.Name = "FloatingButton"
@@ -434,15 +434,16 @@ function UILibrary:MakeDraggable(gui)
     local dragging = false
     local startPos, startGuiPos
 
-    gui.InputBegan:Connect(function(input)
+    local function startDrag(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             startPos = input.Position
             startGuiPos = gui.Position
+            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.UserInputType)
         end
-    end)
+    end
 
-    gui.InputChanged:Connect(function(input)
+    local function drag(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - startPos
             local newPos = UDim2.new(
@@ -463,14 +464,18 @@ function UILibrary:MakeDraggable(gui)
             )
             gui.Position = newPos
         end
-    end)
+    end
 
-    gui.InputEnded:Connect(function(input)
+    local function endDrag(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
+            print("[MakeDraggable]: Drag Ended: GUI =", gui.Name)
         end
-    end)
+    end
 
+    UserInputService.InputBegan:Connect(startDrag)
+    UserInputService.InputChanged:Connect(drag)
+    UserInputService.InputEnded:Connect(endDrag)
     print("[MakeDraggable]: Applied: GUI =", gui.Name)
 end
 
@@ -484,20 +489,21 @@ function UILibrary:CreateWindow(options)
     end
     local windowWidth = math.min(400, screenSize.X * 0.9)
     local windowHeight = math.min(300, screenSize.Y * 0.9)
-    print("[Window]: Screen Resolution:", screenSize, "Window Size:", windowWidth, "x", windowHeight)
+    print("[Window]: Screen Resolution:", screenSize.X, screenSize.Y, "Window Size:", windowWidth, "x", windowHeight)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "UILibraryWindow"
     local success, err = pcall(function()
-        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 5)
+        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 10)
     end)
     if not success then
         warn("[Window]: ScreenGui Initialization Failed: " .. tostring(err))
-        return nil
+        return nil, nil, nil, nil, nil
     end
     screenGui.ResetOnSpawn = false
     screenGui.Enabled = true
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    print("[Window]: ScreenGui Created: Parent =", screenGui.Parent and screenGui.Parent.Name or "nil", "Enabled =", screenGui.Enabled)
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
@@ -508,7 +514,7 @@ function UILibrary:CreateWindow(options)
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 1
-    mainFrame.ClipsDescendants = false -- 临时禁用裁剪
+    mainFrame.ClipsDescendants = false
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = mainFrame
