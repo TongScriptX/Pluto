@@ -73,18 +73,16 @@ local THEME_LIGHT = {
 
 -- 创建主窗口
 local mainFrame, screenGui, sidebar, titleLabel, mainPage
-local success, result = pcall(function()
-    return UILibrary:CreateWindow()
-end)
-if success and result then
-    mainFrame, screenGui, sidebar, titleLabel, mainPage = result
+local success, a, b, c, d, e = pcall(UILibrary.CreateWindow, UILibrary)
+if success then
+    mainFrame, screenGui, sidebar, titleLabel, mainPage = a, b, c, d, e
     if not mainFrame or not screenGui or not sidebar or not titleLabel or not mainPage then
         error("[Init]: CreateWindow returned incomplete values")
     end
     UILibrary:MakeDraggable(mainFrame)
     print("[Init]: Main Window Created: Size =", mainFrame.Size, "Position =", mainFrame.Position)
 else
-    error("[Init]: Failed to create main window: " .. tostring(result))
+    error("[Init]: Failed to create main window: " .. tostring(a))
 end
 
 -- 悬浮按钮
