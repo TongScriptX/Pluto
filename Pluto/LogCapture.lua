@@ -10,20 +10,28 @@ local oldPrint = print
 local oldWarn = warn
 
 print = function(...)
-    local message = table.concat({...}, " ")
+    local args = {...}
+    for i, v in ipairs(args) do
+        args[i] = tostring(v)
+    end
+    local message = table.concat(args, " ")
     table.insert(logs, { type = "print", text = message, timestamp = os.time() })
-    oldPrint(...)
+    oldPrint("[LogCapture] Print:", ...)
 end
 
 warn = function(...)
-    local message = table.concat({...}, " ")
+    local args = {...}
+    for i, v in ipairs(args) do
+        args[i] = tostring(v)
+    end
+    local message = table.concat(args, " ")
     table.insert(logs, { type = "warn", text = message, timestamp = os.time() })
-    oldWarn(...)
+    oldWarn("[LogCapture] Warn:", ...)
 end
 
 -- 捕获三秒内日志并复制
 function LogCapture:CaptureAndCopy()
-    -- 等待 3 秒
+    oldPrint("[LogCapture] Starting capture for 3 seconds")
     wait(3)
     
     -- 收集三秒内的日志
@@ -36,18 +44,22 @@ function LogCapture:CaptureAndCopy()
     end
     
     -- 合并日志
-    local logString = table.concat(capturedLogs, "\n")
+    local logString = #capturedLogs > 0 and table.concat(capturedLogs, "\n") or "No logs captured"
     
     -- 尝试复制到剪贴板
     local success, err = pcall(function()
-        setclipboard(logString)
+        if setclipboard then
+            setclipboard(logString)
+        else
+            error("setclipboard not available")
+        end
     end)
     
     if success then
-        oldPrint("Logs copied to clipboard:\n" .. logString)
+        oldPrint("[LogCapture] Logs copied to clipboard:\n" .. logString)
     else
-        oldPrint("Failed to copy logs to clipboard (executor may not support setclipboard). Logs:\n" .. logString)
-        oldPrint("Error: " .. tostring(err))
+        oldPrint("[LogCapture] Failed to copy logs to clipboard. Logs:\n" .. logString)
+        oldPrint("[LogCapture] Error: " .. tostring(err))
     end
     
     return logString
@@ -56,9 +68,12 @@ end
 -- 启动捕获
 function LogCapture:Start()
     startTime = os.time()
-    logs = {} -- 重置日志
+    logs = {}
+    oldPrint("[LogCapture] Initialized")
     spawn(function()
-        self:CaptureAndCopy()
+        pcall(function()
+            self:CaptureAndCopy()
+        end)
     end)
 end
 
