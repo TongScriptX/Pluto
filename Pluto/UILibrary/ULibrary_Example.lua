@@ -1,4 +1,3 @@
--- MainScript.lua: 示例 UI 模板
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
@@ -8,15 +7,19 @@ local UILibrary
 local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     local response = game:HttpGet(url)
-    print("[Init]: HttpGet Response Length:", #response)
-    print("[Init]: HttpGet Response Preview:", string.sub(response, 1, 200))
-    print("[Init]: HttpGet Response End:", string.sub(response, -200, -1))
-    -- 保存响应（仅限支持 syn.write 的环境，如 Synapse X）
-    if syn and syn.write then
-        syn.write(response, "PlutoUILibrary_response.lua")
-        print("[Init]: Response saved to PlutoUILibrary_response.lua")
+    if response and #response > 1000 then -- 验证响应有效性
+        print("[Init]: HttpGet Response Length:", #response)
+        print("[Init]: HttpGet Response Preview:", string.sub(response, 1, 200))
+        print("[Init]: HttpGet Response End:", string.sub(response, -200, -1))
+        -- 保存响应（仅限支持 syn.write 的环境）
+        if syn and syn.write then
+            syn.write(response, "PlutoUILibrary_response.lua")
+            print("[Init]: Response saved to PlutoUILibrary_response.lua")
+        end
+        return response
+    else
+        error("Invalid or empty response from HttpGet")
     end
-    return response
 end)
 
 if success and result then
@@ -29,6 +32,9 @@ if success and result then
         if not success3 then
             error("execution failed: " .. tostring(module2))
         end
+        if not module2.CreateWindow then
+            error("Invalid UILibrary module: missing CreateWindow")
+        end
         return module2
     end)
     if success2 and module then
@@ -38,10 +44,10 @@ if success and result then
         error("[Init]: Failed to execute PlutoUILibrary: " .. tostring(module))
     end
 else
-    -- 回退到本地 PlutoUILibrary（假设已提供）
+    -- 回退到本地 PlutoUILibrary
     warn("[Init]: HttpGet failed, attempting local load")
     local success3, localModule = pcall(function()
-        return require(game.StarterPlayerScripts.PlutoUILibrary) -- 需将 PlutoUILibrary.lua 放入 StarterPlayerScripts
+        return require(game.StarterPlayerScripts.PlutoUILibrary)
     end)
     if success3 and localModule then
         UILibrary = localModule
@@ -293,7 +299,7 @@ if settingsTab and settingsContent then
                 UILibrary:SetTheme(THEME_DARK)
                 config.currentTheme = "Dark"
                 themeButton.Text = "Switch to Light Theme"
-                UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
+                UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme. Duration = 3 })
             end
             print("[Button]: Theme Switched to:", config.currentTheme)
         end
@@ -334,7 +340,7 @@ end
 -- 模拟在线时间更新
 if homeContent and onlineTimeLabel then
     spawn(function()
-        local startTime = time()
+        local startTime = os.time()
         while wait(1) do
             local elapsed = os.time() - startTime
             local hours = math.floor(elapsed / 3600)
