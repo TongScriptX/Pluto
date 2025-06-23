@@ -7,8 +7,8 @@ local UILibrary
 local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     local response = game:HttpGet(url)
-    print("HttpGet Response Length:", #response)
-    print("HttpGet Response Preview:", string.sub(response, 1, 100))
+    print("[Init]: HttpGet Response Length:", #response)
+    print("[Init]: HttpGet Response Preview:", string.sub(response, 1, 100))
     return response
 end)
 
@@ -22,18 +22,18 @@ if success and result then
     end)
     if success2 and module then
         UILibrary = module
-        print("PlutoUILibrary loaded successfully")
+        print("[Init]: PlutoUILibrary loaded successfully")
     else
-        error("Failed to execute PlutoUILibrary: " .. tostring(module))
+        error("[Init]: Failed to execute PlutoUILibrary: " .. tostring(module))
     end
 else
-    error("Failed to fetch PlutoUILibrary: " .. tostring(result))
+    error("[Init]: Failed to fetch PlutoUILibrary: " .. tostring(result))
 end
 
 -- 获取当前玩家
 local player = Players.LocalPlayer
 if not player then
-    error("Unable to get current player")
+    error("[Init]: Unable to get current player")
 end
 
 -- 配置
@@ -78,10 +78,13 @@ local success, result = pcall(function()
 end)
 if success and result then
     mainFrame, screenGui, sidebar, titleLabel, mainPage = result
+    if not mainFrame or not screenGui or not sidebar or not titleLabel or not mainPage then
+        error("[Init]: CreateWindow returned incomplete values")
+    end
     UILibrary:MakeDraggable(mainFrame)
-    print("Main Window Created: Size =", mainFrame.Size, "Position =", mainFrame.Position)
+    print("[Init]: Main Window Created: Size =", mainFrame.Size, "Position =", mainFrame.Position)
 else
-    error("Failed to create main window: " .. tostring(result))
+    error("[Init]: Failed to create main window: " .. tostring(result))
 end
 
 -- 悬浮按钮
@@ -90,191 +93,231 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     Text = "O"
 })
 if not toggleButton then
-    warn("Floating Button Creation Failed")
+    warn("[Init]: Floating Button Creation Failed")
 else
-    print("Floating Button Created")
+    print("[Init]: Floating Button Created")
 end
 
 -- 创建标签页
+local function createTabSafe(text, active)
+    local success, tabButton, content = pcall(function()
+        return UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+            Text = text,
+            Active = active
+        })
+    end)
+    if success and tabButton and content then
+        return tabButton, content
+    else
+        warn("[Tab]: Failed to create tab: " .. text .. ", Error: " .. tostring(tabButton or content))
+        return nil, nil
+    end
+end
+
 -- 主页
-local homeTab, homeContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "Home",
-    Active = true
-})
-local infoCard = UILibrary:CreateCard(homeContent, { Height = 80 })
-local gameStatusLabel = UILibrary:CreateLabel(infoCard, { Text = "Game Status: Running" })
-local onlineTimeLabel = UILibrary:CreateLabel(infoCard, { Text = "Online Time: 0:00:00", Position = UDim2.new(0, 5, 0, 20) })
-local currencyLabel = UILibrary:CreateLabel(infoCard, { Text = "Currency: 0", Position = UDim2.new(0, 5, 0, 35) })
-print("Home Tab Created")
+local homeTab, homeContent = createTabSafe("Home", true)
+if homeTab and homeContent then
+    local infoCard = UILibrary:CreateCard(homeContent, { Height = 80 })
+    if infoCard then
+        local gameStatusLabel = UILibrary:CreateLabel(infoCard, { Text = "Game Status: Running" })
+        local onlineTimeLabel = UILibrary:CreateLabel(infoCard, { Text = "Online Time: 0:00:00", Position = UDim2.new(0, 5, 0, 20) })
+        local currencyLabel = UILibrary:CreateLabel(infoCard, { Text = "Currency: 0", Position = UDim2.new(0, 5, 0, 35) })
+        print("[Init]: Home Tab Created")
+    else
+        warn("[Init]: Failed to create Home tab card")
+    end
+else
+    warn("[Init]: Home Tab Creation Failed")
+end
 
 -- 主要功能
-local featuresTab, featuresContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "Features"
-})
-local webhookCard = UILibrary:CreateCard(featuresContent, { Height = 50 })
-local webhookLabel = UILibrary:CreateLabel(webhookCard, { Text = "Webhook URL" })
-local webhookInput = UILibrary:CreateTextBox(webhookCard, {
-    PlaceholderText = "Enter Webhook URL",
-    OnFocusLost = function()
-        config.webhookUrl = webhookInput.Text
-        if config.webhookUrl:match("^https?://") then
-            UILibrary:Notify({ Title = "Webhook Set", Text = "Webhook URL updated", Duration = 3 })
-        else
-            UILibrary:Notify({ Title = "Error", Text = "Invalid Webhook URL", Duration = 3 })
+local featuresTab, featuresContent = createTabSafe("Features", false)
+if featuresTab and featuresContent then
+    local webhookCard = UILibrary:CreateCard(featuresContent, { Height = 50 })
+    if webhookCard then
+        local webhookLabel = UILibrary:CreateLabel(webhookCard, { Text = "Webhook URL" })
+        local webhookInput = UILibrary:CreateTextBox(webhookCard, {
+            PlaceholderText = "Enter Webhook URL",
+            OnFocusLost = function()
+                config.webhookUrl = webhookInput.Text
+                if config.webhookUrl:match("^https?://") then
+                    UILibrary:Notify({ Title = "Webhook Set", Text = "Webhook URL updated", Duration = 3 })
+                else
+                    UILibrary:Notify({ Title = "Error", Text = "Invalid Webhook URL", Duration = 3 })
+                end
+                print("[Webhook]: URL Set:", config.webhookUrl)
+            end
+        })
+    end
+
+    local togglesCard = UILibrary:CreateCard(featuresContent, { Height = 80 })
+    if togglesCard then
+        local notifyCurrencyToggle = UILibrary:CreateToggle(togglesCard, {
+            Text = "Notify Currency",
+            DefaultState = config.notifyCurrency,
+            Callback = function(state)
+                config.notifyCurrency = state
+                UILibrary:Notify({ Title = "Config Updated", Text = "Notify Currency: " .. (state and "On" or "Off"), Duration = 3 })
+                print("[Toggle]: Notify Currency Set:", state)
+            end
+        })
+        local notifyLeaderboardToggle = UILibrary:CreateToggle(togglesCard, {
+            Text = "Notify Leaderboard",
+            DefaultState = config.notifyLeaderboard,
+            Callback = function(state)
+                config.notifyLeaderboard = state
+                UILibrary:Notify({ Title = "Config Updated", Text = "Notify Leaderboard: " .. (state and "On" or "Off"), Duration = 3 })
+                print("[Toggle]: Notify Leaderboard Set:", state)
+            end
+        })
+        local leaderboardKickToggle = UILibrary:CreateToggle(togglesCard, {
+            Text = "Leaderboard Kick",
+            DefaultState = config.leaderboardKick,
+            Callback = function(state)
+                config.leaderboardKick = state
+                UILibrary:Notify({ Title = "Config Updated", Text = "Leaderboard Kick: " .. (state and "On" or "Off"), Duration = 3 })
+                print("[Toggle]: Leaderboard Kick Set:", state)
+            end
+        })
+    end
+
+    local testNotifyButton = UILibrary:CreateButton(featuresContent, {
+        Text = "Test Notification",
+        Callback = function()
+            UILibrary:Notify({ Title = "Test Success", Text = "This is a test notification!", Duration = 3 })
+            print("[Button]: Test Notification Triggered")
         end
-        print("Webhook URL Set:", config.webhookUrl)
-    end
-})
-
-local togglesCard = UILibrary:CreateCard(featuresContent, { Height = 80 })
-local notifyCurrencyToggle = UILibrary:CreateToggle(togglesCard, {
-    Text = "Notify Currency",
-    DefaultState = config.notifyCurrency,
-    Callback = function(state)
-        config.notifyCurrency = state
-        UILibrary:Notify({ Title = "Config Updated", Text = "Notify Currency: " .. (state and "On" or "Off"), Duration = 3 })
-        print("Notify Currency Set:", state)
-    end
-})
-local notifyLeaderboardToggle = UILibrary:CreateToggle(togglesCard, {
-    Text = "Notify Leaderboard",
-    DefaultState = config.notifyLeaderboard,
-    Callback = function(state)
-        config.notifyLeaderboard = state
-        UILibrary:Notify({ Title = "Config Updated", Text = "Notify Leaderboard: " .. (state and "On" or "Off"), Duration = 3 })
-        print("Notify Leaderboard Set:", state)
-    end
-})
-local leaderboardKickToggle = UILibrary:CreateToggle(togglesCard, {
-    Text = "Leaderboard Kick",
-    DefaultState = config.leaderboardKick,
-    Callback = function(state)
-        config.leaderboardKick = state
-        UILibrary:Notify({ Title = "Config Updated", Text = "Leaderboard Kick: " .. (state and "On" or "Off"), Duration = 3 })
-        print("Leaderboard Kick Set:", state)
-    end
-})
-
-local testNotifyButton = UILibrary:CreateButton(featuresContent, {
-    Text = "Test Notification",
-    Callback = function()
-        UILibrary:Notify({ Title = "Test Success", Text = "This is a test notification!", Duration = 3 })
-        print("Test Notification Triggered")
-    end
-})
-print("Features Tab Created")
+    })
+    print("[Init]: Features Tab Created")
+else
+    warn("[Init]: Features Tab Creation Failed")
+end
 
 -- 设置
-local settingsTab, settingsContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "Settings"
-})
-local intervalCard = UILibrary:CreateCard(settingsContent, { Height = 50 })
-local intervalLabel = UILibrary:CreateLabel(intervalCard, { Text = "Notification Interval (s)" })
-local intervalInput = UILibrary:CreateTextBox(intervalCard, {
-    PlaceholderText = "Enter interval",
-    Text = tostring(config.notificationInterval),
-    OnFocusLost = function()
-        local num = tonumber(intervalInput.Text)
-        if num and num > 0 then
-            config.notificationInterval = num
-            UILibrary:Notify({ Title = "Config Updated", Text = "Interval set to: " .. num .. " s", Duration = 3 })
-        else
-            intervalInput.Text = tostring(config.notificationInterval)
-            UILibrary:Notify({ Title = "Error", Text = "Invalid interval", Duration = 3 })
-        end
-        print("Notification Interval Set:", config.notificationInterval)
+local settingsTab, settingsContent = createTabSafe("Settings", false)
+if settingsTab and settingsContent then
+    local intervalCard = UILibrary:CreateCard(settingsContent, { Height = 50 })
+    if intervalCard then
+        local intervalLabel = UILibrary:CreateLabel(intervalCard, { Text = "Notification Interval (s)" })
+        local intervalInput = UILibrary:CreateTextBox(intervalCard, {
+            PlaceholderText = "Enter interval",
+            Text = tostring(config.notificationInterval),
+            OnFocusLost = function()
+                local num = tonumber(intervalInput.Text)
+                if num and num > 0 then
+                    config.notificationInterval = num
+                    UILibrary:Notify({ Title = "Config Updated", Text = "Interval set to " .. num .. " s", Duration = 3 })
+                else
+                    intervalInput.Text = tostring(config.notificationInterval)
+                    UILibrary:Notify({ Title = "Error", Text = "Invalid interval", Duration = 3 })
+                end
+                print("[TextBox]: Notification Interval Set:", config.notificationInterval)
+            end
+        })
     end
-})
 
-local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { Height = 60 })
-local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
-    Text = "Target Currency",
-    DefaultState = config.targetCurrencyEnabled,
-    Callback = function(state)
-        if state and config.targetCurrency <= 0 then
-            config.targetCurrencyEnabled = false
-            targetCurrencyToggle[2] = false
-            UILibrary:Notify({ Title = "Error", Text = "Set a valid target currency", Duration = 3 })
-        else
-            config.targetCurrencyEnabled = state
-            UILibrary:Notify({ Title = "Config Updated", Text = "Target Currency: " .. (state and "On" or "Off"), Duration = 3 })
-        end
-        print("Target Currency Set:", state)
+    local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { Height = 60 })
+    if targetCurrencyCard then
+        local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
+            Text = "Target Currency",
+            DefaultState = config.targetCurrencyEnabled,
+            Callback = function(state)
+                if state and config.targetCurrency <= 0 then
+                    config.targetCurrencyEnabled = false
+                    targetCurrencyToggle[2] = false
+                    UILibrary:Notify({ Title = "Error", Text = "Set a valid target currency", Duration = 3 })
+                else
+                    config.targetCurrencyEnabled = state
+                    UILibrary:Notify({ Title = "Config Updated", Text = "Target Currency: " .. (state and "On" or "Off"), Duration = 3 })
+                end
+                print("[Toggle]: Target Currency Set:", state)
+            end
+        })
+        local targetCurrencyLabel = UILibrary:CreateLabel(targetCurrencyCard, {
+            Text = "Target Currency Amount",
+            Position = UDim2.new(0, 5, 0, 20)
+        })
+        local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
+            PlaceholderText = "Enter amount",
+            Text = tostring(config.targetCurrency),
+            Position = UDim2.new(0, 5, 0, 35),
+            OnFocusLost = function()
+                local num = tonumber(targetCurrencyInput.Text)
+                if num and num > 0 then
+                    config.targetCurrency = num
+                    UILibrary:Notify({ Title = "Config Updated", Text = "Target Currency set to " .. num, Duration = 3 })
+                else
+                    targetCurrencyInput.Text = tostring(config.targetCurrency)
+                    UILibrary:Notify({ Title = "Error", Text = "Invalid amount", Duration = 3 })
+                end
+                print("[TextBox]: Target Currency Amount Set:", config.targetCurrency)
+            end
+        })
     end
-})
-local targetCurrencyLabel = UILibrary:CreateLabel(targetCurrencyCard, {
-    Text = "Target Currency Amount",
-    Position = UDim2.new(0, 5, 0, 20)
-})
-local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
-    PlaceholderText = "Enter amount",
-    Text = tostring(config.targetCurrency),
-    Position = UDim2.new(0, 5, 0, 35),
-    OnFocusLost = function()
-        local num = tonumber(targetCurrencyInput.Text)
-        if num and num > 0 then
-            config.targetCurrency = num
-            UILibrary:Notify({ Title = "Config Updated", Text = "Target Currency set to " .. num, Duration = 3 })
-        else
-            targetCurrencyInput.Text = tostring(config.targetCurrency)
-            UILibrary:Notify({ Title = "Error", Text = "Invalid amount", Duration = 3 })
-        end
-        print("Target Currency Amount Set:", config.targetCurrency)
-    end
-})
 
-local themeButton = UILibrary:CreateButton(settingsContent, {
-    Text = "Switch to Light Theme",
-    Callback = function()
-        if config.currentTheme == "Dark" then
-            UILibrary:SetTheme(THEME_LIGHT)
-            config.currentTheme = "Light"
-            themeButton.Text = "Switch to Dark Theme"
-            UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Light Theme", Duration = 3 })
-        else
-            UILibrary:SetTheme(THEME_DARK)
-            config.currentTheme = "Dark"
-            themeButton.Text = "Switch to Light Theme"
-            UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
+    local themeButton = UILibrary:CreateButton(settingsContent, {
+        Text = "Switch to Light Theme",
+        Callback = function()
+            if config.currentTheme == "Dark" then
+                UILibrary:SetTheme(THEME_LIGHT)
+                config.currentTheme = "Light"
+                themeButton.Text = "Switch to Dark Theme"
+                UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Light Theme", Duration = 3 })
+            else
+                UILibrary:SetTheme(THEME_DARK)
+                config.currentTheme = "Dark"
+                themeButton.Text = "Switch to Light Theme"
+                UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
+            end
+            print("[Button]: Theme Switched to:", config.currentTheme)
         end
-        print("Theme Switched to:", config.currentTheme)
-    end
-})
-print("Settings Tab Created")
+    })
+    print("[Init]: Settings Tab Created")
+else
+    warn("[Init]: Settings Tab Creation Failed")
+end
 
 -- 其他
-local othersTab, othersContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "Others"
-})
-local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 50 })
-local placeholderLabel = UILibrary:CreateLabel(placeholderCard, { Text = "More features coming soon!" })
-print("Others Tab Created")
+local othersTab, othersContent = createTabSafe("Others", false)
+if othersTab and othersContent then
+    local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 50 })
+    if placeholderCard then
+        local placeholderLabel = UILibrary:CreateLabel(placeholderCard, { Text = "More features coming soon!" })
+    end
+    print("[Init]: Others Tab Created")
+else
+    warn("[Init]: Others Tab Creation Failed")
+end
 
 -- 作者
-local authorTab, authorContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "Author"
-})
-local authorInfo = UILibrary:CreateAuthorInfo(authorContent, {
-    Text = "Author: YourName\nVersion: 1.0.0",
-    SocialText = "Join Discord",
-    SocialCallback = function()
-        UILibrary:Notify({ Title = "Discord", Text = "Discord link copied to clipboard!", Duration = 3 })
-        print("Discord Link Clicked")
-    end
-})
-print("Author Tab Created")
+local authorTab, authorContent = createTabSafe("Author", false)
+if authorTab and authorContent then
+    local authorInfo = UILibrary:CreateAuthorInfo(authorContent, {
+        Text = "Author: YourName\nVersion: 1.0.0",
+        SocialText = "Join Discord",
+        SocialCallback = function()
+            UILibrary:Notify({ Title = "Discord", Text = "Discord link copied to clipboard!", Duration = 3 })
+            print("[Button]: Discord Link Clicked")
+        end
+    })
+    print("[Init]: Author Tab Created")
+else
+    warn("[Init]: Author Tab Creation Failed")
+end
 
 -- 模拟在线时间更新
-spawn(function()
-    local startTime = os.time()
-    while wait(1) do
-        local elapsed = os.time() - startTime
-        local hours = math.floor(elapsed / 3600)
-        local minutes = math.floor((elapsed % 3600) / 60)
-        local seconds = elapsed % 60
-        onlineTimeLabel.Text = string.format("Online Time: %02d:%02d:%02d", hours, minutes, seconds)
-    end
-end)
+if homeContent and onlineTimeLabel then
+    spawn(function()
+        local startTime = os.time()
+        while wait(1) do
+            local elapsed = os.time() - startTime
+            local hours = math.floor(elapsed / 3600)
+            local minutes = math.floor((elapsed % 3600) / 60)
+            local seconds = elapsed % 60
+            onlineTimeLabel.Text = string.format("Online Time: %02d:%02d:%02d", hours, minutes, seconds)
+        end
+    end)
+end
 
 -- 初始通知
 UILibrary:Notify({
@@ -282,4 +325,4 @@ UILibrary:Notify({
     Text = "Example UI template loaded successfully!",
     Duration = 3
 })
-print("UI Initialization Complete")
+print("[Init]: UI Initialization Complete")
