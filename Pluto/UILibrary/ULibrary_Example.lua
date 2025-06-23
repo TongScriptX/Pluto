@@ -2,20 +2,6 @@
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
--- 加载 LogCapture
-local LogCapture
-local success, result = pcall(function()
-    return require(script.Parent.LogCapture)
-end)
-if success and result then
-    LogCapture = result
-    print("LogCapture loaded successfully")
-else
-    LogCapture = { Start = function() print("[LogCapture] Fallback: Unable to load LogCapture") end }
-    warn("Failed to load LogCapture: " .. tostring(result))
-end
-LogCapture:Start()
-
 -- 加载 UI 库
 local UILibrary
 local success, result = pcall(function()
@@ -71,7 +57,7 @@ local THEME_DARK = {
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.SourceSansPro
+    Font = Enum.Font.Roboto -- 使用 Roboto
 }
 
 local THEME_LIGHT = {
@@ -82,7 +68,7 @@ local THEME_LIGHT = {
     Text = Color3.fromRGB(33, 33, 33),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.SourceSansPro
+    Font = Enum.Font.Roboto -- 使用 Roboto
 }
 
 -- 创建主窗口
@@ -250,12 +236,12 @@ local testNotifyButton = UILibrary:CreateButton(notifyContent, {
 })
 
 -- 右侧区域：About 标签页
-local notifyTab, notifyContent = UILibrary:CreateTab(tabBar, rightFrame, {
+local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, rightFrame, {
     Text = "About"
 })
 
 -- 作者信息
-local authorInfo = UILibrary:CreateAuthorInfo(notifyContent, {
+local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
     Text = "Author: YourName\nVersion: 1.0.0",
     SocialText = "Join Discord",
     SocialCallback = function()
