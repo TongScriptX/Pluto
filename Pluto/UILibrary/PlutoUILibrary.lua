@@ -48,8 +48,8 @@ local THEME = {
 }
 
 -- 动画配置
-local TWEEN_INFO = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-local TOGGLE_TWEEN_INFO = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+local TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 
 -- 通知容器
 local notificationContainer = nil
@@ -61,7 +61,7 @@ local function initNotificationContainer()
         screenGui = Instance.new("ScreenGui")
         screenGui.Name = "UILibrary"
         local success, err = pcall(function()
-            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 10)
+            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 15)
         end)
         if not success then
             warn("[Notification]: ScreenGui Initialization Failed: " .. tostring(err))
@@ -131,7 +131,7 @@ function UILibrary:Notify(options)
 
     wait(0.1)
     local success, err = pcall(function()
-        local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 50) })
+        local tween = TweenService:Create(notification, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 50) })
         tween:Play()
     end)
     if not success then
@@ -143,7 +143,7 @@ function UILibrary:Notify(options)
         wait(options.Duration or 3)
         if notification.Parent then
             local success, err = pcall(function()
-                local tween = TweenService:Create(notification, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 90) })
+                local tween = TweenService:Create(notification, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 90) })
                 tween:Play()
                 tween.Completed:Wait()
             end)
@@ -170,7 +170,7 @@ function UILibrary:CreateCard(parent, options)
     card.Name = "Card"
     card.Size = UDim2.new(1, -10, 0, options.Height or 60)
     card.BackgroundColor3 = THEME.SecondaryBackground
-    card.BackgroundTransparency = 0.3
+    card.BackgroundTransparency = 1
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
@@ -190,9 +190,9 @@ function UILibrary:CreateCard(parent, options)
     padding.Parent = card
 
     card.Position = UDim2.new(0, 5, 0, 5)
-    TweenService:Create(card, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 0) }):Play()
+    TweenService:Create(card, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3 }):Play()
 
-    print("[Card]: Created: Parent =", parent and parent.Name or "nil", "Visible =", card.Visible, "Position =", card.Position, "Size =", card.Size)
+    print("[Card]: Created: Parent =", parent and parent.Name or "nil", "Visible =", card.Visible, "Position =", tostring(card.Position), "Size =", tostring(card.Size))
     return card
 end
 
@@ -221,21 +221,22 @@ function UILibrary:CreateButton(parent, options)
 
     if options.Callback then
         button.MouseButton1Click:Connect(function()
-            TweenService:Create(button, TWEEN_INFO, { Size = UDim2.new(button.Size.X.Scale, button.Size.X.Offset * 0.95, button.Size.Y.Scale, button.Size.Y.Offset * 0.95) }):Play()
+            local originalSize = button.Size
+            TweenService:Create(button, TWEEN_INFO_BUTTON, { Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95) }):Play()
             wait(0.1)
-            TweenService:Create(button, TWEEN_INFO, { Size = button.Size }):Play()
+            TweenService:Create(button, TWEEN_INFO_BUTTON, { Size = originalSize }):Play()
             options.Callback()
         end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Accent }):Play()
+        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary }):Play()
+        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary }):Play()
     end)
 
-    print("[Button]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", button.Position)
+    print("[Button]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", tostring(button.Position))
     return button
 end
 
@@ -271,25 +272,33 @@ function UILibrary:CreateFloatingButton(parent, options)
     corner.Parent = button
 
     local mainFrame = options.MainFrame
+    local originalSize = mainFrame and mainFrame.Size or UDim2.new(0, 400, 0, 300)
     if mainFrame then
         button.MouseButton1Click:Connect(function()
             local isVisible = not mainFrame.Visible
             button.Text = isVisible and "X" or options.Text
-            mainFrame.Visible = isVisible
-            TweenService:Create(button, TWEEN_INFO, { Rotation = isVisible and 45 or 0 }):Play()
+            mainFrame.Visible = true -- Ensure visible before tween
+            TweenService:Create(mainFrame, TWEEN_INFO_UI, {
+                Size = isVisible and originalSize or UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = isVisible and 0.5 or 1
+            }):Play()
+            if not isVisible then
+                mainFrame.Visible = false -- Hide after tween
+            end
+            TweenService:Create(button, TWEEN_INFO_BUTTON, { Rotation = isVisible and 45 or 0 }):Play()
             print("[FloatingButton]: Clicked: MainFrame Visible =", isVisible)
         end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Accent }):Play()
+        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = THEME.Primary }):Play()
+        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Primary }):Play()
     end)
 
     self:MakeDraggable(button)
-    print("[FloatingButton]: Created: Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", button.Position)
+    print("[FloatingButton]: Created: Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", tostring(button.Position))
     return button
 end
 
@@ -316,9 +325,14 @@ function UILibrary:CreateLabel(parent, options)
     label.Visible = true
     label.ZIndex = 2
 
-    TweenService:Create(label, TWEEN_INFO, { TextTransparency = 0 }):Play()
+    local success, err = pcall(function()
+        TweenService:Create(label, TWEEN_INFO_UI, { TextTransparency = 0 }):Play()
+    end)
+    if not success then
+        warn("[Label]: Animation Failed: " .. tostring(err))
+    end
 
-    print("[Label]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", label.Visible, "Position =", label.Position)
+    print("[Label]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", label.Visible, "Position =", tostring(label.Position))
     return label
 end
 
@@ -327,7 +341,7 @@ function UILibrary:CreateTextBox(parent, options)
     if not parent then
         warn("[TextBox]: Creation Failed: Parent is nil")
         return nil
-    end
+    }
     options = options or {}
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
@@ -350,10 +364,10 @@ function UILibrary:CreateTextBox(parent, options)
     corner.Parent = textBox
 
     textBox.Focused:Connect(function()
-        TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = THEME.Primary }):Play()
+        TweenService:Create(textBox, TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Primary }):Play()
     end)
     textBox.FocusLost:Connect(function()
-        TweenService:Create(textBox, TWEEN_INFO, { BorderColor3 = THEME.Background }):Play()
+        TweenService:Create(textBox, TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Background }):Play()
         if options.OnFocusLost then
             options.OnFocusLost()
         end
@@ -368,7 +382,7 @@ function UILibrary:CreateToggle(parent, options)
     if not parent then
         warn("[Toggle]: Creation Failed: Parent is nil")
         return nil
-    end
+    }
     options = options or {}
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
@@ -414,8 +428,8 @@ function UILibrary:CreateToggle(parent, options)
         state = not state
         local targetPos = state and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
         local targetColor = state and THEME.Success or THEME.Error
-        TweenService:Create(thumb, TOGGLE_TWEEN_INFO, { Position = targetPos }):Play()
-        TweenService:Create(track, TOGGLE_TWEEN_INFO, { BackgroundColor3 = targetColor }):Play()
+        TweenService:Create(thumb, TWEEN_INFO_BUTTON, { Position = targetPos }):Play()
+        TweenService:Create(track, TWEEN_INFO_BUTTON, { BackgroundColor3 = targetColor }):Play()
         if options.Callback then
             options.Callback(state)
         end
@@ -434,16 +448,23 @@ function UILibrary:MakeDraggable(gui)
     local dragging = false
     local startPos, startGuiPos
 
-    local function startDrag(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    local function isMouseOverGui(input)
+        local pos = input.Position
+        local guiPos = gui.AbsolutePosition
+        local guiSize = gui.AbsoluteSize
+        return pos.X >= guiPos.X and pos.X <= guiPos.X + guiSize.X and pos.Y >= guiPos.Y and pos.Y <= guiPos.Y + guiSize.Y
+    end
+
+    gui.InputBegan:Connect(function(input)
+        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
             dragging = true
             startPos = input.Position
             startGuiPos = gui.Position
-            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.UserInputType)
+            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.UserInputType.Name)
         end
-    end
+    end)
 
-    local function drag(input)
+    gui.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - startPos
             local newPos = UDim2.new(
@@ -464,18 +485,15 @@ function UILibrary:MakeDraggable(gui)
             )
             gui.Position = newPos
         end
-    end
+    end)
 
-    local function endDrag(input)
+    gui.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
             print("[MakeDraggable]: Drag Ended: GUI =", gui.Name)
         end
-    end
+    end)
 
-    UserInputService.InputBegan:Connect(startDrag)
-    UserInputService.InputChanged:Connect(drag)
-    UserInputService.InputEnded:Connect(endDrag)
     print("[MakeDraggable]: Applied: GUI =", gui.Name)
 end
 
@@ -494,7 +512,7 @@ function UILibrary:CreateWindow(options)
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "UILibraryWindow"
     local success, err = pcall(function()
-        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 10)
+        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 15)
     end)
     if not success then
         warn("[Window]: ScreenGui Initialization Failed: " .. tostring(err))
@@ -536,6 +554,8 @@ function UILibrary:CreateWindow(options)
     sidebarLayout.Padding = UDim.new(0, 5)
     sidebarLayout.Parent = sidebar
     local sidebarPadding = Instance.new("UIPadding")
+    sidebarPadding.PaddingLeft = UDim.new(0, 5)
+    sidebarPadding.PaddingRight = UDim.new(0, 5)
     sidebarPadding.PaddingTop = UDim.new(0, 5)
     sidebarPadding.Parent = sidebar
 
@@ -557,6 +577,21 @@ function UILibrary:CreateWindow(options)
         TextXAlignment = Enum.TextXAlignment.Center,
         TextSize = 14
     })
+    if not titleLabel then
+        warn("[Window]: TitleLabel Creation Failed")
+        titleLabel = Instance.new("TextLabel")
+        titleLabel.Name = "Label_Home"
+        titleLabel.Size = UDim2.new(1, 0, 1, 0)
+        titleLabel.BackgroundTransparency = 1
+        titleLabel.Text = "Home"
+        titleLabel.TextColor3 = THEME.Text
+        titleLabel.TextSize = 14
+        titleLabel.Font = THEME.Font
+        titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+        titleLabel.Parent = titleBar
+        titleLabel.Visible = true
+        titleLabel.ZIndex = 2
+    end
 
     local mainPage = Instance.new("ScrollingFrame")
     mainPage.Name = "MainPage"
@@ -583,12 +618,17 @@ function UILibrary:CreateWindow(options)
 
     local originalSize = mainFrame.Size
     mainFrame.Size = UDim2.new(0, windowWidth - 20, 0, windowHeight - 15)
-    TweenService:Create(mainFrame, TWEEN_INFO, { Size = originalSize }):Play()
+    TweenService:Create(mainFrame, TWEEN_INFO_UI, { Size = originalSize }):Play()
 
-    print("[Window]: Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", mainFrame.Size, "Position =", mainFrame.Position)
-    print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", sidebar.Position, "ZIndex =", sidebar.ZIndex)
-    print("[TitleBar]: Created: Visible =", titleBar.Visible, "Position =", titleBar.Position, "ZIndex =", titleBar.ZIndex)
-    print("[MainPage]: Created: Visible =", mainPage.Visible, "Position =", mainPage.Position, "ZIndex =", mainPage.ZIndex)
+    if not mainFrame or not screenGui or not sidebar or not titleLabel or not mainPage then
+        warn("[Window]: Incomplete Return Values: mainFrame =", mainFrame, "screenGui =", screenGui, "sidebar =", sidebar, "titleLabel =", titleLabel, "mainPage =", mainPage)
+        return nil, nil, nil, nil, nil
+    end
+
+    print("[Window]: Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
+    print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", tostring(sidebar.Position), "ZIndex =", sidebar.ZIndex)
+    print("[TitleBar]: Created: Visible =", titleBar.Visible, "Position =", tostring(titleBar.Position), "Size =", tostring(titleBar.Size))
+    print("[MainPage]: Created: Visible =", mainPage.Visible, "Position =", mainPage.Position, "ZIndex =", mainPage.Position)
     return mainFrame, screenGui, sidebar, titleLabel, mainPage
 end
 
@@ -608,12 +648,11 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     if not tabButton then
         warn("[Tab]: Creation Failed: tabButton is nil")
         return nil, nil
-    end
-
     local content = Instance.new("ScrollingFrame")
     content.Name = "TabContent_" .. (options.Text or "Unnamed")
-    content.Size = UDim2.new(1, 0, 1, 0)
+    content.Size = UDim2.new(1, -10, 0, 0)
     content.Position = UDim2.new(options.Active and 0 or 1, 0, 0, 0)
+    content.BackgroundColor3 = THEME.BackgroundTransparency
     content.BackgroundTransparency = 1
     content.ScrollBarThickness = 4
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
@@ -632,17 +671,17 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     tabButton.MouseButton1Click:Connect(function()
         for _, child in ipairs(mainPage:GetChildren()) do
             if child:IsA("ScrollingFrame") then
-                TweenService:Create(child, TWEEN_INFO, { Position = UDim2.new(1, 0, 0, 0) }):Play()
+                TweenService:Create(child, TWEEN_INFO_UI, { Position = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1 }):Play()
                 wait(0.3)
                 child.Visible = false
             end
         end
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
-        TweenService:Create(content, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 0) }):Play()
+        TweenService:Create(content, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5 }):Play()
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
-                TweenService:Create(btn, TWEEN_INFO, {
+                TweenService:Create(btn, TWEEN_INFO_BUTTON, {
                     BackgroundColor3 = btn == tabButton and THEME.Accent or THEME.Primary,
                     BackgroundTransparency = btn == tabButton and 0 or 0.5
                 }):Play()
@@ -705,7 +744,7 @@ function UILibrary:SetTheme(newTheme)
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or getAvailableFont()
     }
-    print("[Theme]: Set: Primary =", THEME.Primary)
+    print("[Theme]: Set: Primary =", tostring(THEME.Primary))
 end
 
 return UILibrary
