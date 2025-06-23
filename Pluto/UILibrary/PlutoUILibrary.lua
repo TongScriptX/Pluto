@@ -341,7 +341,8 @@ function UILibrary:CreateTextBox(parent, options)
     if not parent then
         warn("[TextBox]: Creation Failed: Parent is nil")
         return nil
-    }
+    end
+
     options = options or {}
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
@@ -359,6 +360,7 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.Parent = parent
     textBox.Visible = true
     textBox.ZIndex = 2
+
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 4)
     corner.Parent = textBox
@@ -366,6 +368,7 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.Focused:Connect(function()
         TweenService:Create(textBox, TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Primary }):Play()
     end)
+
     textBox.FocusLost:Connect(function()
         TweenService:Create(textBox, TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Background }):Play()
         if options.OnFocusLost then
