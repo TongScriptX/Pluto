@@ -75,7 +75,7 @@ local function initNotificationContainer()
 
     if not notificationContainer or not notificationContainer.Parent then
         notificationContainer = Instance.new("Frame")
-        notificationContainer.Size = UDim2.new(0, 200, 0, 240) -- 缩小以适配手机
+        notificationContainer.Size = UDim2.new(0, 200, 0, 240)
         notificationContainer.Position = UDim2.new(1, -210, 1, -250)
         notificationContainer.BackgroundTransparency = 1
         notificationContainer.Parent = screenGui
@@ -101,7 +101,7 @@ function UILibrary:Notify(options)
     end
 
     local notification = Instance.new("Frame")
-    notification.Size = UDim2.new(0, 180, 0, 40) -- 缩小以适配手机
+    notification.Size = UDim2.new(0, 180, 0, 40)
     notification.BackgroundColor3 = THEME.Background
     notification.BackgroundTransparency = 0.3
     notification.Position = UDim2.new(0, 10, 0, 90)
@@ -182,7 +182,7 @@ function UILibrary:CreateCard(parent, options)
     card.Position = UDim2.new(0, 0, 0, 5)
     TweenService:Create(card, TWEEN_INFO, { Position = UDim2.new(0, 0, 0, 0) }):Play()
 
-    print("Card Created: Parent =", parent and parent.Name or "No parent")
+    print("Card Created: Parent =", parent and parent.Name or "No parent", "Visible =", card.Visible)
     return card
 end
 
@@ -219,7 +219,7 @@ function UILibrary:CreateButton(parent, options)
         TweenService:Create(button, TWEEN_INFO, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary }):Play()
     end)
 
-    print("Button Created: Text =", options.Text)
+    print("Button Created: Text =", options.Text, "Parent =", parent and parent.Name or "No parent", "Visible =", button.Visible)
     return button
 end
 
@@ -228,13 +228,13 @@ function UILibrary:CreateFloatingButton(parent, options)
     options = options or {}
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
-        screenSize = Vector2.new(720, 1280) -- 默认手机分辨率
+        screenSize = Vector2.new(720, 1280)
         warn("Failed to get screen resolution, using default: 720x1280")
     end
 
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(0, 30, 0, 30)
-    button.Position = UDim2.new(1, -40, 1, -40) -- 固定右下角
+    button.Position = UDim2.new(1, -40, 1, -40)
     button.BackgroundColor3 = THEME.Primary
     button.BackgroundTransparency = 0.5
     button.Text = options.Text or "O"
@@ -272,7 +272,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     end)
 
     self:MakeDraggable(button)
-    print("Floating Button Created: Position =", button.Position)
+    print("Floating Button Created: Position =", button.Position, "Parent =", parent and parent.Name or "No parent", "Visible =", button.Visible)
     return button
 end
 
@@ -296,7 +296,7 @@ function UILibrary:CreateLabel(parent, options)
     label.TextTransparency = 1
     TweenService:Create(label, TWEEN_INFO, { TextTransparency = 0 }):Play()
 
-    print("Label Created: Text =", options.Text)
+    print("Label Created: Text =", options.Text, "Parent =", parent and parent.Name or "No parent", "Visible =", label.Visible)
     return label
 end
 
@@ -331,7 +331,7 @@ function UILibrary:CreateTextBox(parent, options)
         end
     end)
 
-    print("TextBox Created: Placeholder =", options.PlaceholderText)
+    print("TextBox Created: Placeholder =", options.PlaceholderText, "Parent =", parent and parent.Name or "No parent", "Visible =", textBox.Visible)
     return textBox
 end
 
@@ -383,7 +383,7 @@ function UILibrary:CreateToggle(parent, options)
         end
     end)
 
-    print("Toggle Created: Text =", options.Text)
+    print("Toggle Created: Text =", options.Text, "Parent =", parent and parent.Name or "No parent", "Visible =", toggleFrame.Visible)
     return toggleFrame, state
 end
 
@@ -413,7 +413,6 @@ function UILibrary:MakeDraggable(gui)
                 warn("Invalid screenSize in MakeDraggable, using default: 720x1280")
             end
             local guiSize = gui.AbsoluteSize
-            -- 确保 max >= min
             local maxX = math.max(0, screenSize.X - math.max(guiSize.X, 1))
             local maxY = math.max(0, screenSize.Y - math.max(guiSize.Y, 1))
             newPos = UDim2.new(
@@ -429,6 +428,8 @@ function UILibrary:MakeDraggable(gui)
             dragging = false
         end
     end)
+
+    print("MakeDraggable Applied: GUI =", gui and gui.Name or "No GUI")
 end
 
 -- 主窗口模块
@@ -444,9 +445,10 @@ function UILibrary:CreateWindow(options)
         return nil
     end
     screenGui.ResetOnSpawn = false
+    screenGui.Enabled = true
 
     local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 400, 0, 300) -- 适配手机
+    mainFrame.Size = UDim2.new(0, 400, 0, 300)
     mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
     mainFrame.BackgroundColor3 = THEME.Background
     mainFrame.BackgroundTransparency = 0.5
@@ -458,10 +460,11 @@ function UILibrary:CreateWindow(options)
 
     -- 侧边栏
     local sidebar = Instance.new("Frame")
-    sidebar.Size = UDim2.new(0, 100, 1, 0)
+    sidebar.Size = UDim2.new(0, 80, 1, 0)
     sidebar.Position = UDim2.new(0, 0, 0, 0)
     sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     sidebar.Parent = mainFrame
+    sidebar.Visible = true
     local sidebarCorner = Instance.new("UICorner")
     sidebarCorner.CornerRadius = UDim.new(0, 6)
     sidebarCorner.Parent = sidebar
@@ -476,10 +479,11 @@ function UILibrary:CreateWindow(options)
 
     -- 标题栏
     local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(0, 300, 0, 30)
-    titleBar.Position = UDim2.new(0, 100, 0, 0)
+    titleBar.Size = UDim2.new(0, 320, 0, 30)
+    titleBar.Position = UDim2.new(0, 80, 0, 0)
     titleBar.BackgroundColor3 = THEME.Primary
     titleBar.Parent = mainFrame
+    titleBar.Visible = true
     local titleCorner = Instance.new("UICorner")
     titleCorner.CornerRadius = UDim.new(0, 6)
     titleCorner.Parent = titleBar
@@ -493,8 +497,8 @@ function UILibrary:CreateWindow(options)
 
     -- 主要页面
     local mainPage = Instance.new("ScrollingFrame")
-    mainPage.Size = UDim2.new(0, 300, 0, 270)
-    mainPage.Position = UDim2.new(0, 100, 0, 30)
+    mainPage.Size = UDim2.new(0, 320, 0, 270)
+    mainPage.Position = UDim2.new(0, 80, 0, 30)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground
     mainPage.BackgroundTransparency = 0.5
     mainPage.ScrollBarThickness = 4
@@ -517,7 +521,10 @@ function UILibrary:CreateWindow(options)
     mainFrame.Size = UDim2.new(0, 380, 0, 285)
     TweenService:Create(mainFrame, TWEEN_INFO, { Size = originalSize }):Play()
 
-    print("Window Created: mainFrame =", mainFrame.Name)
+    print("Window Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible)
+    print("Sidebar Created: Visible =", sidebar.Visible)
+    print("TitleBar Created: Visible =", titleBar.Visible)
+    print("MainPage Created: Visible =", mainPage.Visible)
     return mainFrame, screenGui, sidebar, titleLabel, mainPage
 end
 
@@ -568,10 +575,10 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
             end
         end
         titleLabel.Text = options.Text
-        print("Tab Switched: Text =", options.Text)
+        print("Tab Switched: Text =", options.Text, "Content Visible =", content.Visible)
     end)
 
-    print("Tab Created: Text =", options.Text)
+    print("Tab Created: Text =", options.Text, "Content Visible =", content.Visible)
     return tabButton, content
 end
 
@@ -601,7 +608,7 @@ function UILibrary:CreateAuthorInfo(parent, options)
         Callback = options.SocialCallback
     })
 
-    print("Author Info Created")
+    print("Author Info Created: Parent =", parent and parent.Name or "No parent", "Visible =", authorFrame.Visible)
     return authorFrame
 end
 
@@ -618,6 +625,7 @@ function UILibrary:SetTheme(newTheme)
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or getAvailableFont()
     }
+    print("Theme Set: Primary =", THEME.Primary)
 end
 
 return UILibrary
