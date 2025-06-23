@@ -249,7 +249,7 @@ if settingsTab and settingsContent then
                     UILibrary:Notify({ Title = "Error", Text = "Invalid amount", Duration = 3 })
                 end
                 print("[TextBox]: Target Currency Amount Set:", config.targetCurrency)
-                end
+            end
         })
     end
 
