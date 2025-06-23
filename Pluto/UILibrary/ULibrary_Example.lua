@@ -3,7 +3,17 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 
 -- 加载 LogCapture
-local LogCapture = require(script.Parent.LogCapture) or { Start = function() end }
+local LogCapture
+local success, result = pcall(function()
+    return require(script.Parent.LogCapture)
+end)
+if success and result then
+    LogCapture = result
+    print("LogCapture loaded successfully")
+else
+    LogCapture = { Start = function() print("[LogCapture] Fallback: Unable to load LogCapture") end }
+    warn("Failed to load LogCapture: " .. tostring(result))
+end
 LogCapture:Start()
 
 -- 加载 UI 库
@@ -240,12 +250,12 @@ local testNotifyButton = UILibrary:CreateButton(notifyContent, {
 })
 
 -- 右侧区域：About 标签页
-local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, rightFrame, {
+local notifyTab, notifyContent = UILibrary:CreateTab(tabBar, rightFrame, {
     Text = "About"
 })
 
 -- 作者信息
-local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
+local authorInfo = UILibrary:CreateAuthorInfo(notifyContent, {
     Text = "Author: YourName\nVersion: 1.0.0",
     SocialText = "Join Discord",
     SocialCallback = function()
