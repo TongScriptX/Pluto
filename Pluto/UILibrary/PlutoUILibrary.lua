@@ -386,6 +386,7 @@ function UILibrary:CreateToggle(parent, options)
         warn("[Toggle]: Creation Failed: Parent is nil")
         return nil
     end
+
     options = options or {}
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
@@ -409,6 +410,7 @@ function UILibrary:CreateToggle(parent, options)
     track.Parent = toggleFrame
     track.Visible = true
     track.ZIndex = 2
+
     local trackCorner = Instance.new("UICorner")
     trackCorner.CornerRadius = UDim.new(0, 4)
     trackCorner.Parent = track
@@ -422,6 +424,7 @@ function UILibrary:CreateToggle(parent, options)
     thumb.Parent = track
     thumb.Visible = true
     thumb.ZIndex = 2
+
     local thumbCorner = Instance.new("UICorner")
     thumbCorner.CornerRadius = UDim.new(0, 8)
     thumbCorner.Parent = thumb
@@ -441,7 +444,6 @@ function UILibrary:CreateToggle(parent, options)
     print("[Toggle]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", toggleFrame.Visible)
     return toggleFrame, state
 end
-
 -- 拖拽模块
 function UILibrary:MakeDraggable(gui)
     if not gui then
