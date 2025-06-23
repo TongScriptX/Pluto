@@ -1,4 +1,3 @@
--- PlutoUILibrary.lua
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
@@ -20,7 +19,7 @@ local DEFAULT_THEME = {
 
 -- 备选字体
 local function getAvailableFont()
-    local fonts = {Enum.Font.Roboto, Enum.Font.Arial}
+    local fonts = {Enum.Font.Roboto, Enum.Font.Arial, Enum.Font.SourceSans}
     for _, font in ipairs(fonts) do
         local success = pcall(function()
             local label = Instance.new("TextLabel")
@@ -47,9 +46,18 @@ local THEME = {
     Font = getAvailableFont()
 }
 
+-- 验证主题值
+for key, value in pairs(THEME) do
+    if key ~= "Font" and value == nil then
+        warn("[Theme]: Invalid value for " .. key .. ", using default")
+        THEME[key] = DEFAULT_THEME[key]
+    end
+end
+
 -- 动画配置
-local TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-local TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+UILibrary.TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+UILibrary.THEME = THEME -- 暴露 THEME 供外部访问
 
 -- 通知容器
 local notificationContainer = nil
@@ -105,7 +113,7 @@ function UILibrary:Notify(options)
     local notification = Instance.new("Frame")
     notification.Name = "Notification"
     notification.Size = UDim2.new(0, 180, 0, 40)
-    notification.BackgroundColor3 = THEME.Background
+    notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     notification.BackgroundTransparency = 0.3
     notification.Position = UDim2.new(0, 0, 0, 90)
     notification.Parent = notificationContainer
@@ -125,13 +133,13 @@ function UILibrary:Notify(options)
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
         Position = UDim2.new(0, 5, 0, 20),
-        Size = UDim2.new(1, -10, 0, 15),
+        Size = UDim2.new一提，UDim2.new(1, -10, 0, 15),
         TextSize = 12
     })
 
     wait(0.1)
     local success, err = pcall(function()
-        local tween = TweenService:Create(notification, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 50) })
+        local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 50) })
         tween:Play()
     end)
     if not success then
@@ -143,7 +151,7 @@ function UILibrary:Notify(options)
         wait(options.Duration or 3)
         if notification.Parent then
             local success, err = pcall(function()
-                local tween = TweenService:Create(notification, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 90) })
+                local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 90) })
                 tween:Play()
                 tween.Completed:Wait()
             end)
@@ -169,8 +177,8 @@ function UILibrary:CreateCard(parent, options)
     local card = Instance.new("Frame")
     card.Name = "Card"
     card.Size = UDim2.new(1, -10, 0, options.Height or 60)
-    card.BackgroundColor3 = THEME.SecondaryBackground
-    card.BackgroundTransparency = 1
+    card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    card.BackgroundTransparency = 0.3
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
@@ -190,7 +198,7 @@ function UILibrary:CreateCard(parent, options)
     padding.Parent = card
 
     card.Position = UDim2.new(0, 5, 0, 5)
-    TweenService:Create(card, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3 }):Play()
+    TweenService:Create(card, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3 }):Play()
 
     print("[Card]: Created: Parent =", parent and parent.Name or "nil", "Visible =", card.Visible, "Position =", tostring(card.Position), "Size =", tostring(card.Size))
     return card
@@ -206,10 +214,10 @@ function UILibrary:CreateButton(parent, options)
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
     button.Size = options.Size or UDim2.new(1, -10, 0, 25)
-    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary
+    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.5
     button.Text = options.Text or ""
-    button.TextColor3 = THEME.Text
+    button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     button.TextSize = 12
     button.Font = THEME.Font
     button.Parent = parent
@@ -222,18 +230,18 @@ function UILibrary:CreateButton(parent, options)
     if options.Callback then
         button.MouseButton1Click:Connect(function()
             local originalSize = button.Size
-            TweenService:Create(button, TWEEN_INFO_BUTTON, { Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95) }):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95) }):Play()
             wait(0.1)
-            TweenService:Create(button, TWEEN_INFO_BUTTON, { Size = originalSize }):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Size = originalSize }):Play()
             options.Callback()
         end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary }):Play()
     end)
 
     print("[Button]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", tostring(button.Position))
@@ -258,10 +266,10 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.Name = "FloatingButton"
     button.Size = UDim2.new(0, 30, 0, 30)
     button.Position = UDim2.new(1, -40, 1, -40)
-    button.BackgroundColor3 = THEME.Primary
+    button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = 0.5
     button.Text = options.Text or "O"
-    button.TextColor3 = THEME.Text
+    button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     button.TextSize = 12
     button.Font = THEME.Font
     button.Parent = parent
@@ -277,24 +285,27 @@ function UILibrary:CreateFloatingButton(parent, options)
         button.MouseButton1Click:Connect(function()
             local isVisible = not mainFrame.Visible
             button.Text = isVisible and "X" or options.Text
-            mainFrame.Visible = true -- Ensure visible before tween
-            TweenService:Create(mainFrame, TWEEN_INFO_UI, {
+            mainFrame.Visible = true
+            TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
                 Size = isVisible and originalSize or UDim2.new(0, 0, 0, 0),
                 BackgroundTransparency = isVisible and 0.5 or 1
             }):Play()
             if not isVisible then
-                mainFrame.Visible = false -- Hide after tween
+                task.spawn(function()
+                    wait(0.3)
+                    mainFrame.Visible = false
+                end)
             end
-            TweenService:Create(button, TWEEN_INFO_BUTTON, { Rotation = isVisible and 45 or 0 }):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Rotation = isVisible and 45 or 0 }):Play()
             print("[FloatingButton]: Clicked: MainFrame Visible =", isVisible)
         end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Primary }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary }):Play()
     end)
 
     self:MakeDraggable(button)
@@ -315,7 +326,7 @@ function UILibrary:CreateLabel(parent, options)
     label.Position = options.Position or UDim2.new(0, 5, 0, 5)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
-    label.TextColor3 = THEME.Text
+    label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     label.TextSize = options.TextSize or 12
     label.Font = THEME.Font
     label.TextWrapped = true
@@ -326,7 +337,7 @@ function UILibrary:CreateLabel(parent, options)
     label.ZIndex = 2
 
     local success, err = pcall(function()
-        TweenService:Create(label, TWEEN_INFO_UI, { TextTransparency = 0 }):Play()
+        TweenService:Create(label, self.TWEEN_INFO_UI, { TextTransparency = 0 }):Play()
     end)
     if not success then
         warn("[Label]: Animation Failed: " .. tostring(err))
@@ -342,35 +353,32 @@ function UILibrary:CreateTextBox(parent, options)
         warn("[TextBox]: Creation Failed: Parent is nil")
         return nil
     end
-
     options = options or {}
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
     textBox.Size = UDim2.new(1, -10, 0, 25)
-    textBox.BackgroundColor3 = THEME.SecondaryBackground
+    textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     textBox.BackgroundTransparency = 0.3
-    textBox.TextColor3 = THEME.Text
+    textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     textBox.TextSize = 12
     textBox.Font = THEME.Font
     textBox.PlaceholderText = options.PlaceholderText or ""
     textBox.TextWrapped = true
     textBox.TextTruncate = Enum.TextTruncate.AtEnd
     textBox.BorderSizePixel = 1
-    textBox.BorderColor3 = THEME.Background
+    textBox.BorderColor3 = THEME.Background or DEFAULT_THEME.Background
     textBox.Parent = parent
     textBox.Visible = true
     textBox.ZIndex = 2
-
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 4)
     corner.Parent = textBox
 
     textBox.Focused:Connect(function()
-        TweenService:Create(textBox, TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Primary }):Play()
+        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary }):Play()
     end)
-
     textBox.FocusLost:Connect(function()
-        TweenService:Create(textBox, TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Background }):Play()
+        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Background or DEFAULT_THEME.Background }):Play()
         if options.OnFocusLost then
             options.OnFocusLost()
         end
@@ -386,7 +394,6 @@ function UILibrary:CreateToggle(parent, options)
         warn("[Toggle]: Creation Failed: Parent is nil")
         return nil
     end
-
     options = options or {}
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
@@ -406,11 +413,10 @@ function UILibrary:CreateToggle(parent, options)
     track.Name = "Track"
     track.Size = UDim2.new(0, 30, 0, 8)
     track.Position = UDim2.new(0.65, 0, 0.5, -4)
-    track.BackgroundColor3 = options.DefaultState and THEME.Success or THEME.Error
+    track.BackgroundColor3 = options.DefaultState and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
     track.Parent = toggleFrame
     track.Visible = true
     track.ZIndex = 2
-
     local trackCorner = Instance.new("UICorner")
     trackCorner.CornerRadius = UDim.new(0, 4)
     trackCorner.Parent = track
@@ -424,7 +430,6 @@ function UILibrary:CreateToggle(parent, options)
     thumb.Parent = track
     thumb.Visible = true
     thumb.ZIndex = 2
-
     local thumbCorner = Instance.new("UICorner")
     thumbCorner.CornerRadius = UDim.new(0, 8)
     thumbCorner.Parent = thumb
@@ -433,9 +438,9 @@ function UILibrary:CreateToggle(parent, options)
     thumb.MouseButton1Click:Connect(function()
         state = not state
         local targetPos = state and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
-        local targetColor = state and THEME.Success or THEME.Error
-        TweenService:Create(thumb, TWEEN_INFO_BUTTON, { Position = targetPos }):Play()
-        TweenService:Create(track, TWEEN_INFO_BUTTON, { BackgroundColor3 = targetColor }):Play()
+        local targetColor = state and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
+        TweenService:Create(thumb, self.TWEEN_INFO_BUTTON, { Position = targetPos }):Play()
+        TweenService:Create(track, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = targetColor }):Play()
         if options.Callback then
             options.Callback(state)
         end
@@ -444,6 +449,7 @@ function UILibrary:CreateToggle(parent, options)
     print("[Toggle]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", toggleFrame.Visible)
     return toggleFrame, state
 end
+
 -- 拖拽模块
 function UILibrary:MakeDraggable(gui)
     if not gui then
@@ -532,7 +538,7 @@ function UILibrary:CreateWindow(options)
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
     mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
-    mainFrame.BackgroundColor3 = THEME.Background
+    mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     mainFrame.BackgroundTransparency = 0.5
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
@@ -568,7 +574,7 @@ function UILibrary:CreateWindow(options)
     titleBar.Name = "TitleBar"
     titleBar.Size = UDim2.new(0, windowWidth - 80, 0, 30)
     titleBar.Position = UDim2.new(0, 80, 0, 0)
-    titleBar.BackgroundColor3 = THEME.Primary
+    titleBar.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
     titleBar.Parent = mainFrame
     titleBar.Visible = true
     titleBar.ZIndex = 2
@@ -589,7 +595,7 @@ function UILibrary:CreateWindow(options)
         titleLabel.Size = UDim2.new(1, 0, 1, 0)
         titleLabel.BackgroundTransparency = 1
         titleLabel.Text = "Home"
-        titleLabel.TextColor3 = THEME.Text
+        titleLabel.TextColor3 = THEME.Text or DEFAULT_THEME.Text
         titleLabel.TextSize = 14
         titleLabel.Font = THEME.Font
         titleLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -602,7 +608,7 @@ function UILibrary:CreateWindow(options)
     mainPage.Name = "MainPage"
     mainPage.Size = UDim2.new(0, windowWidth - 80, 0, windowHeight - 30)
     mainPage.Position = UDim2.new(0, 80, 0, 30)
-    mainPage.BackgroundColor3 = THEME.SecondaryBackground
+    mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     mainPage.BackgroundTransparency = 0.5
     mainPage.ScrollBarThickness = 4
     mainPage.CanvasSize = UDim2.new(0, 0, 0, 100)
@@ -623,7 +629,7 @@ function UILibrary:CreateWindow(options)
 
     local originalSize = mainFrame.Size
     mainFrame.Size = UDim2.new(0, windowWidth - 20, 0, windowHeight - 15)
-    TweenService:Create(mainFrame, TWEEN_INFO_UI, { Size = originalSize }):Play()
+    TweenService:Create(mainFrame, self.TWEEN_INFO_UI, { Size = originalSize }):Play()
 
     if not mainFrame or not screenGui or not sidebar or not titleLabel or not mainPage then
         warn("[Window]: Incomplete Return Values: mainFrame =", mainFrame, "screenGui =", screenGui, "sidebar =", sidebar, "titleLabel =", titleLabel, "mainPage =", mainPage)
@@ -633,7 +639,7 @@ function UILibrary:CreateWindow(options)
     print("[Window]: Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
     print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", tostring(sidebar.Position), "ZIndex =", sidebar.ZIndex)
     print("[TitleBar]: Created: Visible =", titleBar.Visible, "Position =", tostring(titleBar.Position), "Size =", tostring(titleBar.Size))
-    print("[MainPage]: Created: Visible =", mainPage.Visible, "Position =", mainPage.Position, "ZIndex =", mainPage.Position)
+    print("[MainPage]: Created: Visible =", mainPage.Visible, "Position =", tostring(mainPage.Position), "ZIndex =", mainPage.ZIndex)
     return mainFrame, screenGui, sidebar, titleLabel, mainPage
 end
 
@@ -643,26 +649,23 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         warn("[Tab]: Creation Failed: Invalid sidebar, mainPage, or titleLabel")
         return nil, nil
     end
-
     options = options or {}
     local tabButton = self:CreateButton(sidebar, {
         Text = options.Text or "",
         Size = UDim2.new(1, -10, 0, 30),
-        BackgroundColor3 = options.Active and THEME.Accent or THEME.Primary,
+        BackgroundColor3 = options.Active and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
         BackgroundTransparency = options.Active and 0 or 0.5
     })
-
     if not tabButton then
         warn("[Tab]: Creation Failed: tabButton is nil")
         return nil, nil
-    end  -- 修复点：补上这个 `end`
-
+    end
     local content = Instance.new("ScrollingFrame")
     content.Name = "TabContent_" .. (options.Text or "Unnamed")
-    content.Size = UDim2.new(1, -10, 0, 0)
+    content.Size = UDim2.new(1, 0, 1, 0)
     content.Position = UDim2.new(options.Active and 0 or 1, 0, 0, 0)
-    content.BackgroundColor3 = THEME.BackgroundTransparency
-    content.BackgroundTransparency = 1
+    content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
+    content.BackgroundTransparency = 0.5
     content.ScrollBarThickness = 4
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
     content.Visible = options.Active or false
@@ -680,18 +683,20 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     tabButton.MouseButton1Click:Connect(function()
         for _, child in ipairs(mainPage:GetChildren()) do
             if child:IsA("ScrollingFrame") then
-                TweenService:Create(child, TWEEN_INFO_UI, { Position = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1 }):Play()
-                wait(0.3)
-                child.Visible = false
+                TweenService:Create(child, self.TWEEN_INFO_UI, { Position = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1 }):Play()
+                task.spawn(function()
+                    wait(0.3)
+                    child.Visible = false
+                end)
             end
         end
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
-        TweenService:Create(content, TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5 }):Play()
+        TweenService:Create(content, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5 }):Play()
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
-                TweenService:Create(btn, TWEEN_INFO_BUTTON, {
-                    BackgroundColor3 = btn == tabButton and THEME.Accent or THEME.Primary,
+                TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
+                    BackgroundColor3 = btn == tabButton and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
                     BackgroundTransparency = btn == tabButton and 0 or 0.5
                 }):Play()
             end
@@ -714,7 +719,7 @@ function UILibrary:CreateAuthorInfo(parent, options)
     local authorFrame = Instance.new("Frame")
     authorFrame.Name = "AuthorFrame"
     authorFrame.Size = UDim2.new(1, -10, 0, 50)
-    authorFrame.BackgroundColor3 = THEME.SecondaryBackground
+    authorFrame.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     authorFrame.BackgroundTransparency = 0.3
     authorFrame.Parent = parent
     authorFrame.Visible = true
@@ -753,7 +758,13 @@ function UILibrary:SetTheme(newTheme)
         Error = newTheme.Error or DEFAULT_THEME.Error,
         Font = newTheme.Font or getAvailableFont()
     }
-    print("[Theme]: Set: Primary =", tostring(THEME.Primary))
+    for key, value in pairs(THEME) do
+        if key ~= "Font" and value == nil then
+            warn("[SetTheme]: Invalid value for " .. key .. ", using default")
+            THEME[key] = DEFAULT_THEME[key]
+        end
+    end
+    print("[Theme]: Set: Primary =", tostring(THEME.Primary), "Accent =", tostring(THEME.Accent))
 end
 
 return UILibrary
