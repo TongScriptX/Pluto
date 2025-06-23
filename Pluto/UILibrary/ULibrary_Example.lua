@@ -9,17 +9,27 @@ local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     local response = game:HttpGet(url)
     print("[Init]: HttpGet Response Length:", #response)
-    print("[Init]: HttpGet Response Preview:", string.sub(response, 1, 100))
+    print("[Init]: HttpGet Response Preview:", string.sub(response, 1, 200))
+    print("[Init]: HttpGet Response End:", string.sub(response, -200, -1))
+    -- 保存响应（仅限支持 syn.write 的环境，如 Synapse X）
+    if syn and syn.write then
+        syn.write(response, "PlutoUILibrary_response.lua")
+        print("[Init]: Response saved to PlutoUILibrary_response.lua")
+    end
     return response
 end)
 
 if success and result then
     local success2, module = pcall(function()
-        local loaded = loadstring(result)
+        local loaded, err = loadstring(result)
         if not loaded then
-            error("loadstring returned nil")
+            error("loadstring failed: " .. (err or "nil returned"))
         end
-        return loaded()
+        local success3, module2 = pcall(loaded)
+        if not success3 then
+            error("execution failed: " .. tostring(module2))
+        end
+        return module2
     end)
     if success2 and module then
         UILibrary = module
@@ -28,7 +38,17 @@ if success and result then
         error("[Init]: Failed to execute PlutoUILibrary: " .. tostring(module))
     end
 else
-    error("[Init]: Failed to fetch PlutoUILibrary: " .. tostring(result))
+    -- 回退到本地 PlutoUILibrary（假设已提供）
+    warn("[Init]: HttpGet failed, attempting local load")
+    local success3, localModule = pcall(function()
+        return require(game.StarterPlayerScripts.PlutoUILibrary) -- 需将 PlutoUILibrary.lua 放入 StarterPlayerScripts
+    end)
+    if success3 and localModule then
+        UILibrary = localModule
+        print("[Init]: Local PlutoUILibrary loaded successfully")
+    else
+        error("[Init]: Failed to load PlutoUILibrary locally: " .. tostring(localModule))
+    end
 end
 
 -- 获取当前玩家
@@ -225,7 +245,6 @@ if settingsTab and settingsContent then
                     config.targetCurrencyEnabled = false
                     targetCurrencyState = false
                     UILibrary:Notify({ Title = "Error", Text = "Set a valid target currency", Duration = 3 })
-                    -- Update toggle UI to reflect state
                     local thumb = targetCurrencyToggle:FindFirstChild("Thumb", true)
                     local track = targetCurrencyToggle:FindFirstChild("Track", true)
                     if thumb and track then
