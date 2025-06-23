@@ -79,7 +79,7 @@ end)
 if success and result then
     mainFrame, screenGui, sidebar, titleLabel, mainPage = result
     UILibrary:MakeDraggable(mainFrame)
-    print("Main Window Created: Size =", mainFrame.Size)
+    print("Main Window Created: Size =", mainFrame.Size, "Position =", mainFrame.Position)
 else
     error("Failed to create main window: " .. tostring(result))
 end
@@ -89,7 +89,11 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     MainFrame = mainFrame,
     Text = "O"
 })
-print("Floating Button Created")
+if not toggleButton then
+    warn("Floating Button Creation Failed")
+else
+    print("Floating Button Created")
+end
 
 -- 创建标签页
 -- 主页
@@ -173,7 +177,7 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
         local num = tonumber(intervalInput.Text)
         if num and num > 0 then
             config.notificationInterval = num
-            UILibrary:Notify({ Title = "Config Updated", Text = "Interval set to " .. num .. " seconds", Duration = 3 })
+            UILibrary:Notify({ Title = "Config Updated", Text = "Interval set to: " .. num .. " s", Duration = 3 })
         else
             intervalInput.Text = tostring(config.notificationInterval)
             UILibrary:Notify({ Title = "Error", Text = "Invalid interval", Duration = 3 })
@@ -195,7 +199,7 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
             config.targetCurrencyEnabled = state
             UILibrary:Notify({ Title = "Config Updated", Text = "Target Currency: " .. (state and "On" or "Off"), Duration = 3 })
         end
-        print("Target Currency Enabled:", state)
+        print("Target Currency Set:", state)
     end
 })
 local targetCurrencyLabel = UILibrary:CreateLabel(targetCurrencyCard, {
