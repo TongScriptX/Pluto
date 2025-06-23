@@ -681,18 +681,26 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     end)
 
     tabButton.MouseButton1Click:Connect(function()
+        -- 隐藏其他标签页内容，排除当前 content
         for _, child in ipairs(mainPage:GetChildren()) do
-            if child:IsA("ScrollingFrame") then
+            if child:IsA("ScrollingFrame") and child ~= content then
                 TweenService:Create(child, self.TWEEN_INFO_UI, { Position = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1 }):Play()
                 task.spawn(function()
-                    wait(0.3)
+                    task.wait(0.3)
                     child.Visible = false
+                    print("[Tab]: Hid Content: Name =", child.Name, "Visible =", child.Visible)
                 end)
             end
         end
+        -- 显示当前标签页内容
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
-        TweenService:Create(content, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5 }):Play()
+        local tween = TweenService:Create(content, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5 })
+        tween:Play()
+        tween.Completed:Connect(function()
+            print("[Tab]: Animation Completed: Text =", options.Text, "Content Visible =", content.Visible)
+        end)
+        -- 更新按钮外观
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
