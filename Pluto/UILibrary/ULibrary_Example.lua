@@ -57,7 +57,7 @@ local THEME_DARK = {
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Roboto -- 使用 Roboto
+    Font = Enum.Font.Roboto
 }
 
 local THEME_LIGHT = {
@@ -68,16 +68,16 @@ local THEME_LIGHT = {
     Text = Color3.fromRGB(33, 33, 33),
     Success = Color3.fromRGB(76, 175, 80),
     Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Roboto -- 使用 Roboto
+    Font = Enum.Font.Roboto
 }
 
 -- 创建主窗口
-local mainFrame, screenGui, tabBar, leftFrame, rightFrame
+local mainFrame, screenGui, sidebar, titleLabel, mainPage
 local success, result = pcall(function()
     return UILibrary:CreateWindow()
 end)
 if success and result then
-    mainFrame, screenGui, tabBar, leftFrame, rightFrame = result
+    mainFrame, screenGui, sidebar, titleLabel, mainPage = result
     UILibrary:MakeDraggable(mainFrame)
     print("Main Window Created")
 else
@@ -91,40 +91,23 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
 })
 print("Floating Button Created")
 
--- 主题切换按钮
-local themeButton = UILibrary:CreateButton(mainFrame, {
-    Text = "Switch to Light Theme",
-    Callback = function()
-        if config.currentTheme == "Dark" then
-            UILibrary:SetTheme(THEME_LIGHT)
-            config.currentTheme = "Light"
-            themeButton.Text = "Switch to Dark Theme"
-            UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Light Theme", Duration = 3 })
-        else
-            UILibrary:SetTheme(THEME_DARK)
-            config.currentTheme = "Dark"
-            themeButton.Text = "Switch to Light Theme"
-            UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
-        end
-        print("Theme Switched to:", config.currentTheme)
-    end
+-- 创建标签页
+-- 主页
+local homeTab, homeContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "主页",
+    Active = true
 })
-
--- 左侧区域：信息展示
-local infoCard = UILibrary:CreateCard(leftFrame, { Height = 100 })
+local infoCard = UILibrary:CreateCard(homeContent, { Height = 100 })
 local gameStatusLabel = UILibrary:CreateLabel(infoCard, { Text = "Game Status: Running" })
 local onlineTimeLabel = UILibrary:CreateLabel(infoCard, { Text = "Online Time: 0:00:00", Position = UDim2.new(0, 5, 0, 25) })
 local currencyLabel = UILibrary:CreateLabel(infoCard, { Text = "Currency: 0", Position = UDim2.new(0, 5, 0, 45) })
-print("Info Card Created")
+print("Home Tab Created")
 
--- 右侧区域：Notifications 标签页
-local notifyTab, notifyContent = UILibrary:CreateTab(tabBar, rightFrame, {
-    Text = "Notifications",
-    Active = true
+-- 主要功能
+local featuresTab, featuresContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "主要功能"
 })
-
--- Webhook 配置卡片
-local webhookCard = UILibrary:CreateCard(notifyContent, { Height = 60 })
+local webhookCard = UILibrary:CreateCard(featuresContent, { Height = 60 })
 local webhookLabel = UILibrary:CreateLabel(webhookCard, { Text = "Webhook URL" })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "Enter Webhook URL",
@@ -139,8 +122,7 @@ local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     end
 })
 
--- 通知开关卡片
-local togglesCard = UILibrary:CreateCard(notifyContent, { Height = 100 })
+local togglesCard = UILibrary:CreateCard(featuresContent, { Height = 100 })
 local notifyCurrencyToggle = UILibrary:CreateToggle(togglesCard, {
     Text = "Notify Currency",
     DefaultState = config.notifyCurrency,
@@ -169,8 +151,20 @@ local leaderboardKickToggle = UILibrary:CreateToggle(togglesCard, {
     end
 })
 
--- 通知间隔卡片
-local intervalCard = UILibrary:CreateCard(notifyContent, { Height = 60 })
+local testNotifyButton = UILibrary:CreateButton(featuresContent, {
+    Text = "Test Notification",
+    Callback = function()
+        UILibrary:Notify({ Title = "Test Success", Text = "This is a test notification!", Duration = 3 })
+        print("Test Notification Triggered")
+    end
+})
+print("Features Tab Created")
+
+-- 设置
+local settingsTab, settingsContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "设置"
+})
+local intervalCard = UILibrary:CreateCard(settingsContent, { Height = 60 })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, { Text = "Notification Interval (seconds)" })
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "Enter interval",
@@ -188,8 +182,7 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     end
 })
 
--- 目标货币卡片
-local targetCurrencyCard = UILibrary:CreateCard(notifyContent, { Height = 80 })
+local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { Height = 80 })
 local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
     Text = "Target Currency",
     DefaultState = config.targetCurrencyEnabled,
@@ -226,22 +219,38 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     end
 })
 
--- 测试通知按钮
-local testNotifyButton = UILibrary:CreateButton(notifyContent, {
-    Text = "Test Notification",
+local themeButton = UILibrary:CreateButton(settingsContent, {
+    Text = "Switch to Light Theme",
     Callback = function()
-        UILibrary:Notify({ Title = "Test Success", Text = "This is a test notification!", Duration = 3 })
-        print("Test Notification Triggered")
+        if config.currentTheme == "Dark" then
+            UILibrary:SetTheme(THEME_LIGHT)
+            config.currentTheme = "Light"
+            themeButton.Text = "Switch to Dark Theme"
+            UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Light Theme", Duration = 3 })
+        else
+            UILibrary:SetTheme(THEME_DARK)
+            config.currentTheme = "Dark"
+            themeButton.Text = "Switch to Light Theme"
+            UILibrary:Notify({ Title = "Theme Changed", Text = "Switched to Dark Theme", Duration = 3 })
+        end
+        print("Theme Switched to:", config.currentTheme)
     end
 })
+print("Settings Tab Created")
 
--- 右侧区域：About 标签页
-local aboutTab, aboutContent = UILibrary:CreateTab(tabBar, rightFrame, {
-    Text = "About"
+-- 其他
+local othersTab, othersContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "其他"
 })
+local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 60 })
+local placeholderLabel = UILibrary:CreateLabel(placeholderCard, { Text = "敬请期待更多功能！" })
+print("Others Tab Created")
 
--- 作者信息
-local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
+-- 作者
+local authorTab, authorContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "作者"
+})
+local authorInfo = UILibrary:CreateAuthorInfo(authorContent, {
     Text = "Author: YourName\nVersion: 1.0.0",
     SocialText = "Join Discord",
     SocialCallback = function()
@@ -249,6 +258,7 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
         print("Discord Link Clicked")
     end
 })
+print("Author Tab Created")
 
 -- 模拟在线时间更新
 spawn(function()
