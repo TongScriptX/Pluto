@@ -280,7 +280,6 @@ end
 
 -- 悬浮按钮模块
 function UILibrary:CreateFloatingButton(parent, options)
-function UILibrary:CreateFloatingButton(parent, options)
     if not parent then
         warn("[FloatingButton]: Creation Failed: Parent is nil")
         return nil
