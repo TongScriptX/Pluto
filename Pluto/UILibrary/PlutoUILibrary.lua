@@ -250,7 +250,6 @@ end
 
 -- 悬浮按钮模块
 function UILibrary:CreateFloatingButton(parent, options)
-function UILibrary:CreateFloatingButton(parent, options)
     if not parent then
         warn("[FloatingButton]: Creation Failed: Parent is nil")
         return nil
@@ -475,7 +474,7 @@ function UILibrary:MakeDraggable(gui)
             dragging = true
             startPos = input.Position
             startGuiPos = gui.Position
-            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.UserInputType.Name)
+            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.UserInputType.Name, "startGuiPos =", tostring(startGuiPos))
         end
     end)
 
@@ -483,8 +482,8 @@ function UILibrary:MakeDraggable(gui)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - startPos
             local newPos = UDim2.new(
-                startGuiPos.X.Scale, startGuiPos.X.Offset + delta.X,
-                startGuiPos.Y.Scale, startGuiPos.Y.Offset + delta.Y
+                0, startGuiPos.X.Offset + delta.X,
+                0, startGuiPos.Y.Offset + delta.Y
             )
             local screenSize = GuiService:GetScreenResolution()
             if screenSize == Vector2.new(0, 0) then
@@ -499,13 +498,14 @@ function UILibrary:MakeDraggable(gui)
                 0, math.clamp(newPos.Y.Offset, 0, maxY)
             )
             gui.Position = newPos
+            print("[MakeDraggable]: Dragging: GUI =", gui.Name, "newPos =", tostring(newPos))
         end
     end)
 
     gui.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
-            print("[MakeDraggable]: Drag Ended: GUI =", gui.Name)
+            print("[MakeDraggable]: Drag Ended: GUI =", gui.Name, "Final Position =", tostring(gui.Position))
         end
     end)
 
