@@ -143,7 +143,7 @@ end
 -- 主页
 local homeTab, homeContent = createTabSafe("Home", true)
 if homeTab and homeContent then
-    local infoCard = UILibrary:CreateCard(homeContent, { Height = 80 })
+    local infoCard = UILibrary:CreateCard(homeContent, { Height = 90 }) -- 统一卡片高度
     if infoCard then
         local gameStatusLabel = UILibrary:CreateLabel(infoCard, { Text = "Game Status: Running" })
         local onlineTimeLabel = UILibrary:CreateLabel(infoCard, { Text = "Online Time: 0:00:00", Position = UDim2.new(0, 5, 0, 20) })
@@ -159,7 +159,7 @@ end
 -- 主要功能
 local featuresTab, featuresContent = createTabSafe("Features", false)
 if featuresTab and featuresContent then
-    local webhookCard = UILibrary:CreateCard(featuresContent, { Height = 50 })
+    local webhookCard = UILibrary:CreateCard(featuresContent, { Height = 60 }) -- 统一卡片高度
     if webhookCard then
         local webhookLabel = UILibrary:CreateLabel(webhookCard, { Text = "Webhook URL" })
         local webhookInput = UILibrary:CreateTextBox(webhookCard, {
@@ -176,7 +176,7 @@ if featuresTab and featuresContent then
         })
     end
 
-    local togglesCard = UILibrary:CreateCard(featuresContent, { Height = 80 })
+    local togglesCard = UILibrary:CreateCard(featuresContent, { Height = 90 }) -- 统一卡片高度
     if togglesCard then
         local notifyCurrencyToggle = UILibrary:CreateToggle(togglesCard, {
             Text = "Notify Currency",
@@ -222,7 +222,7 @@ end
 -- 设置
 local settingsTab, settingsContent = createTabSafe("Settings", false)
 if settingsTab and settingsContent then
-    local intervalCard = UILibrary:CreateCard(settingsContent, { Height = 50 })
+    local intervalCard = UILibrary:CreateCard(settingsContent, { Height = 60 }) -- 统一卡片高度
     if intervalCard then
         local intervalLabel = UILibrary:CreateLabel(intervalCard, { Text = "Notification Interval (s)" })
         local intervalInput = UILibrary:CreateTextBox(intervalCard, {
@@ -242,7 +242,7 @@ if settingsTab and settingsContent then
         })
     end
 
-    local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { Height = 60 })
+    local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { Height = 90 }) -- 统一卡片高度
     if targetCurrencyCard then
         local targetCurrencyToggle, targetCurrencyState = UILibrary:CreateToggle(targetCurrencyCard, {
             Text = "Target Currency",
@@ -313,7 +313,7 @@ end
 -- 其他
 local othersTab, othersContent = createTabSafe("Others", false)
 if othersTab and othersContent then
-    local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 40 })
+    local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 60 }) -- 统一卡片高度
     if placeholderCard then
         local placeholderLabel = UILibrary:CreateLabel(placeholderCard, { Text = "More features coming soon!" })
     end
