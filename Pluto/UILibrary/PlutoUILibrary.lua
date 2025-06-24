@@ -167,7 +167,7 @@ function UILibrary:Notify(options)
     return notification
 end
 
---CreateFadeTween
+-- 辅助函数：应用淡入/淡出动画
 function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     local tweens = {}
     if target:IsA("Frame") or target:IsA("ScrollingFrame") then
