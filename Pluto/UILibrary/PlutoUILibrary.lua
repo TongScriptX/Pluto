@@ -541,7 +541,7 @@ function UILibrary:CreateWindow(options)
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
-    mainFrame.Position = UDim2.new(0.5, windowWidth / 2, 0.5, -windowHeight / 2) -- 初始在右侧
+    mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     mainFrame.BackgroundTransparency = 1 -- 初始透明
     mainFrame.Parent = screenGui
@@ -557,6 +557,7 @@ function UILibrary:CreateWindow(options)
     sidebar.Size = UDim2.new(0, 80, 1, 0)
     sidebar.Position = UDim2.new(0, 0, 0, 0)
     sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    sidebar.BackgroundTransparency = 1
     sidebar.Parent = mainFrame
     sidebar.Visible = true
     sidebar.ZIndex = 2
@@ -579,6 +580,7 @@ function UILibrary:CreateWindow(options)
     titleBar.Size = UDim2.new(0, windowWidth - 80, 0, 30)
     titleBar.Position = UDim2.new(0, 80, 0, 0)
     titleBar.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
+    titleBar.BackgroundTransparency = 1
     titleBar.Parent = mainFrame
     titleBar.Visible = true
     titleBar.ZIndex = 2
@@ -590,7 +592,8 @@ function UILibrary:CreateWindow(options)
         Text = "Home",
         Size = UDim2.new(1, 0, 1, 0),
         TextXAlignment = Enum.TextXAlignment.Center,
-        TextSize = 14
+        TextSize = 14,
+        TextTransparency = 1 -- 初始透明
     })
     if not titleLabel then
         warn("[Window]: TitleLabel Creation Failed")
@@ -603,6 +606,7 @@ function UILibrary:CreateWindow(options)
         titleLabel.TextSize = 14
         titleLabel.Font = THEME.Font
         titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+        titleLabel.TextTransparency = 1
         titleLabel.Parent = titleBar
         titleLabel.Visible = true
         titleLabel.ZIndex = 2
@@ -613,7 +617,7 @@ function UILibrary:CreateWindow(options)
     mainPage.Size = UDim2.new(0, windowWidth - 80, 0, windowHeight - 30)
     mainPage.Position = UDim2.new(0, 80, 0, 30)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    mainPage.BackgroundTransparency = 0.5
+    mainPage.BackgroundTransparency = 1
     mainPage.ScrollBarThickness = 4
     mainPage.CanvasSize = UDim2.new(0, 0, 0, 100)
     mainPage.Parent = mainFrame
@@ -631,11 +635,16 @@ function UILibrary:CreateWindow(options)
         mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 10)
     end)
 
-    -- 初始动画：从右侧滑入
-    TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
-        Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2),
-        BackgroundTransparency = 0.5
-    }):Play()
+    -- 淡入动画
+    local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, { BackgroundTransparency = 0.5 })
+    tween:Play()
+    for _, child in ipairs(mainFrame:GetDescendants()) do
+        if child:IsA("Frame") or child:IsA("ScrollingFrame") then
+            TweenService:Create(child, self.TWEEN_INFO_UI, { BackgroundTransparency = child == mainPage and 0.5 or child == sidebar and 0 or child == titleBar and 0 or 1 }):Play()
+        elseif child:IsA("TextLabel") or child:IsA("TextButton") then
+            TweenService:Create(child, self.TWEEN_INFO_UI, { TextTransparency = 0 }):Play()
+        end
+    end
 
     print("[Window]: Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
     print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", tostring(sidebar.Position), "ZIndex =", sidebar.ZIndex)
