@@ -250,6 +250,7 @@ end
 
 -- 悬浮按钮模块
 function UILibrary:CreateFloatingButton(parent, options)
+function UILibrary:CreateFloatingButton(parent, options)
     if not parent then
         warn("[FloatingButton]: Creation Failed: Parent is nil")
         return nil
@@ -267,8 +268,8 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.Size = UDim2.new(0, 30, 0, 30)
     button.Position = UDim2.new(1, -40, 1, -40)
     button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    button.BackgroundTransparency = 0.5
-    button.Text = options.Text or "O"
+    button.BackgroundTransparency = 0.2 -- 降低透明度，颜色更醒目
+    button.Text = options.Text or "T" -- 默认图标为 T
     button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     button.TextSize = 12
     button.Font = THEME.Font
@@ -280,22 +281,25 @@ function UILibrary:CreateFloatingButton(parent, options)
     corner.Parent = button
 
     local mainFrame = options.MainFrame
-    local originalSize = mainFrame and mainFrame.Size or UDim2.new(0, 400, 0, 300)
+    local originalPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -200, 0.5, -150)
     if mainFrame then
         button.MouseButton1Click:Connect(function()
             local isVisible = not mainFrame.Visible
-            button.Text = isVisible and "X" or options.Text
+            button.Text = isVisible and "X" or "T" -- 切换时显示 X
             mainFrame.Visible = true
-            TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
-                Size = isVisible and originalSize or UDim2.new(0, 0, 0, 0),
+            -- 滑入/滑出动画
+            local targetPos = isVisible and originalPos or UDim2.new(0.5, mainFrame.Size.X.Offset / 2, 0.5, -mainFrame.Size.Y.Offset / 2)
+            local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
+                Position = targetPos,
                 BackgroundTransparency = isVisible and 0.5 or 1
-            }):Play()
-            if not isVisible then
-                task.spawn(function()
-                    wait(0.3)
+            })
+            tween:Play()
+            tween.Completed:Connect(function()
+                if not isVisible then
                     mainFrame.Visible = false
-                end)
-            end
+                end
+                print("[FloatingButton]: Animation Completed: MainFrame Visible =", mainFrame.Visible, "Position =", tostring(mainFrame.Position))
+            end)
             TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Rotation = isVisible and 45 or 0 }):Play()
             print("[FloatingButton]: Clicked: MainFrame Visible =", isVisible)
         end)
