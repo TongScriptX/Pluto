@@ -168,11 +168,11 @@ function UILibrary:Notify(options)
 end
 
 --CreateFadeTween
-local function applyFadeTween(target, tweenInfo, isVisible)
+function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     local tweens = {}
     if target:IsA("Frame") or target:IsA("ScrollingFrame") then
         local transparency = 1
-        if target.Name == "MainPage" then
+        if target.Name == "MainFrame" or target.Name == "MainPage" then
             transparency = isVisible and 0.5 or 1
         elseif target.Name == "Sidebar" or target.Name == "TitleBar" then
             transparency = isVisible and 0 or 1
