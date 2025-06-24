@@ -17,6 +17,21 @@ local DEFAULT_THEME = {
     Font = Enum.Font.Roboto
 }
 
+-- UI 样式常量
+local UI_STYLES = {
+    CardHeightSingle = 60, -- 单元素卡片高度（如单个输入框）
+    CardHeightMulti = 90,  -- 多元素卡片高度（如开关+输入框）
+    ButtonHeight = 25,     -- 按钮/输入框/开关高度
+    LabelHeight = 15,      -- 标签高度
+    TabButtonHeight = 30,  -- 标签页按钮高度
+    Padding = 5,           -- 通用间距（像素）
+    CornerRadius = 6,      -- 圆角半径
+    WindowWidth = 400,     -- 窗口宽度
+    WindowHeight = 300,    -- 窗口高度
+    SidebarWidth = 80,     -- 侧边栏宽度
+    TitleBarHeight = 30    -- 标题栏高度
+}
+
 -- 备选字体
 local function getAvailableFont()
     local fonts = {Enum.Font.Roboto, Enum.Font.Arial, Enum.Font.SourceSans}
@@ -58,6 +73,7 @@ end
 UILibrary.TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 UILibrary.THEME = THEME
+UILibrary.UI_STYLES = UI_STYLES -- 暴露样式供调试
 
 -- 通知容器
 local notificationContainer = nil
@@ -92,7 +108,7 @@ local function initNotificationContainer()
         notificationContainer.ZIndex = 10
         local layout = Instance.new("UIListLayout")
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, 5)
+        layout.Padding = UDim.new(0, UI_STYLES.Padding)
         layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
         layout.Parent = notificationContainer
     end
@@ -117,21 +133,21 @@ function UILibrary:Notify(options)
     notification.Visible = true
     notification.ZIndex = 11
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = notification
 
     local titleLabel = self:CreateLabel(notification, {
         Text = options.Title or "Notification",
-        Position = UDim2.new(0, 5, 0, 5),
-        Size = UDim2.new(1, -10, 0, 15),
+        Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding),
+        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight),
         TextSize = 12
     })
     titleLabel.ZIndex = 12
 
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
-        Position = UDim2.new(0, 5, 0, 20),
-        Size = UDim2.new(1, -10, 0, 15),
+        Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding + UI_STYLES.LabelHeight),
+        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight),
         TextSize = 12
     })
     textLabel.ZIndex = 12
@@ -199,28 +215,28 @@ function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.Size = UDim2.new(1, -10, 0, options.Height or 60)
+    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, options.IsMultiElement and UI_STYLES.CardHeightMulti or UI_STYLES.CardHeightSingle)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
+    card.Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding)
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = card
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 5)
+    layout.Padding = UDim.new(0, UI_STYLES.Padding)
     layout.Parent = card
     local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, 5)
-    padding.PaddingRight = UDim.new(0, 5)
-    padding.PaddingTop = UDim.new(0, 5)
-    padding.PaddingBottom = UDim.new(0, 5)
+    padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
     padding.Parent = card
 
-    card.Position = UDim2.new(0, 5, 0, 5)
     TweenService:Create(card, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3 }):Play()
 
     return card
@@ -235,7 +251,7 @@ function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
-    button.Size = options.Size or UDim2.new(1, -10, 0, 25)
+    button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.5
     button.Text = options.Text or ""
@@ -246,7 +262,7 @@ function UILibrary:CreateButton(parent, options)
     button.Visible = true
     button.ZIndex = 3
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = button
 
     if options.Callback then
@@ -295,7 +311,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     corner.Parent = button
 
     local mainFrame = options.MainFrame
-    local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -200, 0.5, -150)
+    local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -UI_STYLES.WindowWidth / 2, 0.5, -UI_STYLES.WindowHeight / 2)
     local lastKnownPos = firstOpenPos
     if mainFrame then
         button.MouseButton1Click:Connect(function()
@@ -345,8 +361,8 @@ function UILibrary:CreateLabel(parent, options)
     options = options or {}
     local label = Instance.new("TextLabel")
     label.Name = "Label_" .. (options.Text or "Unnamed")
-    label.Size = options.Size or UDim2.new(1, -10, 0, 15)
-    label.Position = options.Position or UDim2.new(0, 5, 0, 5)
+    label.Size = options.Size or UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight)
+    label.Position = options.Position or UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
     label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -377,7 +393,7 @@ function UILibrary:CreateTextBox(parent, options)
     options = options or {}
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
-    textBox.Size = UDim2.new(1, -10, 0, 25)
+    textBox.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
     textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     textBox.BackgroundTransparency = 0.3
     textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -393,7 +409,7 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.Visible = true
     textBox.ZIndex = 3
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = textBox
 
     textBox.Focused:Connect(function()
@@ -418,7 +434,7 @@ function UILibrary:CreateToggle(parent, options)
     options = options or {}
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
-    toggleFrame.Size = UDim2.new(1, -10, 0, 25)
+    toggleFrame.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
     toggleFrame.Visible = true
@@ -492,6 +508,7 @@ function UILibrary:MakeDraggable(gui)
             startPos = input.Position
             startGuiOffset = gui.AbsolutePosition
             gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
+            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Position =", tostring(gui.Position))
         end
     end)
 
@@ -511,6 +528,7 @@ function UILibrary:MakeDraggable(gui)
                 math.clamp(newOffset.Y, 0, maxY)
             )
             gui.Position = UDim2.new(0, newOffset.X, 0, newOffset.Y)
+            print("[MakeDraggable]: Dragging: GUI =", gui.Name, "Position =", tostring(gui.Position))
         end
     end)
 
@@ -518,6 +536,7 @@ function UILibrary:MakeDraggable(gui)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
             gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
+            print("[MakeDraggable]: Drag Ended: GUI =", gui.Name, "Position =", tostring(gui.Position))
         end
     end)
 end
@@ -529,8 +548,8 @@ function UILibrary:CreateUIWindow(options)
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
     end
-    local windowWidth = math.min(400, screenSize.X * 0.9)
-    local windowHeight = math.min(300, screenSize.Y * 0.9)
+    local windowWidth = math.min(UI_STYLES.WindowWidth, screenSize.X * 0.9)
+    local windowHeight = math.min(UI_STYLES.WindowHeight, screenSize.Y * 0.9)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "UILibraryWindow"
@@ -557,12 +576,12 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.ZIndex = 5
     mainFrame.ClipsDescendants = true
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 6)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = mainFrame
 
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
-    sidebar.Size = UDim2.new(0, 80, 1, 0)
+    sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
     sidebar.Position = UDim2.new(0, 0, 0, 0)
     sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     sidebar.BackgroundTransparency = 1
@@ -570,30 +589,30 @@ function UILibrary:CreateUIWindow(options)
     sidebar.Visible = true
     sidebar.ZIndex = 6
     local sidebarCorner = Instance.new("UICorner")
-    sidebarCorner.CornerRadius = UDim.new(0, 6)
+    sidebarCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     sidebarCorner.Parent = sidebar
 
     local sidebarLayout = Instance.new("UIListLayout")
     sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    sidebarLayout.Padding = UDim.new(0, 5)
+    sidebarLayout.Padding = UDim.new(0, UI_STYLES.Padding)
     sidebarLayout.Parent = sidebar
     local sidebarPadding = Instance.new("UIPadding")
-    sidebarPadding.PaddingLeft = UDim.new(0, 5)
-    sidebarPadding.PaddingRight = UDim.new(0, 5)
-    sidebarPadding.PaddingTop = UDim.new(0, 5)
+    sidebarPadding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+    sidebarPadding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+    sidebarPadding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
     sidebarPadding.Parent = sidebar
 
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
-    titleBar.Size = UDim2.new(0, windowWidth - 80, 0, 30)
-    titleBar.Position = UDim2.new(0, 80, 0, 0)
+    titleBar.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
+    titleBar.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, 0)
     titleBar.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
     titleBar.BackgroundTransparency = 1
     titleBar.Parent = mainFrame
     titleBar.Visible = true
     titleBar.ZIndex = 6
     local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 6)
+    titleCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     titleCorner.Parent = titleBar
 
     local titleLabel = self:CreateLabel(titleBar, {
@@ -607,8 +626,8 @@ function UILibrary:CreateUIWindow(options)
 
     local mainPage = Instance.new("ScrollingFrame")
     mainPage.Name = "MainPage"
-    mainPage.Size = UDim2.new(0, windowWidth - 80, 0, windowHeight - 30)
-    mainPage.Position = UDim2.new(0, 80, 0, 30)
+    mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
+    mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     mainPage.BackgroundTransparency = 1
     mainPage.ScrollBarThickness = 4
@@ -616,17 +635,17 @@ function UILibrary:CreateUIWindow(options)
     mainPage.Parent = mainFrame
     mainPage.Visible = true
     mainPage.ZIndex = 6
-    mainPage.ClipsDescendants = true -- 防止内容溢出
+    mainPage.ClipsDescendants = true
     local pageCorner = Instance.new("UICorner")
-    pageCorner.CornerRadius = UDim.new(0, 6)
+    pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     pageCorner.Parent = mainPage
 
     local pageLayout = Instance.new("UIListLayout")
     pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    pageLayout.Padding = UDim.new(0, 5)
+    pageLayout.Padding = UDim.new(0, UI_STYLES.Padding)
     pageLayout.Parent = mainPage
     pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 10)
+        mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + UI_STYLES.Padding)
     end)
 
     task.delay(0.05, function()
@@ -653,7 +672,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     options = options or {}
     local tabButton = self:CreateButton(sidebar, {
         Text = options.Text or "",
-        Size = UDim2.new(1, -10, 0, 30),
+        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.TabButtonHeight),
         BackgroundColor3 = options.Active and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
         BackgroundTransparency = options.Active and 0 or 0.5
     })
@@ -665,8 +684,8 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
 
     local content = Instance.new("ScrollingFrame")
     content.Name = "TabContent_" .. (options.Text or "Unnamed")
-    content.Size = UDim2.new(1, 0, 1, 0) -- 绑定到 MainPage 大小
-    content.Position = UDim2.new(options.Active and 0 or 1, 0, 0, 0) -- 初始位置
+    content.Size = UDim2.new(1, 0, 1, 0)
+    content.Position = UDim2.new(options.Active and 0 or 1, 0, 0, 0)
     content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     content.BackgroundTransparency = options.Active and 0.5 or 1
     content.ScrollBarThickness = 4
@@ -674,40 +693,37 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Visible = options.Active or false
     content.Parent = mainPage
     content.ZIndex = 6
-    content.ClipsDescendants = true -- 防止溢出
+    content.ClipsDescendants = true
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, 5)
+    listLayout.Padding = UDim.new(0, UI_STYLES.Padding)
     listLayout.Parent = content
     listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+        content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + UI_STYLES.Padding)
     end)
 
     tabButton.MouseButton1Click:Connect(function()
-        -- 隐藏其他标签页内容
         for _, child in ipairs(mainPage:GetChildren()) do
             if child:IsA("ScrollingFrame") and child ~= content then
                 child.Visible = false
                 child.Position = UDim2.new(1, 0, 0, 0)
                 child.BackgroundTransparency = 1
                 child.ZIndex = 6
-                print("[Tab]: Hid Content: Name =", child.Name, "Visible =", child.Visible, "ZIndex =", child.ZIndex)
+                print("[Tab]: Hid Content: Name =", child.Name, "Visible =", child.Visible, "Position =", tostring(child.Position), "ZIndex =", child.ZIndex)
             end
         end
-        -- 显示当前标签页内容
-        content.Position = UDim2.new(-1, 0, 0, 0) -- 从左侧滑入
+        content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
         content.ZIndex = 6
-        content.Size = UDim2.new(1, 0, 1, 0) -- 确保大小绑定
+        content.Size = UDim2.new(1, 0, 1, 0)
         local tween = TweenService:Create(content, self.TWEEN_INFO_UI, {
-            Position = UDim2.new(0, 0, 0, 0), -- 固定位置
+            Position = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 0.5
         })
         tween:Play()
         tween.Completed:Connect(function()
-            print("[Tab]: Animation Completed: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "ZIndex =", content.ZIndex)
+            print("[Tab]: Animation Completed: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", content.ZIndex)
         end)
-        -- 更新按钮状态
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
@@ -717,7 +733,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
             end
         end
         titleLabel.Text = options.Text
-        print("[Tab]: Switched: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "ZIndex =", content.ZIndex)
+        print("[Tab]: Switched: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", content.ZIndex)
     end)
 
     return tabButton, content
@@ -730,29 +746,16 @@ function UILibrary:CreateAuthorInfo(parent, options)
         return nil
     end
     options = options or {}
-    local authorFrame = Instance.new("Frame")
-    authorFrame.Name = "AuthorFrame"
-    authorFrame.Size = UDim2.new(1, -10, 0, 50)
-    authorFrame.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    authorFrame.BackgroundTransparency = 0.3
-    authorFrame.Parent = parent
-    authorFrame.Visible = true
-    authorFrame.ZIndex = 2
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 4)
-    corner.Parent = authorFrame
-
+    local authorFrame = self:CreateCard(parent, { IsMultiElement = true })
     local authorLabel = self:CreateLabel(authorFrame, {
         Text = options.Text or "",
-        Size = UDim2.new(1, -10, 0, 15),
+        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight),
         TextSize = 12
     })
     authorLabel.ZIndex = 3
 
     local socialButton = self:CreateButton(authorFrame, {
         Text = options.SocialText or "",
-        Size = UDim2.new(1, -10, 0, 20),
-        Position = UDim2.new(0, 5, 0, 20),
         Callback = options.SocialCallback
     })
     socialButton.ZIndex = 3
