@@ -280,6 +280,7 @@ end
 
 -- 悬浮按钮模块
 function UILibrary:CreateFloatingButton(parent, options)
+function UILibrary:CreateFloatingButton(parent, options)
     if not parent then
         warn("[FloatingButton]: Creation Failed: Parent is nil")
         return nil
@@ -297,11 +298,12 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.Size = UDim2.new(0, 30, 0, 30)
     button.Position = UDim2.new(1, -40, 1, -40)
     button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    button.BackgroundTransparency = 0.2 -- 降低透明度，颜色更醒目
+    button.BackgroundTransparency = 0.2
     button.Text = options.Text or "T" -- 默认图标为 T
     button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     button.TextSize = 12
     button.Font = THEME.Font
+    button.Rotation = 0 -- 初始化旋转角度
     button.Parent = parent
     button.Visible = true
     button.ZIndex = 2
@@ -310,27 +312,35 @@ function UILibrary:CreateFloatingButton(parent, options)
     corner.Parent = button
 
     local mainFrame = options.MainFrame
-    local originalPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -200, 0.5, -150)
+    local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -200, 0.5, -150)
+    local lastKnownPos = nil
     if mainFrame then
         button.MouseButton1Click:Connect(function()
+            if not button.Active then return end
+            button.Active = false
             local isVisible = not mainFrame.Visible
-            button.Text = isVisible and "X" or "T" -- 切换时显示 X
+            button.Text = isVisible and "L" or "T" -- 切换为 L
             mainFrame.Visible = true
-            -- 滑入/滑出动画
-            local targetPos = isVisible and originalPos or UDim2.new(0.5, mainFrame.Size.X.Offset / 2, 0.5, -mainFrame.Size.Y.Offset / 2)
+            mainFrame.Position = isVisible and (lastKnownPos or firstOpenPos) or firstOpenPos
+            task.delay(0.05, function()
+                for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, isVisible)) do
+                    t:Play()
+                end
+            end)
             local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
-                Position = targetPos,
                 BackgroundTransparency = isVisible and 0.5 or 1
             })
             tween:Play()
             tween.Completed:Connect(function()
                 if not isVisible then
                     mainFrame.Visible = false
+                    lastKnownPos = mainFrame.Position
                 end
+                button.Active = true
                 print("[FloatingButton]: Animation Completed: MainFrame Visible =", mainFrame.Visible, "Position =", tostring(mainFrame.Position))
             end)
             TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Rotation = isVisible and 45 or 0 }):Play()
-            print("[FloatingButton]: Clicked: MainFrame Visible =", isVisible)
+            print("[FloatingButton]: Clicked: MainFrame Visible =", isVisible, "Target Position =", tostring(mainFrame.Position))
         end)
     end
 
@@ -342,7 +352,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     end)
 
     self:MakeDraggable(button)
-    print("[FloatingButton]: Created: Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", tostring(button.Position))
+    print("[FloatingButton]: Created: Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", tostring(button.Position), "Text =", button.Text)
     return button
 end
 
