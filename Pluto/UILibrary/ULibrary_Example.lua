@@ -103,18 +103,18 @@ end
 -- 主页
 local homeTab, homeContent = createTabSafe("Home", true)
 if homeContent then
-    local infoCard = UILibrary:CreateCard(homeContent, { Height = 90 })
+    local infoCard = UILibrary:CreateCard(homeContent, { IsMultiElement = true })
     if infoCard then
         local gameStatusLabel = UILibrary:CreateLabel(infoCard, { Text = "Game Status: Running" })
-        local onlineTimeLabel = UILibrary:CreateLabel(infoCard, { Text = "Online Time: 0:00:00", Position = UDim2.new(0, 5, 0, 20) })
-        local currencyLabel = UILibrary:CreateLabel(infoCard, { Text = "Currency: 0", Position = UDim2.new(0, 5, 0, 35) })
+        local onlineTimeLabel = UILibrary:CreateLabel(infoCard, { Text = "Online Time: 0:00:00", Position = UDim2.new(0, UILibrary.UI_STYLES.Padding, 0, UILibrary.UI_STYLES.Padding + UILibrary.UI_STYLES.LabelHeight) })
+        local currencyLabel = UILibrary:CreateLabel(infoCard, { Text = "Currency: 0", Position = UDim2.new(0, UILibrary.UI_STYLES.Padding, 0, UILibrary.UI_STYLES.Padding + 2 * UILibrary.UI_STYLES.LabelHeight) })
     end
 end
 
 -- 主要功能
 local featuresTab, featuresContent = createTabSafe("Features", false)
 if featuresContent then
-    local webhookCard = UILibrary:CreateCard(featuresContent, { Height = 60 })
+    local webhookCard = UILibrary:CreateCard(featuresContent, { IsMultiElement = false })
     if webhookCard then
         local webhookLabel = UILibrary:CreateLabel(webhookCard, { Text = "Webhook URL" })
         local webhookInput = UILibrary:CreateTextBox(webhookCard, {
@@ -130,7 +130,7 @@ if featuresContent then
         })
     end
 
-    local togglesCard = UILibrary:CreateCard(featuresContent, { Height = 90 })
+    local togglesCard = UILibrary:CreateCard(featuresContent, { IsMultiElement = true })
     if togglesCard then
         local notifyCurrencyToggle = UILibrary:CreateToggle(togglesCard, {
             Text = "Notify Currency",
@@ -169,7 +169,7 @@ end
 -- 设置
 local settingsTab, settingsContent = createTabSafe("Settings", false)
 if settingsContent then
-    local intervalCard = UILibrary:CreateCard(settingsContent, { Height = 60 })
+    local intervalCard = UILibrary:CreateCard(settingsContent, { IsMultiElement = false })
     if intervalCard then
         local intervalLabel = UILibrary:CreateLabel(intervalCard, { Text = "Notification Interval (s)" })
         local intervalInput = UILibrary:CreateTextBox(intervalCard, {
@@ -188,7 +188,7 @@ if settingsContent then
         })
     end
 
-    local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { Height = 90 })
+    local targetCurrencyCard = UILibrary:CreateCard(settingsContent, { IsMultiElement = true })
     if targetCurrencyCard then
         local targetCurrencyToggle, targetCurrencyState = UILibrary:CreateToggle(targetCurrencyCard, {
             Text = "Target Currency",
@@ -213,12 +213,12 @@ if settingsContent then
         })
         local targetCurrencyLabel = UILibrary:CreateLabel(targetCurrencyCard, {
             Text = "Target Currency Amount",
-            Position = UDim2.new(0, 5, 0, 20)
+            Position = UDim2.new(0, UILibrary.UI_STYLES.Padding, 0, UILibrary.UI_STYLES.Padding + UILibrary.UI_STYLES.ButtonHeight)
         })
         local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
             PlaceholderText = "Enter amount",
             Text = tostring(config.targetCurrency),
-            Position = UDim2.new(0, 5, 0, 35),
+            Position = UDim2.new(0, UILibrary.UI_STYLES.Padding, 0, UILibrary.UI_STYLES.Padding + 2 * UILibrary.UI_STYLES.ButtonHeight),
             OnFocusLost = function()
                 local num = tonumber(targetCurrencyInput.Text)
                 if num and num > 0 then
@@ -253,7 +253,7 @@ end
 -- 其他
 local othersTab, othersContent = createTabSafe("Others", false)
 if othersContent then
-    local placeholderCard = UILibrary:CreateCard(othersContent, { Height = 60 })
+    local placeholderCard = UILibrary:CreateCard(othersContent, { IsMultiElement = false })
     if placeholderCard then
         local placeholderLabel = UILibrary:CreateLabel(placeholderCard, { Text = "More features coming soon!" })
     end
