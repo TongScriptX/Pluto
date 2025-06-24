@@ -57,7 +57,7 @@ end
 -- 动画配置
 UILibrary.TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-UILibrary.THEME = THEME -- 暴露 THEME 供外部访问
+UILibrary.THEME = THEME
 
 -- 通知容器
 local notificationContainer = nil
@@ -78,15 +78,14 @@ local function initNotificationContainer()
         screenGui.ResetOnSpawn = false
         screenGui.Enabled = true
         screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        screenGui.DisplayOrder = 10 -- 通知在最上层
-        print("[Notification]: ScreenGui Created: Parent =", screenGui.Parent and screenGui.Parent.Name or "nil", "Enabled =", screenGui.Enabled)
+        screenGui.DisplayOrder = 10
     end
 
     if not notificationContainer or not notificationContainer.Parent then
         notificationContainer = Instance.new("Frame")
         notificationContainer.Name = "NotificationContainer"
         notificationContainer.Size = UDim2.new(0, 180, 0, 240)
-        notificationContainer.Position = UDim2.new(1, -190, 1, -300) -- 调整位置避免与 FloatingButton 重叠
+        notificationContainer.Position = UDim2.new(1, -190, 1, -300)
         notificationContainer.BackgroundTransparency = 1
         notificationContainer.Parent = screenGui
         notificationContainer.Visible = true
@@ -96,7 +95,6 @@ local function initNotificationContainer()
         layout.Padding = UDim.new(0, 5)
         layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
         layout.Parent = notificationContainer
-        print("[Notification]: Container Created: Parent =", notificationContainer.Parent and notificationContainer.Parent.Name or "nil", "Visible =", notificationContainer.Visible, "ZIndex =", notificationContainer.ZIndex)
     end
     return true
 end
@@ -111,7 +109,7 @@ function UILibrary:Notify(options)
 
     local notification = Instance.new("Frame")
     notification.Name = "Notification"
-    notification.Size = UDim2.new(0, 180, 0, 40) -- 统一通知大小
+    notification.Size = UDim2.new(0, 180, 0, 40)
     notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     notification.BackgroundTransparency = 0.3
     notification.Position = UDim2.new(0, 0, 0, 90)
@@ -160,11 +158,9 @@ function UILibrary:Notify(options)
                 warn("[Notification]: Exit Animation Failed: " .. tostring(err))
             end
             notification:Destroy()
-            print("[Notification]: Destroyed: Title =", options.Title)
         end
     end)
 
-    print("[Notification]: Created: Title =", options.Title, "Text =", options.Text, "Visible =", notification.Visible, "ZIndex =", notification.ZIndex)
     return notification
 end
 
@@ -203,7 +199,7 @@ function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.Size = UDim2.new(1, -10, 0, options.Height or 60) -- 统一卡片宽度
+    card.Size = UDim2.new(1, -10, 0, options.Height or 60)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
     card.Parent = parent
@@ -227,7 +223,6 @@ function UILibrary:CreateCard(parent, options)
     card.Position = UDim2.new(0, 5, 0, 5)
     TweenService:Create(card, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3 }):Play()
 
-    print("[Card]: Created: Parent =", parent and parent.Name or "nil", "Visible =", card.Visible, "Position =", tostring(card.Position), "Size =", tostring(card.Size), "ZIndex =", card.ZIndex)
     return card
 end
 
@@ -240,7 +235,7 @@ function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
-    button.Size = options.Size or UDim2.new(1, -10, 0, 25) -- 统一按钮高度
+    button.Size = options.Size or UDim2.new(1, -10, 0, 25)
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.5
     button.Text = options.Text or ""
@@ -271,7 +266,6 @@ function UILibrary:CreateButton(parent, options)
         TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary }):Play()
     end)
 
-    print("[Button]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", tostring(button.Position), "ZIndex =", button.ZIndex)
     return button
 end
 
@@ -282,17 +276,10 @@ function UILibrary:CreateFloatingButton(parent, options)
         return nil
     end
     options = options or {}
-    local screenSize = GuiService:GetScreenResolution()
-    if screenSize == Vector2.new(0, 0) then
-        screenSize = Vector2.new(720, 1280)
-        warn("[FloatingButton]: Failed to get screen resolution, using default: 720x1280")
-    end
-    print("[FloatingButton]: Screen Resolution:", screenSize.X, screenSize.Y)
-
     local button = Instance.new("TextButton")
     button.Name = "FloatingButton"
     button.Size = UDim2.new(0, 30, 0, 30)
-    button.Position = UDim2.new(1, -40, 1, -80) -- 调整位置避免与通知重叠
+    button.Position = UDim2.new(1, -40, 1, -80)
     button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = 0.2
     button.Text = options.Text or "T"
@@ -333,10 +320,8 @@ function UILibrary:CreateFloatingButton(parent, options)
                     lastKnownPos = mainFrame.Position
                 end
                 button.Active = true
-                print("[FloatingButton]: Animation Completed: MainFrame Visible =", mainFrame.Visible, "Position =", tostring(mainFrame.Position), "ZIndex =", mainFrame.ZIndex)
             end)
             TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Rotation = isVisible and 45 or 0 }):Play()
-            print("[FloatingButton]: Clicked: MainFrame Visible =", isVisible, "Target Position =", tostring(mainFrame.Position), "ZIndex =", mainFrame.ZIndex)
         end)
     end
 
@@ -348,7 +333,6 @@ function UILibrary:CreateFloatingButton(parent, options)
     end)
 
     self:MakeDraggable(button)
-    print("[FloatingButton]: Created: Parent =", parent and parent.Name or "nil", "Visible =", button.Visible, "Position =", tostring(button.Position), "Text =", button.Text, "ZIndex =", button.ZIndex)
     return button
 end
 
@@ -361,7 +345,7 @@ function UILibrary:CreateLabel(parent, options)
     options = options or {}
     local label = Instance.new("TextLabel")
     label.Name = "Label_" .. (options.Text or "Unnamed")
-    label.Size = options.Size or UDim2.new(1, -10, 0, 15) -- 统一标签高度
+    label.Size = options.Size or UDim2.new(1, -10, 0, 15)
     label.Position = options.Position or UDim2.new(0, 5, 0, 5)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
@@ -381,7 +365,6 @@ function UILibrary:CreateLabel(parent, options)
         warn("[Label]: Animation Failed: " .. tostring(err))
     end
 
-    print("[Label]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", label.Visible, "Position =", tostring(label.Position), "ZIndex =", label.ZIndex)
     return label
 end
 
@@ -394,7 +377,7 @@ function UILibrary:CreateTextBox(parent, options)
     options = options or {}
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
-    textBox.Size = UDim2.new(1, -10, 0, 25) -- 统一输入框高度
+    textBox.Size = UDim2.new(1, -10, 0, 25)
     textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     textBox.BackgroundTransparency = 0.3
     textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -423,7 +406,6 @@ function UILibrary:CreateTextBox(parent, options)
         end
     end)
 
-    print("[TextBox]: Created: Placeholder =", options.PlaceholderText, "Parent =", parent and parent.Name or "nil", "Visible =", textBox.Visible, "ZIndex =", textBox.ZIndex)
     return textBox
 end
 
@@ -436,7 +418,7 @@ function UILibrary:CreateToggle(parent, options)
     options = options or {}
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
-    toggleFrame.Size = UDim2.new(1, -10, 0, 25) -- 统一开关高度
+    toggleFrame.Size = UDim2.new(1, -10, 0, 25)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
     toggleFrame.Visible = true
@@ -485,7 +467,6 @@ function UILibrary:CreateToggle(parent, options)
         end
     end)
 
-    print("[Toggle]: Created: Text =", options.Text, "Parent =", parent and parent.Name or "nil", "Visible =", toggleFrame.Visible, "ZIndex =", toggleFrame.ZIndex)
     return toggleFrame, state
 end
 
@@ -511,7 +492,6 @@ function UILibrary:MakeDraggable(gui)
             startPos = input.Position
             startGuiOffset = gui.AbsolutePosition
             gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.UserInputType.Name, "startGuiOffset =", tostring(startGuiOffset), "ZIndex =", gui.ZIndex)
         end
     end)
 
@@ -522,7 +502,6 @@ function UILibrary:MakeDraggable(gui)
             local screenSize = GuiService:GetScreenResolution()
             if screenSize == Vector2.new(0, 0) then
                 screenSize = Vector2.new(720, 1280)
-                warn("[MakeDraggable]: Invalid screenSize, using default: 720x1280")
             end
             local guiSize = gui.AbsoluteSize
             local maxX = math.max(0, screenSize.X - math.max(guiSize.X, 1))
@@ -532,7 +511,6 @@ function UILibrary:MakeDraggable(gui)
                 math.clamp(newOffset.Y, 0, maxY)
             )
             gui.Position = UDim2.new(0, newOffset.X, 0, newOffset.Y)
-            print("[MakeDraggable]: Dragging: GUI =", gui.Name, "newOffset =", tostring(newOffset), "ZIndex =", gui.ZIndex)
         end
     end)
 
@@ -540,11 +518,8 @@ function UILibrary:MakeDraggable(gui)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
             gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag Ended: GUI =", gui.Name, "Final Position =", tostring(gui.Position), "ZIndex =", gui.ZIndex)
         end
     end)
-
-    print("[MakeDraggable]: Applied: GUI =", gui.Name, "ZIndex =", gui.ZIndex)
 end
 
 -- 主窗口模块
@@ -553,11 +528,9 @@ function UILibrary:CreateUIWindow(options)
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
-        warn("[Window]: Failed to get screen resolution, using default: 720x1280")
     end
     local windowWidth = math.min(400, screenSize.X * 0.9)
     local windowHeight = math.min(300, screenSize.Y * 0.9)
-    print("[Window]: Screen Resolution:", screenSize.X, screenSize.Y, "Window Size:", windowWidth, "x", windowHeight)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "UILibraryWindow"
@@ -572,7 +545,6 @@ function UILibrary:CreateUIWindow(options)
     screenGui.Enabled = true
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.DisplayOrder = 5
-    print("[Window]: ScreenGui Created: Parent =", screenGui.Parent and screenGui.Parent.Name or "nil", "Enabled =", screenGui.Enabled, "DisplayOrder =", screenGui.DisplayOrder)
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
@@ -632,27 +604,11 @@ function UILibrary:CreateUIWindow(options)
         TextTransparency = 1
     })
     titleLabel.ZIndex = 7
-    if not titleLabel then
-        warn("[Window]: TitleLabel Creation Failed")
-        titleLabel = Instance.new("TextLabel")
-        titleLabel.Name = "Label_Home"
-        titleLabel.Size = UDim2.new(1, 0, 1, 0)
-        titleLabel.BackgroundTransparency = 1
-        titleLabel.Text = "Home"
-        titleLabel.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-        titleLabel.TextSize = 14
-        titleLabel.Font = THEME.Font
-        titleLabel.TextXAlignment = Enum.TextXAlignment.Center
-        titleLabel.TextTransparency = 1
-        titleLabel.Parent = titleBar
-        titleLabel.Visible = true
-        titleLabel.ZIndex = 7
-    end
 
     local mainPage = Instance.new("ScrollingFrame")
     mainPage.Name = "MainPage"
-    mainPage.Size = UDim2.new(0, windowWidth - 80, 0, windowHeight - 30) -- 固定 MainPage 大小
-    mainPage.Position = UDim2.new(0, 80, 0, 30) -- 固定在 TitleBar 下方
+    mainPage.Size = UDim2.new(0, windowWidth - 80, 0, windowHeight - 30)
+    mainPage.Position = UDim2.new(0, 80, 0, 30)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     mainPage.BackgroundTransparency = 1
     mainPage.ScrollBarThickness = 4
@@ -660,6 +616,7 @@ function UILibrary:CreateUIWindow(options)
     mainPage.Parent = mainFrame
     mainPage.Visible = true
     mainPage.ZIndex = 6
+    mainPage.ClipsDescendants = true -- 防止内容溢出
     local pageCorner = Instance.new("UICorner")
     pageCorner.CornerRadius = UDim.new(0, 6)
     pageCorner.Parent = mainPage
@@ -672,17 +629,12 @@ function UILibrary:CreateUIWindow(options)
         mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 10)
     end)
 
-    -- 延迟播放淡入动画
     task.delay(0.05, function()
         for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)) do
             t:Play()
         end
     end)
 
-    print("[Window]: Created: MainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position), "ZIndex =", mainFrame.ZIndex)
-    print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", tostring(sidebar.Position), "ZIndex =", sidebar.ZIndex)
-    print("[TitleBar]: Created: Visible =", titleBar.Visible, "Position =", tostring(titleBar.Position), "Size =", tostring(titleBar.Size), "ZIndex =", titleBar.ZIndex)
-    print("[MainPage]: Created: Visible =", mainPage.Visible, "Position =", tostring(mainPage.Position), "ZIndex =", mainPage.ZIndex)
     return {
         MainFrame = mainFrame,
         ScreenGui = screenGui,
@@ -701,7 +653,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     options = options or {}
     local tabButton = self:CreateButton(sidebar, {
         Text = options.Text or "",
-        Size = UDim2.new(1, -10, 0, 30), -- 统一标签按钮高度
+        Size = UDim2.new(1, -10, 0, 30),
         BackgroundColor3 = options.Active and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
         BackgroundTransparency = options.Active and 0 or 0.5
     })
@@ -710,17 +662,19 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         return nil, nil
     end
     tabButton.ZIndex = 7
+
     local content = Instance.new("ScrollingFrame")
     content.Name = "TabContent_" .. (options.Text or "Unnamed")
-    content.Size = UDim2.new(1, 0, 1, 0) -- 固定为 MainPage 的大小
+    content.Size = UDim2.new(1, 0, 1, 0) -- 绑定到 MainPage 大小
     content.Position = UDim2.new(options.Active and 0 or 1, 0, 0, 0) -- 初始位置
     content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    content.BackgroundTransparency = 0.5
+    content.BackgroundTransparency = options.Active and 0.5 or 1
     content.ScrollBarThickness = 4
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
     content.Visible = options.Active or false
     content.Parent = mainPage
     content.ZIndex = 6
+    content.ClipsDescendants = true -- 防止溢出
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
     listLayout.Padding = UDim.new(0, 5)
@@ -730,26 +684,30 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     end)
 
     tabButton.MouseButton1Click:Connect(function()
+        -- 隐藏其他标签页内容
         for _, child in ipairs(mainPage:GetChildren()) do
             if child:IsA("ScrollingFrame") and child ~= content then
-                TweenService:Create(child, self.TWEEN_INFO_UI, { Position = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1 }):Play()
-                task.spawn(function()
-                    task.wait(0.3)
-                    child.Visible = false
-                    child.ZIndex = 6
-                    print("[Tab]: Hid Content: Name =", child.Name, "Visible =", child.Visible, "ZIndex =", child.ZIndex)
-                end)
+                child.Visible = false
+                child.Position = UDim2.new(1, 0, 0, 0)
+                child.BackgroundTransparency = 1
+                child.ZIndex = 6
+                print("[Tab]: Hid Content: Name =", child.Name, "Visible =", child.Visible, "ZIndex =", child.ZIndex)
             end
         end
+        -- 显示当前标签页内容
         content.Position = UDim2.new(-1, 0, 0, 0) -- 从左侧滑入
         content.Visible = true
         content.ZIndex = 6
-        content.Size = UDim2.new(1, 0, 1, 0) -- 确保大小一致
-        local tween = TweenService:Create(content, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5 })
+        content.Size = UDim2.new(1, 0, 1, 0) -- 确保大小绑定
+        local tween = TweenService:Create(content, self.TWEEN_INFO_UI, {
+            Position = UDim2.new(0, 0, 0, 0), -- 固定位置
+            BackgroundTransparency = 0.5
+        })
         tween:Play()
         tween.Completed:Connect(function()
             print("[Tab]: Animation Completed: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "ZIndex =", content.ZIndex)
         end)
+        -- 更新按钮状态
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
@@ -762,7 +720,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         print("[Tab]: Switched: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "ZIndex =", content.ZIndex)
     end)
 
-    print("[Tab]: Created: Text =", options.Text, "Content Visible =", content.Visible, "Parent =", content.Parent and content.Parent.Name or "nil", "ZIndex =", content.ZIndex)
     return tabButton, content
 end
 
@@ -775,7 +732,7 @@ function UILibrary:CreateAuthorInfo(parent, options)
     options = options or {}
     local authorFrame = Instance.new("Frame")
     authorFrame.Name = "AuthorFrame"
-    authorFrame.Size = UDim2.new(1, -10, 0, 50) -- 统一作者卡片高度
+    authorFrame.Size = UDim2.new(1, -10, 0, 50)
     authorFrame.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     authorFrame.BackgroundTransparency = 0.3
     authorFrame.Parent = parent
@@ -800,7 +757,6 @@ function UILibrary:CreateAuthorInfo(parent, options)
     })
     socialButton.ZIndex = 3
 
-    print("[AuthorInfo]: Created: Parent =", parent and parent.Name or "nil", "Visible =", authorFrame.Visible, "ZIndex =", authorFrame.ZIndex)
     return authorFrame
 end
 
@@ -869,8 +825,6 @@ function UILibrary:SetTheme(newTheme)
             updateElement(gui)
         end
     end
-
-    print("[Theme]: Set: Primary =", tostring(THEME.Primary), "Accent =", tostring(THEME.Accent))
 end
 
 return UILibrary
