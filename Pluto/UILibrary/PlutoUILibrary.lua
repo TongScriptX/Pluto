@@ -167,6 +167,36 @@ function UILibrary:Notify(options)
     return notification
 end
 
+--CreateFadeTween
+local function applyFadeTween(target, tweenInfo, isVisible)
+    local tweens = {}
+    if target:IsA("Frame") or target:IsA("ScrollingFrame") then
+        local transparency = 1
+        if target.Name == "MainPage" then
+            transparency = isVisible and 0.5 or 1
+        elseif target.Name == "Sidebar" or target.Name == "TitleBar" then
+            transparency = isVisible and 0 or 1
+        end
+        table.insert(tweens, TweenService:Create(target, tweenInfo, { BackgroundTransparency = transparency }))
+    elseif target:IsA("TextLabel") or target:IsA("TextButton") then
+        table.insert(tweens, TweenService:Create(target, tweenInfo, { TextTransparency = isVisible and 0 or 1 }))
+    end
+    for _, child in ipairs(target:GetDescendants()) do
+        if child:IsA("Frame") or child:IsA("ScrollingFrame") then
+            local transparency = 1
+            if child.Name == "MainPage" then
+                transparency = isVisible and 0.5 or 1
+            elseif child.Name == "Sidebar" or child.Name == "TitleBar" then
+                transparency = isVisible and 0 or 1
+            end
+            table.insert(tweens, TweenService:Create(child, tweenInfo, { BackgroundTransparency = transparency }))
+        elseif child:IsA("TextLabel") or child:IsA("TextButton") then
+            table.insert(tweens, TweenService:Create(child, tweenInfo, { TextTransparency = isVisible and 0 or 1 }))
+        end
+    end
+    return tweens
+end
+
 -- 创建卡片
 function UILibrary:CreateCard(parent, options)
     if not parent then
