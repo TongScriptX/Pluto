@@ -11,7 +11,6 @@ local success, result = pcall(function()
         print("[Init]: HttpGet Response Length:", #response)
         print("[Init]: HttpGet Response Preview:", string.sub(response, 1, 200))
         print("[Init]: HttpGet Response End:", string.sub(response, -200, -1))
-        -- 保存响应（仅限支持 syn.write 的环境）
         if syn and syn.write then
             syn.write(response, "PlutoUILibrary_response.lua")
             print("[Init]: Response saved to PlutoUILibrary_response.lua")
@@ -44,7 +43,6 @@ if success and result then
         error("[Init]: Failed to execute PlutoUILibrary: " .. tostring(module))
     end
 else
-    -- 回退到本地 PlutoUILibrary
     warn("[Init]: HttpGet failed, attempting local load")
     local success3, localModule = pcall(function()
         return require(game.StarterPlayerScripts.PlutoUILibrary)
@@ -118,7 +116,7 @@ end
 -- 悬浮按钮
 local toggleButton = UILibrary:CreateFloatingButton(window.ScreenGui, {
     MainFrame = window.MainFrame,
-    Text = "T" -- 默认图标为 T
+    Text = "T"
 })
 if not toggleButton then
     warn("[UI]: Floating Button Creation Failed")
