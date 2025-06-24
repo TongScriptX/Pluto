@@ -543,7 +543,7 @@ function UILibrary:MakeDraggable(gui)
 end
 
 -- 主窗口模块
-function UILibrary:CreateWindow(options)
+function UILibrary:CreateUIWindow(options)
     options = options or {}
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
@@ -561,7 +561,7 @@ function UILibrary:CreateWindow(options)
     end)
     if not success then
         warn("[Window]: ScreenGui Initialization Failed: " .. tostring(err))
-        return nil, nil, nil, nil, nil
+        return nil
     end
     screenGui.ResetOnSpawn = false
     screenGui.Enabled = true
@@ -573,11 +573,11 @@ function UILibrary:CreateWindow(options)
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
     mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = 1 -- 初始透明
+    mainFrame.BackgroundTransparency = 1
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 1
-    mainFrame.ClipsDescendants = true -- 防止子元素溢出
+    mainFrame.ClipsDescendants = true
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = mainFrame
@@ -623,7 +623,7 @@ function UILibrary:CreateWindow(options)
         Size = UDim2.new(1, 0, 1, 0),
         TextXAlignment = Enum.TextXAlignment.Center,
         TextSize = 14,
-        TextTransparency = 1 -- 初始透明
+        TextTransparency = 1
     })
     if not titleLabel then
         warn("[Window]: TitleLabel Creation Failed")
@@ -665,22 +665,24 @@ function UILibrary:CreateWindow(options)
         mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 10)
     end)
 
-    -- 淡入动画
-    local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, { BackgroundTransparency = 0.5 })
-    tween:Play()
-    for _, child in ipairs(mainFrame:GetDescendants()) do
-        if child:IsA("Frame") or child:IsA("ScrollingFrame") then
-            TweenService:Create(child, self.TWEEN_INFO_UI, { BackgroundTransparency = child == mainPage and 0.5 or child == sidebar and 0 or child == titleBar and 0 or 1 }):Play()
-        elseif child:IsA("TextLabel") or child:IsA("TextButton") then
-            TweenService:Create(child, self.TWEEN_INFO_UI, { TextTransparency = 0 }):Play()
+    -- 延迟播放淡入动画
+    task.delay(0.05, function()
+        for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)) do
+            t:Play()
         end
-    end
+    end)
 
-    print("[Window]: Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
+    print("[Window]: Created: MainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
     print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", tostring(sidebar.Position), "ZIndex =", sidebar.ZIndex)
     print("[TitleBar]: Created: Visible =", titleBar.Visible, "Position =", tostring(titleBar.Position), "Size =", tostring(titleBar.Size))
     print("[MainPage]: Created: Visible =", mainPage.Visible, "Position =", tostring(mainPage.Position), "ZIndex =", mainPage.ZIndex)
-    return mainFrame, screenGui, sidebar, titleLabel, mainPage
+    return {
+        MainFrame = mainFrame,
+        ScreenGui = screenGui,
+        Sidebar = sidebar,
+        TitleLabel = titleLabel,
+        MainPage = mainPage
+    }
 end
 
 -- 标签页模块
