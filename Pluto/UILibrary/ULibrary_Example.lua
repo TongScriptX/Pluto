@@ -7,7 +7,7 @@ local UILibrary
 local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     local response = game:HttpGet(url)
-    if response and #response > 1000 then -- 验证响应有效性
+    if response and #response > 1000 then
         print("[Init]: HttpGet Response Length:", #response)
         print("[Init]: HttpGet Response Preview:", string.sub(response, 1, 200))
         print("[Init]: HttpGet Response End:", string.sub(response, -200, -1))
@@ -32,8 +32,8 @@ if success and result then
         if not success3 then
             error("execution failed: " .. tostring(module2))
         end
-        if not module2.CreateWindow then
-            error("Invalid UILibrary module: missing CreateWindow")
+        if not module2.CreateUIWindow then
+            error("Invalid UILibrary module: missing CreateUIWindow")
         end
         return module2
     end)
@@ -98,24 +98,27 @@ local THEME_LIGHT = {
     Font = Enum.Font.Roboto
 }
 
+-- 设置初始主题
+UILibrary:SetTheme(THEME_DARK)
+
 -- 创建主窗口
-local mainFrame, screenGui, sidebar, titleLabel, mainPage
-local success, a, b, c, d, e = pcall(UILibrary.CreateWindow, UILibrary)
-if success then
-    mainFrame, screenGui, sidebar, titleLabel, mainPage = a, b, c, d, e
-    if not mainFrame or not screenGui or not sidebar or not titleLabel or not mainPage then
-        error("[Init]: CreateWindow returned incomplete values: mainFrame = " .. tostring(mainFrame) .. ", screenGui = " .. tostring(screenGui) .. ", sidebar = " .. tostring(sidebar) .. ", titleLabel = " .. tostring(titleLabel) .. ", mainPage = " .. tostring(mainPage))
+local window
+local success, result = pcall(UILibrary.CreateUIWindow, UILibrary)
+if success and result then
+    window = result
+    if not window.MainFrame or not window.ScreenGui or not window.Sidebar or not window.TitleLabel or not window.MainPage then
+        error("[Init]: CreateUIWindow returned incomplete values: MainFrame = " .. tostring(window.MainFrame) .. ", ScreenGui = " .. tostring(window.ScreenGui) .. ", Sidebar = " .. tostring(window.Sidebar) .. ", TitleLabel = " .. tostring(window.TitleLabel) .. ", MainPage = " .. tostring(window.MainPage))
     end
-    UILibrary:MakeDraggable(mainFrame)
-    print("[Init]: Main Window Created: Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
+    UILibrary:MakeDraggable(window.MainFrame)
+    print("[Init]: Main Window Created: Size =", tostring(window.MainFrame.Size), "Position =", tostring(window.MainFrame.Position))
 else
-    error("[Init]: Failed to create main window: " .. tostring(a))
+    error("[Init]: Failed to create main window: " .. tostring(result))
 end
 
 -- 悬浮按钮
-local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
-    MainFrame = mainFrame,
-    Text = "O"
+local toggleButton = UILibrary:CreateFloatingButton(window.ScreenGui, {
+    MainFrame = window.MainFrame,
+    Text = "T" -- 默认图标为 T
 })
 if not toggleButton then
     warn("[UI]: Floating Button Creation Failed")
@@ -126,7 +129,7 @@ end
 -- 创建标签页
 local function createTabSafe(text, active)
     local success, tabButton, content = pcall(function()
-        return UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+        return UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
             Text = text,
             Active = active
         })
