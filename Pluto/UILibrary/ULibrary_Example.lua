@@ -108,7 +108,7 @@ if success and result then
         error("[Init]: CreateUIWindow returned incomplete values: MainFrame = " .. tostring(window.MainFrame) .. ", ScreenGui = " .. tostring(window.ScreenGui) .. ", Sidebar = " .. tostring(window.Sidebar) .. ", TitleLabel = " .. tostring(window.TitleLabel) .. ", MainPage = " .. tostring(window.MainPage))
     end
     UILibrary:MakeDraggable(window.MainFrame)
-    print("[Init]: Main Window Created: Size =", tostring(window.MainFrame.Size), "Position =", tostring(window.MainFrame.Position))
+    print("[Init]: Main Window Created: Size =", tostring(window.MainFrame.Size), "Position =", tostring(window.MainFrame.Position), "ZIndex =", window.MainFrame.ZIndex)
 else
     error("[Init]: Failed to create main window: " .. tostring(result))
 end
@@ -121,7 +121,7 @@ local toggleButton = UILibrary:CreateFloatingButton(window.ScreenGui, {
 if not toggleButton then
     warn("[UI]: Floating Button Creation Failed")
 else
-    print("[Init]: Floating Button Created")
+    print("[Init]: Floating Button Created: ZIndex =", toggleButton.ZIndex)
 end
 
 -- 创建标签页
@@ -148,7 +148,7 @@ if homeTab and homeContent then
         local gameStatusLabel = UILibrary:CreateLabel(infoCard, { Text = "Game Status: Running" })
         local onlineTimeLabel = UILibrary:CreateLabel(infoCard, { Text = "Online Time: 0:00:00", Position = UDim2.new(0, 5, 0, 20) })
         local currencyLabel = UILibrary:CreateLabel(infoCard, { Text = "Currency: 0", Position = UDim2.new(0, 5, 0, 35) })
-        print("[Init]: Home Tab Created")
+        print("[Init]: Home Tab Created: ZIndex =", homeContent.ZIndex)
     else
         warn("[Init]: Failed to create Home tab card")
     end
@@ -214,7 +214,7 @@ if featuresTab and featuresContent then
             print("[Button]: Test Notification Triggered")
         end
     })
-    print("[Init]: Features Tab Created")
+    print("[Init]: Features Tab Created: ZIndex =", featuresContent.ZIndex)
 else
     warn("[Init]: Features Tab Creation Failed")
 end
@@ -305,7 +305,7 @@ if settingsTab and settingsContent then
             print("[Button]: Theme Switched to:", config.currentTheme)
         end
     })
-    print("[Init]: Settings Tab Created")
+    print("[Init]: Settings Tab Created: ZIndex =", settingsContent.ZIndex)
 else
     warn("[Init]: Settings Tab Creation Failed")
 end
@@ -317,7 +317,7 @@ if othersTab and othersContent then
     if placeholderCard then
         local placeholderLabel = UILibrary:CreateLabel(placeholderCard, { Text = "More features coming soon!" })
     end
-    print("[Init]: Others Tab Created")
+    print("[Init]: Others Tab Created: ZIndex =", othersContent.ZIndex)
 else
     warn("[Init]: Others Tab Creation Failed")
 end
@@ -333,7 +333,7 @@ if authorTab and authorContent then
             print("[Button]: Discord Link Clicked")
         end
     })
-    print("[Author]: Author Tab Created")
+    print("[Author]: Author Tab Created: ZIndex =", authorContent.ZIndex)
 else
     warn("[Author]: Author Tab Creation Failed")
 end
