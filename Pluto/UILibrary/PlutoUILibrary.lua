@@ -537,13 +537,13 @@ function UILibrary:CreateWindow(options)
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
-    mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
+    mainFrame.Position = UDim2.new(0.5, windowWidth / 2, 0.5, -windowHeight / 2) -- 初始在右侧
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = 0.5
+    mainFrame.BackgroundTransparency = 1 -- 初始透明
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 1
-    mainFrame.ClipsDescendants = false
+    mainFrame.ClipsDescendants = true -- 防止子元素溢出
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 6)
     corner.Parent = mainFrame
@@ -627,14 +627,11 @@ function UILibrary:CreateWindow(options)
         mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + 10)
     end)
 
-    local originalSize = mainFrame.Size
-    mainFrame.Size = UDim2.new(0, windowWidth - 20, 0, windowHeight - 15)
-    TweenService:Create(mainFrame, self.TWEEN_INFO_UI, { Size = originalSize }):Play()
-
-    if not mainFrame or not screenGui or not sidebar or not titleLabel or not mainPage then
-        warn("[Window]: Incomplete Return Values: mainFrame =", mainFrame, "screenGui =", screenGui, "sidebar =", sidebar, "titleLabel =", titleLabel, "mainPage =", mainPage)
-        return nil, nil, nil, nil, nil
-    end
+    -- 初始动画：从右侧滑入
+    TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
+        Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2),
+        BackgroundTransparency = 0.5
+    }):Play()
 
     print("[Window]: Created: mainFrame =", mainFrame.Name, "Visible =", mainFrame.Visible, "Size =", tostring(mainFrame.Size), "Position =", tostring(mainFrame.Position))
     print("[Sidebar]: Created: Visible =", sidebar.Visible, "Position =", tostring(sidebar.Position), "ZIndex =", sidebar.ZIndex)
