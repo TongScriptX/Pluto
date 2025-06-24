@@ -171,10 +171,8 @@ end
 function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     local tweens = {}
     if target:IsA("Frame") or target:IsA("ScrollingFrame") then
-        local transparency = 1
-        if target.Name == "MainFrame" or target.Name == "MainPage" then
-            transparency = isVisible and 0.5 or 1
-        elseif target.Name == "Sidebar" or target.Name == "TitleBar" then
+        local transparency = isVisible and 0.5 or 1
+        if target.Name == "Sidebar" or target.Name == "TitleBar" then
             transparency = isVisible and 0 or 1
         end
         table.insert(tweens, TweenService:Create(target, tweenInfo, { BackgroundTransparency = transparency }))
@@ -183,10 +181,8 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     end
     for _, child in ipairs(target:GetDescendants()) do
         if child:IsA("Frame") or child:IsA("ScrollingFrame") then
-            local transparency = 1
-            if child.Name == "MainPage" then
-                transparency = isVisible and 0.5 or 1
-            elseif child.Name == "Sidebar" or child.Name == "TitleBar" then
+            local transparency = isVisible and 0.5 or 1
+            if child.Name == "Sidebar" or child.Name == "TitleBar" then
                 transparency = isVisible and 0 or 1
             end
             table.insert(tweens, TweenService:Create(child, tweenInfo, { BackgroundTransparency = transparency }))
@@ -298,11 +294,11 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.Position = UDim2.new(1, -40, 1, -40)
     button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = 0.2
-    button.Text = options.Text or "T" -- 默认图标为 T
+    button.Text = options.Text or "T"
     button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     button.TextSize = 12
     button.Font = THEME.Font
-    button.Rotation = 0 -- 初始化旋转角度
+    button.Rotation = 0
     button.Parent = parent
     button.Visible = true
     button.ZIndex = 2
@@ -312,20 +308,19 @@ function UILibrary:CreateFloatingButton(parent, options)
 
     local mainFrame = options.MainFrame
     local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -200, 0.5, -150)
-    local lastKnownPos = nil
+    local lastKnownPos = firstOpenPos
     if mainFrame then
         button.MouseButton1Click:Connect(function()
             if not button.Active then return end
             button.Active = false
             local isVisible = not mainFrame.Visible
-            button.Text = isVisible and "L" or "T" -- 切换为 L
+            button.Text = isVisible and "L" or "T"
             mainFrame.Visible = true
             mainFrame.Position = isVisible and (lastKnownPos or firstOpenPos) or firstOpenPos
-            task.delay(0.05, function()
-                for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, isVisible)) do
-                    t:Play()
-                end
-            end)
+            local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, isVisible)
+            for _, t in ipairs(tweens) do
+                t:Play()
+            end
             local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
                 BackgroundTransparency = isVisible and 0.5 or 1
             })
@@ -405,6 +400,7 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.TextSize = 12
     textBox.Font = THEME.Font
     textBox.PlaceholderText = options.PlaceholderText or ""
+    textBox.Text = options.Text or ""
     textBox.TextWrapped = true
     textBox.TextTruncate = Enum.TextTruncate.AtEnd
     textBox.BorderSizePixel = 1
@@ -499,7 +495,7 @@ function UILibrary:MakeDraggable(gui)
         return
     end
     local dragging = false
-    local startPos, startGuiPos
+    local startPos, startGuiOffset
 
     local function isMouseOverGui(input)
         local pos = input.Position
@@ -508,41 +504,47 @@ function UILibrary:MakeDraggable(gui)
         return pos.X >= guiPos.X and pos.X <= guiPos.X + guiSize.X and pos.Y >= guiPos.Y and pos.Y <= guiPos.Y + guiSize.Y
     end
 
-    gui.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
-            dragging = true
-            startPos = input.Position
-            startGuiPos = gui.Position
-            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.UserInputType.Name, "startGuiPos =", tostring(startGuiPos))
-        end
-    end)
-
-    gui.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - startPos
-            local newPos = UDim2.new(
-                0, startGuiPos.X.Offset + delta.X,
-                0, startGuiPos.Y.Offset + delta.Y
-            )
-            local screenSize = GuiService:GetScreenResolution()
-            if screenSize == Vector2.new(0, 0) then
-                screenSize = Vector2.new(720, 1280)
-                warn("[MakeDraggable]: Invalid screenSize, using default: 720x1280")
+    gui.InputBegan:Connect(function()
+        local input = UserInputService:GetLastInputType()
+        if (input == Enum.UserInputType.MouseButton1 or input == Enum.UserInputType.Touch) then
+            local mousePos = UserInputService:GetMouseLocation()
+            if isMouseOverGui({ Position = mousePos }) then
+                dragging = true
+                startPos = mousePos
+                startGuiOffset = gui.AbsolutePosition
+                print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Input =", input.Name, "startGuiOffset =", tostring(startGuiOffset))
             end
-            local guiSize = gui.AbsoluteSize
-            local maxX = math.max(0, screenSize.X - math.max(guiSize.X, 1))
-            local maxY = math.max(0, screenSize.Y - math.max(guiSize.Y, 1))
-            newPos = UDim2.new(
-                0, math.clamp(newPos.X.Offset, 0, maxX),
-                0, math.clamp(newPos.Y.Offset, 0, maxY)
-            )
-            gui.Position = newPos
-            print("[MakeDraggable]: Dragging: GUI =", gui.Name, "newPos =", tostring(newPos))
         end
     end)
 
-    gui.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+    gui.InputChanged:Connect(function()
+        if dragging then
+            local input = UserInputService:GetLastInputType()
+            if input == Enum.UserInputType.MouseMovement or input == Enum.UserInputType.Touch then
+                local mousePos = UserInputService:GetMouseLocation()
+                local delta = mousePos - startPos
+                local newOffset = Vector2.new(startGuiOffset.X + delta.X, startGuiOffset.Y + delta.Y)
+                local screenSize = GuiService:GetScreenResolution()
+                if screenSize == Vector2.new(0, 0) then
+                    screenSize = Vector2.new(720, 1280)
+                    warn("[MakeDraggable]: Invalid screenSize, using default: 720x1280")
+                end
+                local guiSize = gui.AbsoluteSize
+                local maxX = math.max(0, screenSize.X - math.max(guiSize.X, 1))
+                local maxY = math.max(0, screenSize.Y - math.max(guiSize.Y, 1))
+                newOffset = Vector2.new(
+                    math.clamp(newOffset.X, 0, maxX),
+                    math.clamp(newOffset.Y, 0, maxY)
+                )
+                gui.Position = UDim2.new(0, newOffset.X, 0, newOffset.Y)
+                print("[MakeDraggable]: Dragging: GUI =", gui.Name, "newOffset =", tostring(newOffset))
+            end
+        end
+    end)
+
+    gui.InputEnded:Connect(function()
+        local input = UserInputService:GetLastInputType()
+        if input == Enum.UserInputType.MouseButton1 or input == Enum.UserInputType.Touch then
             dragging = false
             print("[MakeDraggable]: Drag Ended: GUI =", gui.Name, "Final Position =", tostring(gui.Position))
         end
@@ -732,7 +734,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     end)
 
     tabButton.MouseButton1Click:Connect(function()
-        -- 隐藏其他标签页内容，排除当前 content
         for _, child in ipairs(mainPage:GetChildren()) do
             if child:IsA("ScrollingFrame") and child ~= content then
                 TweenService:Create(child, self.TWEEN_INFO_UI, { Position = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1 }):Play()
@@ -743,7 +744,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
                 end)
             end
         end
-        -- 显示当前标签页内容
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
         local tween = TweenService:Create(content, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.5 })
@@ -751,7 +751,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         tween.Completed:Connect(function()
             print("[Tab]: Animation Completed: Text =", options.Text, "Content Visible =", content.Visible)
         end)
-        -- 更新按钮外观
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
@@ -823,6 +822,55 @@ function UILibrary:SetTheme(newTheme)
             THEME[key] = DEFAULT_THEME[key]
         end
     end
+
+    -- 递归更新所有 UI 元素的颜色和字体
+    local function updateElement(element)
+        if element:IsA("Frame") or element:IsA("ScrollingFrame") then
+            if element.Name == "MainFrame" then
+                element.BackgroundColor3 = THEME.Background
+            elseif element.Name == "Sidebar" then
+                element.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+            elseif element.Name == "TitleBar" then
+                element.BackgroundColor3 = THEME.Primary
+            elseif element.Name == "MainPage" or element.Name:match("^TabContent_") then
+                element.BackgroundColor3 = THEME.SecondaryBackground
+            elseif element.Name == "Card" or element.Name == "AuthorFrame" then
+                element.BackgroundColor3 = THEME.SecondaryBackground
+            elseif element.Name == "Notification" then
+                element.BackgroundColor3 = THEME.Background
+            end
+        elseif element:IsA("TextButton") then
+            if element.Name == "FloatingButton" then
+                element.BackgroundColor3 = THEME.Primary
+                element.TextColor3 = THEME.Text
+                element.Font = THEME.Font
+            elseif element.Name:match("^Button_") then
+                local isActive = element.BackgroundTransparency == 0
+                element.BackgroundColor3 = isActive and THEME.Accent or THEME.Primary
+                element.TextColor3 = THEME.Text
+                element.Font = THEME.Font
+            end
+        elseif element:IsA("TextLabel") then
+            element.TextColor3 = THEME.Text
+            element.Font = THEME.Font
+        elseif element:IsA("TextBox") then
+            element.BackgroundColor3 = THEME.SecondaryBackground
+            element.TextColor3 = THEME.Text
+            element.Font = THEME.Font
+            element.BorderColor3 = THEME.Background
+        end
+    end
+
+    -- 更新 UILibraryWindow 和 NotificationContainer 下的所有元素
+    for _, gui in ipairs(Players.LocalPlayer.PlayerGui:GetChildren()) do
+        if gui.Name == "UILibraryWindow" or gui.Name == "UILibrary" then
+            for _, element in ipairs(gui:GetDescendants()) do
+                updateElement(element)
+            end
+            updateElement(gui)
+        end
+    end
+
     print("[Theme]: Set: Primary =", tostring(THEME.Primary), "Accent =", tostring(THEME.Accent))
 end
 
