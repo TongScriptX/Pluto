@@ -292,7 +292,7 @@ local toggleCurrency = UILibrary:CreateToggle(currencyNotifyCard, {
 print("金额监测开关创建:", toggleCurrency.Parent and "父对象存在" or "无父对象")
 
 -- 卡片：监测排行榜状态
- محلی leaderboardNotifyCard = UILibrary:CreateCard(notifyContent)
+local pleaderboardNotifyCard = UILibrary:CreateCard(notifyContent)
 local toggleLeaderboard = UILibrary:CreateToggle(leaderboardNotifyCard, {
     Text = "监测排行榜状态",
     DefaultState = config.notifyLeaderboard,
