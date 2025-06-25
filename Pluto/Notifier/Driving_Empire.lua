@@ -113,6 +113,7 @@ local function fetchPlayerRank()
     local playerRank = nil
     local success, contentsPath = pcall(function()
         return game:GetService("Workspace"):WaitForChild("Game"):WaitForChild("Leaderboards"):WaitForChild("weekly_money"):WaitForChild("Screen"):WaitForChild("Leaderboard"):WaitForChild("Contents")
+    end)
     if success and contentsPath then
         local rank = 1
         for _, userIdFolder in ipairs(contentsPath:GetChildren()) do
@@ -132,8 +133,8 @@ local function fetchPlayerRank()
         end
     else
         UILibrary:Notify({ Title = "排行榜错误", Text = "无法找到排行榜路径", Duration = 5 })
-        return nil
     end
+    return nil
 end
 
 -- 下次通知时间
@@ -327,7 +328,7 @@ local toggleLeaderboardKick = UILibrary:CreateToggle(leaderboardKickCard, {
             return
         end
         config.leaderboardKick = state
-        UILibrary:Notify({ Title = "配置更新", Text = "上榜自动踢出: " .. (state and "开启" .. "关闭"), Duration = 5 })
+        UILibrary:Notify({ Title = "配置更新", Text = "上榜自动踢出: " .. (state and "开启" or "关闭"), Duration = 5 })
         saveConfig()
     end
 })
