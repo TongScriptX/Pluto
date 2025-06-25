@@ -1,18 +1,37 @@
-MIT License
+Modified MIT License with Attribution and Anti-Misuse Clauses
 
 Copyright (c) 2025 TongScriptX
 
+This license applies to all source code files in this repository (including but not limited to .lua, .js, .ts, .py files, etc.), unless explicitly stated otherwise in a particular file.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
+of this software and associated documentation files (the “Software”), to deal
 in the Software without restriction, including without limitation the rights
 to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+2. You may not misrepresent yourself as the original author of the Software.
+   If you modify the Software and distribute it, you must clearly state that
+   your version is a modified version and not the original.
+
+3. You may not sell, rent, or offer the Software (or substantial parts of it)
+   as a paid product, service, or licensed item without prior written
+   permission from the original author.
+
+4. You may not implement access control mechanisms such as whitelist-based
+   locking, license key checks, encryption wrappers, or any other form of usage
+   restriction intended to prevent free use of the Software, unless clearly
+   stated as your own modifications and not part of the original project.
+
+5. You may not claim to offer “official” access, “authorized” versions, or
+   exclusive rights to use, run, or redistribute the Software unless granted
+   in writing by the original author.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
