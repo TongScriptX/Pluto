@@ -505,9 +505,9 @@ function UILibrary:CreateToggle(parent, options)
 end
 
 -- 拖拽模块
-function UILibrary:MakeDraggable(gui)
-    if not gui then
-        warn("[MakeDraggable]: Failed: GUI is nil")
+function UILibrary:MakeDraggable(gui, targetFrame)
+    if not gui or not targetFrame then
+        warn("[MakeDraggable]: Failed: GUI or targetFrame is nil")
         return
     end
     local dragging = false
@@ -524,9 +524,9 @@ function UILibrary:MakeDraggable(gui)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
             dragging = true
             startPos = input.Position
-            startGuiOffset = gui.AbsolutePosition
-            gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag started: GUI =", gui.Name, "Position =", tostring(gui.Position))
+            startGuiOffset = targetFrame.AbsolutePosition
+            targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
+            print("[MakeDraggable]: Drag started: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
         end
     end)
 
@@ -538,22 +538,22 @@ function UILibrary:MakeDraggable(gui)
             if screenSize == Vector2.new(0, 0) then
                 screenSize = Vector2.new(720, 1280)
             end
-            local guiSize = gui.AbsoluteSize
+            local guiSize = targetFrame.AbsoluteSize
             local maxX = math.max(0, screenSize.X - math.max(guiSize.X, 1))
             local maxY = math.max(0, screenSize.Y - math.max(guiSize.Y, 1))
             newOffset = Vector2.new(
                 math.clamp(newOffset.X, 0, maxX),
                 math.clamp(newOffset.Y, 0, maxY)
             )
-            gui.Position = UDim2.new(0, newOffset.X, 0, newOffset.Y)
+            targetFrame.Position = UDim2.new(0, newOffset.X, 0, newOffset.Y)
         end
     end)
 
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
-            gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag ended: GUI =", gui.Name, "Position =", tostring(gui.Position))
+            targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
+            print("[MakeDraggable]: Drag ended: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
         end
     end)
 end
@@ -660,8 +660,9 @@ function UILibrary:CreateUIWindow(options)
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     pageCorner.Parent = mainPage
 
-    self:MakeDraggable(titleBar)
-    self:MakeDraggable(mainFrame)
+    -- 仅通过 TitleBar 和 Sidebar 拖动 MainFrame
+    self:MakeDraggable(titleBar, mainFrame)
+    self:MakeDraggable(sidebar, mainFrame)
 
     task.delay(0.05, function()
         for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)) do
