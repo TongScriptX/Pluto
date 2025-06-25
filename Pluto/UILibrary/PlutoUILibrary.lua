@@ -19,17 +19,17 @@ local DEFAULT_THEME = {
 
 -- UI 样式常量
 local UI_STYLES = {
-    CardHeightSingle = 60, -- 单元素卡片高度（如单个输入框）
-    CardHeightMulti = 90,  -- 多元素卡片高度（如开关+输入框）
-    ButtonHeight = 25,     -- 按钮/输入框/开关高度
-    LabelHeight = 15,      -- 标签高度
-    TabButtonHeight = 30,  -- 标签页按钮高度
-    Padding = 5,           -- 通用间距（像素）
-    CornerRadius = 6,      -- 圆角半径
-    WindowWidth = 400,     -- 窗口宽度
-    WindowHeight = 300,    -- 窗口高度
-    SidebarWidth = 80,     -- 侧边栏宽度
-    TitleBarHeight = 30    -- 标题栏高度
+    CardHeightSingle = 60,
+    CardHeightMulti = 90,
+    ButtonHeight = 25,
+    LabelHeight = 15,
+    TabButtonHeight = 30,
+    Padding = 5,
+    CornerRadius = 6,
+    WindowWidth = 400,
+    WindowHeight = 300,
+    SidebarWidth = 80,
+    TitleBarHeight = 30
 }
 
 -- 备选字体
@@ -73,7 +73,7 @@ end
 UILibrary.TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 UILibrary.THEME = THEME
-UILibrary.UI_STYLES = UI_STYLES -- 暴露样式供调试
+UILibrary.UI_STYLES = UI_STYLES
 
 -- 通知容器
 local notificationContainer = nil
@@ -83,23 +83,23 @@ local screenGui = nil
 local function initNotificationContainer()
     if not screenGui or not screenGui.Parent then
         screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "UILibrary"
+        screenGui.Name = "PlutoUILibrary"
         local success, err = pcall(function()
-            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 15)
+            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 30)
         end)
         if not success then
-            warn("[Notification]: ScreenGui Initialization Failed: " .. tostring(err))
+            warn("[Notification]: ScreenGui initialization failed: ", err)
             return false
         end
         screenGui.ResetOnSpawn = false
         screenGui.Enabled = true
-        screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        screenGui.ZIndexBehavior = Enum.ZIndexBehavior.SiblingIndex
         screenGui.DisplayOrder = 10
     end
 
-    if not notificationContainer or not notificationContainer.Parent then
+    if not notificationContainer or not notificationContainer then.Parent then
         notificationContainer = Instance.new("Frame")
-        notificationContainer.Name = "NotificationContainer"
+        notificationContainer = notificationContainer.Name
         notificationContainer.Size = UDim2.new(0, 180, 0, 240)
         notificationContainer.Position = UDim2.new(1, -190, 1, -300)
         notificationContainer.BackgroundTransparency = 1
@@ -108,8 +108,8 @@ local function initNotificationContainer()
         notificationContainer.ZIndex = 10
         local layout = Instance.new("UIListLayout")
         layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, UI_STYLES.Padding)
-        layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+        layout.Label = UDim.new(0, UI_STYLES.P)
+        layout.VerticalAlignment = Enum.VerticalAlignmentAlignment.Bottom
         layout.Parent = notificationContainer
     end
     return true
@@ -117,9 +117,9 @@ end
 
 -- 通知模块
 function UILibrary:Notify(options)
-    options = options or {}
+    options == nil then options = options or {}
     if not initNotificationContainer() then
-        warn("[Notification]: Failed: Unable to initialize ScreenGui")
+        warn("[Notification]: Failed to initialize ScreenGui")
         return nil
     end
 
@@ -152,26 +152,26 @@ function UILibrary:Notify(options)
     })
     textLabel.ZIndex = 12
 
-    wait(0.1)
+    task.wait(0.1)
     local success, err = pcall(function()
-        local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 50) })
+        local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 50)})
         tween:Play()
     end)
     if not success then
-        warn("[Notification]: Animation Failed: " .. tostring(err))
+        warn("[Notification]: Animation failed: ", err)
         notification.Position = UDim2.new(0, 0, 0, 50)
     end
 
-    spawn(function()
-        wait(options.Duration or 3)
+    task.spawn(function()
+        task.wait(options.Duration or 3)
         if notification.Parent then
             local success, err = pcall(function()
-                local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 90) })
+                local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 90)})
                 tween:Play()
                 tween.Completed:Wait()
             end)
             if not success then
-                warn("[Notification]: Exit Animation Failed: " .. tostring(err))
+                warn("[Notification]: Exit animation failed: ", err)
             end
             notification:Destroy()
         end
@@ -188,9 +188,9 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
         if target.Name == "Sidebar" or target.Name == "TitleBar" then
             transparency = isVisible and 0 or 1
         end
-        table.insert(tweens, TweenService:Create(target, tweenInfo, { BackgroundTransparency = transparency }))
+        table.insert(tweens, TweenService:Create(target, tweenInfo, {BackgroundTransparency = transparency}))
     elseif target:IsA("TextLabel") or target:IsA("TextButton") then
-        table.insert(tweens, TweenService:Create(target, tweenInfo, { TextTransparency = isVisible and 0 or 1 }))
+        table.insert(tweens, TweenService:Create(target, tweenInfo, {TextTransparency = isVisible and 0 or 1}))
     end
     for _, child in ipairs(target:GetDescendants()) do
         if child:IsA("Frame") or child:IsA("ScrollingFrame") then
@@ -198,9 +198,9 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
             if child.Name == "Sidebar" or child.Name == "TitleBar" then
                 transparency = isVisible and 0 or 1
             end
-            table.insert(tweens, TweenService:Create(child, tweenInfo, { BackgroundTransparency = transparency }))
+            table.insert(tweens, TweenService:Create(child, tweenInfo, {BackgroundTransparency = transparency}))
         elseif child:IsA("TextLabel") or child:IsA("TextButton") then
-            table.insert(tweens, TweenService:Create(child, tweenInfo, { TextTransparency = isVisible and 0 or 1 }))
+            table.insert(tweens, TweenService:Create(child, tweenInfo, {TextTransparency = isVisible and 0 or 1}))
         end
     end
     return tweens
@@ -209,7 +209,7 @@ end
 -- 创建卡片
 function UILibrary:CreateCard(parent, options)
     if not parent then
-        warn("[Card]: Creation Failed: Parent is nil")
+        warn("[Card]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
@@ -237,7 +237,7 @@ function UILibrary:CreateCard(parent, options)
     padding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
     padding.Parent = card
 
-    TweenService:Create(card, self.TWEEN_INFO_UI, { Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3 }):Play()
+    TweenService:Create(card, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3}):Play()
 
     return card
 end
@@ -245,7 +245,7 @@ end
 -- 按钮模块
 function UILibrary:CreateButton(parent, options)
     if not parent then
-        warn("[Button]: Creation Failed: Parent is nil")
+        warn("[Button]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
@@ -268,18 +268,21 @@ function UILibrary:CreateButton(parent, options)
     if options.Callback then
         button.MouseButton1Click:Connect(function()
             local originalSize = button.Size
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95) }):Play()
-            wait(0.1)
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Size = originalSize }):Play()
-            options.Callback()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)}):Play()
+            task.wait(0.1)
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = originalSize}):Play()
+            local success, err = pcall(options.Callback)
+            if not success then
+                warn("[Button]: Callback failed: ", err)
+            end
         end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary}):Play()
     end)
 
     return button
@@ -288,7 +291,7 @@ end
 -- 悬浮按钮模块
 function UILibrary:CreateFloatingButton(parent, options)
     if not parent then
-        warn("[FloatingButton]: Creation Failed: Parent is nil")
+        warn("[FloatingButton]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
@@ -337,15 +340,15 @@ function UILibrary:CreateFloatingButton(parent, options)
                 end
                 button.Active = true
             end)
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, { Rotation = isVisible and 45 or 0 }):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Rotation = isVisible and 45 or 0}):Play()
         end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary }):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
     end)
 
     self:MakeDraggable(button)
@@ -355,7 +358,7 @@ end
 -- 文本标签模块
 function UILibrary:CreateLabel(parent, options)
     if not parent then
-        warn("[Label]: Creation Failed: Parent is nil")
+        warn("[Label]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
@@ -375,10 +378,10 @@ function UILibrary:CreateLabel(parent, options)
     label.Visible = true
     label.ZIndex = 3
     local success, err = pcall(function()
-        TweenService:Create(label, self.TWEEN_INFO_UI, { TextTransparency = 0 }):Play()
+        TweenService:Create(label, self.TWEEN_INFO_UI, {TextTransparency = 0}):Play()
     end)
     if not success then
-        warn("[Label]: Animation Failed: " .. tostring(err))
+        warn("[Label]: Animation failed: ", err)
     end
 
     return label
@@ -387,7 +390,7 @@ end
 -- 输入框模块
 function UILibrary:CreateTextBox(parent, options)
     if not parent then
-        warn("[TextBox]: Creation Failed: Parent is nil")
+        warn("[TextBox]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
@@ -413,12 +416,17 @@ function UILibrary:CreateTextBox(parent, options)
     corner.Parent = textBox
 
     textBox.Focused:Connect(function()
-        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary }):Play()
+        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
     end)
     textBox.FocusLost:Connect(function()
-        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, { BorderColor3 = THEME.Background or DEFAULT_THEME.Background }):Play()
-        if options.OnFocusLost then
-            options.OnFocusLost()
+        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {BorderColor3 = THEME.Background or DEFAULT_THEME.Background}):Play()
+        if options.OnFocusLost and typeof(options.OnFocusLost) == "function" then
+            local success, err = pcall(function()
+                options.OnFocusLost(textBox.Text)
+            end)
+            if not success then
+                warn("[TextBox]: OnFocusLost callback failed: ", err)
+            end
         end
     end)
 
@@ -428,7 +436,7 @@ end
 -- 开关模块
 function UILibrary:CreateToggle(parent, options)
     if not parent then
-        warn("[Toggle]: Creation Failed: Parent is nil")
+        warn("[Toggle]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
@@ -476,10 +484,15 @@ function UILibrary:CreateToggle(parent, options)
         state = not state
         local targetPos = state and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
         local targetColor = state and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
-        TweenService:Create(thumb, self.TWEEN_INFO_BUTTON, { Position = targetPos }):Play()
-        TweenService:Create(track, self.TWEEN_INFO_BUTTON, { BackgroundColor3 = targetColor }):Play()
-        if options.Callback then
-            options.Callback(state)
+        TweenService:Create(thumb, self.TWEEN_INFO_BUTTON, {Position = targetPos}):Play()
+        TweenService:Create(track, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = targetColor}):Play()
+        if options.Callback and typeof(options.Callback) == "function" then
+            local success, err = pcall(function()
+                options.Callback(state)
+            end)
+            if not success then
+                warn("[Toggle]: Callback failed: ", err)
+            end
         end
     end)
 
@@ -502,17 +515,17 @@ function UILibrary:MakeDraggable(gui)
         return pos.X >= guiPos.X and pos.X <= guiPos.X + guiSize.X and pos.Y >= guiPos.Y and pos.Y <= guiPos.Y + guiSize.Y
     end
 
-    gui.InputBegan:Connect(function(input)
+    UserInputService.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
             dragging = true
             startPos = input.Position
             startGuiOffset = gui.AbsolutePosition
             gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag Started: GUI =", gui.Name, "Position =", tostring(gui.Position))
+            print("[MakeDraggable]: Drag started: GUI =", gui.Name, "Position =", tostring(gui.Position))
         end
     end)
 
-    gui.InputChanged:Connect(function(input)
+    UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
             local delta = input.Position - startPos
             local newOffset = Vector2.new(startGuiOffset.X + delta.X, startGuiOffset.Y + delta.Y)
@@ -528,15 +541,14 @@ function UILibrary:MakeDraggable(gui)
                 math.clamp(newOffset.Y, 0, maxY)
             )
             gui.Position = UDim2.new(0, newOffset.X, 0, newOffset.Y)
-            print("[MakeDraggable]: Dragging: GUI =", gui.Name, "Position =", tostring(gui.Position))
         end
     end)
 
-    gui.InputEnded:Connect(function(input)
+    UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
             gui.ZIndex = gui.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag Ended: GUI =", gui.Name, "Position =", tostring(gui.Position))
+            print("[MakeDraggable]: Drag ended: GUI =", gui.Name, "Position =", tostring(gui.Position))
         end
     end)
 end
@@ -552,12 +564,12 @@ function UILibrary:CreateUIWindow(options)
     local windowHeight = math.min(UI_STYLES.WindowHeight, screenSize.Y * 0.9)
 
     local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "UILibraryWindow"
+    screenGui.Name = "PlutoUILibraryWindow"
     local success, err = pcall(function()
-        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 15)
+        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 30)
     end)
     if not success then
-        warn("[Window]: ScreenGui Initialization Failed: " .. tostring(err))
+        warn("[Window]: ScreenGui initialization failed: ", err)
         return nil
     end
     screenGui.ResetOnSpawn = false
@@ -570,7 +582,7 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
     mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = 1
+    mainFrame.BackgroundTransparency = 0.5
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
@@ -584,7 +596,7 @@ function UILibrary:CreateUIWindow(options)
     sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
     sidebar.Position = UDim2.new(0, 0, 0, 0)
     sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    sidebar.BackgroundTransparency = 1
+    sidebar.BackgroundTransparency = 0
     sidebar.Parent = mainFrame
     sidebar.Visible = true
     sidebar.ZIndex = 6
@@ -607,7 +619,7 @@ function UILibrary:CreateUIWindow(options)
     titleBar.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     titleBar.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, 0)
     titleBar.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    titleBar.BackgroundTransparency = 1
+    titleBar.BackgroundTransparency = 0
     titleBar.Parent = mainFrame
     titleBar.Visible = true
     titleBar.ZIndex = 6
@@ -620,18 +632,16 @@ function UILibrary:CreateUIWindow(options)
         Size = UDim2.new(1, 0, 1, 0),
         TextXAlignment = Enum.TextXAlignment.Center,
         TextSize = 14,
-        TextTransparency = 1
+        TextTransparency = 0
     })
     titleLabel.ZIndex = 7
 
-    local mainPage = Instance.new("ScrollingFrame")
+    local mainPage = Instance.new("Frame")
     mainPage.Name = "MainPage"
     mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
     mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    mainPage.BackgroundTransparency = 1
-    mainPage.ScrollBarThickness = 4
-    mainPage.CanvasSize = UDim2.new(0, 0, 0, 100)
+    mainPage.BackgroundTransparency = 0.5
     mainPage.Parent = mainFrame
     mainPage.Visible = true
     mainPage.ZIndex = 6
@@ -640,13 +650,8 @@ function UILibrary:CreateUIWindow(options)
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     pageCorner.Parent = mainPage
 
-    local pageLayout = Instance.new("UIListLayout")
-    pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    pageLayout.Padding = UDim.new(0, UI_STYLES.Padding)
-    pageLayout.Parent = mainPage
-    pageLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        mainPage.CanvasSize = UDim2.new(0, 0, 0, pageLayout.AbsoluteContentSize.Y + UI_STYLES.Padding)
-    end)
+    self:MakeDraggable(titleBar)
+    self:MakeDraggable(mainFrame)
 
     task.delay(0.05, function()
         for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)) do
@@ -666,7 +671,7 @@ end
 -- 标签页模块
 function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     if not sidebar or not mainPage or not titleLabel then
-        warn("[Tab]: Creation Failed: Invalid sidebar, mainPage, or titleLabel")
+        warn("[Tab]: Creation failed: Invalid sidebar, mainPage, or titleLabel")
         return nil, nil
     end
     options = options or {}
@@ -677,7 +682,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         BackgroundTransparency = options.Active and 0 or 0.5
     })
     if not tabButton then
-        warn("[Tab]: Creation Failed: tabButton is nil")
+        warn("[Tab]: Creation failed: tabButton is nil")
         return nil, nil
     end
     tabButton.ZIndex = 7
@@ -690,6 +695,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.BackgroundTransparency = options.Active and 0.5 or 1
     content.ScrollBarThickness = 4
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
+    content.ScrollingEnabled = true
     content.Visible = options.Active or false
     content.Parent = mainPage
     content.ZIndex = 6
@@ -709,20 +715,22 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
                 child.Position = UDim2.new(1, 0, 0, 0)
                 child.BackgroundTransparency = 1
                 child.ZIndex = 6
-                print("[Tab]: Hid Content: Name =", child.Name, "Visible =", child.Visible, "Position =", tostring(child.Position), "ZIndex =", child.ZIndex)
+                child.CanvasPosition = Vector2.new(0, 0)
+                print("[Tab]: Hid content: Name =", child.Name, "Visible =", child.Visible, "Position =", tostring(child.Position), "ZIndex =", child.ZIndex)
             end
         end
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
         content.ZIndex = 6
         content.Size = UDim2.new(1, 0, 1, 0)
+        content.CanvasPosition = Vector2.new(0, 0)
         local tween = TweenService:Create(content, self.TWEEN_INFO_UI, {
             Position = UDim2.new(0, 0, 0, 0),
             BackgroundTransparency = 0.5
         })
         tween:Play()
         tween.Completed:Connect(function()
-            print("[Tab]: Animation Completed: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", content.ZIndex)
+            print("[Tab]: Animation completed: Text =", options.Text, "Content visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", content.ZIndex)
         end)
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
@@ -733,7 +741,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
             end
         end
         titleLabel.Text = options.Text
-        print("[Tab]: Switched: Text =", options.Text, "Content Visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", content.ZIndex)
+        print("[Tab]: Switched: Text =", options.Text, "Content visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", content.ZIndex)
     end)
 
     return tabButton, content
@@ -742,11 +750,11 @@ end
 -- 作者介绍模块
 function UILibrary:CreateAuthorInfo(parent, options)
     if not parent then
-        warn("[AuthorInfo]: Creation Failed: Parent is nil")
+        warn("[AuthorInfo]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
-    local authorFrame = self:CreateCard(parent, { IsMultiElement = true })
+    local authorFrame = self:CreateCard(parent, {IsMultiElement = true})
     local authorLabel = self:CreateLabel(authorFrame, {
         Text = options.Text or "",
         Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight),
@@ -778,7 +786,7 @@ function UILibrary:SetTheme(newTheme)
     }
     for key, value in pairs(THEME) do
         if key ~= "Font" and value == nil then
-            warn("[SetTheme]: Invalid value for " .. key .. ", using default")
+            warn("[SetTheme]: Invalid value for ", key, ", using default")
             THEME[key] = DEFAULT_THEME[key]
         end
     end
@@ -821,7 +829,7 @@ function UILibrary:SetTheme(newTheme)
     end
 
     for _, gui in ipairs(Players.LocalPlayer.PlayerGui:GetChildren()) do
-        if gui.Name == "UILibraryWindow" or gui.Name == "UILibrary" then
+        if gui.Name == "PlutoUILibraryWindow" or gui.Name == "PlutoUILibrary" then
             for _, element in ipairs(gui:GetDescendants()) do
                 updateElement(element)
             end
