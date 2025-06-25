@@ -6,9 +6,13 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 -- 加载 UI 模块
+local HttpService = game:GetService("HttpService")
 local success, UILibrary = pcall(function()
-    return require(game.ReplicatedStorage.PlutoUILibrary)
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
 end)
+
 if not success then
     error("无法加载 UI 库: " .. tostring(UILibrary))
 end
