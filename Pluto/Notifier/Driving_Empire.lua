@@ -29,7 +29,7 @@ if not http_request then
 end
 
 -- 配置文件
-local configFile = "pluto_config.json"
+local configFile = "Pluto_X_config.json"
 local config = {
     webhookUrl = "",
     notifyCash = true,
