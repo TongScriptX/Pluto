@@ -431,7 +431,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     end
 })
 targetCurrencyInput.Text = tostring(config.targetCurrency)
-print("目标金额输入框创建:", targetCurrencyInput.ParentTarget and "父对象存在" or "TargetCurrencyInput")
+print("目标金额输入框创建:", targetCurrencyInput.Parent and "父对象存在" or "TargetCurrencyInput")
 -- 标签页：关于
 
 -- 创建关于标签页
