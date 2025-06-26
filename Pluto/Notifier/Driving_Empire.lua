@@ -37,10 +37,10 @@ end
 local configFile = "Pluto_X_config.json"
 local config = {
     webhookUrl = "",
-    notifyCash = true,
+    notifyCash = false,
     notifyLeaderboard = false,
     leaderboardKick = false,
-    notificationInterval = 5,
+    notificationInterval = 30,
     welcomeSent = false,
     targetCurrency = 0,
     enableTargetKick = false
