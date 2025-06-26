@@ -214,36 +214,48 @@ end
 
 -- 创建卡片
 function UILibrary:CreateCard(parent, options)
+    local pad = UI_STYLES.Padding or 6
+    local smallPad = pad / 2
+
     if not parent then
         warn("[Card]: Creation failed: Parent is nil")
         return nil
     end
-    options = options or {}
+
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, options.IsMultiElement and UI_STYLES.CardHeightMulti or UI_STYLES.CardHeightSingle)
+    card.Size = UDim2.new(1, -2 * pad, 0, options.IsMultiElement and UI_STYLES.CardHeightMulti or UI_STYLES.CardHeightSingle)
+    card.Position = UDim2.new(0, pad, 0, pad)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
-    card.Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding)
-    card.Parent = parent
-    card.Visible = true
     card.ZIndex = 2
-    local corner = Instance.new("UICorner")
+    card.ClipsDescendants = false
+    local corner = Instance.new("UICorner", card)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
-    corner.Parent = card
 
-    local layout = Instance.new("UIListLayout")
+    -- 阴影层：手动绑定圆角并偏移
+    local shadow = Instance.new("Frame", card)
+    shadow.Name = "Shadow"
+    shadow.Size = UDim2.new(1, 0, 1, 0)
+    shadow.Position = UDim2.new(0, 2, 0, 2)
+    shadow.BackgroundColor3 = Color3.new(0, 0, 0)
+    shadow.BackgroundTransparency = 0.6
+    shadow.ZIndex = 1
+    local sc = Instance.new("UICorner", shadow)
+    sc.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+
+    -- 内容布局，使用 tighter padding
+    local layout = Instance.new("UIListLayout", card)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, UI_STYLES.Padding)
-    layout.Parent = card
-    local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
-    padding.Parent = card
+    layout.Padding = UDim.new(0, smallPad) -- 控件之间更紧密0
 
-    TweenService:Create(card, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3}):Play()
+    local paddingInst = Instance.new("UIPadding", card)
+    paddingInst.PaddingLeft = UDim.new(0, smallPad)
+    paddingInst.PaddingRight = UDim.new(0, smallPad)
+    paddingInst.PaddingTop = UDim.new(0, smallPad)
+    paddingInst.PaddingBottom = UDim.new(0, smallPad)
+
+    TweenService:Create(card, self.TWEEN_INFO_UI, {Position = UDim2.new(0, pad, 0, pad)}):Play()
 
     return card
 end
@@ -254,42 +266,49 @@ function UILibrary:CreateButton(parent, options)
         warn("[Button]: Creation failed: Parent is nil")
         return nil
     end
+
     options = options or {}
+    local btnPad = UI_STYLES.Padding or 6
+
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
-    button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
+    button.Size = UDim2.new(1, -2 * btnPad, 0, UI_STYLES.ButtonHeight)
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.5
     button.Text = options.Text or ""
     button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    button.TextSize = 12
+    button.TextSize = options.TextSize or 12
     button.Font = THEME.Font
     button.Parent = parent
-    button.Visible = true
     button.ZIndex = 3
-    local corner = Instance.new("UICorner")
+
+    local corner = Instance.new("UICorner", button)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
-    corner.Parent = button
+
+    -- 鼠标交互动画
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
+            BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent
+        }):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
+            BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
+        }):Play()
+    end)
 
     if options.Callback then
         button.MouseButton1Click:Connect(function()
             local originalSize = button.Size
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)}):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
+                Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95,
+                                 originalSize.Y.Scale, originalSize.Y.Offset * 0.95)
+            }):Play()
             task.wait(0.1)
             TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = originalSize}):Play()
-            local success, err = pcall(options.Callback)
-            if not success then
-                warn("[Button]: Callback failed: ", err)
-            end
+            pcall(options.Callback)
         end)
     end
-
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
-    end)
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary}):Play()
-    end)
 
     return button
 end
@@ -373,11 +392,14 @@ function UILibrary:CreateLabel(parent, options)
         warn("[Label]: Creation failed: Parent is nil")
         return nil
     end
+
     options = options or {}
+    local lblPad = UI_STYLES.Padding or 6
+
     local label = Instance.new("TextLabel")
     label.Name = "Label_" .. (options.Text or "Unnamed")
-    label.Size = options.Size or UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight)
-    label.Position = options.Position or UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding)
+    label.Size = options.Size or UDim2.new(1, -2 * lblPad, 0, UI_STYLES.LabelHeight)
+    label.Position = options.Position or UDim2.new(0, lblPad, 0, lblPad)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
     label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -387,14 +409,11 @@ function UILibrary:CreateLabel(parent, options)
     label.TextTruncate = Enum.TextTruncate.AtEnd
     label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.Parent = parent
-    label.Visible = true
     label.ZIndex = 3
-    local success, err = pcall(function()
+
+    pcall(function()
         TweenService:Create(label, self.TWEEN_INFO_UI, {TextTransparency = 0}):Play()
     end)
-    if not success then
-        warn("[Label]: Animation failed: ", err)
-    end
 
     return label
 end
@@ -405,14 +424,17 @@ function UILibrary:CreateTextBox(parent, options)
         warn("[TextBox]: Creation failed: Parent is nil")
         return nil
     end
+
     options = options or {}
+    local tbPad = UI_STYLES.Padding or 6
+
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
-    textBox.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
+    textBox.Size = UDim2.new(1, -2 * tbPad, 0, UI_STYLES.ButtonHeight)
     textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     textBox.BackgroundTransparency = 0.3
     textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    textBox.TextSize = 12
+    textBox.TextSize = options.TextSize or 12
     textBox.Font = THEME.Font
     textBox.PlaceholderText = options.PlaceholderText or ""
     textBox.Text = options.Text or ""
@@ -421,31 +443,21 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.BorderSizePixel = 1
     textBox.BorderColor3 = THEME.Background or DEFAULT_THEME.Background
     textBox.Parent = parent
-    textBox.Visible = true
     textBox.ZIndex = 3
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
-    corner.Parent = textBox
 
-    if not textBox.Parent then
-        warn("[TextBox]: TextBox has no parent after creation")
-        textBox:Destroy()
-        return nil
-    end
+    local corner = Instance.new("UICorner", textBox)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
 
     textBox.Focused:Connect(function()
-        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
+        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {
+            BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary
+        }):Play()
     end)
-    textBox.FocusLost:Connect(function(enterPressed)
-        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {BorderColor3 = THEME.Background or DEFAULT_THEME.Background}):Play()
-        if options.OnFocusLost and typeof(options.OnFocusLost) == "function" then
-            local success, err = pcall(function()
-                options.OnFocusLost(textBox.Text)
-            end)
-            if not success then
-                warn("[TextBox]: OnFocusLost callback failed: ", err)
-            end
-        end
+    textBox.FocusLost:Connect(function()
+        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {
+            BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+        }):Play()
+        if options.OnFocusLost then pcall(options.OnFocusLost, textBox.Text) end
     end)
 
     return textBox
@@ -457,45 +469,43 @@ function UILibrary:CreateToggle(parent, options)
         warn("[Toggle]: Creation failed: Parent is nil")
         return nil
     end
+
     options = options or {}
+    local tgPad = UI_STYLES.Padding or 6
+
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
-    toggleFrame.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
+    toggleFrame.Size = UDim2.new(1, -2 * tgPad, 0, UI_STYLES.ButtonHeight)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
-    toggleFrame.Visible = true
     toggleFrame.ZIndex = 2
+
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "",
-        Size = UDim2.new(0.6, 0, 1, 0),
+        Size = UDim2.new(0.6, -tgPad, 1, 0),
         TextSize = 12
     })
     label.ZIndex = 3
 
-    local track = Instance.new("Frame")
+    local track = Instance.new("Frame", toggleFrame)
     track.Name = "Track"
     track.Size = UDim2.new(0, 30, 0, 8)
     track.Position = UDim2.new(0.65, 0, 0.5, -4)
-    track.BackgroundColor3 = options.DefaultState and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
-    track.Parent = toggleFrame
-    track.Visible = true
+    track.BackgroundColor3 = (options.DefaultState and (THEME.Success or DEFAULT_THEME.Success)
+                              or (THEME.Error or DEFAULT_THEME.Error))
     track.ZIndex = 3
-    local trackCorner = Instance.new("UICorner")
+    local trackCorner = Instance.new("UICorner", track)
     trackCorner.CornerRadius = UDim.new(0, 4)
-    trackCorner.Parent = track
 
-    local thumb = Instance.new("TextButton")
+    local thumb = Instance.new("TextButton", track)
     thumb.Name = "Thumb"
     thumb.Size = UDim2.new(0, 15, 0, 15)
     thumb.Position = options.DefaultState and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
-    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.BackgroundColor3 = Color3.new(1,1,1)
     thumb.Text = ""
-    thumb.Parent = track
-    thumb.Visible = true
     thumb.ZIndex = 4
-    local thumbCorner = Instance.new("UICorner")
+    local thumbCorner = Instance.new("UICorner", thumb)
     thumbCorner.CornerRadius = UDim.new(0, 8)
-    thumbCorner.Parent = thumb
 
     local state = options.DefaultState or false
     thumb.MouseButton1Click:Connect(function()
@@ -504,14 +514,7 @@ function UILibrary:CreateToggle(parent, options)
         local targetColor = state and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
         TweenService:Create(thumb, self.TWEEN_INFO_BUTTON, {Position = targetPos}):Play()
         TweenService:Create(track, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = targetColor}):Play()
-        if options.Callback and typeof(options.Callback) == "function" then
-            local success, err = pcall(function()
-                options.Callback(state)
-            end)
-            if not success then
-                warn("[Toggle]: Callback failed: ", err)
-            end
-        end
+        if options.Callback then pcall(options.Callback, state) end
     end)
 
     return toggleFrame, state
