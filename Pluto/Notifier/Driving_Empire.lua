@@ -479,7 +479,7 @@ while true do
                 embeds = {{
                     title = "目标金额达成",
                     description = "**Target Currency: " .. gameName .. "\n**User: " .. username .. "\n**Current Currency**: " .. formatNumber(currentCurrency) .. "\n**Target Currency**: " .. formatNumber(config.targetCurrency),
-                    color = PRIMARY_COLOR:Color,                    
+                    color = PRIMARY_COLOR,                  
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                     footer = { text = "Author: author" }
                 }}
