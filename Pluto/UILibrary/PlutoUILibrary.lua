@@ -704,9 +704,10 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
 
     options = options or {}
     local isActive = options.Active or false
+    local tabText = options.Text or "Unnamed"
 
     local tabButton = self:CreateButton(sidebar, {
-        Text = options.Text or "",
+        Text = tabText,
         Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.TabButtonHeight),
         BackgroundColor3 = isActive and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
         BackgroundTransparency = isActive and 0 or 0.5
@@ -719,28 +720,32 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     tabButton.ZIndex = 7
 
     local content = Instance.new("ScrollingFrame")
-    content.Name = "TabContent_" .. (options.Text or "Unnamed")
+    content.Name = "TabContent_" .. tabText
     content.Size = UDim2.new(1, 0, 1, 0)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
     content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     content.BackgroundTransparency = isActive and 0.5 or 1
     content.ScrollBarThickness = 4
-    content.CanvasSize = UDim2.new(0, 0, 0, 100)
     content.ScrollingEnabled = true
+    content.ClipsDescendants = true
+    content.CanvasSize = UDim2.new(0, 0, 0, 100)
     content.Visible = isActive
     content.ZIndex = 6
     content.Parent = mainPage
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, UI_STYLES.Padding)
+    listLayout.Padding = UDim.new(0, UI_STYLES.Padding or 6)
     listLayout.Parent = content
+
+    local paddingY = UI_STYLES.YPadding or 10
     listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + UI_STYLES.YPadding)
+        task.defer(function()
+            content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + paddingY)
+        end)
     end)
 
     local function switchToThisTab()
-        -- 隐藏其他内容
         for _, child in ipairs(mainPage:GetChildren()) do
             if child:IsA("ScrollingFrame") and child ~= content then
                 child.Visible = false
@@ -752,7 +757,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
             end
         end
 
-        -- 当前内容显示
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
         content.ZIndex = 6
@@ -764,7 +768,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
             BackgroundTransparency = 0.5
         }):Play()
 
-        -- 切换按钮状态
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
@@ -774,13 +777,12 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
             end
         end
 
-        titleLabel.Text = options.Text or "Tab"
+        titleLabel.Text = tabText
         print("[Tab]: 切换至标签页:", content.Name)
     end
 
     tabButton.MouseButton1Click:Connect(switchToThisTab)
 
-    -- 自动激活默认标签页
     if isActive then
         task.defer(switchToThisTab)
     end
