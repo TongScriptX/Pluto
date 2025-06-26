@@ -492,7 +492,6 @@ while true do
     end
 
     -- 定时通知检
-    local lastSendTime = 0
     if os.time() - lastSendTime >= (config.notificationInterval or 5) * 60 then
         local payload = {
             embeds = {
