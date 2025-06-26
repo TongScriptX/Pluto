@@ -17,19 +17,20 @@ local DEFAULT_THEME = {
     Font = Enum.Font.Roboto
 }
 
--- UI 样式常量
+-- UI 样式常量（调整为 4pt 网格）
 local UI_STYLES = {
-    CardHeightSingle = 60,
-    CardHeightMulti = 90,
-    ButtonHeight = 25,
-    LabelHeight = 15,
-    TabButtonHeight = 30,
-    Padding = 5,
-    CornerRadius = 6,
-    WindowWidth = 400,
-    WindowHeight = 300,
-    SidebarWidth = 80,
-    TitleBarHeight = 30
+    CardHeightSingle   = 60,
+    CardHeightMulti    = 88,
+    ButtonHeight       = 28,
+    LabelHeight        = 20,
+    TabButtonHeight    = 32,
+    Padding            = 8,
+    YPadding           = 8,
+    CornerRadius       = 6,
+    WindowWidth        = 400,
+    WindowHeight       = 300,
+    SidebarWidth       = 80,
+    TitleBarHeight     = 32
 }
 
 -- 备选字体
