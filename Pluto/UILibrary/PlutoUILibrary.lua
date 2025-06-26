@@ -214,48 +214,38 @@ end
 
 -- 创建卡片
 function UILibrary:CreateCard(parent, options)
-    local pad = UI_STYLES.Padding or 6
-    local smallPad = pad / 2
-
     if not parent then
         warn("[Card]: Creation failed: Parent is nil")
         return nil
     end
-
+    options = options or {}
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.Size = UDim2.new(1, -2 * pad, 0, options.IsMultiElement and UI_STYLES.CardHeightMulti or UI_STYLES.CardHeightSingle)
-    card.Position = UDim2.new(0, pad, 0, pad)
+    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, options.IsMultiElement and UI_STYLES.CardHeightMulti or UI_STYLES.CardHeightSingle)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
+    card.Position = UDim2.new(0, UI_STYLES.Padding, 0, 0) -- 改为顶部对齐，减少冗余空间
+    card.Parent = parent
+    card.Visible = true
     card.ZIndex = 2
-    card.ClipsDescendants = false
-    local corner = Instance.new("UICorner", card)
+
+    local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    corner.Parent = card
 
-    -- 阴影层：手动绑定圆角并偏移
-    local shadow = Instance.new("Frame", card)
-    shadow.Name = "Shadow"
-    shadow.Size = UDim2.new(1, 0, 1, 0)
-    shadow.Position = UDim2.new(0, 2, 0, 2)
-    shadow.BackgroundColor3 = Color3.new(0, 0, 0)
-    shadow.BackgroundTransparency = 0.6
-    shadow.ZIndex = 1
-    local sc = Instance.new("UICorner", shadow)
-    sc.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
-
-    -- 内容布局，使用 tighter padding
-    local layout = Instance.new("UIListLayout", card)
+    local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, smallPad) -- 控件之间更紧密0
+    layout.Padding = UDim.new(0, 3) -- 间距调小
+    layout.Parent = card
 
-    local paddingInst = Instance.new("UIPadding", card)
-    paddingInst.PaddingLeft = UDim.new(0, smallPad)
-    paddingInst.PaddingRight = UDim.new(0, smallPad)
-    paddingInst.PaddingTop = UDim.new(0, smallPad)
-    paddingInst.PaddingBottom = UDim.new(0, smallPad)
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingTop = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 4)
+    padding.Parent = card
 
-    TweenService:Create(card, self.TWEEN_INFO_UI, {Position = UDim2.new(0, pad, 0, pad)}):Play()
+    TweenService:Create(card, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3}):Play()
 
     return card
 end
@@ -266,49 +256,43 @@ function UILibrary:CreateButton(parent, options)
         warn("[Button]: Creation failed: Parent is nil")
         return nil
     end
-
     options = options or {}
-    local btnPad = UI_STYLES.Padding or 6
-
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
-    button.Size = UDim2.new(1, -2 * btnPad, 0, UI_STYLES.ButtonHeight)
+    button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
-    button.BackgroundTransparency = options.BackgroundTransparency or 0.5
+    button.BackgroundTransparency = options.BackgroundTransparency or 0.4
     button.Text = options.Text or ""
     button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    button.TextSize = options.TextSize or 12
+    button.TextSize = 12
     button.Font = THEME.Font
     button.Parent = parent
+    button.Visible = true
     button.ZIndex = 3
 
-    local corner = Instance.new("UICorner", button)
+    local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
-
-    -- 鼠标交互动画
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
-            BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent
-        }):Play()
-    end)
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
-            BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
-        }):Play()
-    end)
+    corner.Parent = button
 
     if options.Callback then
         button.MouseButton1Click:Connect(function()
             local originalSize = button.Size
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
-                Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95,
-                                 originalSize.Y.Scale, originalSize.Y.Offset * 0.95)
-            }):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)}):Play()
             task.wait(0.1)
             TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = originalSize}):Play()
-            pcall(options.Callback)
+            local success, err = pcall(options.Callback)
+            if not success then
+                warn("[Button]: Callback failed: ", err)
+            end
         end)
     end
+
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary}):Play()
+    end)
 
     return button
 end
@@ -392,14 +376,11 @@ function UILibrary:CreateLabel(parent, options)
         warn("[Label]: Creation failed: Parent is nil")
         return nil
     end
-
     options = options or {}
-    local lblPad = UI_STYLES.Padding or 6
-
     local label = Instance.new("TextLabel")
     label.Name = "Label_" .. (options.Text or "Unnamed")
-    label.Size = options.Size or UDim2.new(1, -2 * lblPad, 0, UI_STYLES.LabelHeight)
-    label.Position = options.Position or UDim2.new(0, lblPad, 0, lblPad)
+    label.Size = options.Size or UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight)
+    label.Position = options.Position or UDim2.new(0, UI_STYLES.Padding, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
     label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -409,11 +390,15 @@ function UILibrary:CreateLabel(parent, options)
     label.TextTruncate = Enum.TextTruncate.AtEnd
     label.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
     label.Parent = parent
+    label.Visible = true
     label.ZIndex = 3
 
-    pcall(function()
+    local success, err = pcall(function()
         TweenService:Create(label, self.TWEEN_INFO_UI, {TextTransparency = 0}):Play()
     end)
+    if not success then
+        warn("[Label]: Animation failed: ", err)
+    end
 
     return label
 end
