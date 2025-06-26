@@ -318,6 +318,12 @@ function UILibrary:CreateFloatingButton(parent, options)
     corner.CornerRadius = UDim.new(0, 15)
     corner.Parent = button
 
+    if not button.Parent then
+        warn("[FloatingButton]: Button has no parent after creation")
+        button:Destroy()
+        return nil
+    end
+
     local mainFrame = options.MainFrame
     local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -UI_STYLES.WindowWidth / 2, 0.5, -UI_STYLES.WindowHeight / 2)
     local lastKnownPos = firstOpenPos
@@ -356,7 +362,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
     end)
 
-    self:MakeDraggable(button)
+    self:MakeDraggable(button, button)
     return button
 end
 
@@ -420,10 +426,16 @@ function UILibrary:CreateTextBox(parent, options)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = textBox
 
+    if not textBox.Parent then
+        warn("[TextBox]: TextBox has no parent after creation")
+        textBox:Destroy()
+        return nil
+    end
+
     textBox.Focused:Connect(function()
         TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
     end)
-    textBox.FocusLost:Connect(function()
+    textBox.FocusLost:Connect(function(enterPressed)
         TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {BorderColor3 = THEME.Background or DEFAULT_THEME.Background}):Play()
         if options.OnFocusLost and typeof(options.OnFocusLost) == "function" then
             local success, err = pcall(function()
@@ -506,10 +518,15 @@ end
 
 -- 拖拽模块
 function UILibrary:MakeDraggable(gui, targetFrame)
-    if not gui or not targetFrame then
-        warn("[MakeDraggable]: Failed: GUI or targetFrame is nil")
+    if not gui then
+        warn("[MakeDraggable]: Failed: GUI is nil")
         return
     end
+    if not targetFrame then
+        warn("[MakeDraggable]: Failed: targetFrame is nil")
+        return
+    end
+
     local dragging = false
     local startPos, startGuiOffset
 
@@ -570,8 +587,8 @@ function UILibrary:CreateUIWindow(options)
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
     end
-    local windowWidth = math.min(UI_STYLES.WindowWidth, screenSize.X * 0.9)
-    local windowHeight = math.min(UI_STYLES.WindowHeight, screenSize.Y * 0.9)
+    local windowWidth = math.min(UI_STYLES.WindowWidth, screenSize.X * 0.8)
+    local windowHeight = math.min(UI_STYLES.WindowHeight, screenSize.Y * 0.8)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "PlutoUILibraryWindow"
@@ -579,7 +596,7 @@ function UILibrary:CreateUIWindow(options)
         screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 30)
     end)
     if not success then
-        warn("[Window]: ScreenGui initialization failed: ", err)
+        warn("[ScreenGui]: Initialization failed: ", err)
         return nil
     end
     screenGui.ResetOnSpawn = false
@@ -660,7 +677,6 @@ function UILibrary:CreateUIWindow(options)
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     pageCorner.Parent = mainPage
 
-    -- 仅通过 TitleBar 和 Sidebar 拖动 MainFrame
     self:MakeDraggable(titleBar, mainFrame)
     self:MakeDraggable(sidebar, mainFrame)
 
@@ -710,13 +726,11 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Visible = options.Active or false
     content.Parent = mainPage
     content.ZIndex = 6
-    content.ClipsDescendants = true
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
     listLayout.Padding = UDim.new(0, UI_STYLES.Padding)
-    listLayout.Parent = content
     listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + UI_STYLES.Padding)
+        content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + UI_STYLES.YPadding)
     end)
 
     tabButton.MouseButton1Click:Connect(function()
@@ -733,7 +747,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         content.Position = UDim2.new(-1, 0, 0, 0)
         content.Visible = true
         content.ZIndex = 6
-        content.Size = UDim2.new(1, 0, 1, 0)
+        content.Size = UDim2.new(1, 0, 0, 0)
         content.CanvasPosition = Vector2.new(0, 0)
         local tween = TweenService:Create(content, self.TWEEN_INFO_UI, {
             Position = UDim2.new(0, 0, 0, 0),
@@ -741,8 +755,8 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         })
         tween:Play()
         tween.Completed:Connect(function()
-            print("[Tab]: Animation completed: Text =", options.Text, "Content visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", content.ZIndex)
-        end)
+            print("[Tab]: Animation completed: Text =", options.Text, "Content visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", tostring(content.ZIndex))
+        end
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
