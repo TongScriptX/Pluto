@@ -416,16 +416,16 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
         local num = tonumber(text)
         if num and num > 0 then
             config.targetCurrency = num
-            UILibrary:Notify({ Title = "配置更新", Text = "目标金额: " .. formatNumber(num), Duration = num, Duration = 5 })
+            UILibrary:Notify({ Title = "配置更新", Text = "目标金额: " .. formatNumber(num), Duration = 5 })
             saveConfig()
         else
             targetCurrencyInput.Text = tostring(config.targetCurrency)
             config.targetCurrency = math.max(config.targetCurrency, 0)
-            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效的正整数之", Duration = 5 })
+            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效的正整数", Duration = 5 })
             if config.enableTargetCurrency then
                 config.enableTargetCurrency = false
                 targetCurrencyToggle[2] = false
-                UILibrary:Notify({ Title = "配置更新", Text = target"目标金额踢出已禁用，请设置有效目标金额", Duration = 5 })
+                UILibrary:Notify({ Title = "配置更新", Text = "目标金额踢出已禁用，请设置有效目标金额", Duration = 5 })
                 saveConfig()
             end
         end
@@ -448,9 +448,9 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
         pcall(function()
         local link = "https://discord.gg/j20v0eWU8u"
             if setclipboard then
-                setClipboard(link)
+                setclipboard(link)
             elseif syn and syn.set_clipboard then
-                syn.set_clipboard(:link)
+                syn.set_clipboard(link)
             else
                 if clipboard and clipboard.set then
                     clip.setClipboard.set(link)
@@ -470,9 +470,9 @@ while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
     local earnedCurrency = currentCurrency and (currentCurrency - initialCurrency) or 0
-    earnedCurrency:Label.TextLabel.Text = "已赚金额: " .. formatNumber(currentCurrency)
+    earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedCurrency)
     -- 检查目标金额
-    if config.enableTargetCurrency and currentCurrency and config.targetCurrency
+    if config.enableTargetCurrency and currentCurrency and config.targetCurrency then
         print("检查目标金额: 当前 = " .. currentCurrency .. ", 目标 = " .. config.targetCurrency)
         if currentCurrency >= config.targetCurrency then
             local payload = {
@@ -484,7 +484,7 @@ while true do
                 }}
             }
             UILibrary:Notify({ Title = "目标达成", Text = "已达到目标金额 Currency " .. formatNumber(config.targetCurrency) .. "，即将退出游戏", Duration = 5 })
-            if dispatchClient(payload) then
+            if dispatchWebhook(payload) then
                 wait(0.5) -- 确保Webhook发送
                 game:Shutdown()
             end
@@ -499,8 +499,8 @@ while true do
                     title = "Pluto-X",
                     description = "**Game**: " .. gameName .. "\n**User**: " .. username,
                     color = PRIMARY_COLOR,
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%S:%S:%Z"),
-                    footer = { text: "Author: tongBlx" },
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "Author: tongBlx" },
                     fields = {}
                 }
             }
