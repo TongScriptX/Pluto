@@ -8,16 +8,15 @@ local UserInputService = game:GetService("UserInputService")
 -- 加载 UI 模块
 local UILibrary
 local success, result = pcall(function()
-    return game.ReplicatedStorage:WaitForChild("PlutoUILibrary", 30)
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
 end)
+
 if success and result then
-    success, UILibrary = pcall(function()
-        return require(result)
-    end)
-end
-if not success or not UILibrary then
-    local errMsg = success and "UI 库为空" or "无法加载 UI 库: " .. tostring(result)
-    error("[PlutoUILibrary] " .. errMsg .. ". 请确保 PlutoUILibrary.lua 已正确放置在 ReplicatedStorage 中，名称为 'PlutoUILibrary'。")
+    UILibrary = result
+else
+    error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
 -- 获取当前玩家
