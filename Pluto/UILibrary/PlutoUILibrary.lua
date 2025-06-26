@@ -756,7 +756,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         tween:Play()
         tween.Completed:Connect(function()
             print("[Tab]: Animation completed: Text =", options.Text, "Content visible =", content.Visible, "Position =", tostring(content.Position), "Size =", tostring(content.Size), "ZIndex =", tostring(content.ZIndex))
-        end
+        end)
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
