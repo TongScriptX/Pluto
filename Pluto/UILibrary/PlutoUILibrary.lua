@@ -220,45 +220,38 @@ function UILibrary:CreateCard(parent, options)
     end
 
     options = options or {}
-    local isMulti = options.IsMultiElement or false
-
-    -- 确保 UI_STYLES 有合理默认值，避免报错
-    local padding = (UI_STYLES and UI_STYLES.Padding) or 8
-    local cardHeightMulti = (UI_STYLES and UI_STYLES.CardHeightMulti) or 120
-    local cardHeightSingle = (UI_STYLES and UI_STYLES.CardHeightSingle) or 60
-    local cornerRadius = (UI_STYLES and UI_STYLES.CornerRadius) or 8
-
-    -- 颜色备选方案
-    local bgColor = (THEME and THEME.SecondaryBackground) or (DEFAULT_THEME and DEFAULT_THEME.SecondaryBackground) or Color3.fromRGB(50, 50, 50)
-
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.Size = UDim2.new(1, -2 * padding, 0, isMulti and cardHeightMulti or cardHeightSingle)
-    card.BackgroundColor3 = bgColor
+    card.AutomaticSize = Enum.AutomaticSize.Y -- 自动适应高度
+    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0) -- 宽度固定，高度自适应
+    card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
-    card.Position = UDim2.new(0, padding, 0, 0)
+    card.Position = UDim2.new(0, UI_STYLES.Padding, 0, 0)
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, cornerRadius)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = card
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 3)
+    layout.Padding = UDim.new(0, 2) -- 缩小内部元素间距
     layout.Parent = card
 
-    local paddingObj = Instance.new("UIPadding")
-    paddingObj.PaddingLeft = UDim.new(0, padding)
-    paddingObj.PaddingRight = UDim.new(0, padding)
-    paddingObj.PaddingTop = UDim.new(0, 4)
-    paddingObj.PaddingBottom = UDim.new(0, 4)
-    paddingObj.Parent = card
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingTop = UDim.new(0, 2) -- 减少上下内边距
+    padding.PaddingBottom = UDim.new(0, 2)
+    padding.Parent = card
 
-    -- Tween 动画，移动位置到左上角并设置背景透明度
-    TweenService:Create(card, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 0), BackgroundTransparency = 0.3}):Play()
+    -- 动画仅用于初始位置，不再设置固定透明度
+    TweenService:Create(card, self.TWEEN_INFO_UI, {
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 0.3
+    }):Play()
 
     return card
 end
