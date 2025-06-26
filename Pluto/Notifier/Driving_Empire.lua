@@ -491,8 +491,8 @@ while true do
         end
     end
 
-    -- 定时通知检查
-    if current_time - lastSendTime >= config.notificationInterval * 60 then
+    -- 定时通知检
+    if lastSendTime and current_time - lastSendTime >= config.notificationInterval * 60 then
         local payload = {
             embeds = {
                 {
