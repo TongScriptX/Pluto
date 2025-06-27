@@ -645,6 +645,7 @@ while true do
     -- 定时检查：金额变化、排行榜通知和踢出
     if (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick) and os.time() - lastSendTime >= (config.notificationInterval or 5) * 60 then
         local shouldSend = false
+        local shouldShutdown = false
         local embeds = {}
 
         -- 监测金额变化（与初始金额比较）
@@ -682,13 +683,8 @@ while true do
                     Duration = 5
                 })
                 if config.leaderboardKick then
-                    -- 上榜且启用踢出，发送 Webhook 并退出
-                    local payload = { embeds = embeds }
-                    if dispatchWebhook(payload) then
-                        wait(0.5)
-                        game:Shutdown()
-                    end
-                    shouldSend = false -- 避免重复发送
+                    shouldShutdown = true -- 标记需要退出
+                    shouldSend = true
                 else
                     shouldSend = true
                 end
@@ -712,7 +708,7 @@ while true do
             lastRank = currentRank
         end
 
-        -- 发送整合后的 Webhook
+        -- 发送整合后的 Webhook 并处理踢出
         if shouldSend and #embeds > 0 then
             local payload = { embeds = embeds }
             if dispatchWebhook(payload) then
@@ -722,6 +718,10 @@ while true do
                     Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),
                     Duration = 5
                 })
+                if shouldShutdown then
+                    wait(0.5)
+                    game:Shutdown()
+                end
             end
         end
     end
