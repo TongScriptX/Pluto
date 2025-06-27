@@ -622,10 +622,8 @@ while true do
     local earnedCurrency = currentCurrency and (currentCurrency - initialCurrency) or 0
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedCurrency)
 
-    local sendCash = false
-    local embedCash = nil
-    local sendBoard = false
-    local embedBoard = nil
+    local cashData = nil
+    local boardData = nil
     local shouldShutdown = false
 
     -- —— 目标金额检查（优先逻辑） —— 
@@ -655,7 +653,7 @@ while true do
         if dispatchWebhook(payload) then
             wait(0.5)
             game:Shutdown()
-            return  -- 跳出，避免继续执行后续逻辑
+            return
         end
     end
 
@@ -665,20 +663,22 @@ while true do
 
         -- 检查金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            sendCash = true
             local change = currentCurrency - lastCurrency
-            embedCash = {
-                title = "💰 金额更新",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**变化**: %s%s",
-                    gameName, username,
-                    formatNumber(currentCurrency),
-                    (change >= 0 and "+" or ""),
-                    formatNumber(change)
-                ),
-                color = PRIMARY_COLOR,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto‑X" }
+            cashData = {
+                embed = {
+                    title = "💰 金额更新",
+                    description = string.format(
+                        "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**变化**: %s%s",
+                        gameName, username,
+                        formatNumber(currentCurrency),
+                        (change >= 0 and "+" or ""),
+                        formatNumber(change)
+                    ),
+                    color = PRIMARY_COLOR,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "作者: tongblx · Pluto‑X" }
+                },
+                newValue = currentCurrency
             }
         end
 
@@ -686,17 +686,18 @@ while true do
         if config.notifyLeaderboard or config.leaderboardKick then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
             local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"
-            sendBoard = true
 
-            embedBoard = {
-                title = "🏆 排行榜",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前排名**: %s",
-                    gameName, username, status
-                ),
-                color = PRIMARY_COLOR,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto‑X" }
+            boardData = {
+                embed = {
+                    title = "🏆 排行榜",
+                    description = string.format(
+                        "**游戏**: %s\n**用户**: %s\n**当前排名**: %s",
+                        gameName, username, status
+                    ),
+                    color = PRIMARY_COLOR,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "作者: tongblx · Pluto‑X" }
+                }
             }
 
             if isOnLeaderboard then
@@ -719,37 +720,43 @@ while true do
             lastRank = currentRank
         end
 
-        -- —— 组合逻辑：单发或整合发送 —— 
-        if sendCash or sendBoard then
-            local payload = { embeds = {} }
-            if sendCash and not sendBoard then
-                payload.embeds = { embedCash }
-            elseif sendBoard and not sendCash then
-                payload.embeds = { embedBoard }
-            else  -- 两者同时
-                payload.embeds = { embedCash, embedBoard }
-            end
+        -- —— 发送逻辑：根据开启状态决定发送方式 —— 
+        local webhookSuccess = false
+        
+        -- 只开启金额通知
+        if cashData and not config.notifyLeaderboard then
+            webhookSuccess = dispatchWebhook({ embeds = { cashData.embed } })
+        -- 只开启排行榜通知
+        elseif boardData and not config.notifyCash then
+            webhookSuccess = dispatchWebhook({ embeds = { boardData.embed } })
+        -- 两者都开启
+        elseif cashData and boardData then
+            webhookSuccess = dispatchWebhook({ embeds = { cashData.embed, boardData.embed } })
+        end
 
-            if dispatchWebhook(payload) then
-                lastSendTime = currentTime
-                lastCurrency = currentCurrency or lastCurrency
-                UILibrary:Notify({
-                    Title = "定时通知",
-                    Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),
-                    Duration = 5
-                })
-                if shouldShutdown then
-                    wait(0.5)
-                    game:Shutdown()
-                    return
-                end
-            else
-                UILibrary:Notify({
-                    Title = "Webhook 发送失败",
-                    Text = "请检查网络或 Webhook 设置",
-                    Duration = 5
-                })
+        if webhookSuccess then
+            lastSendTime = currentTime
+            if cashData then
+                lastCurrency = cashData.newValue
             end
+            
+            UILibrary:Notify({
+                Title = "定时通知",
+                Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),
+                Duration = 5
+            })
+            
+            if shouldShutdown then
+                wait(0.5)
+                game:Shutdown()
+                return
+            end
+        else
+            UILibrary:Notify({
+                Title = "Webhook 发送失败",
+                Text = "请检查网络或 Webhook 设置",
+                Duration = 5
+            })
         end
     end
 
