@@ -153,9 +153,10 @@ function UILibrary:Notify(options)
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
         Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding + UI_STYLES.LabelHeight),
-        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight),
-        TextSize = 12
-    })
+        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 1, -UI_STYLES.Padding * 2 - UI_STYLES.LabelHeight), -- 自动适应父级高度
+        TextSize = 12,
+        TextWrapped = true
+        })
     textLabel.ZIndex = 12
 
     task.wait(0.1)
