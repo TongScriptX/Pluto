@@ -186,28 +186,26 @@ function fetchPlayerRank()
     local contents = tryGetContents(2)
     if not contents then
         local cframe = getSafeTeleportCFrame()
-        if not cframe then return nil end
+        if not cframe then return nil, false end
         teleportTo(cframe)
         spawnPlatform(cframe)
         wait(2)
         contents = tryGetContents(2)
         cleanup()
     end
-    if not contents then return nil end
+    if not contents then return nil, false end
 
     local rank = 1
+    local isOnLeaderboard = false
     for _, child in ipairs(contents:GetChildren()) do
-        if tonumber(child.Name) == userId then
+        if tonumber(child.Name) == userId or child.Name == username then
             local placement = child:FindFirstChild("Placement")
-            if placement and placement:IsA("IntValue") then
-                return placement.Value
-            else
-                return rank
-            end
+            isOnLeaderboard = true
+            return placement and placement:IsA("IntValue") and placement.Value or rank, true
         end
         rank = rank + 1
     end
-    return nil
+    return nil, false
 end
 
 -- 下次通知时间
@@ -609,7 +607,7 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
 })
 
 -- 主循环
-local lastSendTime = os.time()
+local lastSendTime = os.time() -- 用于通知和排行榜检查
 local lastCurrency = initialCurrency
 local lastRank = nil
 
@@ -644,51 +642,80 @@ while true do
         end
     end
 
-    -- 定时检查：金额变化和排行榜通知合并发送
-    if os.time() - lastSendTime >= (config.notificationInterval or 5) * 60 then
+    -- 定时检查：金额变化、排行榜通知和踢出
+    if (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick) and os.time() - lastSendTime >= (config.notificationInterval or 5) * 60 then
         local shouldSend = false
-        local payload = {
-            embeds = {{
-                title = "自动通知",
-                description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
-                color = PRIMARY_COLOR,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" },
-                fields = {}
-            }}
-        }
+        local embeds = {}
 
         -- 监测金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
             shouldSend = true
             local currencyChange = currentCurrency - lastCurrency
-            table.insert(payload.embeds[1].fields, {
-                name = "金额更新",
-                value = "当前金额: " .. formatNumber(currentCurrency) ..
-                        "\n变化: " .. (currencyChange >= 0 and "+" or "") .. formatNumber(currencyChange),
-                inline = true
+            table.insert(embeds, {
+                title = "金额更新",
+                description = "**游戏**: " .. gameName ..
+                              "\n**用户**: " .. username ..
+                              "\n**当前金额**: " .. formatNumber(currentCurrency) ..
+                              "\n**变化**: " .. (currencyChange >= 0 and "+" or "") .. formatNumber(currencyChange),
+                color = PRIMARY_COLOR,
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                footer = { text = "作者: tongblx · Pluto-X" }
             })
             lastCurrency = currentCurrency
         end
 
-        -- 监测排行榜变化
-        if config.notifyLeaderboard then
-            local currentRank = fetchPlayerRank()
-            if currentRank then
-                shouldSend = true
-                local rankChange = lastRank and (currentRank - lastRank) or 0
-                local changeText = lastRank and ("\n变化: " .. (rankChange <= 0 and "+" or "-") .. math.abs(rankChange)) or ""
-                table.insert(payload.embeds[1].fields, {
-                    name = "排行榜",
-                    value = "当前排名: #" .. currentRank .. changeText,
-                    inline = true
+        -- 监测排行榜状态或踢出
+        if config.notifyLeaderboard or config.leaderboardKick then
+            local currentRank, isOnLeaderboard = fetchPlayerRank()
+            if isOnLeaderboard then
+                table.insert(embeds, {
+                    title = "排行榜",
+                    description = "**游戏**: " .. gameName ..
+                                  "\n**用户**: " .. username ..
+                                  "\n**当前排名**: #" .. (currentRank or "未知"),
+                    color = PRIMARY_COLOR,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "作者: tongblx · Pluto-X" }
                 })
-                lastRank = currentRank
+                UILibrary:Notify({
+                    Title = "排行榜检测",
+                    Text = "当前排名 #" .. (currentRank or "未知") .. "，已上榜",
+                    Duration = 5
+                })
+                if config.leaderboardKick then
+                    -- 上榜且启用踢出，发送 Webhook 并退出
+                    local payload = { embeds = embeds }
+                    if dispatchWebhook(payload) then
+                        wait(0.5)
+                        game:Shutdown()
+                    end
+                    shouldSend = false -- 避免重复发送
+                else
+                    shouldSend = true
+                end
+            elseif config.notifyLeaderboard then
+                shouldSend = true
+                table.insert(embeds, {
+                    title = "排行榜",
+                    description = "**游戏**: " .. gameName ..
+                                  "\n**用户**: " .. username ..
+                                  "\n**状态**: 未上榜",
+                    color = PRIMARY_COLOR,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "作者: tongblx · Pluto-X" }
+                })
+                UILibrary:Notify({
+                    Title = "排行榜检测",
+                    Text = "当前未上榜",
+                    Duration = 5
+                })
             end
+            lastRank = currentRank
         end
 
-        -- 发送合并后的 webhook
-        if shouldSend then
+        -- 发送整合后的 Webhook
+        if shouldSend and #embeds > 0 then
+            local payload = { embeds = embeds }
             if dispatchWebhook(payload) then
                 lastSendTime = currentTime
                 UILibrary:Notify({
@@ -696,33 +723,6 @@ while true do
                     Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),
                     Duration = 5
                 })
-            end
-        end
-    end
-
-    -- 排行榜自动踢出（独立于定时通知）
-    if config.leaderboardKick then
-        local currentRank = fetchPlayerRank()
-        if currentRank and currentRank <= 10 then
-            local payload = {
-                embeds = {{
-                    title = "排行榜",
-                    description = "**游戏**: " .. gameName ..
-                                  "\n**用户**: " .. username ..
-                                  "\n**当前排名**: #" .. currentRank,
-                    color = PRIMARY_COLOR,
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "作者: tongblx · Pluto-X" }
-                }}
-            }
-            UILibrary:Notify({
-                Title = "排行榜检测",
-                Text = "当前排名 #" .. currentRank .. "，即将退出",
-                Duration = 5
-            })
-            if dispatchWebhook(payload) then
-                wait(0.5)
-                game:Shutdown()
             end
         end
     end
