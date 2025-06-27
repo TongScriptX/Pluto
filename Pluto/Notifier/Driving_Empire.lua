@@ -115,33 +115,94 @@ end
 pcall(loadConfig)
 
 -- 检查排行榜
-local function fetchPlayerRank()
-    local playerRank = nil
-    local success, contentsPath = pcall(function()
-        return game:GetService("Workspace"):WaitForChild("Game"):WaitForChild("Leaderboards"):WaitForChild("weekly_money"):WaitForChild("Screen"):WaitForChild("Leaderboard"):WaitForChild("Contents")
+local originalCFrame, tempPlatform
+
+local function tryGetContents(timeout)
+    local ok, result = pcall(function()
+        local root = workspace:WaitForChild("Game", timeout or 2)
+            :WaitForChild("Leaderboards", timeout or 2)
+            :WaitForChild("weekly_money", timeout or 2)
+            :WaitForChild("Screen", timeout or 2)
+            :WaitForChild("Leaderboard", timeout or 2)
+        return root:WaitForChild("Contents", timeout or 2)
     end)
-    if not success or not contentsPath then
-        UILibrary:Notify({ Title = "排行榜错误", Text = "无法找到排行榜路径", Duration = 5 })
-        return nil
+    return ok and result or nil
+end
+
+local function getSafeTeleportCFrame()
+    local board = workspace:FindFirstChild("Game")
+        and workspace.Game:FindFirstChild("Leaderboards")
+        and workspace.Game.Leaderboards:FindFirstChild("weekly_money")
+    if not board then return nil end
+    local pivot = board:GetPivot()
+    return pivot + Vector3.new(0, 30, 0)
+end
+
+local function spawnPlatform(atCFrame)
+    tempPlatform = Instance.new("Part", workspace)
+    tempPlatform.Name = "TempPlatform"
+    tempPlatform.Anchored = true
+    tempPlatform.CanCollide = true
+    tempPlatform.Transparency = 1
+    tempPlatform.Size = Vector3.new(100, 1, 100)
+    tempPlatform.CFrame = atCFrame * CFrame.new(0, -5, 0)
+end
+
+local function teleportTo(cframe)
+    if not originalCFrame and player.Character and player.Character.PrimaryPart then
+        originalCFrame = player.Character.PrimaryPart.CFrame
     end
+    local vehicles = workspace:FindFirstChild("Vehicles")
+    local vehicle = vehicles and vehicles:FindFirstChild(username)
+    local seat = vehicle and vehicle:FindFirstChildWhichIsA("VehicleSeat", true)
+    if seat and vehicle then
+        vehicle:PivotTo(cframe)
+    elseif player.Character and player.Character.PrimaryPart then
+        player.Character:SetPrimaryPartCFrame(cframe)
+    end
+end
+
+local function cleanup()
+    if tempPlatform then tempPlatform:Destroy() end
+    if originalCFrame then
+        local vehicles = workspace:FindFirstChild("Vehicles")
+        local vehicle = vehicles and vehicles:FindFirstChild(username)
+        local seat = vehicle and vehicle:FindFirstChildWhichIsA("VehicleSeat", true)
+        if seat and vehicle then
+            vehicle:PivotTo(originalCFrame)
+        elseif player.Character and player.Character.PrimaryPart then
+            player.Character:SetPrimaryPartCFrame(originalCFrame)
+        end
+        originalCFrame = nil
+    end
+end
+
+function fetchPlayerRank()
+    local contents = tryGetContents(2)
+    if not contents then
+        local cframe = getSafeTeleportCFrame()
+        if not cframe then return nil end
+        teleportTo(cframe)
+        spawnPlatform(cframe)
+        wait(2)
+        contents = tryGetContents(2)
+        cleanup()
+    end
+    if not contents then return nil end
 
     local rank = 1
-    for _, userIdFolder in pairs(contentsPath:GetChildren()) do
-        local userIdNum = tonumber(userIdFolder.Name)
-        if userIdNum and userIdNum == userId then
-            local placement = userIdFolder:FindFirstChild("Placement")
-            if placement then
-                playerRank = rank
-                if placement:IsA("IntValue") then
-                    rank = placement.Value
-                end
-                UILibrary:Notify({ Title = "排行榜更新", Text = "当前排名: #" .. rank, Duration = 5 })
-                break
+    for _, child in ipairs(contents:GetChildren()) do
+        if tonumber(child.Name) == userId then
+            local placement = child:FindFirstChild("Placement")
+            if placement and placement:IsA("IntValue") then
+                return placement.Value
+            else
+                return rank
             end
         end
         rank = rank + 1
     end
-    return playerRank
+    return nil
 end
 
 -- 下次通知时间
