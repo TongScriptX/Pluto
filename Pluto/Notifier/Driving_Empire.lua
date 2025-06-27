@@ -647,21 +647,20 @@ while true do
         local shouldSend = false
         local embeds = {}
 
-        -- 监测金额变化
-        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
+        -- 监测金额变化（与初始金额比较）
+        if config.notifyCash and currentCurrency and currentCurrency ~= initialCurrency then
             shouldSend = true
-            local currencyChange = currentCurrency - lastCurrency
+            local currencyChange = currentCurrency - initialCurrency
             table.insert(embeds, {
                 title = "金额更新",
                 description = "**游戏**: " .. gameName ..
                               "\n**用户**: " .. username ..
                               "\n**当前金额**: " .. formatNumber(currentCurrency) ..
-                              "\n**变化**: " .. (currencyChange >= 0 and "+" or "") .. formatNumber(currencyChange),
+                              "\n**自运行以来变化**: " .. (currencyChange >= 0 and "+" or "") .. formatNumber(currencyChange),
                 color = PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
             })
-            lastCurrency = currentCurrency
         end
 
         -- 监测排行榜状态或踢出
