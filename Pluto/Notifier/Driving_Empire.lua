@@ -282,13 +282,14 @@ end
 -- 初始化时校验目标金额
 local function initTargetCurrency()
     local current = fetchCurrentCurrency() or 0
-    if config.targetCurrency <= current then
-        config.targetCurrency = current + 1
+    if config.enableTargetKick and config.targetCurrency > 0 and current >= config.targetCurrency then
         UILibrary:Notify({
-            Title = "目标金额已修正",
-            Text = ("目标金额须高于当前金额，已设置：%d"):format(config.targetCurrency),
+            Title = "目标金额已达成",
+            Text = "当前金额已超过目标，已关闭踢出功能，未执行退出",
             Duration = 5
         })
+        config.enableTargetKick = false
+        config.targetCurrency = 0
         saveConfig()
     end
 end
