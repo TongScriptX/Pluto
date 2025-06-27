@@ -111,6 +111,8 @@ local function loadConfig()
         UILibrary:Notify({ Title = "配置提示", Text = "未找到配置文件，创建新文件", Duration = 5 })
         saveConfig()
     end
+    if config.webhookUrl ~= "" and not config.welcomeSent then
+    sendWelcomeMessage()
 end
 pcall(loadConfig)
 
@@ -609,9 +611,9 @@ while true do
             embeds = {{
                 title = "目标金额达成",
                 description = "**游戏**: " .. gameName ..
-                             "\n**用户**: " .. username ..
-                             "\n**当前金额**: " .. formatNumber(currentCurrency) ..
-                             "\n**目标金额**: " .. formatNumber(config.targetCurrency),
+                              "\n**用户**: " .. username ..
+                              "\n**当前金额**: " .. formatNumber(currentCurrency) ..
+                              "\n**目标金额**: " .. formatNumber(config.targetCurrency),
                 color = PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -628,54 +630,63 @@ while true do
         end
     end
 
-    -- 定时检查 + 金额变化触发
+    -- 定时检查：金额变化和排行榜通知合并发送
     if os.time() - lastSendTime >= (config.notificationInterval or 5) * 60 then
-        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            local payload = {
-                embeds = {{
-                    title = "金额变化",
-                    description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
-                    color = PRIMARY_COLOR,
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "作者: tongblx · Pluto-X" },
-                    fields = {}
-                }}
-            }
+        local shouldSend = false
+        local payload = {
+            embeds = {{
+                title = "自动通知",
+                description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
+                color = PRIMARY_COLOR,
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                footer = { text = "作者: tongblx · Pluto-X" },
+                fields = {}
+            }}
+        }
 
-            -- 金额字段
+        -- 监测金额变化
+        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
+            shouldSend = true
             local currencyChange = currentCurrency - lastCurrency
             table.insert(payload.embeds[1].fields, {
-                name = "金额更新",
+                name = "💰 金额更新",
                 value = "当前金额: " .. formatNumber(currentCurrency) ..
                         "\n变化: " .. (currencyChange >= 0 and "+" or "") .. formatNumber(currencyChange),
                 inline = true
             })
             lastCurrency = currentCurrency
-            UILibrary:Notify({ Title = "金额更新", Text = "当前金额: " .. formatNumber(currentCurrency), Duration = 5 })
+        end
 
-            -- 排行榜字段（仅在金额变化时检查）
-            if config.notifyLeaderboard then
-                local currentRank = fetchPlayerRank()
-                if currentRank then
-                    local rankChange = lastRank and (currentRank - lastRank) or 0
-                    local changeText = lastRank and ("\n变化: " .. (rankChange <= 0 and "+" or "-") .. math.abs(rankChange)) or ""
-                    table.insert(payload.embeds[1].fields, {
-                        name = "排行榜",
-                        value = "当前排名: #" .. currentRank .. changeText,
-                        inline = true
-                    })
-                    lastRank = currentRank
-                end
+        -- 监测排行榜变化
+        if config.notifyLeaderboard then
+            local currentRank = fetchPlayerRank()
+            if currentRank then
+                shouldSend = true
+                local rankChange = lastRank and (currentRank - lastRank) or 0
+                local changeText = lastRank and ("\n变化: " .. (rankChange <= 0 and "+" or "-") .. math.abs(rankChange)) or ""
+                table.insert(payload.embeds[1].fields, {
+                    name = "🏆 排行榜",
+                    value = "当前排名: #" .. currentRank .. changeText,
+                    inline = true
+                })
+                lastRank = currentRank
             end
+        end
 
-            -- 发送 webhook
-            dispatchWebhook(payload)
-            lastSendTime = currentTime
-            UILibrary:Notify({ Title = "定时通知", Text = "已发送，下次时间: " .. getNextNotificationTime(), Duration = 5 })
+        -- 发送合并后的 webhook
+        if shouldSend then
+            if dispatchWebhook(payload) then
+                lastSendTime = currentTime
+                UILibrary:Notify({
+                    Title = "定时通知",
+                    Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),
+                    Duration = 5
+                })
+            end
         end
     end
 
-    -- 排行榜自动踢出
+    -- 排行榜自动踢出（独立于定时通知）
     if config.leaderboardKick then
         local currentRank = fetchPlayerRank()
         if currentRank and currentRank <= 10 then
@@ -683,14 +694,18 @@ while true do
                 embeds = {{
                     title = "排行榜",
                     description = "**游戏**: " .. gameName ..
-                                 "\n**用户**: " .. username ..
-                                 "\n**当前排名**: #" .. currentRank,
+                                  "\n**用户**: " .. username ..
+                                  "\n**当前排名**: #" .. currentRank,
                     color = PRIMARY_COLOR,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                     footer = { text = "作者: tongblx · Pluto-X" }
                 }}
             }
-            UILibrary:Notify({ Title = "排行榜检测", Text = "当前排名 #" .. currentRank .. "，即将退出", Duration = 5 })
+            UILibrary:Notify({
+                Title = "排行榜检测",
+                Text = "当前排名 #" .. currentRank .. "，即将退出",
+                Duration = 5
+            })
             if dispatchWebhook(payload) then
                 wait(0.5)
                 game:Shutdown()
