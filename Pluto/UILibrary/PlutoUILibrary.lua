@@ -131,7 +131,7 @@ function UILibrary:Notify(options)
 
     local notification = Instance.new("Frame")
     notification.Name = "Notification"
-    notification.Size = UDim2.new(0, 180, 0, 40)
+    notification.Size = UDim2.new(0, 180, 0, 100)
     notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     notification.BackgroundTransparency = 0.3
     notification.Position = UDim2.new(0, 0, 0, 90)

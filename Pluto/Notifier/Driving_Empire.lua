@@ -652,7 +652,7 @@ while true do
             shouldSend = true
             local currencyChange = currentCurrency - lastCurrency
             table.insert(payload.embeds[1].fields, {
-                name = "💰 金额更新",
+                name = "金额更新",
                 value = "当前金额: " .. formatNumber(currentCurrency) ..
                         "\n变化: " .. (currencyChange >= 0 and "+" or "") .. formatNumber(currencyChange),
                 inline = true
@@ -668,7 +668,7 @@ while true do
                 local rankChange = lastRank and (currentRank - lastRank) or 0
                 local changeText = lastRank and ("\n变化: " .. (rankChange <= 0 and "+" or "-") .. math.abs(rankChange)) or ""
                 table.insert(payload.embeds[1].fields, {
-                    name = "🏆 排行榜",
+                    name = "排行榜",
                     value = "当前排名: #" .. currentRank .. changeText,
                     inline = true
                 })
