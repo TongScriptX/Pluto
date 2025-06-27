@@ -279,6 +279,21 @@ local function sendWelcomeMessage()
     end
 end
 
+-- 初始化时校验目标金额
+local function initTargetCurrency()
+    local current = fetchCurrentCurrency() or 0
+    if config.targetCurrency <= current then
+        config.targetCurrency = current + 1
+        UILibrary:Notify({
+            Title = "目标金额已修正",
+            Text = ("目标金额须高于当前金额，已设置：%d"):format(config.targetCurrency),
+            Duration = 5
+        })
+        saveConfig()
+    end
+end
+pcall(initTargetCurrency)
+
 -- 创建主窗口
 local window = UILibrary:CreateUIWindow()
 if not window then
@@ -532,7 +547,7 @@ while true do
     local earnedCurrency = currentCurrency and (currentCurrency - initialCurrency) or 0
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedCurrency)
     -- 检查目标金额
-    if config.enableTargetCurrency and currentCurrency and config.targetCurrency then
+    if config.enableTargetCurrency and currentCurrency and config.targetCurrency > currentCurrency then
         print("检查目标金额: 当前 = " .. currentCurrency .. ", 目标 = " .. config.targetCurrency)
         if currentCurrency >= config.targetCurrency then
             local payload = {
