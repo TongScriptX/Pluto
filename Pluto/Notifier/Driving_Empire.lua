@@ -270,7 +270,7 @@ local function sendWelcomeMessage()
             description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
             color = PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            footer = { text = "作者: tongBlx" }
+            footer = { text = "作者: tongblx · Pluto-X" }
         }}
     }
     if dispatchWebhook(payload) then
@@ -532,7 +532,7 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
                 end
                 UILibrary:Notify({ Title = "复制 Discord", Text = "不支持剪贴板，请手动复制: " .. link, Duration = 5 })
             end
-            UILibrary:Notify({ Title = "复制 Discord", Text = "Discord 链接已复制到剪贴板卡", Duration = 5 })
+            UILibrary:Notify({ Title = "复制 Discord", Text = "Discord 链接已复制到剪贴板", Duration = 5 })
         end)
     end
 })
@@ -548,7 +548,7 @@ while true do
     local earnedCurrency = currentCurrency and (currentCurrency - initialCurrency) or 0
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedCurrency)
 
-    -- 🎯 检查目标金额踢出
+    -- 检查目标金额踢出
     if config.enableTargetCurrency and currentCurrency and currentCurrency >= config.targetCurrency and config.targetCurrency > 0 then
         local payload = {
             embeds = {{
@@ -559,7 +559,7 @@ while true do
                              "\n**目标金额**: " .. formatNumber(config.targetCurrency),
                 color = PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "Author: tongBlx" }
+                footer = { text = "作者: tongblx · Pluto-X" }
             }}
         }
         UILibrary:Notify({
@@ -573,21 +573,21 @@ while true do
         end
     end
 
-    -- ⏰ 定时检查 + 金额变化触发
+    -- 定时检查 + 金额变化触发
     if os.time() - lastSendTime >= (config.notificationInterval or 5) * 60 then
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
             local payload = {
                 embeds = {{
-                    title = "Pluto-X 定时通知",
+                    title = "金额变化",
                     description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
                     color = PRIMARY_COLOR,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "Author: tongBlx" },
+                    footer = { text = "作者: tongblx · Pluto-X" },
                     fields = {}
                 }}
             }
 
-            -- 💰 金额字段
+            -- 金额字段
             local currencyChange = currentCurrency - lastCurrency
             table.insert(payload.embeds[1].fields, {
                 name = "金额更新",
@@ -598,7 +598,7 @@ while true do
             lastCurrency = currentCurrency
             UILibrary:Notify({ Title = "金额更新", Text = "当前金额: " .. formatNumber(currentCurrency), Duration = 5 })
 
-            -- 🏆 排行榜字段（仅在金额变化时检查）
+            -- 排行榜字段（仅在金额变化时检查）
             if config.notifyLeaderboard then
                 local currentRank = fetchPlayerRank()
                 if currentRank then
@@ -613,26 +613,26 @@ while true do
                 end
             end
 
-            -- 📤 发送 webhook
+            -- 发送 webhook
             dispatchWebhook(payload)
             lastSendTime = currentTime
             UILibrary:Notify({ Title = "定时通知", Text = "已发送，下次时间: " .. getNextNotificationTime(), Duration = 5 })
         end
     end
 
-    -- 🚪 排行榜自动踢出
+    -- 排行榜自动踢出
     if config.leaderboardKick then
         local currentRank = fetchPlayerRank()
         if currentRank and currentRank <= 10 then
             local payload = {
                 embeds = {{
-                    title = "排行榜踢出",
+                    title = "排行榜",
                     description = "**游戏**: " .. gameName ..
                                  "\n**用户**: " .. username ..
                                  "\n**当前排名**: #" .. currentRank,
                     color = PRIMARY_COLOR,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "Author: tongBlx" }
+                    footer = { text = "作者: tongblx · Pluto-X" }
                 }}
             }
             UILibrary:Notify({ Title = "排行榜检测", Text = "当前排名 #" .. currentRank .. "，即将退出", Duration = 5 })
