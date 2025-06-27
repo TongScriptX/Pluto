@@ -493,20 +493,17 @@ print("通知间隔输入框创建:", intervalInput.Parent and "父对象存在"
 
 -- 卡片：目标金额
 local targetCurrencyCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
-local targetCurrencyToggle
-targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
+local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
     Text = "Target Currency Kick",
     DefaultState = false, -- 初始默认关闭，避免直接触发踢出
     Callback = function(state)
         if state and config.webhookUrl == "" then
             UILibrary:Notify({ Title = "Webhook", Error = "请先设置 Webhook 地址", Duration = 5 })
             config.enableTargetCurrency = false
-            targetCurrencyToggle:SetState(false)
             return nil
         end
         if state and config.targetCurrency <= 0 then
             config.enableTargetCurrency = false
-            targetCurrencyToggle:SetState(false)
             UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标金额（大于0）", Duration = 5 })
             return nil
         end
@@ -515,7 +512,6 @@ targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
         local currentCurrency = fetchCurrentCurrency()
         if state and currentCurrency and currentCurrency >= config.targetCurrency then
             config.enableTargetCurrency = false
-            targetCurrencyToggle:SetState(false)
             UILibrary:Notify({ 
                 Title = "配置警告", 
                 Text = "当前金额(" .. formatNumber(currentCurrency) .. ")已超过目标金额(" .. formatNumber(config.targetCurrency) .. ")，请调整后再开启", 
@@ -554,7 +550,6 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
             -- 否则设为0并禁用功能
             config.targetCurrency = 0
             config.enableTargetCurrency = false
-            targetCurrencyToggle:SetState(false)
             targetCurrencyInput.Text = ""
             UILibrary:Notify({
                 Title = "目标金额已清除",
@@ -598,7 +593,6 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
             -- 若当前启用了目标金额踢出但值无效，自动关闭
             if config.enableTargetCurrency then
                 config.enableTargetCurrency = false
-                targetCurrencyToggle:SetState(false)
                 UILibrary:Notify({
                     Title = "目标踢出已禁用",
                     Text = "请设置有效目标金额后重新启用",
@@ -614,7 +608,6 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
 local currentCurrency = fetchCurrentCurrency()
 if currentCurrency and config.targetCurrency > 0 and currentCurrency >= config.targetCurrency then
     config.enableTargetCurrency = false
-    targetCurrencyToggle:SetState(false)
     UILibrary:Notify({ 
         Title = "配置提示", 
         Text = "当前金额已超过目标金额，已自动禁用目标金额踢出功能", 
@@ -626,9 +619,7 @@ end
 targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
 print("目标金额输入框创建:", targetCurrencyInput.Parent and "父对象存在" or "无父对象")
 
-
 -- 标签页：关于
-
 -- 创建关于标签页
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "关于"
