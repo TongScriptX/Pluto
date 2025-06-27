@@ -488,26 +488,57 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     PlaceholderText = "输入目标金额",
     Position = UDim2.new(0, 5, 0, 50),
     OnFocusLost = function(text)
+        text = text and text:match("^%s*(.-)%s*$")  -- 去除前后空格
+        if not text or text == "" then
+            -- 空输入：表示取消目标金额
+            config.targetCurrency = 0
+            config.enableTargetCurrency = false
+            targetCurrencyInput.Text = ""
+            UILibrary:Notify({
+                Title = "目标金额已清除",
+                Text = "已取消目标金额踢出功能",
+                Duration = 5
+            })
+            saveConfig()
+            return
+        end
+
         local num = tonumber(text)
         if num and num > 0 then
             config.targetCurrency = num
-            UILibrary:Notify({ Title = "配置更新", Text = "目标金额: " .. formatNumber(num), Duration = 5 })
+            -- 若当前开启了开关，维持不变，否则不启用
+            targetCurrencyInput.Text = formatNumber(num)
+            UILibrary:Notify({
+                Title = "配置更新",
+                Text = "目标金额已设为 " .. formatNumber(num),
+                Duration = 5
+            })
+            saveConfig()
         else
-            config.targetCurrency = 0
-            targetCurrencyInput.Text = "0"
-            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效的正整数，已设为 0", Duration = 5 })
-
+            -- 非有效数字
+            targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
+            UILibrary:Notify({
+                Title = "配置错误",
+                Text = "请输入有效的正整数作为目标金额",
+                Duration = 5
+            })
+            -- 若当前启用了目标金额踢出但值无效，自动关闭
             if config.enableTargetCurrency then
                 config.enableTargetCurrency = false
                 targetCurrencyToggle[2] = false
-                UILibrary:Notify({ Title = "配置更新", Text = "目标金额踢出已禁用，请重新设置有效金额", Duration = 5 })
+                UILibrary:Notify({
+                    Title = "目标踢出已禁用",
+                    Text = "请设置有效目标金额后重新启用",
+                    Duration = 5
+                })
+                saveConfig()
             end
         end
-        saveConfig()
     end
 })
-targetCurrencyInput.Text = tostring(config.targetCurrency)
+targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
 print("目标金额输入框创建:", targetCurrencyInput.Parent and "父对象存在" or "无父对象")
+
 -- 标签页：关于
 
 -- 创建关于标签页
