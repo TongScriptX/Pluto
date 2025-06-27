@@ -111,9 +111,12 @@ local function loadConfig()
         UILibrary:Notify({ Title = "配置提示", Text = "未找到配置文件，创建新文件", Duration = 5 })
         saveConfig()
     end
+
     if config.webhookUrl ~= "" and not config.welcomeSent then
-    sendWelcomeMessage()
-end
+        sendWelcomeMessage()
+    end
+end  -- 这个end是close loadConfig函数的
+
 pcall(loadConfig)
 
 -- 检查排行榜
