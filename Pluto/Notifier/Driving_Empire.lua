@@ -232,7 +232,7 @@ local function formatNumber(num)
     return result
 end
 
--- 发送Webhook
+-- 发送 Webhook
 local function dispatchWebhook(payload)
     if config.webhookUrl == "" then
         UILibrary:Notify({
@@ -244,12 +244,24 @@ local function dispatchWebhook(payload)
     end
 
     local data = {
-        content = nil, -- 可以设为纯文本内容（如需），此处留空
+        content = nil, -- 可设为纯文本内容（如需），此处留空
         embeds = payload.embeds
     }
 
+    -- 自动适配不同执行器的请求函数
+    local requestFunc = syn and syn.request or http and http.request or request
+
+    if not requestFunc then
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "无法找到可用的请求函数，请使用支持 HTTP 请求的执行器",
+            Duration = 5
+        })
+        return false
+    end
+
     local success, res = pcall(function()
-        return syn.request({
+        return requestFunc({
             Url = config.webhookUrl,
             Method = "POST",
             Headers = {
@@ -259,7 +271,7 @@ local function dispatchWebhook(payload)
         })
     end)
 
-    if success then
+    if success and res then
         if res.StatusCode == 204 or res.StatusCode == 200 then
             UILibrary:Notify({
                 Title = "Webhook",
@@ -268,10 +280,9 @@ local function dispatchWebhook(payload)
             })
             return true
         else
-            local errorMsg = "Webhook 失败: " .. (res.StatusCode or "未知") .. " " .. (res.Body or "")
             UILibrary:Notify({
                 Title = "Webhook 错误",
-                Text = errorMsg,
+                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),
                 Duration = 5
             })
             return false
