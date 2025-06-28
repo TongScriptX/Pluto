@@ -715,6 +715,7 @@ while true do
                 ),
                 inline = true
             })
+        end
 
         -- 检查排行榜
         if config.notifyLeaderboard or config.leaderboardKick then
