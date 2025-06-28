@@ -723,7 +723,8 @@ while true do
             earnedChange = currentCurrency - lastCurrency  
         end  
 
-        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then  
+        -- 无论是否变化都插入金额字段
+        if config.notifyCash and currentCurrency then  
             table.insert(embed.fields, {  
                 name = "💰金额更新",  
                 value = string.format(  
@@ -754,30 +755,29 @@ while true do
             end  
         end  
 
-        if #embed.fields > 0 then  
-            local webhookSuccess = dispatchWebhook({ embeds = { embed } })  
-            if webhookSuccess then  
-                lastSendTime = currentTime  
-                if config.notifyCash and currentCurrency then  
-                    lastCurrency = currentCurrency  
-                end  
-                UILibrary:Notify({  
-                    Title = "定时通知",  
-                    Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),  
-                    Duration = 5  
-                })  
-                if shouldShutdown then  
-                    wait(0.5)  
-                    game:Shutdown()  
-                    return  
-                end  
-            else  
-                UILibrary:Notify({  
-                    Title = "Webhook 发送失败",  
-                    Text = "请检查 Webhook 设置",  
-                    Duration = 5  
-                })  
+        -- 统一发送一条 embed
+        local webhookSuccess = dispatchWebhook({ embeds = { embed } })  
+        if webhookSuccess then  
+            lastSendTime = currentTime  
+            if config.notifyCash and currentCurrency then  
+                lastCurrency = currentCurrency  
             end  
+            UILibrary:Notify({  
+                Title = "定时通知",  
+                Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),  
+                Duration = 5  
+            })  
+            if shouldShutdown then  
+                wait(0.5)  
+                game:Shutdown()  
+                return  
+            end  
+        else  
+            UILibrary:Notify({  
+                Title = "Webhook 发送失败",  
+                Text = "请检查 Webhook 设置",  
+                Duration = 5  
+            })  
         end  
     end  
 
