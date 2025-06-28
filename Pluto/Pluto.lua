@@ -1,56 +1,33 @@
--- Main script
-local NotificationHolder = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Module.Lua"))()
-local Notification = loadstring(game:HttpGet("https://raw.githubusercontent.com/BocusLuke/UI/main/STX/Client.Lua"))()
+-- 自动检测并加载脚本的主入口
+local HttpService = game:GetService("HttpService")
+local placeId = game.PlaceId
 
-local whitelistScript = game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/main/Pluto/whitelist.lua")
-if not whitelistScript or whitelistScript == "" then
-    print("获取白名单失败")
-else
-    local whitelistFunction = loadstring(whitelistScript)
-    if not whitelistFunction then
-        print("加载白名单失败")
-    else
-        print(type(whitelistFunction))  -- 打印类型
-        local whitelist = whitelistFunction()
-        if whitelist == nil then
-            print("白名单函数返回 nil")
+-- 在这里替换为这两个游戏的真实 PlaceId
+local DRIVING_EMPIRE_ID = 3351674303 
+local GREENVILLE_ID = 891852901
+
+-- 加载远程脚本的通用函数
+local function loadRemoteScript(url)
+    local success, res = pcall(function()
+        return HttpService:GetAsync(url)
+    end)
+    if success then
+        local func, err = loadstring(res)
+        if func then
+            func()
         else
-            print(type(whitelist))  -- 打印类型
-
-            local player = game.Players.LocalPlayer
-            local playerName = player.Name
-            local isInWhitelist = false
-
-            for _, allowedName in ipairs(whitelist) do
-                if playerName == allowedName then
-                    isInWhitelist = true
-                    break
-                end
-            end
-
-            if isInWhitelist then
-                Notification:Notify(
-                {Title = "Pluto", Description = "感谢你测试到了这里，期待与你的下一次相遇"},
-                {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
-                {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
-                )
-
-                game.Players.PlayerAdded:Connect(
-                    function(player)
-                        local owner = player.Name
-                        if owner == "tongguheren090325" or owner == "Tongdscsh" then
-                            Notification:Notify(
-                            {Title = "Pluto", Description = "Pluto作者-Tong进入了服务器"},
-                            {OutlineColor = Color3.fromRGB(74, 78, 105), Time = 5, Type = "image"},
-                            {Image = "http://www.roblox.com/asset/?id=6023426923", ImageColor = Color3.fromRGB(74, 78, 105)}
-                            )
-                        end
-                    end
-                )
-                print("hello pluto")
-            else
-                game.Players.LocalPlayer:Kick("未检测到白名单")
-            end
+            warn("loadstring 解析失败：", err)
         end
+    else
+        warn("GET 脚本失败：", res)
     end
+end
+
+-- 主检测流程
+if placeId == DRIVING_EMPIRE_ID then
+    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Notifier/Driving_Empire.lua")
+elseif placeId == GREENVILLE_ID then
+    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Notifier/Greenville.lua")
+else
+    -- 非目标游戏，不做任何操作
 end
