@@ -123,6 +123,11 @@ end
 
 pcall(loadConfig)
 
+-- 补充函数：统一获取通知间隔（秒）
+local function getNotificationIntervalSeconds()
+    return (config.notificationInterval or 5) * 60
+end
+
 -- 检查排行榜
 local originalCFrame, tempPlatform
 
@@ -235,68 +240,67 @@ local function formatNumber(num)
 end
 
 -- 发送 Webhook
-local function dispatchWebhook(payload)
-    if config.webhookUrl == "" then
-        UILibrary:Notify({
-            Title = "Webhook 错误",
-            Text = "请先设置 Webhook 地址",
-            Duration = 5
-        })
-        return false
-    end
+local function dispatchWebhook(payload)  
+    if config.webhookUrl == "" then  
+        UILibrary:Notify({  
+            Title = "Webhook 错误",  
+            Text = "请先设置 Webhook 地址",  
+            Duration = 5  
+        })  
+        return false  
+    end  
 
-    local data = {
-        content = nil, 
-        embeds = payload.embeds
-    }
+    local data = {  
+        content = nil,   
+        embeds = payload.embeds  
+    }  
 
-    -- 自动适配不同执行器的请求函数
-    local requestFunc = syn and syn.request or http and http.request or request
+    local requestFunc = syn and syn.request or http and http.request or request  
 
-    if not requestFunc then
-        UILibrary:Notify({
-            Title = "Webhook 错误",
-            Text = "无法找到可用的请求函数，请使用支持 HTTP 请求的执行器",
-            Duration = 5
-        })
-        return false
-    end
+    if not requestFunc then  
+        UILibrary:Notify({  
+            Title = "Webhook 错误",  
+            Text = "无法找到可用的请求函数，请使用支持 HTTP 请求的执行器",  
+            Duration = 5  
+        })  
+        return false  
+    end  
 
-    local success, res = pcall(function()
-        return requestFunc({
-            Url = config.webhookUrl,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = HttpService:JSONEncode(data)
-        })
-    end)
+    local success, res = pcall(function()  
+        return requestFunc({  
+            Url = config.webhookUrl,  
+            Method = "POST",  
+            Headers = {  
+                ["Content-Type"] = "application/json"  
+            },  
+            Body = HttpService:JSONEncode(data)  
+        })  
+    end)  
 
-    if success and res then
-        if res.StatusCode == 204 or res.StatusCode == 200 then
-            UILibrary:Notify({
-                Title = "Webhook",
-                Text = "Webhook 发送成功",
-                Duration = 5
-            })
-            return true
-        else
-            UILibrary:Notify({
-                Title = "Webhook 错误",
-                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),
-                Duration = 5
-            })
-            return false
-        end
-    else
-        UILibrary:Notify({
-            Title = "Webhook 错误",
-            Text = "请求失败: " .. tostring(res),
-            Duration = 5
-        })
-        return false
-    end
+    if success and res then  
+        if res.StatusCode == 204 or res.StatusCode == 200 then  
+            UILibrary:Notify({  
+                Title = "Webhook",  
+                Text = "Webhook 发送成功",  
+                Duration = 5  
+            })  
+            return true  
+        else  
+            UILibrary:Notify({  
+                Title = "Webhook 错误",  
+                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),  
+                Duration = 5  
+            })  
+            return false  
+        end  
+    else  
+        UILibrary:Notify({  
+            Title = "Webhook 错误",  
+            Text = "请求失败: " .. tostring(res),  
+            Duration = 5  
+        })  
+        return false  
+    end  
 end
 
 -- 欢迎消息
@@ -656,133 +660,126 @@ if config.webhookUrl ~= "" then
 end
 
 -- 主循环
-while true do
-    local currentTime = os.time()
-    local currentCurrency = fetchCurrentCurrency()
+while true do  
+    local currentTime = os.time()  
+    local currentCurrency = fetchCurrentCurrency()  
 
-    -- 安全计算启动以来的总变化（totalChange）
-    local totalChange = 0
-    if currentCurrency and initialCurrency then
-        totalChange = currentCurrency - initialCurrency
-    end
-    earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
+    local totalChange = 0  
+    if currentCurrency and initialCurrency then  
+        totalChange = currentCurrency - initialCurrency  
+    end  
+    earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)  
 
-    local shouldShutdown = false
+    local shouldShutdown = false  
 
-    -- —— 目标金额检查（优先逻辑） —— 
-    if config.enableTargetCurrency and currentCurrency
-       and currentCurrency >= config.targetCurrency
-       and config.targetCurrency > 0 then
-        local payload = {
-            embeds = {{
-                title = "🎯 目标金额达成",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s",
-                    gameName, username,
-                    formatNumber(currentCurrency),
-                    formatNumber(config.targetCurrency)
-                ),
-                color = PRIMARY_COLOR,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" }
-            }}
-        }
-        UILibrary:Notify({
-            Title = "目标达成",
-            Text = "已达到目标金额 " .. formatNumber(config.targetCurrency) .. "，即将退出游戏",
-            Duration = 5
-        })
-        if dispatchWebhook(payload) then
-            wait(0.5)
-            game:Shutdown()
-            return
-        end
-    end
+    if config.enableTargetCurrency and currentCurrency  
+       and currentCurrency >= config.targetCurrency  
+       and config.targetCurrency > 0 then  
+        local payload = {  
+            embeds = {{  
+                title = "🎯 目标金额达成",  
+                description = string.format(  
+                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s",  
+                    gameName, username,  
+                    formatNumber(currentCurrency),  
+                    formatNumber(config.targetCurrency)  
+                ),  
+                color = PRIMARY_COLOR,  
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),  
+                footer = { text = "作者: tongblx · Pluto-X" }  
+            }}  
+        }  
+        UILibrary:Notify({  
+            Title = "目标达成",  
+            Text = "已达到目标金额 " .. formatNumber(config.targetCurrency) .. "，即将退出游戏",  
+            Duration = 5  
+        })  
+        if dispatchWebhook(payload) then  
+            wait(0.5)  
+            game:Shutdown()  
+            return  
+        end  
+    end  
 
-    -- —— 定时检查：金额变化 或 排行榜 —— 
-    local interval = 0
-    if lastSendTime then
-        interval = currentTime - lastSendTime
-    end
+    local interval = 0  
+    if lastSendTime then  
+        interval = currentTime - lastSendTime  
+    end  
 
-    if (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)
-       and interval >= (config.notificationInterval or 5) * 60 then
+    if (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)  
+       and interval >= getNotificationIntervalSeconds() then  
 
-        local embed = {
-            title = "Pluto‑X",
-            description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
-            fields = {},
-            color = PRIMARY_COLOR,
-            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            footer = { text = "作者: tongblx · Pluto‑X" }
-        }
+        local embed = {  
+            title = "Pluto‑X",  
+            description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),  
+            fields = {},  
+            color = PRIMARY_COLOR,  
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),  
+            footer = { text = "作者: tongblx · Pluto‑X" }  
+        }  
 
-        -- 安全计算 earnedChange（本次变化）
-        local earnedChange = 0
-        if currentCurrency and lastCurrency then
-            earnedChange = currentCurrency - lastCurrency
-        end
+        local earnedChange = 0  
+        if currentCurrency and lastCurrency then  
+            earnedChange = currentCurrency - lastCurrency  
+        end  
 
-        -- 检查并插入金额更新字段
-        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            table.insert(embed.fields, {
-                name = "💰金额更新",
-                value = string.format(
-                    "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",
-                    formatNumber(currentCurrency),
-                    (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
-                    (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)
-                ),
-                inline = false
-            })
-        end
+        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then  
+            table.insert(embed.fields, {  
+                name = "💰金额更新",  
+                value = string.format(  
+                    "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",  
+                    formatNumber(currentCurrency),  
+                    (totalChange >= 0 and "+" or ""), formatNumber(totalChange),  
+                    (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)  
+                ),  
+                inline = false  
+            })  
+        end  
 
-        -- 检查排行榜并插入字段
-        if config.notifyLeaderboard or config.leaderboardKick then
-            local currentRank, isOnLeaderboard = fetchPlayerRank()
-            local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"
-            table.insert(embed.fields, {
-                name = "🏆 排行榜",
-                value = string.format("**当前排名**: %s", status),
-                inline = true
-            })
-            UILibrary:Notify({
-                Title = "排行榜检测",
-                Text = isOnLeaderboard and ("当前排名 " .. status .. "，已上榜") or "当前未上榜",
-                Duration = 5
-            })
-            if isOnLeaderboard and config.leaderboardKick then
-                shouldShutdown = true
-            end
-        end
+        if config.notifyLeaderboard or config.leaderboardKick then  
+            local currentRank, isOnLeaderboard = fetchPlayerRank()  
+            local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"  
+            table.insert(embed.fields, {  
+                name = "🏆 排行榜",  
+                value = string.format("**当前排名**: %s", status),  
+                inline = true  
+            })  
+            UILibrary:Notify({  
+                Title = "排行榜检测",  
+                Text = isOnLeaderboard and ("当前排名 " .. status .. "，已上榜") or "当前未上榜",  
+                Duration = 5  
+            })  
+            if isOnLeaderboard and config.leaderboardKick then  
+                shouldShutdown = true  
+            end  
+        end  
 
-        -- 发送 embed
-        if #embed.fields > 0 then
-            local webhookSuccess = dispatchWebhook({ embeds = { embed } })
-            if webhookSuccess then
-                lastSendTime = currentTime
-                if config.notifyCash and currentCurrency then
-                    lastCurrency = currentCurrency
-                end
-                UILibrary:Notify({
-                    Title = "定时通知",
-                    Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),
-                    Duration = 5
-                })
-                if shouldShutdown then
-                    wait(0.5)
-                    game:Shutdown()
-                    return
-                end
-            else
-                UILibrary:Notify({
-                    Title = "Webhook 发送失败",
-                    Text = "请检查 Webhook 设置",
-                    Duration = 5
-                })
-            end
-        end
-    end
+        if #embed.fields > 0 then  
+            local webhookSuccess = dispatchWebhook({ embeds = { embed } })  
+            if webhookSuccess then  
+                lastSendTime = currentTime  
+                if config.notifyCash and currentCurrency then  
+                    lastCurrency = currentCurrency  
+                end  
+                UILibrary:Notify({  
+                    Title = "定时通知",  
+                    Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),  
+                    Duration = 5  
+                })  
+                if shouldShutdown then  
+                    wait(0.5)  
+                    game:Shutdown()  
+                    return  
+                end  
+            else  
+                UILibrary:Notify({  
+                    Title = "Webhook 发送失败",  
+                    Text = "请检查 Webhook 设置",  
+                    Duration = 5  
+                })  
+            end  
+        end  
+    end  
 
-    wait(1)
+    wait(1)  
 end
