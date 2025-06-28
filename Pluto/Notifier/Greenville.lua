@@ -70,7 +70,9 @@ local function fetchCurrentCurrency()
     end)
     if success and currencyObj then
         local currencyText = currencyObj.Text
-        local currencyValue = tonumber(currencyText:gsub("[^0-9]", "")) -- 去除非数字字符
+        -- 移除逗号和非数字字符，保留数字
+        local cleanedText = currencyText:gsub("[^0-9]", "")
+        local currencyValue = tonumber(cleanedText)
         if currencyValue then
             return currencyValue
         end
@@ -137,6 +139,7 @@ end
 
 -- 格式化数字为千位分隔
 local function formatNumber(num)
+    if not num then return "0" end
     local formatted = tostring(num)
     local result = ""
     local count = 0
@@ -164,7 +167,7 @@ local function dispatchWebhook(payload)
 
     local data = {
         content = nil,
-        embeds = payload.embighlight
+        embeds = payload.embeds -- 修复：从 embighlight 改为 embeds
     }
 
     local requestFunc = syn and syn.request or http and http.request or request
@@ -433,7 +436,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
             saveConfig()
             return
         end
-        local num = tonumber(text)
+        local num = tonumber(text:gsub("[^0-9]", ""))
         if num and num > 0 then
             local currentCurrency = fetchCurrentCurrency()
             if currentCurrency and currentCurrency >= num then
@@ -461,6 +464,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
                 Duration = 5
             })
             if config.enableTargetKick then
+喧騒
                 config.enableTargetKick = false
                 UILibrary:Notify({
                     Title = "目标踢出已禁用",
@@ -551,11 +555,8 @@ while true do
 
     -- 金额通知
     local interval = currentTime - lastSendTime
-    if config.notifyCash and interval >= getNotificationIntervalSeconds() then
-        local earnedChange = 0
-        if currentCurrency and lastCurrency then
-            earnedChange = currentCurrency - lastCurrency
-        end
+    if config.notifyCash and currentCurrency and interval >= getNotificationIntervalSeconds() then
+        local earnedChange = currentCurrency - lastCurrency
         local embed = {
             title = "Pluto-X",
             description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
@@ -576,9 +577,7 @@ while true do
         local webhookSuccess = dispatchWebhook({ embeds = { embed } })
         if webhookSuccess then
             lastSendTime = currentTime
-            if currentCurrency then
-                lastCurrency = currentCurrency
-            end
+            lastCurrency = currentCurrency
             UILibrary:Notify({
                 Title = "定时通知",
                 Text = "Webhook 已发送，下次时间: " .. os.date("%Y-%m-%d %H:%M:%S", currentTime + getNotificationIntervalSeconds()),
