@@ -674,6 +674,16 @@ if config.webhookUrl ~= "" then
     sendWelcomeMessage()
 end
 
+--调试模式
+local DEBUG_MODE = false
+
+-- 调试打印函数
+local function debugLog(...)
+    if DEBUG_MODE then
+        print(...)
+    end
+end
+
 -- 主循环
 while true do  
     local currentTime = os.time()  
@@ -687,7 +697,7 @@ while true do
 
     local shouldShutdown = false  
 
-    -- Check if target currency is reached
+    -- 目标金额监测
     if config.enableTargetCurrency and currentCurrency  
        and currentCurrency >= config.targetCurrency  
        and config.targetCurrency > 0 then  
@@ -717,15 +727,15 @@ while true do
         end  
     end  
 
-    -- Calculate interval since last notification
+    -- 计算距离上次通知的间隔
     local interval = currentTime - lastSendTime  
-    print("[Main Loop] currentTime:", currentTime, "lastSendTime:", lastSendTime, "interval:", interval, "notificationIntervalSeconds:", getNotificationIntervalSeconds())
-    print("[Main Loop] notifyCash:", config.notifyCash, "notifyLeaderboard:", config.notifyLeaderboard, "leaderboardKick:", config.leaderboardKick)
+    debugLog("[Main Loop] 当前时间:", currentTime, "上次发送时间:", lastSendTime, "间隔:", interval, "通知间隔秒数:", getNotificationIntervalSeconds())
+    debugLog("[Main Loop] 金额监测:", config.notifyCash, "排行榜监测:", config.notifyLeaderboard, "上榜踢出:", config.leaderboardKick)
 
-    -- Check if notification conditions are met
+    -- 检查是否满足通知条件
     if (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)  
        and interval >= getNotificationIntervalSeconds() then  
-        print("[Main Loop] Notification triggered")
+        print("[Main Loop] 发送通知")
         local embed = {  
             title = "Pluto-X",  
             description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),  
@@ -740,10 +750,10 @@ while true do
             earnedChange = currentCurrency - lastCurrency  
         end  
 
-        -- Currency notification
+        -- 金额通知
         if config.notifyCash and currentCurrency then
             table.insert(embed.fields, {  
-                name = "💰金额信息",  
+                name = "💰金额通知",  
                 value = string.format(  
                     "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",  
                     formatNumber(currentCurrency),  
@@ -754,7 +764,7 @@ while true do
             })  
         end  
 
-        -- Leaderboard notification or kick
+        -- 排行榜监测
         if config.notifyLeaderboard or config.leaderboardKick then  
             local currentRank, isOnLeaderboard = fetchPlayerRank()  
             local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"  
