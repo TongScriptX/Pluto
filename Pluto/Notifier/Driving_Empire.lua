@@ -708,7 +708,7 @@ while true do
         }
 
         -- 检查金额变化
-        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
+    if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
             local totalChange = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
             local earnedChange = (currentCurrency and lastCurrency) and (currentCurrency - lastCurrency) or 0
             table.insert(embed.fields, {
@@ -719,8 +719,9 @@ while true do
                     (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
                     (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)
                 ),
-            inline = false
-        })
+                inline = false
+            })
+        end
         -- 检查排行榜
         if config.notifyLeaderboard or config.leaderboardKick then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
