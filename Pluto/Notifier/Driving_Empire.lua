@@ -709,7 +709,7 @@ while true do
 
         -- 检查金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            local totalChange = initialCurrency and (currentCurrency - initialCurrency) or 0
+            local earnedCurrency = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
             table.insert(embed.fields, {
                 name = "💰金额更新",
                 value = string.format(
