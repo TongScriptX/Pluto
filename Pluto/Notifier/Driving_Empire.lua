@@ -659,7 +659,7 @@ end
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
-    local earnedCurrency = currentCurrency and (currentCurrency - initialCurrency) or 0
+    local earnedCurrency = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedCurrency)
 
     local shouldShutdown = false
@@ -699,7 +699,7 @@ while true do
        and currentTime - lastSendTime >= (config.notificationInterval or 5) * 60 then
         -- *** 修改部分：单一 embed，包含多个字段 ***
         local embed = {
-            title = "Pluto-X 更新",
+            title = "Pluto-X",
             description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
             fields = {},
             color = PRIMARY_COLOR,
@@ -709,7 +709,7 @@ while true do
 
         -- 检查金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            local earnedCurrency = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
+            local totalCurrency = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
             table.insert(embed.fields, {
                 name = "💰金额更新",
                 value = string.format(
@@ -771,7 +771,7 @@ while true do
             else
                 UILibrary:Notify({
                     Title = "Webhook 发送失败",
-                    Text = "请检查网络或 Webhook 设置",
+                    Text = "请检查Webhook 设置",
                     Duration = 5
                 })
             end
