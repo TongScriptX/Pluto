@@ -513,7 +513,7 @@ function UILibrary:CreateToggle(parent, options)
 end
 
 -- 拖拽模块
-local developmentMode = true -- 设置为 false 时将不输出调试信息
+local developmentMode = false -- 设置为 false 时将不输出调试信息
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
