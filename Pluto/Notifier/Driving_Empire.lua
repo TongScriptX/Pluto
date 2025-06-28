@@ -642,31 +642,36 @@ targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(c
 print("目标金额输入框创建:", targetCurrencyInput.Parent and "父对象存在" or "无父对象")
 
 -- 标签页：关于
--- 创建关于标签页
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "关于"
 })
 
--- 作者信息
-local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
-    Text = "作者: tongblx",
-    SocialText = "加入 Discord 服务器",
-    socialCallback = function()
-        pcall(function()
-        local link = "https://discord.gg/j20v0eWU8u"
-            if setclipboard then
-                setclipboard(link)
-            elseif syn and syn.set_clipboard then
-                syn.set_clipboard(link)
-            else
-                if clipboard and clipboard.set then
-                    clip.setClipboard.set(link)
-                end
-                UILibrary:Notify({ Title = "复制 Discord", Text = "不支持剪贴板，请手动复制: " .. link, Duration = 5 })
-            end
-            UILibrary:Notify({ Title = "复制 Discord", Text = "Discord 链接已复制到剪贴板", Duration = 5 })
-        end)
-    end
+-- 作者信息  
+local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {  
+    Text = "作者: tongblx",  
+    SocialText = "加入 Discord 服务器",  
+    socialCallback = function()  
+        pcall(function()  
+            local link = "https://discord.gg/j20v0eWU8u"  
+            local success = false  
+            if setclipboard then  
+                setclipboard(link)  
+                success = true  
+            elseif syn and syn.set_clipboard then  
+                syn.set_clipboard(link)  
+                success = true  
+            elseif clipboard and clipboard.set then  
+                clipboard.set(link)  
+                success = true  
+            end  
+
+            if success then  
+                UILibrary:Notify({ Title = "复制 Discord", Text = "Discord 链接已复制到剪贴板", Duration = 5 })  
+            else  
+                UILibrary:Notify({ Title = "复制 Discord", Text = "当前环境不支持剪贴板操作，请手动复制: " .. link, Duration = 5 })  
+            end  
+        end)  
+    end  
 })
 
 -- 初始化欢迎消息
