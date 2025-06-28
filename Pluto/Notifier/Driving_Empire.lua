@@ -5,6 +5,8 @@ local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local lastWebhookUrl = ""
+local lastSendTime = os.time()  -- 初始化为当前时间
+local lastCurrency = initialCurrency  -- 初始化为初始金额
 
 -- 加载 UI 模块
 local UILibrary
@@ -103,6 +105,11 @@ local function loadConfig()
             for k, v in pairs(result) do
                 config[k] = v
             end
+            print("[Config] webhookUrl:", config.webhookUrl)
+            print("[Config] notifyCash:", config.notifyCash)
+            print("[Config] notifyLeaderboard:", config.notifyLeaderboard)
+            print("[Config] leaderboardKick:", config.leaderboardKick)
+            print("[Config] notificationInterval:", config.notificationInterval)
             UILibrary:Notify({ Title = "配置已加载", Text = "配置文件加载成功", Duration = 5 })
         else
             UILibrary:Notify({ Title = "配置错误", Text = "无法解析配置文件", Duration = 5 })
@@ -113,7 +120,7 @@ local function loadConfig()
         saveConfig()
     end
 
-    -- *** 修改部分：检查 webhookUrl 是否有效且发生变化 ***
+    -- 检查 webhookUrl 是否有效且发生变化
     if config.webhookUrl ~= "" and config.webhookUrl ~= lastWebhookUrl then
         config.welcomeSent = false -- 重置 welcomeSent 以触发欢迎消息
         sendWelcomeMessage()
@@ -680,6 +687,7 @@ while true do
 
     local shouldShutdown = false  
 
+    -- Check if target currency is reached
     if config.enableTargetCurrency and currentCurrency  
        and currentCurrency >= config.targetCurrency  
        and config.targetCurrency > 0 then  
@@ -709,21 +717,22 @@ while true do
         end  
     end  
 
-    local interval = 0  
-    if lastSendTime then  
-        interval = currentTime - lastSendTime  
-    end  
+    -- Calculate interval since last notification
+    local interval = currentTime - lastSendTime  
+    print("[Main Loop] currentTime:", currentTime, "lastSendTime:", lastSendTime, "interval:", interval, "notificationIntervalSeconds:", getNotificationIntervalSeconds())
+    print("[Main Loop] notifyCash:", config.notifyCash, "notifyLeaderboard:", config.notifyLeaderboard, "leaderboardKick:", config.leaderboardKick)
 
+    -- Check if notification conditions are met
     if (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)  
        and interval >= getNotificationIntervalSeconds() then  
-
+        print("[Main Loop] Notification triggered")
         local embed = {  
-            title = "Pluto‑X",  
+            title = "Pluto-X",  
             description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),  
             fields = {},  
             color = PRIMARY_COLOR,  
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),  
-            footer = { text = "作者: tongblx · Pluto‑X" }  
+            footer = { text = "作者: tongblx · Pluto-X" }  
         }  
 
         local earnedChange = 0  
@@ -731,7 +740,7 @@ while true do
             earnedChange = currentCurrency - lastCurrency  
         end  
 
-        -- 金额字段始终插入
+        -- Currency notification
         if config.notifyCash and currentCurrency then
             table.insert(embed.fields, {  
                 name = "💰金额信息",  
@@ -745,6 +754,7 @@ while true do
             })  
         end  
 
+        -- Leaderboard notification or kick
         if config.notifyLeaderboard or config.leaderboardKick then  
             local currentRank, isOnLeaderboard = fetchPlayerRank()  
             local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"  
