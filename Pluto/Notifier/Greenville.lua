@@ -464,7 +464,6 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
                 Duration = 5
             })
             if config.enableTargetKick then
-喧騒
                 config.enableTargetKick = false
                 UILibrary:Notify({
                     Title = "目标踢出已禁用",
