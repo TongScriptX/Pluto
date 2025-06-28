@@ -704,18 +704,17 @@ while true do
 
         -- 检查金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            local change = currentCurrency - lastCurrency
+            local totalChange = currentCurrency - initialCurrency
             table.insert(embed.fields, {
-                name = "💰 金额更新",
+                name = "💰金额更新",
                 value = string.format(
-                    "**当前金额**: %s\n**变化**: %s%s",
+                    "**当前金额**: %s\n**总变化**:%s%s",
                     formatNumber(currentCurrency),
-                    (change >= 0 and "+" or ""),
-                    formatNumber(change)
+                    (totalChange>= 0 and "+" or ""),
+                    formatNumber(totalChange)
                 ),
                 inline = true
             })
-        end
 
         -- 检查排行榜
         if config.notifyLeaderboard or config.leaderboardKick then
