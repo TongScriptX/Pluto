@@ -240,69 +240,76 @@ local function formatNumber(num)
 end
 
 -- 发送 Webhook
-local function dispatchWebhook(payload)  
-    if config.webhookUrl == "" then  
-        UILibrary:Notify({  
-            Title = "Webhook 错误",  
-            Text = "请先设置 Webhook 地址",  
-            Duration = 5  
-        })  
-        return false  
-    end  
+local function dispatchWebhook(payload)
+    if config.webhookUrl == "" then
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "请先设置 Webhook 地址",
+            Duration = 5
+        })
+        warn("[Webhook] 未设置 webhookUrl")
+        return false
+    end
 
-    local data = {  
-        content = nil,   
-        embeds = payload.embeds  
-    }  
+    local data = {
+        content = nil,
+        embeds = payload.embeds
+    }
 
-    local requestFunc = syn and syn.request or http and http.request or request  
+    local requestFunc = syn and syn.request or http and http.request or request
 
-    if not requestFunc then  
-        UILibrary:Notify({  
-            Title = "Webhook 错误",  
-            Text = "无法找到可用的请求函数，请使用支持 HTTP 请求的执行器",  
-            Duration = 5  
-        })  
-        return false  
-    end  
+    if not requestFunc then
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "无法找到可用的请求函数，请使用支持 HTTP 请求的执行器",
+            Duration = 5
+        })
+        warn("[Webhook] 无可用请求函数")
+        return false
+    end
 
-    local success, res = pcall(function()  
-        return requestFunc({  
-            Url = config.webhookUrl,  
-            Method = "POST",  
-            Headers = {  
-                ["Content-Type"] = "application/json"  
-            },  
-            Body = HttpService:JSONEncode(data)  
-        })  
-    end)  
+    print("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
+    print("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
 
-    if success and res then  
-        if res.StatusCode == 204 or res.StatusCode == 200 then  
-            UILibrary:Notify({  
-                Title = "Webhook",  
-                Text = "Webhook 发送成功",  
-                Duration = 5  
-            })  
-            return true  
-        else  
+    local success, res = pcall(function()
+        return requestFunc({
+            Url = config.webhookUrl,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+
+    if success and res then
+        if res.StatusCode == 204 or res.StatusCode == 200 then
+            UILibrary:Notify({
+                Title = "Webhook",
+                Text = "Webhook 发送成功",
+                Duration = 5
+            })
+            print("[Webhook] 发送成功")
+            return true
+        else
             warn("[Webhook 错误] 状态码: " .. tostring(res.StatusCode or "未知") .. ", 返回: " .. (res.Body or "无"))
-            UILibrary:Notify({  
-                Title = "Webhook 错误",  
-                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),  
-                Duration = 5  
-            })  
-            return false  
-        end  
-    else  
+            UILibrary:Notify({
+                Title = "Webhook 错误",
+                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "
+返回信息: " .. (res.Body or "无"),
+                Duration = 5
+            })
+            return false
+        end
+    else
         warn("[Webhook 请求失败] 错误信息: " .. tostring(res))
-        UILibrary:Notify({  
-            Title = "Webhook 错误",  
-            Text = "请求失败: " .. tostring(res),  
-            Duration = 5  
-        })  
-        return false  
-    end  
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "请求失败: " .. tostring(res),
+            Duration = 5
+        })
+        return false
+    end
 end
 
 -- 欢迎消息
