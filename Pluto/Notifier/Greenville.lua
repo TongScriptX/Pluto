@@ -382,13 +382,12 @@ intervalInput.Text = tostring(config.notificationInterval)
 -- 卡片：目标金额
 local targetCurrencyCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 
-local targetCurrencyInput
-
+-- 切换开关（统一用 enableTargetKick）
 local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
     Text = "目标金额踢出",
-    DefaultState = config.enableTargetKick,
+    DefaultState = config.enableTargetKick or false,
     Callback = function(state)
-        print("目标踢出状态:", state)
+        print("[目标踢出] 状态改变:", state)
 
         if state and config.webhookUrl == "" then
             config.enableTargetKick = false
@@ -396,50 +395,49 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
             return
         end
 
-        local text = targetCurrencyInput.Text and targetCurrencyInput.Text:match("^%s*(.-)%s*$")
-        local parsedTarget = tonumber(text and text:gsub("[^0-9]", ""))
-        if state and (not parsedTarget or parsedTarget <= 0) then
+        if state and (not config.targetCurrency or config.targetCurrency <= 0) then
             config.enableTargetKick = false
             UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标金额（大于0）", Duration = 5 })
             return
         end
 
         local currentCurrency = fetchCurrentCurrency()
-        config.targetCurrency = parsedTarget or 0
-
-        if state and currentCurrency and parsedTarget and currentCurrency >= parsedTarget then
+        if state and currentCurrency and currentCurrency >= config.targetCurrency then
             config.enableTargetKick = false
-            saveConfig()
             UILibrary:Notify({
-                Title = "配置未开启",
-                Text = string.format("当前金额(%s) ≥ 目标金额(%s)，目标已达成，踢出功能未开启", formatNumber(currentCurrency), formatNumber(parsedTarget)),
+                Title = "配置警告",
+                Text = string.format("当前金额(%s)已超过目标金额(%s)，请调整后再开启",
+                    formatNumber(currentCurrency),
+                    formatNumber(config.targetCurrency)
+                ),
                 Duration = 6
             })
             return
         end
 
         config.enableTargetKick = state
-        saveConfig()
         UILibrary:Notify({
             Title = "配置更新",
             Text = "目标金额踢出: " .. (state and "开启" or "关闭"),
             Duration = 5
         })
+        saveConfig()
     end
 })
 
-local targetCurrencyLabel = UILibrary:CreateLabel(targetCurrencyCard, {
+UILibrary:CreateLabel(targetCurrencyCard, {
     Text = "目标金额",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 30)
 })
 
-targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
+local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     PlaceholderText = "输入目标金额",
     Position = UDim2.new(0, 5, 0, 50),
     OnFocusLost = function(text)
-        print("目标金额输入框失焦，内容:", text)
         text = text and text:match("^%s*(.-)%s*$")
+        print("[目标金额] 输入框失焦内容:", text)
+
         if not text or text == "" then
             if config.targetCurrency > 0 then
                 targetCurrencyInput.Text = formatNumber(config.targetCurrency)
@@ -448,35 +446,48 @@ targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
             config.targetCurrency = 0
             config.enableTargetKick = false
             targetCurrencyInput.Text = ""
-            saveConfig()
             UILibrary:Notify({
                 Title = "目标金额已清除",
                 Text = "已取消目标金额踢出功能",
                 Duration = 5
             })
+            saveConfig()
             return
         end
 
-        local num = tonumber(text:gsub("[^0-9]", ""))
+        local num = tonumber(text)
         if num and num > 0 then
             local currentCurrency = fetchCurrentCurrency()
-            if config.enableTargetKick and currentCurrency and currentCurrency >= num then
+            if currentCurrency and currentCurrency >= num then
                 targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
                 UILibrary:Notify({
                     Title = "设置失败",
-                    Text = "目标金额(" .. formatNumber(num) .. ") 小于当前金额(" .. formatNumber(currentCurrency) .. ")，请设置更大的目标值",
+                    Text = "目标金额(" .. formatNumber(num) .. ")小于当前金额(" .. formatNumber(currentCurrency) .. ")，请设置更大的目标值",
                     Duration = 5
                 })
                 return
             end
+
             config.targetCurrency = num
             targetCurrencyInput.Text = formatNumber(num)
-            saveConfig()
+
+            -- 自动启用踢出功能
+            if not config.enableTargetKick then
+                config.enableTargetKick = true
+                targetCurrencyToggle:Set(true)
+                UILibrary:Notify({
+                    Title = "已启用目标踢出",
+                    Text = "已自动开启目标金额踢出功能",
+                    Duration = 5
+                })
+            end
+
             UILibrary:Notify({
                 Title = "配置更新",
                 Text = "目标金额已设为 " .. formatNumber(num),
                 Duration = 5
             })
+            saveConfig()
         else
             targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
             UILibrary:Notify({
@@ -484,14 +495,16 @@ targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
                 Text = "请输入有效的正整数作为目标金额",
                 Duration = 5
             })
+
             if config.enableTargetKick then
                 config.enableTargetKick = false
-                saveConfig()
+                targetCurrencyToggle:Set(false)
                 UILibrary:Notify({
                     Title = "目标踢出已禁用",
                     Text = "请设置有效目标金额后重新启用",
                     Duration = 5
                 })
+                saveConfig()
             end
         end
     end
