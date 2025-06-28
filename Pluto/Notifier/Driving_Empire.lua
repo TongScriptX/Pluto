@@ -659,18 +659,12 @@ end
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
+
+    -- 安全计算启动以来的总变化（totalChange）
     local totalChange = 0
-    local earnedChange = 0
-
-    if currentCurrency then
-        if initialCurrency then
-            totalChange = currentCurrency - initialCurrency
-        end
-        if lastCurrency then
-            earnedChange = currentCurrency - lastCurrency
-        end
+    if currentCurrency and initialCurrency then
+        totalChange = currentCurrency - initialCurrency
     end
-
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
 
     local shouldShutdown = false
@@ -706,19 +700,30 @@ while true do
     end
 
     -- —— 定时检查：金额变化 或 排行榜 —— 
+    local interval = 0
+    if lastSendTime then
+        interval = currentTime - lastSendTime
+    end
+
     if (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)
-       and currentTime - lastSendTime >= (config.notificationInterval or 5) * 60 then
-        -- *** 修改部分：单一 embed，包含多个字段 ***
+       and interval >= (config.notificationInterval or 5) * 60 then
+
         local embed = {
-            title = "Pluto-X",
+            title = "Pluto‑X",
             description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
             fields = {},
             color = PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            footer = { text = "作者: tongblx · Pluto-X" }
+            footer = { text = "作者: tongblx · Pluto‑X" }
         }
 
-        -- 检查金额变化
+        -- 安全计算 earnedChange（本次变化）
+        local earnedChange = 0
+        if currentCurrency and lastCurrency then
+            earnedChange = currentCurrency - lastCurrency
+        end
+
+        -- 检查并插入金额更新字段
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
             table.insert(embed.fields, {
                 name = "💰金额更新",
@@ -732,7 +737,7 @@ while true do
             })
         end
 
-        -- 检查排行榜
+        -- 检查排行榜并插入字段
         if config.notifyLeaderboard or config.leaderboardKick then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
             local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"
@@ -741,26 +746,17 @@ while true do
                 value = string.format("**当前排名**: %s", status),
                 inline = true
             })
-            if isOnLeaderboard then
-                UILibrary:Notify({
-                    Title = "排行榜检测",
-                    Text = "当前排名 " .. status .. "，已上榜",
-                    Duration = 5
-                })
-                if config.leaderboardKick then
-                    shouldShutdown = true
-                end
-            else
-                UILibrary:Notify({
-                    Title = "排行榜检测",
-                    Text = "当前未上榜",
-                    Duration = 5
-                })
+            UILibrary:Notify({
+                Title = "排行榜检测",
+                Text = isOnLeaderboard and ("当前排名 " .. status .. "，已上榜") or "当前未上榜",
+                Duration = 5
+            })
+            if isOnLeaderboard and config.leaderboardKick then
+                shouldShutdown = true
             end
-            lastRank = currentRank
         end
 
-        -- 发送单一 embed
+        -- 发送 embed
         if #embed.fields > 0 then
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
@@ -781,7 +777,7 @@ while true do
             else
                 UILibrary:Notify({
                     Title = "Webhook 发送失败",
-                    Text = "请检查Webhook 设置",
+                    Text = "请检查 Webhook 设置",
                     Duration = 5
                 })
             end
