@@ -167,7 +167,7 @@ local function dispatchWebhook(payload)
 
     local data = {
         content = nil,
-        embeds = payload.embeds -- 修复：从 embighlight 改为 embeds
+        embeds = payload.embed
     }
 
     local requestFunc = syn and syn.request or http and http.request or request
@@ -390,31 +390,39 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
             config.enableTargetKick = false
             return
         end
-        if state and config.targetCurrency <= 0 then
+
+        -- 从输入框实时获取目标金额而不是用 config 里的旧值
+        local text = targetCurrencyInput.Text and targetCurrencyInput.Text:match("^%s*(.-)%s*$")
+        local parsedTarget = tonumber(text and text:gsub("[^0-9]", ""))
+        if state and (not parsedTarget or parsedTarget <= 0) then
             config.enableTargetKick = false
             UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标金额（大于0）", Duration = 5 })
             return
         end
+
         local currentCurrency = fetchCurrentCurrency()
-        if state and currentCurrency and currentCurrency >= config.targetCurrency then
+        if state and currentCurrency and parsedTarget and currentCurrency >= parsedTarget then
             config.enableTargetKick = false
             UILibrary:Notify({ 
                 Title = "配置警告", 
-                Text = "当前金额(" .. formatNumber(currentCurrency) .. ")已超过目标金额(" .. formatNumber(config.targetCurrency) .. ")，请调整后再开启", 
+                Text = "当前金额(" .. formatNumber(currentCurrency) .. ")已超过目标金额(" .. formatNumber(parsedTarget) .. ")，请调整后再开启", 
                 Duration = 5 
             })
             return
         end
+
         config.enableTargetKick = state
         UILibrary:Notify({ Title = "配置更新", Text = "目标金额踢出: " .. (state and "开启" or "关闭"), Duration = 5 })
         saveConfig()
     end
 })
+
 local targetCurrencyLabel = UILibrary:CreateLabel(targetCurrencyCard, {
     Text = "目标金额",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 30)
 })
+
 local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     PlaceholderText = "输入目标金额",
     Position = UDim2.new(0, 5, 0, 50),
@@ -439,7 +447,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
         local num = tonumber(text:gsub("[^0-9]", ""))
         if num and num > 0 then
             local currentCurrency = fetchCurrentCurrency()
-            if currentCurrency and currentCurrency >= num then
+            if config.enableTargetKick and currentCurrency and currentCurrency >= num then
                 targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
                 UILibrary:Notify({
                     Title = "设置失败",
@@ -475,6 +483,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
         end
     end
 })
+
 targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
 
 -- 标签页：关于
