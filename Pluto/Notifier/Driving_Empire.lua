@@ -659,8 +659,8 @@ end
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
-    local earnedCurrency = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
-    earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedCurrency)
+    local totalChange = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
+    earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
 
     local shouldShutdown = false
 
@@ -709,19 +709,18 @@ while true do
 
         -- 检查金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            local totalCurrency = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
+            local totalChange = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
+            local earnedChange = (currentCurrency and lastCurrency) and (currentCurrency - lastCurrency) or 0
             table.insert(embed.fields, {
                 name = "💰金额更新",
                 value = string.format(
-                    "**当前金额**: %s\n**总变化**:%s%s",
+                    "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",
                     formatNumber(currentCurrency),
-                    (totalChange>= 0 and "+" or ""),
-                    formatNumber(totalChange)
+                    (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
+                    (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)
                 ),
-                inline = true
-            })
-        end
-
+            inline = false
+        })
         -- 检查排行榜
         if config.notifyLeaderboard or config.leaderboardKick then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
