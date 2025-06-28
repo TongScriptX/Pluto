@@ -650,6 +650,11 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
     end
 })
 
+-- 初始化欢迎消息
+if config.webhookUrl ~= "" then
+    sendWelcomeMessage()
+end
+
 -- 主循环
 while true do
     local currentTime = os.time()
@@ -704,7 +709,7 @@ while true do
 
         -- 检查金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            local totalChange = currentCurrency - initialCurrency
+            local totalChange = initialCurrency and (currentCurrency - initialCurrency) or 0
             table.insert(embed.fields, {
                 name = "💰金额更新",
                 value = string.format(
@@ -774,9 +779,4 @@ while true do
     end
 
     wait(1)
-end
-
--- 初始化欢迎消息
-if config.webhookUrl ~= "" then
-    sendWelcomeMessage()
 end
