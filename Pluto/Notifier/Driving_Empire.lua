@@ -497,7 +497,7 @@ print("通知间隔输入框创建:", intervalInput.Parent and "父对象存在"
 -- 卡片：目标金额
 local targetCurrencyCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
-    Text = "Target Currency Kick",
+    Text = "目标金额踢出",
     DefaultState = false, -- 初始默认关闭，避免直接触发踢出
     Callback = function(state)
         if state and config.webhookUrl == "" then
@@ -708,7 +708,7 @@ while true do
         }
 
         -- 检查金额变化
-    if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
+        if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
             local totalChange = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
             local earnedChange = (currentCurrency and lastCurrency) and (currentCurrency - lastCurrency) or 0
             table.insert(embed.fields, {
@@ -722,6 +722,7 @@ while true do
                 inline = false
             })
         end
+
         -- 检查排行榜
         if config.notifyLeaderboard or config.leaderboardKick then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
