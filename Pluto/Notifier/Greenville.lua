@@ -167,7 +167,7 @@ local function dispatchWebhook(payload)
 
     local data = {
         content = nil,
-        embeds = payload.embed
+        embeds = payload.embeds
     }
 
     local requestFunc = syn and syn.request or http and http.request or request
