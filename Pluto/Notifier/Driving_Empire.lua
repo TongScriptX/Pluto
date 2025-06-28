@@ -295,7 +295,7 @@ local function dispatchWebhook(payload)
             warn("[Webhook 错误] 状态码: " .. tostring(res.StatusCode or "未知") .. ", 返回: " .. (res.Body or "无"))
             UILibrary:Notify({
                 Title = "Webhook 错误",
-                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "返回信息: " .. (res.Body or "无"),
+                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),
                 Duration = 5
             })
             return false
