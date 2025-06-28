@@ -659,7 +659,18 @@ end
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
-    local totalChange = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
+    local totalChange = 0
+    local earnedChange = 0
+
+    if currentCurrency then
+        if initialCurrency then
+            totalChange = currentCurrency - initialCurrency
+        end
+        if lastCurrency then
+            earnedChange = currentCurrency - lastCurrency
+        end
+    end
+
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
 
     local shouldShutdown = false
@@ -709,8 +720,6 @@ while true do
 
         -- 检查金额变化
         if config.notifyCash and currentCurrency and currentCurrency ~= lastCurrency then
-            local totalChange = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
-            local earnedChange = (currentCurrency and lastCurrency) and (currentCurrency - lastCurrency) or 0
             table.insert(embed.fields, {
                 name = "💰金额更新",
                 value = string.format(
