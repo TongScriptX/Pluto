@@ -286,6 +286,7 @@ local function dispatchWebhook(payload)
             })  
             return true  
         else  
+            warn("[Webhook 错误] 状态码: " .. tostring(res.StatusCode or "未知") .. ", 返回: " .. (res.Body or "无"))
             UILibrary:Notify({  
                 Title = "Webhook 错误",  
                 Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),  
@@ -294,6 +295,7 @@ local function dispatchWebhook(payload)
             return false  
         end  
     else  
+        warn("[Webhook 请求失败] 错误信息: " .. tostring(res))
         UILibrary:Notify({  
             Title = "Webhook 错误",  
             Text = "请求失败: " .. tostring(res),  
@@ -723,10 +725,10 @@ while true do
             earnedChange = currentCurrency - lastCurrency  
         end  
 
-        -- 无论是否变化都插入金额字段
-        if config.notifyCash and currentCurrency then  
+        -- 金额字段始终插入
+        if config.notifyCash and currentCurrency then
             table.insert(embed.fields, {  
-                name = "💰金额更新",  
+                name = "💰金额信息",  
                 value = string.format(  
                     "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",  
                     formatNumber(currentCurrency),  
@@ -755,7 +757,6 @@ while true do
             end  
         end  
 
-        -- 统一发送一条 embed
         local webhookSuccess = dispatchWebhook({ embeds = { embed } })  
         if webhookSuccess then  
             lastSendTime = currentTime  
