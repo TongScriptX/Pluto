@@ -381,17 +381,18 @@ intervalInput.Text = tostring(config.notificationInterval)
 
 -- 卡片：目标金额
 local targetCurrencyCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
+
 local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
     Text = "目标金额踢出",
     DefaultState = config.enableTargetKick,
     Callback = function(state)
+        print("目标踢出开关状态改变:", state)
         if state and config.webhookUrl == "" then
             UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
             config.enableTargetKick = false
             return
         end
 
-        -- 从输入框实时获取目标金额而不是用 config 里的旧值
         local text = targetCurrencyInput.Text and targetCurrencyInput.Text:match("^%s*(.-)%s*$")
         local parsedTarget = tonumber(text and text:gsub("[^0-9]", ""))
         if state and (not parsedTarget or parsedTarget <= 0) then
@@ -403,16 +404,20 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
         local currentCurrency = fetchCurrentCurrency()
         if state and currentCurrency and parsedTarget and currentCurrency >= parsedTarget then
             config.enableTargetKick = false
-            UILibrary:Notify({ 
-                Title = "配置警告", 
-                Text = "当前金额(" .. formatNumber(currentCurrency) .. ")已超过目标金额(" .. formatNumber(parsedTarget) .. ")，请调整后再开启", 
-                Duration = 5 
+            UILibrary:Notify({
+                Title = "配置警告",
+                Text = "当前金额(" .. formatNumber(currentCurrency) .. ")已超过目标金额(" .. formatNumber(parsedTarget) .. ")，请调整后再开启",
+                Duration = 5
             })
             return
         end
 
         config.enableTargetKick = state
-        UILibrary:Notify({ Title = "配置更新", Text = "目标金额踢出: " .. (state and "开启" or "关闭"), Duration = 5 })
+        UILibrary:Notify({
+            Title = "配置更新",
+            Text = "目标金额踢出: " .. (state and "开启" or "关闭"),
+            Duration = 5
+        })
         saveConfig()
     end
 })
@@ -427,7 +432,8 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     PlaceholderText = "输入目标金额",
     Position = UDim2.new(0, 5, 0, 50),
     OnFocusLost = function(text)
-        text = text and text:match("^%s*(.-)%s*$")  -- 去除前后空格
+        print("目标金额输入框失焦，内容:", text)
+        text = text and text:match("^%s*(.-)%s*$")
         if not text or text == "" then
             if config.targetCurrency > 0 then
                 targetCurrencyInput.Text = formatNumber(config.targetCurrency)
@@ -458,12 +464,12 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
             end
             config.targetCurrency = num
             targetCurrencyInput.Text = formatNumber(num)
+            saveConfig()
             UILibrary:Notify({
                 Title = "配置更新",
                 Text = "目标金额已设为 " .. formatNumber(num),
                 Duration = 5
             })
-            saveConfig()
         else
             targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
             UILibrary:Notify({
