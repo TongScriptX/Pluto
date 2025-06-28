@@ -513,6 +513,8 @@ function UILibrary:CreateToggle(parent, options)
 end
 
 -- 拖拽模块
+local developmentMode = true -- 设置为 false 时将不输出调试信息
+
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
         warn("[MakeDraggable]: Failed: GUI is nil")
@@ -539,7 +541,9 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             startPos = input.Position
             startGuiOffset = targetFrame.AbsolutePosition
             targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag started: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
+            if developmentMode then
+                print("[MakeDraggable]: Drag started: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
+            end
         end
     end)
 
@@ -566,7 +570,9 @@ function UILibrary:MakeDraggable(gui, targetFrame)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
             targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
-            print("[MakeDraggable]: Drag ended: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
+            if developmentMode then
+                print("[MakeDraggable]: Drag ended: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
+            end
         end
     end)
 end
