@@ -691,10 +691,17 @@ end
 local unchangedCount = 0
 local webhookDisabled = false
 
+-- 创建弱引用表用于检测 CoreGui 是否被回收
 local CoreGui = game:GetService("CoreGui")
-local promptGui = CoreGui:FindFirstChild("RobloxPromptGui")
+local weakCoreGuiTable = setmetatable({CoreGui}, {__mode = "v"})
 
-local function onDisconnectPrompt()
+local function isCoreGuiAlive()
+    -- 如果被回收，weakCoreGuiTable[1] 会变成 nil
+    return weakCoreGuiTable[1] ~= nil
+end
+
+-- 掉线处理函数
+local function handleDisconnect()
     if not webhookDisabled then
         webhookDisabled = true
         dispatchWebhook({
@@ -712,21 +719,6 @@ local function onDisconnectPrompt()
             Duration = 5
         })
     end
-end
-
-if promptGui then
-    promptGui:GetPropertyChangedSignal("Enabled"):Connect(function()
-        if promptGui.Enabled then
-            debugLog("检测到掉线弹窗开启")
-            onDisconnectPrompt()
-        end
-    end)
-    -- 启动时也检测一次
-    if promptGui.Enabled then
-        onDisconnectPrompt()
-    end
-else
-    debugLog("未找到 RobloxPromptGui，无法监听掉线弹窗")
 end
 
 -- 主循环        
@@ -883,5 +875,10 @@ while true do
         end      
     end          
     
+    -- 使用弱引用表检测 CoreGui 状态（判断是否掉线）
+    if not isCoreGuiAlive() then
+        handleDisconnect()
+    end
+
     wait(1)          
 end
