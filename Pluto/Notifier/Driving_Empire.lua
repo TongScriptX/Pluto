@@ -694,7 +694,7 @@ local webhookDisabled = false
 -- 初始化变量
 local lastMoveTime = tick()
 local lastPosition = nil
-local idleThreshold = 180 -- 超过180秒没动算掉线
+local idleThreshold = 300 -- 超过300秒没动算掉线
 local checkInterval = 1 -- 每秒检测一次
 
 local player = game.Players.LocalPlayer
