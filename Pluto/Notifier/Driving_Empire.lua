@@ -720,7 +720,7 @@ while true do
     local currentCurrency = fetchCurrentCurrency()
 
     local totalChange = 0
-    if currentCurrency and initialCurrency then
+    if currentCurrency and lastCurrency then
         totalChange = currentCurrency - initialCurrency
     end
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
@@ -834,13 +834,21 @@ while true do
 
             -- 💰 金额通知
             if config.notifyCash and currentCurrency then
+                local elapsedTime = currentTime - startTime
+                local avgMoney = "0"
+                if elapsedTime > 0 then
+                    avgMoney = string.format("%.2f", totalChange / (elapsedTime / 3600))
+                end
                 table.insert(embed.fields, {
                     name = "💰金额通知",
                     value = string.format(
-                        "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",
+                        "**用户名**: %s\n**已运行时间**: %s 秒\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
+                        username,
+                        elapsedTime,
                         formatNumber(currentCurrency),
+                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
                         (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
-                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)
+                        avgMoney
                     ),
                     inline = false
                 })
