@@ -549,18 +549,43 @@ if config.webhookUrl ~= "" then
     sendWelcomeMessage()
 end
 
+local unchangedCount = 0
+local webhookDisabled = false
+
+-- 掉线检测初始化
+local lastMoveTime = tick()
+local lastPosition = nil
+local idleThreshold = 300 -- 超过300秒未移动则判定掉线
+local checkInterval = 1
+
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- 每帧检测玩家移动
+game:GetService("RunService").RenderStepped:Connect(function()
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if lastPosition and (hrp.Position - lastPosition).Magnitude > 0.1 then
+            lastMoveTime = tick()
+        end
+        lastPosition = hrp.Position
+    end
+end)
+
 -- 主循环
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
+
     local totalChange = 0
     if currentCurrency and initialCurrency then
         totalChange = currentCurrency - initialCurrency
     end
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
 
-    -- 目标金额监测
-    if config.enableTargetKick and currentCurrency and currentCurrency >= config.targetCurrency and config.targetCurrency > 0 then
+    -- 🎯 目标金额监测
+    if not webhookDisabled and config.enableTargetKick and currentCurrency and currentCurrency >= config.targetCurrency and config.targetCurrency > 0 then
         local payload = {
             embeds = {{
                 title = "🎯 目标金额达成",
@@ -587,34 +612,68 @@ while true do
         end
     end
 
-    -- 金额通知
+    -- ⚠️ 掉线检测
+    if tick() - lastMoveTime >= idleThreshold and not webhookDisabled then
+        webhookDisabled = true
+        dispatchWebhook({
+            embeds = {{
+                title = "⚠️ 掉线检测",
+                description = string.format(
+                    "**游戏**: %s\n**用户**: %s\n检测到玩家掉线，请查看",
+                    gameName, username),
+                color = 16753920,
+                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                footer = { text = "作者: tongblx · Pluto-X" }
+            }}
+        })
+        UILibrary:Notify({
+            Title = "掉线疑似",
+            Text = "检测到玩家长时间未移动，已停止发送 Webhook",
+            Duration = 5
+        })
+    end
+
+    -- 💰 金额通知逻辑
     local interval = currentTime - lastSendTime
-    if config.notifyCash and currentCurrency and interval >= getNotificationIntervalSeconds() then
+    if config.notifyCash and currentCurrency and interval >= getNotificationIntervalSeconds() and not webhookDisabled then
         local earnedChange = currentCurrency - lastCurrency
+
+        local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
+        local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
+        local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
+
         local embed = {
             title = "Pluto-X",
             description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
-            fields = {{
-                name = "💰 金额通知",
-                value = string.format(
-                    "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",
-                    formatNumber(currentCurrency),
-                    (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
-                    (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)
-                ),
-                inline = false
-            }},
+            fields = {
+                {
+                    name = "💰 金额通知",
+                    value = string.format(
+                        "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",
+                        formatNumber(currentCurrency),
+                        (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
+                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)
+                    ),
+                    inline = false
+                },
+                {
+                    name = "⌛ 下次通知",
+                    value = string.format("%s（%s）", countdownR, countdownT),
+                    inline = false
+                }
+            },
             color = PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "作者: tongblx · Pluto-X" }
         }
+
         local webhookSuccess = dispatchWebhook({ embeds = { embed } })
         if webhookSuccess then
             lastSendTime = currentTime
             lastCurrency = currentCurrency
             UILibrary:Notify({
                 Title = "定时通知",
-                Text = "Webhook 已发送，下次时间: " .. os.date("%Y-%m-%d %H:%M:%S", currentTime + getNotificationIntervalSeconds()),
+                Text = "Webhook 已发送，下次时间: " .. os.date("%Y-%m-%d %H:%M:%S", nextNotifyTimestamp),
                 Duration = 5
             })
         else
@@ -626,5 +685,5 @@ while true do
         end
     end
 
-    wait(1)
+    wait(checkInterval)
 end

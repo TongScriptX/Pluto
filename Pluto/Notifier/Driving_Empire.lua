@@ -881,7 +881,7 @@ while true do
                 end
                 UILibrary:Notify({
                     Title = "定时通知",
-                    Text = "Webhook 已发送，下次时间: " .. countdownT,
+                    Text = "Webhook 已发送，下次时间: " .. os.date("%Y-%m-%d %H:%M:%S", nextNotifyTimestamp),
                     Duration = 5
                 })
                 if shouldShutdown then
