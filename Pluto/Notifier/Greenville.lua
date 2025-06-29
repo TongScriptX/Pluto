@@ -552,15 +552,26 @@ end
 local unchangedCount = 0
 local webhookDisabled = false
 
--- 掉线检测初始化
+-- 时间与检测初始化
+local startTime = os.time()
+local lastSendTime = 0
+local lastCurrency = nil
 local lastMoveTime = tick()
 local lastPosition = nil
-local idleThreshold = 300 -- 超过300秒未移动则判定掉线
+local idleThreshold = 300
 local checkInterval = 1
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
+
+-- 格式化运行时间
+local function formatElapsedTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+    return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
+end
 
 -- 每帧检测玩家移动
 game:GetService("RunService").RenderStepped:Connect(function()
@@ -636,7 +647,13 @@ while true do
     -- 💰 金额通知逻辑
     local interval = currentTime - lastSendTime
     if config.notifyCash and currentCurrency and interval >= getNotificationIntervalSeconds() and not webhookDisabled then
-        local earnedChange = currentCurrency - lastCurrency
+        local earnedChange = currentCurrency - (lastCurrency or currentCurrency)
+        local elapsedTime = currentTime - startTime
+        local avgMoney = "0"
+        if elapsedTime > 0 then
+            local rawAvg = totalChange / (elapsedTime / 3600)
+            avgMoney = formatNumber(tonumber(string.format("%.2f", rawAvg)))
+        end
 
         local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
         local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
@@ -649,10 +666,13 @@ while true do
                 {
                     name = "💰 金额通知",
                     value = string.format(
-                        "**当前金额**: %s\n**总变化**:%s%s\n**本次变化**:%s%s",
+                        "**用户名**: %s\n**已运行时间**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
+                        username,
+                        formatElapsedTime(elapsedTime),
                         formatNumber(currentCurrency),
+                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
                         (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
-                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange)
+                        avgMoney
                     ),
                     inline = false
                 },
