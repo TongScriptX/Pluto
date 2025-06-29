@@ -693,6 +693,7 @@ local webhookDisabled = false
 
 -- 初始化变量
 local lastMoveTime = tick()
+local lastPosition = nil
 local idleThreshold = 180 -- 超过180秒没动算掉线
 local checkInterval = 1 -- 每秒检测一次
 
@@ -700,10 +701,16 @@ local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- 监听玩家移动方向变化
-humanoid:GetPropertyChangedSignal("MoveDirection"):Connect(function()
-    if humanoid.MoveDirection.Magnitude > 0 then
-        lastMoveTime = tick()
+-- 每帧检测位置变化
+game:GetService("RunService").RenderStepped:Connect(function()
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        if lastPosition then
+            if (hrp.Position - lastPosition).Magnitude > 0.1 then
+                lastMoveTime = tick()
+            end
+        end
+        lastPosition = hrp.Position
     end
 end)
 
@@ -813,7 +820,7 @@ while true do
         else
             print("[Main Loop] 发送通知")
 
-            local nextInterval = getNotificationIntervalSeconds() - (currentTime - lastSendTime)
+            local nextInterval = math.max(0, getNotificationIntervalSeconds() - (currentTime - lastSendTime))
             local minutes = math.floor(nextInterval / 60)
             local seconds = nextInterval % 60
             local countdownText = string.format("下次通知 %d 分 %d 秒", minutes, seconds)
