@@ -8,7 +8,7 @@ local lastWebhookUrl = ""
 local lastSendTime = os.time()
 local lastCurrency = initialCurrency
 --调试模式
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 
 -- 调试打印函数
 local function debugLog(...)
@@ -750,14 +750,14 @@ while true do
         end
     end
 
-    -- 检测玩家长时间未移动（掉线疑似）
+    -- 检测玩家长时间未移动（掉线检测）
     if tick() - lastMoveTime >= idleThreshold and not webhookDisabled then
         webhookDisabled = true
         dispatchWebhook({
             embeds = {{
-                title = "⚠️ 掉线疑似检测",
+                title = "⚠️ 掉线检测",
                 description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n检测到玩家长时间未移动，可能已掉线。",
+                    "**游戏**: %s\n**用户**: %s\n检测到玩家掉线，请查看",
                     gameName, username),
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -798,7 +798,7 @@ while true do
                 embeds = {{
                     title = "⚠️ 金额长时间未变化",
                     description = string.format(
-                        "**游戏**: %s\n**用户**: %s\n检测到连续两次金额无变化，可能已断开或数据异常。",
+                        "**游戏**: %s\n**用户**: %s\n检测到连续两次金额无变化，可能已断开或数据异常",
                         gameName, username),
                     color = 16753920,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -816,7 +816,7 @@ while true do
             local nextInterval = getNotificationIntervalSeconds() - (currentTime - lastSendTime)
             local minutes = math.floor(nextInterval / 60)
             local seconds = nextInterval % 60
-            local countdownText = string.format("下次通知剩余 %d 分 %d 秒", minutes, seconds)
+            local countdownText = string.format("下次通知 %d 分 %d 秒", minutes, seconds)
 
             local embed = {
                 title = "Pluto-X",
