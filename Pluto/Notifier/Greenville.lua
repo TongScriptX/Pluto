@@ -558,7 +558,7 @@ local lastSendTime = 0
 local lastCurrency = nil
 local lastMoveTime = tick()
 local lastPosition = nil
-local idleThreshold = 300
+local idleThreshold = 600
 local checkInterval = 1
 
 local player = game.Players.LocalPlayer
