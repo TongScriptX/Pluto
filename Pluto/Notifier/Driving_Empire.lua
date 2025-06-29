@@ -852,7 +852,7 @@ while true do
                 table.insert(embed.fields, {
                     name = "💰金额通知",
                     value = string.format(
-                        "**用户名**: %s\n**已运行时间**: %s 秒\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
+                        "**用户名**: %s\n**已运行时间**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
                         username,
                         formatElapsedTime(elapsedTime),
                         formatNumber(currentCurrency),
