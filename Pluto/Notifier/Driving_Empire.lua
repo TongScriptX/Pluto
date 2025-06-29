@@ -819,20 +819,14 @@ while true do
         else
             print("[Main Loop] 发送通知")
 
-            local nextInterval = math.max(0, getNotificationIntervalSeconds() - interval)
-            local nextNotifyTimestamp = currentTime + nextInterval
+            -- 这里用 lastSendTime + 配置间隔，保证准确的下次通知时间
+            local nextNotifyTimestamp = lastSendTime + getNotificationIntervalSeconds()
             local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
             local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
 
-            local description = string.format(
-                "**游戏**: %s\n**用户**: %s\n\n下次通知：%s（%s）",
-                gameName, username,
-                countdownR, countdownT
-            )
-
             local embed = {
                 title = "Pluto-X",
-                description = description,
+                description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
                 fields = {},
                 color = PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -869,6 +863,13 @@ while true do
                     shouldShutdown = true
                 end
             end
+
+            -- 下次通知字段放排行榜后面
+            table.insert(embed.fields, {
+                name = "⌛ 下次通知",
+                value = string.format("%s（%s）", countdownR, countdownT),
+                inline = false
+            })
 
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
