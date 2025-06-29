@@ -727,7 +727,7 @@ while true do
 
     local shouldShutdown = false
 
-    -- 🎯 目标金额检测
+    -- 目标金额监测
     if not webhookDisabled and config.enableTargetCurrency and currentCurrency
        and currentCurrency >= config.targetCurrency
        and config.targetCurrency > 0 then
@@ -792,7 +792,7 @@ while true do
         end
 
         if currentCurrency == lastCurrency and totalChange == 0 and earnedChange == 0 then
-            unchangedCount += 1
+            unchangedCount = (unchangedCount or 0) + 1
             debugLog("[Main Loop] 金额未变化次数:", unchangedCount)
         else
             unchangedCount = 0
@@ -824,18 +824,19 @@ while true do
             local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
             local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
 
+            local description = string.format(
+                "**游戏**: %s\n**用户**: %s\n\n下次通知：%s（%s）",
+                gameName, username,
+                countdownR, countdownT
+            )
+
             local embed = {
                 title = "Pluto-X",
-                description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
+                description = description,
                 fields = {},
                 color = PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = {
-                    text = string.format(
-                        "作者: tongblx · Pluto-X ｜ 下次通知 %s (时间: %s)",
-                        countdownR, countdownT
-                    )
-                }
+                footer = { text = "作者: tongblx · Pluto-X" }
             }
 
             if config.notifyCash and currentCurrency then
