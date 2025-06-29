@@ -690,6 +690,7 @@ end
 
 local unchangedCount = 0
 local webhookDisabled = false
+local startTime = os.time()
 
 -- 初始化变量
 local lastMoveTime = tick()
