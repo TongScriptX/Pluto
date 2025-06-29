@@ -714,9 +714,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
--- 主循环  
-local stableLastSendTime = stableLastSendTime or lastSendTime
-
+-- 主循环
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
@@ -729,7 +727,7 @@ while true do
 
     local shouldShutdown = false
 
-    -- 目标金额监测
+    -- 🎯 目标金额监测
     if not webhookDisabled and config.enableTargetCurrency and currentCurrency
        and currentCurrency >= config.targetCurrency
        and config.targetCurrency > 0 then
@@ -759,7 +757,7 @@ while true do
         end
     end
 
-    -- 掉线检测（长时间未移动）
+    -- ⚠️ 掉线检测
     if tick() - lastMoveTime >= idleThreshold and not webhookDisabled then
         webhookDisabled = true
         dispatchWebhook({
@@ -780,7 +778,7 @@ while true do
         })
     end
 
-    -- 通知间隔计算
+    -- 🕒 通知间隔计算
     local interval = currentTime - lastSendTime
     debugLog("[Main Loop] 当前时间:", currentTime, "上次发送时间:", lastSendTime, "间隔:", interval, "通知间隔秒数:", getNotificationIntervalSeconds())
     debugLog("[Main Loop] 金额监测:", config.notifyCash, "排行榜监测:", config.notifyLeaderboard, "上榜踢出:", config.leaderboardKick)
@@ -794,7 +792,7 @@ while true do
         end
 
         if currentCurrency == lastCurrency and totalChange == 0 and earnedChange == 0 then
-            unchangedCount = (unchangedCount or 0) + 1
+            unchangedCount += 1
             debugLog("[Main Loop] 金额未变化次数:", unchangedCount)
         else
             unchangedCount = 0
@@ -821,7 +819,7 @@ while true do
         else
             print("[Main Loop] 发送通知")
 
-            local nextNotifyTimestamp = stableLastSendTime + getNotificationIntervalSeconds()
+            local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
             local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
             local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
 
@@ -834,6 +832,7 @@ while true do
                 footer = { text = "作者: tongblx · Pluto-X" }
             }
 
+            -- 💰 金额通知
             if config.notifyCash and currentCurrency then
                 table.insert(embed.fields, {
                     name = "💰金额通知",
@@ -847,6 +846,7 @@ while true do
                 })
             end
 
+            -- 🏆 排行榜
             if config.notifyLeaderboard or config.leaderboardKick then
                 local currentRank, isOnLeaderboard = fetchPlayerRank()
                 local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"
@@ -865,16 +865,16 @@ while true do
                 end
             end
 
-            -- 下次通知字段，放排行榜字段后面
+            -- ⌛ 下次通知字段，放排行榜之后
             table.insert(embed.fields, {
                 name = "⌛ 下次通知",
                 value = string.format("%s（%s）", countdownR, countdownT),
                 inline = false
             })
 
+            -- Webhook 发送
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
-                stableLastSendTime = nextNotifyTimestamp
                 lastSendTime = currentTime
                 if config.notifyCash and currentCurrency then
                     lastCurrency = currentCurrency
