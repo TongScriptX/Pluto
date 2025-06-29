@@ -715,13 +715,20 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
+local function formatElapsedTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+    return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
+end
+
 -- 主循环
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
 
     local totalChange = 0
-    if currentCurrency and lastCurrency then
+    if currentCurrency and initialCurrency then
         totalChange = currentCurrency - initialCurrency
     end
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
@@ -838,14 +845,16 @@ while true do
                 local elapsedTime = currentTime - startTime
                 local avgMoney = "0"
                 if elapsedTime > 0 then
-                    avgMoney = string.format("%.2f", totalChange / (elapsedTime / 3600))
+                    local rawAvg = totalChange / (elapsedTime / 3600)
+                    avgMoney = formatNumber(tonumber(string.format("%.2f", rawAvg)))
                 end
+
                 table.insert(embed.fields, {
                     name = "💰金额通知",
                     value = string.format(
                         "**用户名**: %s\n**已运行时间**: %s 秒\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
                         username,
-                        elapsedTime,
+                        formatElapsedTime(elapsedTime),
                         formatNumber(currentCurrency),
                         (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
                         (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
@@ -874,7 +883,7 @@ while true do
                 end
             end
 
-            -- ⌛ 下次通知字段，放排行榜之后
+            -- ⌛ 下次通知字段
             table.insert(embed.fields, {
                 name = "⌛ 下次通知",
                 value = string.format("%s（%s）", countdownR, countdownT),
