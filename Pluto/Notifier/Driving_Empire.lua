@@ -727,7 +727,7 @@ while true do
 
     local shouldShutdown = false
 
-    -- 目标金额监测
+    -- 🎯 目标金额检测
     if not webhookDisabled and config.enableTargetCurrency and currentCurrency
        and currentCurrency >= config.targetCurrency
        and config.targetCurrency > 0 then
@@ -757,7 +757,7 @@ while true do
         end
     end
 
-    -- 掉线检测：玩家长时间未移动
+    -- 掉线检测（长时间未移动）
     if tick() - lastMoveTime >= idleThreshold and not webhookDisabled then
         webhookDisabled = true
         dispatchWebhook({
@@ -778,7 +778,7 @@ while true do
         })
     end
 
-    -- 计算通知间隔
+    -- 通知间隔计算
     local interval = currentTime - lastSendTime
     debugLog("[Main Loop] 当前时间:", currentTime, "上次发送时间:", lastSendTime, "间隔:", interval, "通知间隔秒数:", getNotificationIntervalSeconds())
     debugLog("[Main Loop] 金额监测:", config.notifyCash, "排行榜监测:", config.notifyLeaderboard, "上榜踢出:", config.leaderboardKick)
@@ -791,9 +791,8 @@ while true do
             earnedChange = currentCurrency - lastCurrency
         end
 
-        -- 检测是否两次都未变化
         if currentCurrency == lastCurrency and totalChange == 0 and earnedChange == 0 then
-            unchangedCount = (unchangedCount or 0) + 1
+            unchangedCount += 1
             debugLog("[Main Loop] 金额未变化次数:", unchangedCount)
         else
             unchangedCount = 0
@@ -822,9 +821,8 @@ while true do
 
             local nextInterval = math.max(0, getNotificationIntervalSeconds() - interval)
             local nextNotifyTimestamp = currentTime + nextInterval
-
-            -- 这里倒计时文本传递给 Discord 使用相对时间格式，Discord 会自动显示剩余时间
-            local countdownText = string.format("<t:%d:R>", nextNotifyTimestamp)
+            local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
+            local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
 
             local embed = {
                 title = "Pluto-X",
@@ -832,7 +830,12 @@ while true do
                 fields = {},
                 color = PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = string.format("作者: tongblx · Pluto-X ｜ 下次通知 %s", countdownText) }
+                footer = {
+                    text = string.format(
+                        "作者: tongblx · Pluto-X ｜ 下次通知 %s (时间: %s)",
+                        countdownR, countdownT
+                    )
+                }
             }
 
             if config.notifyCash and currentCurrency then
@@ -874,7 +877,7 @@ while true do
                 end
                 UILibrary:Notify({
                     Title = "定时通知",
-                    Text = "Webhook 已发送，下次时间: " .. getNextNotificationTime(),
+                    Text = "Webhook 已发送，下次时间: " .. countdownT,
                     Duration = 5
                 })
                 if shouldShutdown then
