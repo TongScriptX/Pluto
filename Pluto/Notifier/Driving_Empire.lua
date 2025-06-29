@@ -715,6 +715,8 @@ game:GetService("RunService").RenderStepped:Connect(function()
 end)
 
 -- 主循环  
+local stableLastSendTime = stableLastSendTime or lastSendTime
+
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
@@ -819,8 +821,7 @@ while true do
         else
             print("[Main Loop] 发送通知")
 
-            -- 这里用 lastSendTime + 配置间隔，保证准确的下次通知时间
-            local nextNotifyTimestamp = lastSendTime + getNotificationIntervalSeconds()
+            local nextNotifyTimestamp = stableLastSendTime + getNotificationIntervalSeconds()
             local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
             local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
 
@@ -864,7 +865,7 @@ while true do
                 end
             end
 
-            -- 下次通知字段放排行榜后面
+            -- 下次通知字段，放排行榜字段后面
             table.insert(embed.fields, {
                 name = "⌛ 下次通知",
                 value = string.format("%s（%s）", countdownR, countdownT),
@@ -873,6 +874,7 @@ while true do
 
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
+                stableLastSendTime = nextNotifyTimestamp
                 lastSendTime = currentTime
                 if config.notifyCash and currentCurrency then
                     lastCurrency = currentCurrency
