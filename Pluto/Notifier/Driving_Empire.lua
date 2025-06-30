@@ -846,7 +846,7 @@ while true do
                 local avgMoney = "0"
                 if elapsedTime > 0 then
                     local rawAvg = totalChange / (elapsedTime / 3600)
-                    avgMoney = formatNumber(tonumber(string.format("%.2f", rawAvg)))
+                    avgMoney = formatNumber(math.floor(rawAvg + 0.5))
                 end
 
                 table.insert(embed.fields, {
