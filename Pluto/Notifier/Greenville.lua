@@ -558,7 +558,7 @@ local lastSendTime = 0
 local lastCurrency = nil
 local lastMoveTime = tick()
 local lastPosition = nil
-local idleThreshold = 999999 -- 有问题记得改
+local idleThreshold = 300 -- 有问题记得改
 local checkInterval = 1
 
 local player = game.Players.LocalPlayer
@@ -575,7 +575,9 @@ end
 
 -- 每帧检测玩家移动
 game:GetService("RunService").RenderStepped:Connect(function()
-    local hrp = character:FindFirstChild("HumanoidRootPart")
+    local newCharacter = player.Character or player.CharacterAdded:Wait()
+    local hrp = newCharacter:FindFirstChild("HumanoidRootPart")
+
     if hrp then
         if lastPosition and (hrp.Position - lastPosition).Magnitude > 0.1 then
             lastMoveTime = tick()
