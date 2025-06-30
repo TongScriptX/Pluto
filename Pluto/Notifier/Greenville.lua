@@ -558,7 +558,7 @@ local lastSendTime = 0
 local lastCurrency = nil
 local lastMoveTime = tick()
 local lastPosition = nil
-local idleThreshold = 300 -- 有问题记得改
+local idleThreshold = 300
 local checkInterval = 1
 
 local player = game.Players.LocalPlayer
@@ -654,7 +654,7 @@ while true do
         local avgMoney = "0"
         if elapsedTime > 0 then
             local rawAvg = totalChange / (elapsedTime / 3600)
-            avgMoney = formatNumber(tonumber(string.format("%.2f", rawAvg)))
+            avgMoney = formatNumber(math.floor(rawAvg + 0.5))
         end
 
         local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
