@@ -60,7 +60,7 @@ local config = {
 }
 
 -- 颜色定义
-local PRIMARY_COLOR = 4149685 -- #3F51B5
+local PRIMARY_COLOR = 2632257 -- #282659
 
 -- 获取游戏信息
 local gameName = "未知游戏"
