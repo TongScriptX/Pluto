@@ -623,7 +623,7 @@ local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Position = UDim2.new(0, 5, 0, 5)
 })
 
--- 标签页：主要功能（确保已存在）
+-- 标签页：主要功能
 local mainFeatureTab, mainFeatureContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "主要功能",
     Active = false
@@ -631,6 +631,7 @@ local mainFeatureTab, mainFeatureContent = UILibrary:CreateTab(sidebar, titleLab
 
 -- 卡片：在线时长奖励
 local onlineRewardCard = UILibrary:CreateCard(mainFeatureContent)
+
 local toggleOnlineReward = UILibrary:CreateToggle(onlineRewardCard, {
     Text = "在线时长奖励",
     DefaultState = config.onlineRewardEnabled,
@@ -643,12 +644,18 @@ local toggleOnlineReward = UILibrary:CreateToggle(onlineRewardCard, {
         })
         saveConfig()
         if state then
-            claimPlaytimeRewards() -- 启动领取循环
+            claimPlaytimeRewards()
         end
         debugLog("在线时长奖励开关状态:", state)
     end
 })
+
 debugLog("在线时长奖励开关创建:", toggleOnlineReward.Parent and "父对象存在" or "无父对象")
+-- 加载配置时若开关为开启状态，自动启动在线奖励领取
+if config.onlineRewardEnabled then
+    debugLog("[PlaytimeRewards] 配置为开启状态，尝试启动...")
+    claimPlaytimeRewards()
+end
 
 -- 标签页：通知
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
