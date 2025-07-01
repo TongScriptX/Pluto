@@ -367,6 +367,9 @@ pcall(initTargetCurrency)
 
 -- 在线时长奖励领取
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local player = game.Players.LocalPlayer
+
 -- 在线时长奖励领取函数
 local function claimPlaytimeRewards()
     if not config.onlineRewardEnabled then
@@ -374,9 +377,8 @@ local function claimPlaytimeRewards()
         return
     end
 
-    -- 使用协程运行领取循环，避免阻塞主脚本
     spawn(function()
-        local rewardCheckInterval = 60 -- 每分钟检查一次（单位：秒）
+        local rewardCheckInterval = 60 -- 每分钟检查一次
 
         while config.onlineRewardEnabled do
             if not game:IsLoaded() then
@@ -399,7 +401,6 @@ local function claimPlaytimeRewards()
                 continue
             end
 
-            -- 获取玩家 Stats（类型为 ScreenGui）
             local statsGui
             for _, v in ipairs(gui:GetChildren()) do
                 if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
@@ -419,9 +420,8 @@ local function claimPlaytimeRewards()
                 continue
             end
 
-            -- 解析 ClaimedPlayTimeRewards JSON 字符串
+            -- 解析 ClaimedPlayTimeRewards
             local claimedList = {}
-            local allClaimed = true
             local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
             if claimedRaw and claimedRaw:IsA("StringValue") then
                 local success, parsed = pcall(function()
@@ -430,9 +430,6 @@ local function claimPlaytimeRewards()
                 if success and typeof(parsed) == "table" then
                     for k, v in pairs(parsed) do
                         claimedList[tonumber(k)] = v
-                        if v ~= true then
-                            allClaimed = false
-                        end
                     end
                 else
                     UILibrary:Notify({
@@ -446,10 +443,17 @@ local function claimPlaytimeRewards()
                 end
             else
                 warn("[PlaytimeRewards] 未找到 ClaimedPlayTimeRewards")
-                allClaimed = false
             end
 
-            -- 如果所有奖励均已领取，跳过本次尝试但继续循环
+            -- 检查是否还有未领取的奖励
+            local allClaimed = true
+            for i = 1, 7 do
+                if not claimedList[i] then
+                    allClaimed = false
+                    break
+                end
+            end
+
             if allClaimed then
                 UILibrary:Notify({
                     Title = "奖励状态",
@@ -476,7 +480,6 @@ local function claimPlaytimeRewards()
                 continue
             end
 
-            -- 获取远程奖励配置
             local success, rewardsConfig = pcall(function()
                 return remotes:WaitForChild("GetRemoteConfigPath"):InvokeServer("driving-empire", "PlaytimeRewards")
             end)
@@ -485,7 +488,6 @@ local function claimPlaytimeRewards()
                 rewardsConfig = {}
             end
 
-            -- 查找奖励 7（GUI可能找不到）
             local function findReward7()
                 for _, child in ipairs(rewardsRoot:GetChildren()) do
                     if tonumber(child.Name) == 7 then
@@ -495,7 +497,6 @@ local function claimPlaytimeRewards()
                 return nil
             end
 
-            -- 主逻辑
             for i = 1, 7 do
                 debugLog("----------------------------------------")
                 local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
@@ -562,7 +563,6 @@ local function claimPlaytimeRewards()
                 end
             end
 
-            -- 等待下一次检查
             debugLog("[PlaytimeRewards] 已完成一次领取尝试，下次检查时间: ", os.date("%Y-%m-%d %H:%M:%S", os.time() + rewardCheckInterval))
             task.wait(rewardCheckInterval)
         end
