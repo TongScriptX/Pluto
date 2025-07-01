@@ -56,7 +56,7 @@ local config = {
     welcomeSent = false,
     targetCurrency = 0,
     enableTargetKick = false,
-    onlineRewardEnabled = false
+    onlineRewardEnabled = false,
 }
 
 -- 颜色定义
