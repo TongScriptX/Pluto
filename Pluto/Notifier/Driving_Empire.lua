@@ -399,6 +399,68 @@ local function claimPlaytimeRewards()
                 continue
             end
 
+            -- 获取玩家 Stats（类型为 ScreenGui）
+            local statsGui
+            for _, v in ipairs(gui:GetChildren()) do
+                if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
+                    statsGui = v
+                    break
+                end
+            end
+
+            if not statsGui then
+                UILibrary:Notify({
+                    Title = "领取失败",
+                    Text = "未找到玩家 Stats",
+                    Duration = 5
+                })
+                warn("[PlaytimeRewards] 未找到玩家 Stats")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            -- 解析 ClaimedPlayTimeRewards JSON 字符串
+            local claimedList = {}
+            local allClaimed = true
+            local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
+            if claimedRaw and claimedRaw:IsA("StringValue") then
+                local success, parsed = pcall(function()
+                    return HttpService:JSONDecode(claimedRaw.Value)
+                end)
+                if success and typeof(parsed) == "table" then
+                    for k, v in pairs(parsed) do
+                        claimedList[tonumber(k)] = v
+                        if v ~= true then
+                            allClaimed = false
+                        end
+                    end
+                else
+                    UILibrary:Notify({
+                        Title = "领取失败",
+                        Text = "ClaimedPlayTimeRewards JSON 解析失败",
+                        Duration = 5
+                    })
+                    warn("[PlaytimeRewards] JSON 解析失败")
+                    task.wait(rewardCheckInterval)
+                    continue
+                end
+            else
+                warn("[PlaytimeRewards] 未找到 ClaimedPlayTimeRewards")
+                allClaimed = false
+            end
+
+            -- 如果所有奖励均已领取，跳过本次尝试但继续循环
+            if allClaimed then
+                UILibrary:Notify({
+                    Title = "奖励状态",
+                    Text = "所有在线时长奖励已领取，等待重置",
+                    Duration = 5
+                })
+                debugLog("[PlaytimeRewards] 所有奖励已领取，等待重置")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
             local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
             local uiInteraction = remotes and remotes:FindFirstChild("UIInteraction")
             local playRewards = remotes and remotes:FindFirstChild("PlayRewards")
@@ -414,7 +476,7 @@ local function claimPlaytimeRewards()
                 continue
             end
 
-            -- 获取remote配置（包含奖励7）
+            -- 获取远程奖励配置
             local success, rewardsConfig = pcall(function()
                 return remotes:WaitForChild("GetRemoteConfigPath"):InvokeServer("driving-empire", "PlaytimeRewards")
             end)
@@ -423,6 +485,7 @@ local function claimPlaytimeRewards()
                 rewardsConfig = {}
             end
 
+            -- 查找奖励 7（GUI可能找不到）
             local function findReward7()
                 for _, child in ipairs(rewardsRoot:GetChildren()) do
                     if tonumber(child.Name) == 7 then
@@ -432,6 +495,7 @@ local function claimPlaytimeRewards()
                 return nil
             end
 
+            -- 主逻辑
             for i = 1, 7 do
                 debugLog("----------------------------------------")
                 local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
@@ -441,7 +505,8 @@ local function claimPlaytimeRewards()
 
                 local amountText = "未知"
                 local stateText = "未知"
-                local canCollect = false
+                local canClaim = false
+                local alreadyClaimed = claimedList[i] == true
 
                 if rewardItem then
                     local holder = rewardItem:FindFirstChild("Holder")
@@ -450,33 +515,30 @@ local function claimPlaytimeRewards()
                         amountText = amountBtnText.ButtonText.Text
                     end
 
-                    local collected = holder and holder:FindFirstChild("Collected")
                     local collect = holder and holder:FindFirstChild("Collect")
-                    local notSelected = holder and holder:FindFirstChild("NotSelected")
+                    if collect and collect.Visible and not alreadyClaimed then
+                        canClaim = true
+                    end
 
-                    if collected and collected.Visible then
+                    if alreadyClaimed then
                         stateText = "已领取"
-                    elseif collect and collect.Visible then
+                    elseif canClaim then
                         stateText = "可领取"
-                        canCollect = true
-                    elseif notSelected and notSelected.Visible then
+                    else
                         stateText = "未达成"
                     end
                 else
-                    local configReward = rewardsConfig[7]
-                    if configReward then
-                        amountText = tostring(configReward.Amount or configReward.Name or "未知")
+                    local cfg = rewardsConfig[i]
+                    if cfg then
+                        amountText = tostring(cfg.Amount or cfg.Name or "未知")
                     end
-                    if i == 7 then
-                        stateText = "可领取"
-                        canCollect = true
-                    end
+                    stateText = alreadyClaimed and "已领取" or "未达成"
                 end
 
                 debugLog("[PlaytimeRewards] 奖励 " .. i .. " 按钮文字：" .. amountText)
                 debugLog("[PlaytimeRewards] 奖励 " .. i .. " 状态：" .. stateText)
 
-                if canCollect then
+                if canClaim then
                     local success, err = pcall(function()
                         uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
                         task.wait(0.2)
