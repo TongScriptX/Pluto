@@ -55,7 +55,7 @@ local config = {
     notificationInterval = 30,
     welcomeSent = false,
     targetCurrency = 0,
-    enableTargetKick = false
+    enableTargetKick = false,
     onlineRewardEnabled = false
 }
 
