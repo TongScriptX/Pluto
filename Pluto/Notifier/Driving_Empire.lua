@@ -378,7 +378,7 @@ local function claimPlaytimeRewards()
     end
 
     spawn(function()
-        local rewardCheckInterval = 60 -- 每分钟检查一次
+        local rewardCheckInterval = 60
 
         while config.onlineRewardEnabled do
             if not game:IsLoaded() then
@@ -420,7 +420,6 @@ local function claimPlaytimeRewards()
                 continue
             end
 
-            -- 解析 ClaimedPlayTimeRewards
             local claimedList = {}
             local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
             if claimedRaw and claimedRaw:IsA("StringValue") then
@@ -445,7 +444,6 @@ local function claimPlaytimeRewards()
                 warn("[PlaytimeRewards] 未找到 ClaimedPlayTimeRewards")
             end
 
-            -- 检查是否还有未领取的奖励
             local allClaimed = true
             for i = 1, 7 do
                 if not claimedList[i] then
@@ -533,7 +531,14 @@ local function claimPlaytimeRewards()
                     if cfg then
                         amountText = tostring(cfg.Amount or cfg.Name or "未知")
                     end
-                    stateText = alreadyClaimed and "已领取" or "未达成"
+
+                    -- 默认奖励7可领取处理逻辑
+                    if not alreadyClaimed and i == 7 then
+                        canClaim = true
+                        stateText = "尝试领取（缺少 GUI）"
+                    else
+                        stateText = alreadyClaimed and "已领取" or "未达成"
+                    end
                 end
 
                 debugLog("[PlaytimeRewards] 奖励 " .. i .. " 按钮文字：" .. amountText)
