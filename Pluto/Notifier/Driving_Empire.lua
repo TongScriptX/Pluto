@@ -8,7 +8,7 @@ local lastWebhookUrl = ""
 local lastSendTime = os.time()
 local lastCurrency = initialCurrency
 --调试模式
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 -- 调试打印函数
 local function debugLog(...)
@@ -56,6 +56,7 @@ local config = {
     welcomeSent = false,
     targetCurrency = 0,
     enableTargetKick = false
+    onlineRewardEnabled = false
 }
 
 -- 颜色定义
@@ -114,11 +115,11 @@ local function loadConfig()
             for k, v in pairs(result) do
                 config[k] = v
             end
-            debugLog("[Config] webhookUrl:", config.webhookUrl)
-            debugLog("[Config] notifyCash:", config.notifyCash)
-            debugLog("[Config] notifyLeaderboard:", config.notifyLeaderboard)
-            debugLog("[Config] leaderboardKick:", config.leaderboardKick)
-            debugLog("[Config] notificationInterval:", config.notificationInterval)
+            --debugLog("[Config] webhookUrl:", config.webhookUrl)
+            --debugLog("[Config] notifyCash:", config.notifyCash)
+            --debugLog("[Config] notifyLeaderboard:", config.notifyLeaderboard)
+            --debugLog("[Config] leaderboardKick:", config.leaderboardKick)
+            --debugLog("[Config] notificationInterval:", config.notificationInterval)
             UILibrary:Notify({ Title = "配置已加载", Text = "配置文件加载成功", Duration = 5 })
         else
             UILibrary:Notify({ Title = "配置错误", Text = "无法解析配置文件", Duration = 5 })
@@ -139,7 +140,7 @@ end
 
 pcall(loadConfig)
 
--- 补充函数：统一获取通知间隔（秒）
+-- 统一获取通知间隔（秒）
 local function getNotificationIntervalSeconds()
     return (config.notificationInterval or 5) * 60
 end
@@ -284,8 +285,8 @@ local function dispatchWebhook(payload)
         return false
     end
 
-    debugLog("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
-    debugLog("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
+    --debugLog("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
+    --debugLog("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
 
     local success, res = pcall(function()
         return requestFunc({
@@ -364,6 +365,150 @@ local function initTargetCurrency()
 end
 pcall(initTargetCurrency)
 
+-- 在线时长奖励领取
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- 在线时长奖励领取函数
+local function claimPlaytimeRewards()
+    if not config.onlineRewardEnabled then
+        debugLog("[PlaytimeRewards] 在线时长奖励功能未启用")
+        return
+    end
+
+    -- 使用协程运行领取循环，避免阻塞主脚本
+    spawn(function()
+        local rewardCheckInterval = 60 -- 每分钟检查一次（单位：秒）
+
+        while config.onlineRewardEnabled do
+            if not game:IsLoaded() then
+                game.Loaded:Wait()
+            end
+
+            local gui = player:WaitForChild("PlayerGui", 5)
+            local mainHUD = gui and gui:WaitForChild("MainHUD", 5)
+            local challenges = mainHUD and mainHUD:WaitForChild("DailyChallenges", 5)
+            local rewardsRoot = challenges and challenges.holder.PlaytimeRewards.RewardsList.SmallRewards
+
+            if not rewardsRoot then
+                UILibrary:Notify({
+                    Title = "领取失败",
+                    Text = "无法找到奖励界面",
+                    Duration = 5
+                })
+                warn("[PlaytimeRewards] 未找到奖励界面")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+            local uiInteraction = remotes and remotes:FindFirstChild("UIInteraction")
+            local playRewards = remotes and remotes:FindFirstChild("PlayRewards")
+
+            if not uiInteraction or not playRewards then
+                UILibrary:Notify({
+                    Title = "领取失败",
+                    Text = "未找到远程事件 UIInteraction 或 PlayRewards",
+                    Duration = 5
+                })
+                warn("[PlaytimeRewards] 未找到远程事件")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            -- 获取remote配置（包含奖励7）
+            local success, rewardsConfig = pcall(function()
+                return remotes:WaitForChild("GetRemoteConfigPath"):InvokeServer("driving-empire", "PlaytimeRewards")
+            end)
+            if not success or type(rewardsConfig) ~= "table" then
+                warn("[PlaytimeRewards] 获取奖励配置失败")
+                rewardsConfig = {}
+            end
+
+            local function findReward7()
+                for _, child in ipairs(rewardsRoot:GetChildren()) do
+                    if tonumber(child.Name) == 7 then
+                        return child
+                    end
+                end
+                return nil
+            end
+
+            for i = 1, 7 do
+                debugLog("----------------------------------------")
+                local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
+                if i == 7 and not rewardItem then
+                    rewardItem = findReward7()
+                end
+
+                local amountText = "未知"
+                local stateText = "未知"
+                local canCollect = false
+
+                if rewardItem then
+                    local holder = rewardItem:FindFirstChild("Holder")
+                    local amountBtnText = holder and holder:FindFirstChild("Amount")
+                    if amountBtnText and amountBtnText:FindFirstChild("ButtonText") then
+                        amountText = amountBtnText.ButtonText.Text
+                    end
+
+                    local collected = holder and holder:FindFirstChild("Collected")
+                    local collect = holder and holder:FindFirstChild("Collect")
+                    local notSelected = holder and holder:FindFirstChild("NotSelected")
+
+                    if collected and collected.Visible then
+                        stateText = "已领取"
+                    elseif collect and collect.Visible then
+                        stateText = "可领取"
+                        canCollect = true
+                    elseif notSelected and notSelected.Visible then
+                        stateText = "未达成"
+                    end
+                else
+                    local configReward = rewardsConfig[7]
+                    if configReward then
+                        amountText = tostring(configReward.Amount or configReward.Name or "未知")
+                    end
+                    if i == 7 then
+                        stateText = "可领取"
+                        canCollect = true
+                    end
+                end
+
+                debugLog("[PlaytimeRewards] 奖励 " .. i .. " 按钮文字：" .. amountText)
+                debugLog("[PlaytimeRewards] 奖励 " .. i .. " 状态：" .. stateText)
+
+                if canCollect then
+                    local success, err = pcall(function()
+                        uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
+                        task.wait(0.2)
+                        playRewards:FireServer(i, false)
+                        UILibrary:Notify({
+                            Title = "奖励领取",
+                            Text = "已尝试领取奖励 ID: " .. i .. " (" .. amountText .. ")",
+                            Duration = 5
+                        })
+                        debugLog("[PlaytimeRewards] ✅ 已尝试领取奖励 ID:", i)
+                    end)
+                    if not success then
+                        UILibrary:Notify({
+                            Title = "领取失败",
+                            Text = "奖励 ID: " .. i .. " 领取出错: " .. tostring(err),
+                            Duration = 5
+                        })
+                        warn("[PlaytimeRewards] 领取奖励 ID:", i, "失败:", err)
+                    end
+                    task.wait(0.4)
+                end
+            end
+
+            -- 等待下一次检查
+            debugLog("[PlaytimeRewards] 已完成一次领取尝试，下次检查时间: ", os.date("%Y-%m-%d %H:%M:%S", os.time() + rewardCheckInterval))
+            task.wait(rewardCheckInterval)
+        end
+
+        debugLog("[PlaytimeRewards] 在线时长奖励功能已关闭，停止领取循环")
+    end)
+end
+
 -- 创建主窗口
 local window = UILibrary:CreateUIWindow()
 if not window then
@@ -410,6 +555,33 @@ local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 5)
 })
+
+-- 标签页：主要功能（确保已存在）
+local mainFeatureTab, mainFeatureContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "主要功能",
+    Active = false
+})
+
+-- 卡片：在线时长奖励
+local onlineRewardCard = UILibrary:CreateCard(mainFeatureContent)
+local toggleOnlineReward = UILibrary:CreateToggle(onlineRewardCard, {
+    Text = "在线时长奖励",
+    DefaultState = config.onlineRewardEnabled,
+    Callback = function(state)
+        config.onlineRewardEnabled = state
+        UILibrary:Notify({
+            Title = "配置更新",
+            Text = "在线时长奖励: " .. (state and "开启" or "关闭"),
+            Duration = 5
+        })
+        saveConfig()
+        if state then
+            claimPlaytimeRewards() -- 启动领取循环
+        end
+        debugLog("在线时长奖励开关状态:", state)
+    end
+})
+debugLog("在线时长奖励开关创建:", toggleOnlineReward.Parent and "父对象存在" or "无父对象")
 
 -- 标签页：通知
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
@@ -788,8 +960,8 @@ while true do
 
     -- 🕒 通知间隔计算
     local interval = currentTime - lastSendTime
-    debugLog("[Main Loop] 当前时间:", currentTime, "上次发送时间:", lastSendTime, "间隔:", interval, "通知间隔秒数:", getNotificationIntervalSeconds())
-    debugLog("[Main Loop] 金额监测:", config.notifyCash, "排行榜监测:", config.notifyLeaderboard, "上榜踢出:", config.leaderboardKick)
+    --debugLog("[Main Loop] 当前时间:", currentTime, "上次发送时间:", lastSendTime, "间隔:", interval, "通知间隔秒数:", getNotificationIntervalSeconds())
+    --debugLog("[Main Loop] 金额监测:", config.notifyCash, "排行榜监测:", config.notifyLeaderboard, "上榜踢出:", config.leaderboardKick)
 
     if not webhookDisabled and (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)
        and interval >= getNotificationIntervalSeconds() then
@@ -801,7 +973,7 @@ while true do
 
         if currentCurrency == lastCurrency and totalChange == 0 and earnedChange == 0 then
             unchangedCount += 1
-            debugLog("[Main Loop] 金额未变化次数:", unchangedCount)
+            --debugLog("[Main Loop] 金额未变化次数:", unchangedCount)
         else
             unchangedCount = 0
         end
