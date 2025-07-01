@@ -8,7 +8,7 @@ local lastWebhookUrl = ""
 local lastSendTime = os.time()
 local lastCurrency = initialCurrency
 --调试模式
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 -- 调试打印函数
 local function debugLog(...)
