@@ -378,7 +378,7 @@ local function claimPlaytimeRewards()
     end
 
     spawn(function()
-        local rewardCheckInterval = 60
+        local rewardCheckInterval = 600
 
         while config.onlineRewardEnabled do
             if not game:IsLoaded() then
