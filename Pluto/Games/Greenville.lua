@@ -47,7 +47,7 @@ local config = {
 }
 
 -- 颜色定义
-_G.PRIMARY_COLOR = Color3.fromRGB(40, 38, 89) -- 设置为 #282659
+_G.PRIMARY_COLOR = 2632265 -- 设置为 #282659
 
 -- 获取游戏信息
 local gameName = "未知游戏"
@@ -235,7 +235,7 @@ local function sendWelcomeMessage()
         embeds = {{
             title = "欢迎使用Pluto-X",
             description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
-            color = PRIMARY_COLOR,
+            color = _G.PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "作者: tongblx · Pluto-X" }
         }}
@@ -608,7 +608,7 @@ while true do
                     formatNumber(currentCurrency),
                     formatNumber(config.targetCurrency)
                 ),
-                color = PRIMARY_COLOR,
+                color = _G.PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
             }}
@@ -684,7 +684,7 @@ while true do
                     inline = false
                 }
             },
-            color = PRIMARY_COLOR,
+            color = _G.PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "作者: tongblx · Pluto-X" }
         }
