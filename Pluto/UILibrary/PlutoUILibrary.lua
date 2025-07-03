@@ -6,7 +6,7 @@ local Players = game:GetService("Players")
 local UILibrary = {}
 
 
-local PRIMARY_COLOR = rawget(_G, "PRIMARY_COLOR") or nil
+local PRIMARY_COLOR = rawget(_G, "PRIMARY_COLOR") or Color3.fromRGB(63, 81, 181)
 -- 默认主题  
 local DEFAULT_THEME = {  
     Primary = Color3.fromRGB(63, 81, 181),  
