@@ -5,17 +5,19 @@ local Players = game:GetService("Players")
 
 local UILibrary = {}
 
--- 默认主题
-local DEFAULT_THEME = {
-    Primary = Color3.fromRGB(63, 81, 181),
-    Background = Color3.fromRGB(30, 30, 30),
-    SecondaryBackground = Color3.fromRGB(46, 46, 46),
-    Accent = Color3.fromRGB(92, 107, 192),
-    Text = Color3.fromRGB(255, 255, 255),
-    Success = Color3.fromRGB(76, 175, 80),
-    Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Roboto
-}
+
+local PRIMARY_COLOR = rawget(_G, "PRIMARY_COLOR") or nil
+-- 默认主题  
+local DEFAULT_THEME = {  
+    Primary = Color3.fromRGB(63, 81, 181),  
+    Background = Color3.fromRGB(30, 30, 30),  
+    SecondaryBackground = Color3.fromRGB(46, 46, 46),  
+    Accent = Color3.fromRGB(92, 107, 192),  
+    Text = Color3.fromRGB(255, 255, 255),  
+    Success = Color3.fromRGB(76, 175, 80),  
+    Error = Color3.fromRGB(244, 67, 54),  
+    Font = Enum.Font.Roboto  
+}  
 
 -- UI 样式常量（调整为 4pt 网格）
 local UI_STYLES = {
@@ -50,24 +52,24 @@ local function getAvailableFont()
     return Enum.Font.SourceSans
 end
 
--- 当前主题
-local THEME = {
-    Primary = DEFAULT_THEME.Primary,
-    Background = DEFAULT_THEME.Background,
-    SecondaryBackground = DEFAULT_THEME.SecondaryBackground,
-    Accent = DEFAULT_THEME.Accent,
-    Text = DEFAULT_THEME.Text,
-    Success = DEFAULT_THEME.Success,
-    Error = DEFAULT_THEME.Error,
-    Font = getAvailableFont()
-}
+-- 当前主题  
+local THEME = {  
+    Primary = PRIMARY_COLOR or DEFAULT_THEME.Primary,  
+    Background = DEFAULT_THEME.Background,  
+    SecondaryBackground = DEFAULT_THEME.SecondaryBackground,  
+    Accent = DEFAULT_THEME.Accent,  
+    Text = DEFAULT_THEME.Text,  
+    Success = DEFAULT_THEME.Success,  
+    Error = DEFAULT_THEME.Error,  
+    Font = getAvailableFont()  
+}  
 
--- 验证主题值
-for key, value in pairs(THEME) do
-    if key ~= "Font" and value == nil then
-        warn("[Theme]: Invalid value for " .. key .. ", using default")
-        THEME[key] = DEFAULT_THEME[key]
-    end
+-- 验证主题值  
+for key, value in pairs(THEME) do  
+    if key ~= "Font" and value == nil then  
+        warn("[Theme]: Invalid value for " .. key .. ", using default")  
+        THEME[key] = DEFAULT_THEME[key]  
+    end  
 end
 
 -- 动画配置
@@ -267,6 +269,7 @@ function UILibrary:CreateButton(parent, options)
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
     button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
+    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.4
     button.Text = options.Text or ""

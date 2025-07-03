@@ -20,9 +20,9 @@ local function loadRemoteScript(url)
 end
 
 if placeId == DRIVING_EMPIRE_ID then
-    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Notifier/Driving_Empire.lua")
+    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Games/Driving_Empire.lua")
 elseif placeId == GREENVILLE_ID then
-    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Notifier/Greenville.lua")
+    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Games/Greenville.lua")
 else
     print("[Pluto-X]: 尚未支持，请等待")
 end
