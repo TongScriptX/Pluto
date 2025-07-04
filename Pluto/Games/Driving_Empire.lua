@@ -1026,7 +1026,7 @@ while true do
             }}
         })
         UILibrary:Notify({
-            Title = "掉线疑似",
+            Title = "掉线检测",
             Text = "检测到玩家长时间未移动，已停止发送 Webhook",
             Duration = 5
         })
@@ -1046,7 +1046,7 @@ while true do
         end
 
         if currentCurrency == lastCurrency and totalChange == 0 and earnedChange == 0 then
-            unchangedCount += 1
+            unchangedCount = unchangedCount + 1
             --debugLog("[Main Loop] 金额未变化次数:", unchangedCount)
         else
             unchangedCount = 0
