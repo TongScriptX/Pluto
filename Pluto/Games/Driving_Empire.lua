@@ -916,26 +916,33 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
     Text = "作者: tongblx",  
     SocialText = "加入 Discord 服务器",  
     socialCallback = function()  
-        pcall(function()  
-            local link = "https://discord.gg/j20v0eWU8u"  
-            local success = false  
-            if setclipboard then  
-                setclipboard(link)  
-                success = true  
-            elseif syn and syn.set_clipboard then  
-                syn.set_clipboard(link)  
-                success = true  
-            elseif clipboard and clipboard.set then  
-                clipboard.set(link)  
-                success = true  
-            end  
+        local link = "https://discord.gg/j20v0eWU8u"  
+        local success = false  
 
-            if success then  
-                UILibrary:Notify({ Title = "复制 Discord", Text = "Discord 链接已复制到剪贴板", Duration = 5 })  
-            else  
-                UILibrary:Notify({ Title = "复制 Discord", Text = "当前环境不支持剪贴板操作，请手动复制: " .. link, Duration = 5 })  
-            end  
-        end)  
+        if setclipboard then  
+            setclipboard(link)  
+            success = true  
+        elseif syn and syn.set_clipboard then  
+            syn.set_clipboard(link)  
+            success = true  
+        elseif clipboard and clipboard.set then  
+            clipboard.set(link)  
+            success = true  
+        end  
+
+        if success then  
+            UILibrary:Notify({  
+                Title = "复制 Discord",  
+                Text = "Discord 链接已复制到剪贴板",  
+                Duration = 5  
+            })  
+        else  
+            UILibrary:Notify({  
+                Title = "复制 Discord",  
+                Text = "当前环境不支持剪贴板操作，请手动复制: " .. link,  
+                Duration = 5  
+            })  
+        end  
     end  
 })
 
