@@ -70,11 +70,11 @@ local function fetchCurrentCurrency()
     end)
     if success and currencyObj then
         local currencyText = currencyObj.Text
-        -- 移除逗号和非数字字符，保留数字
-        local cleanedText = currencyText:gsub("[^0-9]", "")
+        -- 移除千位逗号，仅保留一个小数点和数字
+        local cleanedText = currencyText:gsub(",", ""):match("[0-9%.]+")
         local currencyValue = tonumber(cleanedText)
         if currencyValue then
-            return currencyValue
+            return math.floor(currencyValue) -- 保留整数部分
         end
     end
     UILibrary:Notify({ Title = "错误", Text = "无法找到金额数据", Duration = 5 })
