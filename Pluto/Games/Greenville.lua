@@ -489,6 +489,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
                     Text = "已自动开启目标金额踢出功能",
                     Duration = 5
                 })
+                saveConfig()
             end
 
             UILibrary:Notify({
