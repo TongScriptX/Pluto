@@ -562,20 +562,39 @@ end
 local unchangedCount = 0
 local webhookDisabled = false
 
--- 时间与检测初始化
+-- 增加初始化锁
+local hasInitializedCurrency = false
+
+-- 初始化初始金额
+local function initializeCurrency()
+    if hasInitializedCurrency then return end
+    local success, currencyValue = pcall(fetchCurrentCurrency)
+    if success and currencyValue then
+        initialCurrency = currencyValue
+        lastCurrency = currencyValue
+        hasInitializedCurrency = true
+        UILibrary:Notify({ Title = "初始化成功", Text = "初始金额: " .. formatNumber(initialCurrency), Duration = 5 })
+    else
+        UILibrary:Notify({ Title = "初始化失败", Text = "无法获取初始金额", Duration = 5 })
+    end
+end
+
+-- 初始化调用
+initializeCurrency()
+
+-- 运行时间和状态追踪变量
 local startTime = os.time()
 local lastSendTime = 0
-local lastCurrency = nil
 local lastMoveTime = tick()
 local lastPosition = nil
 local idleThreshold = 300
 local checkInterval = 1
 
-local player = game.Players.LocalPlayer
+-- 确保角色可用
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 
--- 格式化运行时间
+-- 格式化时间显示
 local function formatElapsedTime(seconds)
     local hours = math.floor(seconds / 3600)
     local minutes = math.floor((seconds % 3600) / 60)
@@ -583,11 +602,10 @@ local function formatElapsedTime(seconds)
     return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
 end
 
--- 每帧检测玩家移动
+-- 每帧检测玩家位置
 game:GetService("RunService").RenderStepped:Connect(function()
     local newCharacter = player.Character or player.CharacterAdded:Wait()
     local hrp = newCharacter:FindFirstChild("HumanoidRootPart")
-
     if hrp then
         if lastPosition and (hrp.Position - lastPosition).Magnitude > 0.1 then
             lastMoveTime = tick()
@@ -596,19 +614,17 @@ game:GetService("RunService").RenderStepped:Connect(function()
     end
 end)
 
--- 主循环
+-- 🌀 主循环开始
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
 
-    local totalChange = 0
-    if currentCurrency and initialCurrency then
-        totalChange = currentCurrency - initialCurrency
-    end
+    -- 收益统计
+    local totalChange = (currentCurrency and initialCurrency) and (currentCurrency - initialCurrency) or 0
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
 
-    -- 🎯 目标金额监测
-    if not webhookDisabled and config.enableTargetKick and currentCurrency and currentCurrency >= config.targetCurrency and config.targetCurrency > 0 then
+    -- 🎯 目标金额检测
+    if not webhookDisabled and config.enableTargetKick and currentCurrency and config.targetCurrency > 0 and currentCurrency >= config.targetCurrency then
         local payload = {
             embeds = {{
                 title = "🎯 目标金额达成",
@@ -656,7 +672,7 @@ while true do
         })
     end
 
-    -- 💰 金额通知逻辑
+    -- 💰 金额变化通知逻辑
     local interval = currentTime - lastSendTime
     if config.notifyCash and currentCurrency and interval >= getNotificationIntervalSeconds() and not webhookDisabled then
         local earnedChange = currentCurrency - (lastCurrency or currentCurrency)
