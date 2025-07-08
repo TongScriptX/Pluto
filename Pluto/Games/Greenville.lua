@@ -382,6 +382,9 @@ intervalInput.Text = tostring(config.notificationInterval)
 -- 卡片：目标金额
 local targetCurrencyCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 
+-- 避免程序性开启触发回调误判
+local suppressTargetToggleCallback = false
+
 -- 切换开关（统一用 enableTargetKick）
 local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
     Text = "目标金额踢出",
@@ -389,21 +392,26 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
     Callback = function(state)
         print("[目标踢出] 状态改变:", state)
 
+        if suppressTargetToggleCallback then
+            suppressTargetToggleCallback = false
+            return
+        end
+
         if state and config.webhookUrl == "" then
-            config.enableTargetKick = false
+            targetCurrencyToggle:Set(false)
             UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
             return
         end
 
         if state and (not config.targetCurrency or config.targetCurrency <= 0) then
-            config.enableTargetKick = false
+            targetCurrencyToggle:Set(false)
             UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标金额（大于0）", Duration = 5 })
             return
         end
 
         local currentCurrency = fetchCurrentCurrency()
         if state and currentCurrency and currentCurrency >= config.targetCurrency then
-            config.enableTargetKick = false
+            targetCurrencyToggle:Set(false)
             UILibrary:Notify({
                 Title = "配置警告",
                 Text = string.format("当前金额(%s)已超过目标金额(%s)，请调整后再开启",
@@ -474,6 +482,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
             -- 自动启用踢出功能
             if not config.enableTargetKick then
                 config.enableTargetKick = true
+                suppressTargetToggleCallback = true
                 targetCurrencyToggle:Set(true)
                 UILibrary:Notify({
                     Title = "已启用目标踢出",
