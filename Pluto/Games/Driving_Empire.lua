@@ -1036,7 +1036,8 @@ while true do
                 title = "⚠️ 掉线检测",
                 description = string.format(
                     "**游戏**: %s\n**用户**: %s\n检测到玩家掉线，请查看",
-                    gameName, username),
+                    gameName, username, formatNumber(currentCurrency or 0)
+                   ),
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -1077,6 +1078,7 @@ while true do
                     description = string.format(
                         "**游戏**: %s\n**用户**: %s\n检测到连续两次金额无变化，可能已断开或数据异常",
                         gameName, username),
+                        for
                     color = 16753920,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                     footer = { text = "作者: tongblx · Pluto-X" }
