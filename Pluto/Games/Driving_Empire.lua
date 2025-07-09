@@ -1036,8 +1036,7 @@ while true do
                 title = "⚠️ 掉线检测",
                 description = string.format(
                     "**游戏**: %s\n**用户**: %s\n检测到玩家掉线，请查看",
-                    gameName, username, formatNumber(currentCurrency or 0)
-                   ),
+                    gameName, username),
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -1052,9 +1051,6 @@ while true do
 
     -- 🕒 通知间隔计算
     local interval = currentTime - lastSendTime
-    --debugLog("[Main Loop] 当前时间:", currentTime, "上次发送时间:", lastSendTime, "间隔:", interval, "通知间隔秒数:", getNotificationIntervalSeconds())
-    --debugLog("[Main Loop] 金额监测:", config.notifyCash, "排行榜监测:", config.notifyLeaderboard, "上榜踢出:", config.leaderboardKick)
-
     if not webhookDisabled and (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)
        and interval >= getNotificationIntervalSeconds() then
 
@@ -1065,7 +1061,6 @@ while true do
 
         if currentCurrency == lastCurrency and totalChange == 0 and earnedChange == 0 then
             unchangedCount = unchangedCount + 1
-            --debugLog("[Main Loop] 金额未变化次数:", unchangedCount)
         else
             unchangedCount = 0
         end
@@ -1076,9 +1071,8 @@ while true do
                 embeds = {{
                     title = "⚠️ 金额长时间未变化",
                     description = string.format(
-                        "**游戏**: %s\n**用户**: %s\n检测到连续两次金额无变化，可能已断开或数据异常",
+                        "**游戏**: %s\n**用户**: %s\n检测到连续两次金额变化为 0，可能已断开或数据异常",
                         gameName, username),
-                        for
                     color = 16753920,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                     footer = { text = "作者: tongblx · Pluto-X" }
@@ -1086,12 +1080,10 @@ while true do
             })
             UILibrary:Notify({
                 Title = "连接异常",
-                Text = "检测到金额长时间未变，已停止发送 Webhook",
+                Text = "检测到金额连续两次未变化，已停止发送 Webhook",
                 Duration = 5
             })
         else
-            print("[Main Loop] 发送通知")
-
             local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
             local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
             local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
@@ -1105,7 +1097,6 @@ while true do
                 footer = { text = "作者: tongblx · Pluto-X" }
             }
 
-            -- 💰 金额通知
             if config.notifyCash and currentCurrency then
                 local elapsedTime = currentTime - startTime
                 local avgMoney = "0"
@@ -1129,7 +1120,6 @@ while true do
                 })
             end
 
-            -- 🏆 排行榜
             if config.notifyLeaderboard or config.leaderboardKick then
                 local currentRank, isOnLeaderboard = fetchPlayerRank()
                 local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"
@@ -1148,14 +1138,12 @@ while true do
                 end
             end
 
-            -- ⌛ 下次通知字段
             table.insert(embed.fields, {
                 name = "⌛ 下次通知",
                 value = string.format("%s（%s）", countdownR, countdownT),
                 inline = false
             })
 
-            -- Webhook 发送
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
                 lastSendTime = currentTime
