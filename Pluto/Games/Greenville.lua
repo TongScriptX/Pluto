@@ -651,26 +651,33 @@ while true do
         end
     end
 
-    -- ⚠️ 掉线检测
-    if tick() - lastMoveTime >= idleThreshold and not webhookDisabled then
-        webhookDisabled = true
-        dispatchWebhook({
-            embeds = {{
-                title = "⚠️ 掉线检测",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n检测到玩家掉线，请查看",
-                    gameName, username, formatNumber(currentCurrency or 0)
+    -- ⚠️ 掉线检测（基于位置 + 金额）
+    if tick() - lastMoveTime >= idleThreshold and tick() - lastCurrencyCheckTime >= idleThreshold and not webhookDisabled then
+        local currentCurrencyForCheck = currentCurrency or 0
+        if currentCurrencyForCheck <= lastCurrencyCheckValue then
+            webhookDisabled = true
+            dispatchWebhook({
+                embeds = {{
+                    title = "⚠️ 掉线检测",
+                    description = string.format(
+                        "**游戏**: %s\n**用户**: %s\n检测到玩家掉线（位置与金额5分钟无变化）",
+                        gameName, username
                     ),
-                color = 16753920,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" }
-            }}
-        })
-        UILibrary:Notify({
-            Title = "掉线疑似",
-            Text = "检测到玩家长时间未移动，已停止发送 Webhook",
-            Duration = 5
-        })
+                    color = 16753920,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "作者: tongblx · Pluto-X" }
+                }}
+            })
+            UILibrary:Notify({
+                Title = "掉线疑似",
+                Text = "5分钟内位置与金额未变，Webhook 已停止",
+                Duration = 5
+            })
+        else
+            -- 金额有变，刷新检测值
+            lastCurrencyCheckValue = currentCurrencyForCheck
+            lastCurrencyCheckTime = tick()
+        end
     end
 
     -- 💰 金额变化通知逻辑
