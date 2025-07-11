@@ -1,7 +1,9 @@
-name: 🔔 Discord Commit Notifier
+name: 🔔 Discord Commit Notifier (filename only)
 
 on:
   push:
+    paths-ignore:
+      - '.github/**'
 
 jobs:
   notify:
@@ -9,9 +11,29 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Send last commit to Discord
-        uses: Sniddl/discord-commits@v1.6
+      - name: 获取改动文件名
+        id: files
+        run: |
+          echo "FILES=$(git diff --name-only HEAD^ HEAD | xargs -n1 basename | paste -sd ', ' -)" >> $GITHUB_OUTPUT
+
+      - name: 生成 Discord embed 并发送
+        uses: marocchino/sticky-pull-request-comment@v2
         with:
-          webhook: ${{ secrets.DISCORD_GITHUB_UPDATE }}
-          template: plain       # 无 embed，不带链接
-          last-commit-only: true  # 只推送最新一次 commit
+          payload: |
+            {
+              "embeds": [
+                {
+                  "title": "🔔 新提交通知",
+                  "description": "${{ github.event.head_commit.message }}",
+                  "fields": [
+                    {
+                      "name": "修改文件",
+                      "value": "${{ steps.files.outputs.FILES }}",
+                      "inline": false
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_GITHUB_UPDATE }}
