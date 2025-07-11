@@ -1,28 +1,20 @@
-name: 🔔 Discord Commit Notification (No Embed)
+name: 🔔 Discord Commit Notifier
 
 on:
   push:
-    paths-ignore:
-      - '.github/**'
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Extract changed filenames
-        id: files
+      - name: Parse and send commit message
         run: |
-          names=$(git diff --name-only HEAD^ HEAD | xargs -n1 basename | paste -sd ', ' -)
-          echo "list=$names" >> $GITHUB_OUTPUT
-
-      - name: Send plain message to Discord
-        uses: hugoalh/send-discord-webhook-ghaction@v7.0.0
-        with:
-          key: ${{ secrets.DISCORD_GITHUB_UPDATE }}
-          content: |
-            🔔 新提交到 Pluto
-            信息：`${{ github.event.head_commit.message }}`
-            修改文件：`${{ steps.files.outputs.list }}`
+          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+          COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD | paste -sd "," -)
+          CONTENT="📦 更新内容：${COMMIT_MESSAGE}\n🗂️ 涉及文件：${COMMIT_FILES}"
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"$CONTENT\"}" \
+            ${{ secrets.DISCORD_GITHUB_UPDATE }}
