@@ -114,7 +114,7 @@ task.spawn(function()
   end
 end)
 
--- 🔹 获取优化后 FPS
+-- 获取优化后 FPS
 local optimizedFPS = getAverageFPS(5)
 
 -- 计算并显示提升
