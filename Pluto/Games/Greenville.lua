@@ -97,8 +97,24 @@ end)
 -- 保存配置
 local function saveConfig()
     pcall(function()
-        writefile(configFile, HttpService:JSONEncode(config))
-        UILibrary:Notify({ Title = "配置已保存", Text = "配置文件已保存至 " .. configFile, Duration = 5 })
+        local allConfigs = {}
+        if isfile(configFile) then
+            local ok, content = pcall(function()
+                return HttpService:JSONDecode(readfile(configFile))
+            end)
+            if ok and type(content) == "table" then
+                allConfigs = content
+            end
+        end
+
+        allConfigs[username] = config
+        writefile(configFile, HttpService:JSONEncode(allConfigs))
+
+        UILibrary:Notify({
+            Title = "配置已保存",
+            Text = "配置已保存至 " .. configFile,
+            Duration = 5,
+        })
     end)
 end
 
@@ -108,28 +124,52 @@ local function loadConfig()
         local success, result = pcall(function()
             return HttpService:JSONDecode(readfile(configFile))
         end)
-        if success then
-            for k, v in pairs(result) do
-                config[k] = v
+
+        if success and type(result) == "table" then
+            local userConfig = result[username]
+            if userConfig and type(userConfig) == "table" then
+                for k, v in pairs(userConfig) do
+                    config[k] = v
+                end
+                UILibrary:Notify({
+                    Title = "配置已加载",
+                    Text = "用户配置加载成功",
+                    Duration = 5,
+                })
+            else
+                UILibrary:Notify({
+                    Title = "配置提示",
+                    Text = "未找到该用户配置，使用默认配置",
+                    Duration = 5,
+                })
+                saveConfig()
             end
-            UILibrary:Notify({ Title = "配置已加载", Text = "配置文件加载成功", Duration = 5 })
         else
-            UILibrary:Notify({ Title = "配置错误", Text = "无法解析配置文件", Duration = 5 })
+            UILibrary:Notify({
+                Title = "配置错误",
+                Text = "无法解析配置文件",
+                Duration = 5,
+            })
             saveConfig()
         end
     else
-        UILibrary:Notify({ Title = "配置提示", Text = "未找到配置文件，创建新文件", Duration = 5 })
+        UILibrary:Notify({
+            Title = "配置提示",
+            Text = "未找到配置文件，创建新文件",
+            Duration = 5,
+        })
         saveConfig()
     end
 
-    -- 检查 webhookUrl 是否有效且发生变化
+    -- 检查 webhookUrl 是否需要触发欢迎消息
     if config.webhookUrl ~= "" and config.webhookUrl ~= lastWebhookUrl then
-        config.welcomeSent = false -- 重置 welcomeSent 以触发欢迎消息
+        config.welcomeSent = false
         sendWelcomeMessage()
-        lastWebhookUrl = config.webhookUrl -- 更新上次 webhook URL
+        lastWebhookUrl = config.webhookUrl
     end
 end
 
+-- 执行加载
 pcall(loadConfig)
 
 -- 补充函数：统一获取通知间隔（秒）
