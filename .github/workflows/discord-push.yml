@@ -12,6 +12,6 @@ jobs:
       - name: Send last commit to Discord
         uses: Sniddl/discord-commits@v1.6
         with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          webhook: ${{ secrets.DISCORD_GITHUB_UPDATE }}
           template: plain       # 无 embed，不带链接
           last-commit-only: true  # 只推送最新一次 commit
