@@ -9,26 +9,27 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      - name: Gather changed filenames
+      - name: Extract changed filenames
         id: files
         run: |
           names=$(git diff --name-only HEAD^ HEAD | xargs -n1 basename | paste -sd ', ' -)
-          echo "::set-output name=list::$names"
+          echo "list=$names" >> $GITHUB_OUTPUT
 
-      - name: Send Discord embed
-        uses: MineBartekSA/discord-webhook@v2
+      - name: Send Discord embed with commit info
+        uses: hugoalh/send-discord-webhook-ghaction@v7.0.0
         with:
-          webhook: ${{ secrets.DISCORD_GITHUB_UPDATE }}
-          embed: |
-            title: 🔔 新提交到 Pluto
-            color: 3066993
-            description: |
-              ```text
-              ${{ github.event.head_commit.message }}
-              ```
-            fields:
-              - name: 修改文件
-                value: ${{ steps.files.outputs.list }}
-                inline: false
+          key: ${{ secrets.DISCORD_GITHUB_UPDATE }}
+          embeds: |
+            - title: 🔔 新提交到 Pluto
+              description: |
+                ```
+                ${{ github.event.head_commit.message }}
+                ```
+              color: #57F287
+              fields:
+                - name: 修改文件
+                  value: ${{ steps.files.outputs.list }}
+                  inline: false
