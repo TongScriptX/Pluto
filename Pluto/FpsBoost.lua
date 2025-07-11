@@ -52,7 +52,7 @@ end
 -- 🔹 获取优化前 FPS
 local baseFPS = getAverageFPS(5)
 
--- 优化逻辑：延迟隐藏 + 分帧销毁
+--  优化逻辑：延迟隐藏 + 分帧销毁
 local root = workspace:FindFirstChild("MapRoot") or workspace
 local toDestroy = {}
 
