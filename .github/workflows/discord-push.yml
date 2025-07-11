@@ -11,29 +11,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: 获取改动文件名
+      - name: Gather changed filenames
         id: files
         run: |
-          echo "FILES=$(git diff --name-only HEAD^ HEAD | xargs -n1 basename | paste -sd ', ' -)" >> $GITHUB_OUTPUT
+          names=$(git diff --name-only HEAD^ HEAD | xargs -n1 basename | paste -sd ', ' -)
+          echo "::set-output name=list::$names"
 
-      - name: 生成 Discord embed 并发送
-        uses: marocchino/sticky-pull-request-comment@v2
+      - name: Send Discord embed
+        uses: MineBartekSA/discord-webhook@v2
         with:
-          payload: |
-            {
-              "embeds": [
-                {
-                  "title": "🔔 新提交通知",
-                  "description": "${{ github.event.head_commit.message }}",
-                  "fields": [
-                    {
-                      "name": "修改文件",
-                      "value": "${{ steps.files.outputs.FILES }}",
-                      "inline": false
-                    }
-                  ]
-                }
-              ]
-            }
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_GITHUB_UPDATE }}
+          webhook: ${{ secrets.DISCORD_GITHUB_UPDATE }}
+          embed: |
+            title: 🔔 新提交到 Pluto
+            color: 3066993
+            description: |
+              ```text
+              ${{ github.event.head_commit.message }}
+              ```
+            fields:
+              - name: 修改文件
+                value: ${{ steps.files.outputs.list }}
+                inline: false
