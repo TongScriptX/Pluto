@@ -1,4 +1,4 @@
-name: 🔔 Discord Commit Notifier (filename only)
+name: 🔔 Discord Commit Notification (No Embed)
 
 on:
   push:
@@ -18,18 +18,11 @@ jobs:
           names=$(git diff --name-only HEAD^ HEAD | xargs -n1 basename | paste -sd ', ' -)
           echo "list=$names" >> $GITHUB_OUTPUT
 
-      - name: Send Discord embed with commit info
+      - name: Send plain message to Discord
         uses: hugoalh/send-discord-webhook-ghaction@v7.0.0
         with:
           key: ${{ secrets.DISCORD_GITHUB_UPDATE }}
-          embeds: |
-            - title: 🔔 新提交到 Pluto
-              description: |
-                ```
-                ${{ github.event.head_commit.message }}
-                ```
-              color: #57F287
-              fields:
-                - name: 修改文件
-                  value: ${{ steps.files.outputs.list }}
-                  inline: false
+          content: |
+            🔔 新提交到 Pluto
+            信息：`${{ github.event.head_commit.message }}`
+            修改文件：`${{ steps.files.outputs.list }}`
