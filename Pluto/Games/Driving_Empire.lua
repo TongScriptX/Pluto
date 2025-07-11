@@ -1000,8 +1000,8 @@ while true do
 
     -- 🎯 目标金额监测
     if not webhookDisabled and config.enableTargetCurrency and currentCurrency
-       and currentCurrency >= config.targetCurrency
-       and config.targetCurrency > 0 then
+       and currentCurrency >= config.targetCurrency and config.targetCurrency > 0 then
+
         local payload = {
             embeds = {{
                 title = "🎯 目标金额达成",
@@ -1016,11 +1016,13 @@ while true do
                 footer = { text = "作者: tongblx · Pluto-X" }
             }}
         }
+
         UILibrary:Notify({
             Title = "目标达成",
             Text = "已达到目标金额 " .. formatNumber(config.targetCurrency) .. "，即将退出游戏",
             Duration = 5
         })
+
         if dispatchWebhook(payload) then
             wait(0.5)
             game:Shutdown()
@@ -1066,23 +1068,34 @@ while true do
         end
 
         if unchangedCount >= 2 then
-            webhookDisabled = true
-            dispatchWebhook({
+            local webhookSuccess = dispatchWebhook({
                 embeds = {{
                     title = "⚠️ 金额长时间未变化",
                     description = string.format(
-                        "**游戏**: %s\n**用户**: %s\n检测到连续两次金额变化为 0，可能已断开或数据异常",
-                        gameName, username),
+                        "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n检测到连续两次金额变化为 0，可能已断开或数据异常",
+                        gameName, username, formatNumber(currentCurrency or 0)),
                     color = 16753920,
                     timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                     footer = { text = "作者: tongblx · Pluto-X" }
                 }}
             })
-            UILibrary:Notify({
-                Title = "连接异常",
-                Text = "检测到金额连续两次未变化，已停止发送 Webhook",
-                Duration = 5
-            })
+
+            if webhookSuccess then
+                webhookDisabled = true
+                lastSendTime = currentTime
+                lastCurrency = currentCurrency
+                UILibrary:Notify({
+                    Title = "连接异常",
+                    Text = "检测到金额连续两次未变化，已停止发送 Webhook",
+                    Duration = 5
+                })
+            else
+                UILibrary:Notify({
+                    Title = "Webhook 发送失败",
+                    Text = "连接异常未能发送，请检查设置",
+                    Duration = 5
+                })
+            end
         else
             local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
             local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
@@ -1128,11 +1141,13 @@ while true do
                     value = string.format("**当前排名**: %s", status),
                     inline = true
                 })
+
                 UILibrary:Notify({
                     Title = "排行榜检测",
                     Text = isOnLeaderboard and ("当前排名 " .. status .. "，已上榜") or "当前未上榜",
                     Duration = 5
                 })
+
                 if isOnLeaderboard and config.leaderboardKick then
                     shouldShutdown = true
                 end
@@ -1155,6 +1170,7 @@ while true do
                     Text = "Webhook 已发送，下次时间: " .. os.date("%Y-%m-%d %H:%M:%S", nextNotifyTimestamp),
                     Duration = 5
                 })
+
                 if shouldShutdown then
                     wait(0.5)
                     game:Shutdown()
