@@ -1,0 +1,17 @@
+name: Push commits to Discord privately
+
+on:
+  push:
+
+jobs:
+  discord_push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Send commits to Discord
+        uses: ihyajb/discord-commits@main
+        with:
+          webhook_url: ${{ secrets.DISCORD_GITHUB_UPDATE }}
+          hide_links: true
+          censor_username: true
+          repo_name: "Pluto-X"
