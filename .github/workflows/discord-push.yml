@@ -1,17 +1,17 @@
-name: Push commits to Discord privately
+name: 🔔 Discord Commit Notifier
 
 on:
   push:
 
 jobs:
-  discord_push:
+  notify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Send commits to Discord
-        uses: ihyajb/discord-commits@main
+
+      - name: Send last commit to Discord
+        uses: Sniddl/discord-commits@v1.6
         with:
-          webhook_url: ${{ secrets.DISCORD_GITHUB_UPDATE }}
-          hide_links: true
-          censor_username: true
-          repo_name: "Pluto-X"
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          template: plain       # 无 embed，不带链接
+          last-commit-only: true  # 只推送最新一次 commit
