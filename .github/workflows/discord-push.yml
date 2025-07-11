@@ -8,13 +8,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
 
-      - name: Parse and send commit message
+      - name: Parse commit and send embed
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%s)
-          COMMIT_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD | paste -sd "," -)
-          CONTENT="📦 更新内容：${COMMIT_MESSAGE}\n🗂️ 涉及文件：${COMMIT_FILES}"
+          FILES=$(git diff --name-only HEAD^ HEAD)
+          FILE_NAMES=$(echo "$FILES" | xargs -n1 basename | paste -sd ", " -)
+
+          JSON=$(jq -n --arg title "📦 更新内容" \
+                       --arg description "$COMMIT_MESSAGE" \
+                       --arg files "$FILE_NAMES" \
+                       '{
+                          "embeds": [
+                            {
+                              "title": $title,
+                              "description": $description,
+                              "fields": [
+                                {
+                                  "name": "🗂️ 涉及文件",
+                                  "value": ($files // "无")
+                                }
+                              ],
+                              "color": 14540253
+                            }
+                          ]
+                        }')
+
           curl -H "Content-Type: application/json" \
-            -X POST \
-            -d "{\"content\": \"$CONTENT\"}" \
-            ${{ secrets.DISCORD_GITHUB_UPDATE }}
+               -X POST \
+               -d "$JSON" \
+               ${{ secrets.DISCORD_GITHUB_UPDATE }}
