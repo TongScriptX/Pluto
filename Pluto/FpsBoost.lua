@@ -123,4 +123,4 @@ local perc = math.floor((diff / baseFPS) * 100)
 local sym = diff > 0 and "↑" or (diff < 0 and "↓" or "≈")
 boostLabel.Text = string.format("FPS 提升：%s%d (%s%d%%)", sym, math.abs(diff), sym, math.abs(perc))
 
-print("✅ 延迟批次优化 + FPS 对比 已激活")
+print("延迟批次优化 + FPS 对比 已激活")
