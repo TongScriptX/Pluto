@@ -11,7 +11,10 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Parse commit and send embed
+      - name: Parse commit and send to both webhooks
+        env:
+          WEBHOOK1: ${{ secrets.DISCORD_GITHUB_UPDATE }}
+          WEBHOOK2: ${{ secrets.DISCORD_GITHUB_UPDATE2 }}
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%s)
           FILES=$(git diff --name-only HEAD^ HEAD)
@@ -36,7 +39,5 @@ jobs:
                           ]
                         }')
 
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "$JSON" \
-               ${{ secrets.DISCORD_GITHUB_UPDATE }}
+          curl -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK1"
+          curl -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK2"
