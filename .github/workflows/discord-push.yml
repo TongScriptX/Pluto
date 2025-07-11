@@ -17,7 +17,7 @@ jobs:
           FILES=$(git diff --name-only HEAD^ HEAD)
           FILE_NAMES=$(echo "$FILES" | xargs -n1 basename | paste -sd ", " -)
 
-          JSON=$(jq -n --arg title "📦 更新内容" \
+          JSON=$(jq -n --arg title "📦 commit提交" \
                        --arg description "$COMMIT_MESSAGE" \
                        --arg files "$FILE_NAMES" \
                        '{
@@ -27,7 +27,7 @@ jobs:
                               "description": $description,
                               "fields": [
                                 {
-                                  "name": "🗂️ 涉及文件",
+                                  "name": "🗂️ 更新文件",
                                   "value": ($files // "无")
                                 }
                               ],
