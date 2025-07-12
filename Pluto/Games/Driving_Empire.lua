@@ -326,21 +326,43 @@ local function dispatchWebhook(payload)
         local fields = e.fields or {}
         local footer = e.footer and e.footer.text or "Pluto-X"
 
-        -- 清洗 Markdown（如 **字段**）
-        local function cleanMarkdown(text)
+        -- 清洗 Markdown
+        local function clean(text)
             return string.gsub(text or "", "%*%*(.-)%*%*", "%1")
         end
 
-        -- 构造 horizontal_content_list
-        local horizontalList = {}
+        -- 构造纵向排列内容：每个字段两项 key-value
+        local verticalList = {}
         for _, field in ipairs(fields) do
-            table.insert(horizontalList, {
-                keyname = cleanMarkdown(field.name),
-                value = cleanMarkdown(field.value)
+            table.insert(verticalList, {
+                keyname = clean(field.name),
+                value = ""
+            })
+            table.insert(verticalList, {
+                keyname = clean(field.value),
+                value = ""
             })
         end
 
-        -- 构造卡片结构（不含 emphasis）
+        -- 微信时间格式（不加 Z）
+        local timestampText = ""
+        if e.timestamp then
+            local pattern = "(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+)Z"
+            local y, m, d, h, min, s = e.timestamp:match(pattern)
+            if y and m and d and h and min and s then
+                timestampText = string.format("%s-%s-%s %s:%s:%s", y, m, d, h, min, s)
+                table.insert(verticalList, {
+                    keyname = "通知时间",
+                    value = ""
+                })
+                table.insert(verticalList, {
+                    keyname = timestampText,
+                    value = ""
+                })
+            end
+        end
+
+        -- 构造卡片
         local card = {
             msgtype = "template_card",
             template_card = {
@@ -351,23 +373,22 @@ local function dispatchWebhook(payload)
                     desc_color = 0
                 },
                 main_title = {
-                    title = cleanMarkdown(title),
+                    title = clean(title),
                     desc = ""
                 },
-                sub_title_text = cleanMarkdown(description),
-                horizontal_content_list = horizontalList,
+                sub_title_text = clean(description),
+                horizontal_content_list = verticalList,
                 jump_list = {},
                 card_action = {
                     type = 1,
-                    url = "https://example.com"  -- 避免 42045
+                    url = "https://example.com"
                 }
             }
         }
 
-        -- 不设置 emphasis_content（避免放大）
         bodyJson = HttpService:JSONEncode(card)
     else
-        -- Discord 默认格式
+        -- Discord 默认
         bodyJson = HttpService:JSONEncode({
             content = nil,
             embeds = payload.embeds
