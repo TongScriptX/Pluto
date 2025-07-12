@@ -326,12 +326,12 @@ local function dispatchWebhook(payload)
         local fields = e.fields or {}
         local footer = e.footer and e.footer.text or "Pluto-X"
 
-        -- 清洗字段中的 Markdown（如 **字段** -> 字段）
+        -- 清洗 Markdown（如 **字段**）
         local function cleanMarkdown(text)
             return string.gsub(text or "", "%*%*(.-)%*%*", "%1")
         end
 
-        -- horizontal_content_list
+        -- 构造 horizontal_content_list
         local horizontalList = {}
         for _, field in ipairs(fields) do
             table.insert(horizontalList, {
@@ -340,16 +340,7 @@ local function dispatchWebhook(payload)
             })
         end
 
-        -- emphasis_content（以 description 为主）
-        local emphasisContent = nil
-        if description ~= "" then
-            emphasisContent = {
-                title = cleanMarkdown(description),
-                desc = "" -- 不需要 desc，避免显示“通知”字样
-            }
-        end
-
-        -- 构造微信卡片
+        -- 构造卡片结构（不含 emphasis）
         local card = {
             msgtype = "template_card",
             template_card = {
@@ -363,23 +354,20 @@ local function dispatchWebhook(payload)
                     title = cleanMarkdown(title),
                     desc = ""
                 },
-                sub_title_text = nil, -- 边缘化
+                sub_title_text = cleanMarkdown(description),
                 horizontal_content_list = horizontalList,
                 jump_list = {},
                 card_action = {
                     type = 1,
-                    url = "https://example.com"
+                    url = "https://example.com"  -- 避免 42045
                 }
             }
         }
 
-        if emphasisContent then
-            card.template_card.emphasis_content = emphasisContent
-        end
-
+        -- 不设置 emphasis_content（避免放大）
         bodyJson = HttpService:JSONEncode(card)
     else
-        -- Discord embed 直接转发
+        -- Discord 默认格式
         bodyJson = HttpService:JSONEncode({
             content = nil,
             embeds = payload.embeds
