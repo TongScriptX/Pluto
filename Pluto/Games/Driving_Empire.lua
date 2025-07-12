@@ -291,7 +291,7 @@ local function formatNumber(num)
     return result
 end
 
--- 发送 Webhook
+-- Webhook 发送（自动适配 Discord 和 企业微信格式）
 local function dispatchWebhook(payload)
     if config.webhookUrl == "" then
         UILibrary:Notify({
@@ -303,13 +303,7 @@ local function dispatchWebhook(payload)
         return false
     end
 
-    local data = {
-        content = nil,
-        embeds = payload.embeds
-    }
-
     local requestFunc = syn and syn.request or http and http.request or request
-
     if not requestFunc then
         UILibrary:Notify({
             Title = "Webhook 错误",
@@ -320,17 +314,81 @@ local function dispatchWebhook(payload)
         return false
     end
 
-    --debugLog("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
-    --debugLog("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
+    local url = config.webhookUrl
+    local bodyJson = ""
+    local isWechat = url:find("qyapi.weixin.qq.com/cgi%-bin/webhook/send")
+
+    if isWechat then
+        local e = payload.embeds and payload.embeds[1] or {}
+
+        local title = e.title or "Pluto-X 通知"
+        local description = e.description or ""
+        local fields = e.fields or {}
+        local footer = e.footer and e.footer.text or "Pluto-X"
+        local timestamp = e.timestamp or os.date("!%Y-%m-%dT%H:%M:%SZ")
+
+        -- 提取强调内容（金额/状态等）
+        local emphasisTitle, emphasisDesc = "通知", "通知时间"
+        for _, field in ipairs(fields) do
+            if field.name:find("金额") or field.name:find("收益") then
+                emphasisTitle = field.value
+                emphasisDesc = field.name
+                break
+            end
+        end
+
+        -- 构造横向字段列表
+        local horizontalList = {}
+        for _, field in ipairs(fields) do
+            table.insert(horizontalList, {
+                keyname = field.name or "字段",
+                value = field.value or "无"
+            })
+        end
+
+        -- 构造卡片 JSON
+        bodyJson = HttpService:JSONEncode({
+            msgtype = "template_card",
+            template_card = {
+                card_type = "text_notice",
+                source = {
+                    icon_url = "",
+                    desc = footer,
+                    desc_color = 0
+                },
+                main_title = {
+                    title = title,
+                    desc = ""
+                },
+                emphasis_content = {
+                    title = emphasisTitle or "信息",
+                    desc = emphasisDesc or "状态"
+                },
+                sub_title_text = description,
+                horizontal_content_list = horizontalList,
+                jump_list = {},
+                card_action = {
+                    type = 1,
+                    url = "https://example.com"  -- 占位跳转，必须存在，防止 42045 报错
+                }
+            }
+        })
+    else
+        -- Discord 结构
+        bodyJson = HttpService:JSONEncode({
+            content = nil,
+            embeds = payload.embeds
+        })
+    end
 
     local success, res = pcall(function()
         return requestFunc({
-            Url = config.webhookUrl,
+            Url = url,
             Method = "POST",
             Headers = {
                 ["Content-Type"] = "application/json"
             },
-            Body = HttpService:JSONEncode(data)
+            Body = bodyJson
         })
     end)
 
