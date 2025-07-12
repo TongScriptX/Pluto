@@ -325,19 +325,9 @@ local function dispatchWebhook(payload)
         local description = e.description or ""
         local fields = e.fields or {}
         local footer = e.footer and e.footer.text or "Pluto-X"
-        local timestamp = e.timestamp or os.date("!%Y-%m-%dT%H:%M:%SZ")
+        local timestamp = e.timestamp or nil
 
-        -- 提取强调内容（金额/状态等）
-        local emphasisTitle, emphasisDesc = "通知", "通知时间"
-        for _, field in ipairs(fields) do
-            if field.name:find("金额") or field.name:find("收益") then
-                emphasisTitle = field.value
-                emphasisDesc = field.name
-                break
-            end
-        end
-
-        -- 构造横向字段列表
+        -- 构造横向字段
         local horizontalList = {}
         for _, field in ipairs(fields) do
             table.insert(horizontalList, {
@@ -346,8 +336,18 @@ local function dispatchWebhook(payload)
             })
         end
 
+        -- emphasis_content：仅当 embed 中有 timestamp 时展示
+        local emphasisContent = nil
+        if timestamp then
+            local timeStr = timestamp:gsub("T", " "):gsub("Z", "")
+            emphasisContent = {
+                title = timeStr,
+                desc = "通知时间"
+            }
+        end
+
         -- 构造卡片 JSON
-        bodyJson = HttpService:JSONEncode({
+        local card = {
             msgtype = "template_card",
             template_card = {
                 card_type = "text_notice",
@@ -358,23 +358,25 @@ local function dispatchWebhook(payload)
                 },
                 main_title = {
                     title = title,
-                    desc = ""
+                    desc = description
                 },
-                emphasis_content = {
-                    title = emphasisTitle or "信息",
-                    desc = emphasisDesc or "状态"
-                },
-                sub_title_text = description,
+                sub_title_text = description ~= "" and description or nil,
                 horizontal_content_list = horizontalList,
                 jump_list = {},
                 card_action = {
                     type = 1,
-                    url = "https://example.com"  -- 占位跳转，必须存在，防止 42045 报错
+                    url = "https://example.com"
                 }
             }
-        })
+        }
+
+        if emphasisContent then
+            card.template_card.emphasis_content = emphasisContent
+        end
+
+        bodyJson = HttpService:JSONEncode(card)
     else
-        -- Discord 结构
+        -- Discord 默认格式
         bodyJson = HttpService:JSONEncode({
             content = nil,
             embeds = payload.embeds
