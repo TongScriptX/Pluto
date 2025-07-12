@@ -325,28 +325,31 @@ local function dispatchWebhook(payload)
         local description = e.description or ""
         local fields = e.fields or {}
         local footer = e.footer and e.footer.text or "Pluto-X"
-        local timestamp = e.timestamp or nil
 
-        -- 构造横向字段
+        -- 清洗字段中的 Markdown（如 **字段** -> 字段）
+        local function cleanMarkdown(text)
+            return string.gsub(text or "", "%*%*(.-)%*%*", "%1")
+        end
+
+        -- horizontal_content_list
         local horizontalList = {}
         for _, field in ipairs(fields) do
             table.insert(horizontalList, {
-                keyname = field.name or "字段",
-                value = field.value or "无"
+                keyname = cleanMarkdown(field.name),
+                value = cleanMarkdown(field.value)
             })
         end
 
-        -- emphasis_content：仅当 embed 中有 timestamp 时展示
+        -- emphasis_content（以 description 为主）
         local emphasisContent = nil
-        if timestamp then
-            local timeStr = timestamp:gsub("T", " "):gsub("Z", "")
+        if description ~= "" then
             emphasisContent = {
-                title = timeStr,
-                desc = "通知时间"
+                title = cleanMarkdown(description),
+                desc = "" -- 不需要 desc，避免显示“通知”字样
             }
         end
 
-        -- 构造卡片 JSON
+        -- 构造微信卡片
         local card = {
             msgtype = "template_card",
             template_card = {
@@ -357,10 +360,10 @@ local function dispatchWebhook(payload)
                     desc_color = 0
                 },
                 main_title = {
-                    title = title,
-                    desc = description
+                    title = cleanMarkdown(title),
+                    desc = ""
                 },
-                sub_title_text = description ~= "" and description or nil,
+                sub_title_text = nil, -- 边缘化
                 horizontal_content_list = horizontalList,
                 jump_list = {},
                 card_action = {
@@ -376,7 +379,7 @@ local function dispatchWebhook(payload)
 
         bodyJson = HttpService:JSONEncode(card)
     else
-        -- Discord 默认格式
+        -- Discord embed 直接转发
         bodyJson = HttpService:JSONEncode({
             content = nil,
             embeds = payload.embeds
