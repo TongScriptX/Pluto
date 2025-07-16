@@ -1012,7 +1012,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     end
 })
 
-targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
+targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or ""))
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
@@ -1107,7 +1107,7 @@ while true do
     local shouldShutdown = false
 
     -- 🎯 目标金额监测
-    if not webhookDisabled and config.enableTargetCurrency and currentCurrency
+    if not webhookDisabled and config.enableTargetKick and currentCurrency
        and currentCurrency >= config.targetCurrency and config.targetCurrency > 0 then
 
         local payload = {
