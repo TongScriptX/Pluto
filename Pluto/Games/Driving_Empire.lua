@@ -1012,7 +1012,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     end
 })
 
-targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or ""))
+targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
