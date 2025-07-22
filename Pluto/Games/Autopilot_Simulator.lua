@@ -323,13 +323,6 @@ pcall(initTargetCurrency)
 
 -- autofarm模块封装
 -- autofarm完整脚本（含调试输出）
-local autoFarmCard = UILibrary:CreateCard(mainFeaturesContent, { IsMultiElement = true })
-UILibrary:CreateLabel(autoFarmCard, {
-    Text = "autofarm",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5)
-})
-
 local isFarming = false
 local platformFolder = nil
 local farmTask = nil
@@ -512,8 +505,6 @@ local mainFeaturesTab, mainFeaturesContent = UILibrary:CreateTab(sidebar, titleL
 })
 
 -- 卡片：autofarm
-
--- UI 部分（基于 UILibrary 和 mainFeaturesContent）
 local autoFarmCard = UILibrary:CreateCard(mainFeaturesContent, { IsMultiElement = true })
 UILibrary:CreateLabel(autoFarmCard, {
     Text = "autofarm",
