@@ -384,9 +384,15 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
     DefaultState = false,
     Position = UDim2.new(0, 5, 0, 30),
     Callback = function(state)
+        print("[自动农场] Toggle 状态切换为:", state)
+
         isFarming = state
         getfenv().test = state
-        autoFarmToggle.Text = "自动农场: " .. (state and "开启" or "关闭")
+        if autoFarmToggle.SetText then
+            autoFarmToggle:SetText("自动农场: " .. (state and "开启" or "关闭"))
+        else
+            autoFarmToggle.Text = "自动农场: " .. (state and "开启" or "关闭")
+        end
 
         if state then
             UILibrary:Notify({
@@ -394,12 +400,19 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
                 Text = "自动农场已启动",
                 Duration = 5
             })
+
             task.spawn(function()
+                print("[自动农场] 开始执行自动农场任务")
+
                 local plr = game.Players.LocalPlayer
                 local username = plr.Name
+                print("[自动农场] 玩家名称:", username)
+
                 local success, carModel = pcall(function()
                     return workspace:WaitForChild("Car"):WaitForChild(username .. "sCar")
                 end)
+                print("[自动农场] 检查车辆结果:", success, carModel)
+
                 if not success or not carModel then
                     UILibrary:Notify({
                         Title = "自动农场错误",
@@ -446,14 +459,12 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
                 platform.Size = Vector3.new(100000, 10, 10000)
                 platform.BrickColor = BrickColor.new("Dark stone grey")
                 platform.Material = Enum.Material.SmoothPlastic
-                -- 平台位置：X轴在PrimaryPart.X + 50000，Y轴设为PrimaryPart.Y + 5
                 platform.CFrame = CFrame.new(
                     carModel.PrimaryPart.Position.X + 50000,
                     carModel.PrimaryPart.Position.Y + 5,
                     carModel.PrimaryPart.Position.Z
                 )
 
-                -- 车辆起始位置（空中抬高5000）
                 local originPos = Vector3.new(
                     carModel.PrimaryPart.Position.X,
                     platform.CFrame.Y + 5000,
@@ -465,8 +476,8 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
                 local currentPosX = originPos.X
                 local lastTpTime = tick()
 
-                -- 先传送到空中平台上方5000高度
                 carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
+                print("[自动农场] 已传送到初始位置")
 
                 while getfenv().test do
                     currentPosX = currentPosX + distancePerTick
@@ -482,6 +493,7 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
                         currentPosX = originPos.X
                         carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
                         lastTpTime = tick()
+                        print("[自动农场] 复位位置")
                     end
 
                     task.wait(interval)
@@ -491,6 +503,7 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
                     platformFolder:Destroy()
                     platformFolder = nil
                 end
+                print("[自动农场] 自动农场任务结束")
             end)
         else
             UILibrary:Notify({
@@ -498,10 +511,12 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
                 Text = "自动农场已停止",
                 Duration = 5
             })
+
             if platformFolder then
                 platformFolder:Destroy()
                 platformFolder = nil
             end
+            print("[自动农场] 已关闭自动农场")
         end
     end
 })
