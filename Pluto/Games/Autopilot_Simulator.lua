@@ -387,28 +387,31 @@ local autoFarmLabel = UILibrary:CreateLabel(autoFarmCard, {
 
 local isFarming = false
 local platformFolder = nil
+local farmTask = nil
 
 local function stopAutoFarm()
     isFarming = false
+    if farmTask then
+        task.cancel(farmTask)
+        farmTask = nil
+        print("[自动农场] 任务已取消")
+    end
     if platformFolder then
         platformFolder:Destroy()
         platformFolder = nil
+        print("[自动农场] 平台已销毁")
     end
 end
 
 local function startAutoFarm()
+    print("[自动农场] 开始启动")
     local plr = game.Players.LocalPlayer
     local username = plr.Name
     local success, carModel = pcall(function()
         return workspace:WaitForChild("Car"):WaitForChild(username .. "sCar")
     end)
-
     if not success or not carModel then
-        UILibrary:Notify({
-            Title = "自动农场错误",
-            Text = "未找到玩家车辆",
-            Duration = 5
-        })
+        UILibrary:Notify({Title="自动农场错误", Text="未找到玩家车辆", Duration=5})
         stopAutoFarm()
         autoFarmToggle:Set(false)
         return
@@ -416,11 +419,7 @@ local function startAutoFarm()
 
     local driveSeat = carModel:FindFirstChild("DriveSeat")
     if not driveSeat then
-        UILibrary:Notify({
-            Title = "自动农场错误",
-            Text = "未找到驾驶座位",
-            Duration = 5
-        })
+        UILibrary:Notify({Title="自动农场错误", Text="未找到驾驶座位", Duration=5})
         stopAutoFarm()
         autoFarmToggle:Set(false)
         return
@@ -428,11 +427,7 @@ local function startAutoFarm()
 
     local primaryPart = carModel:FindFirstChild("Body") and carModel.Body:FindFirstChild("#Weight")
     if not primaryPart then
-        UILibrary:Notify({
-            Title = "自动农场错误",
-            Text = "未找到 PrimaryPart (#Weight)",
-            Duration = 5
-        })
+        UILibrary:Notify({Title="自动农场错误", Text="未找到 PrimaryPart (#Weight)", Duration=5})
         stopAutoFarm()
         autoFarmToggle:Set(false)
         return
@@ -446,7 +441,7 @@ local function startAutoFarm()
     platform.Size = Vector3.new(100000, 10, 10000)
     platform.BrickColor = BrickColor.new("Dark stone grey")
     platform.Material = Enum.Material.SmoothPlastic
-    platform.CFrame = CFrame.new(
+    platform.Position = Vector3.new(
         primaryPart.Position.X + 50000,
         primaryPart.Position.Y + 5,
         primaryPart.Position.Z
@@ -454,7 +449,7 @@ local function startAutoFarm()
 
     local originPos = Vector3.new(
         primaryPart.Position.X,
-        platform.CFrame.Y + 5000,
+        platform.Position.Y + 5000,
         primaryPart.Position.Z
     )
     local speed = 600
@@ -465,15 +460,16 @@ local function startAutoFarm()
 
     carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
 
-    task.spawn(function()
+    farmTask = task.spawn(function()
+        print("[自动农场] 循环任务开始")
         while isFarming do
             currentPosX = currentPosX + distancePerTick
             local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
             carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
 
             if carModel.PrimaryPart then
-                carModel.PrimaryPart.Velocity = Vector3.zero
-                carModel.PrimaryPart.RotVelocity = Vector3.zero
+                carModel.PrimaryPart.Velocity = Vector3.new(0,0,0)
+                carModel.PrimaryPart.RotVelocity = Vector3.new(0,0,0)
             end
 
             if tick() - lastTpTime > 5 then
@@ -484,10 +480,11 @@ local function startAutoFarm()
 
             task.wait(interval)
         end
-
+        print("[自动农场] 循环任务结束")
         if platformFolder then
             platformFolder:Destroy()
             platformFolder = nil
+            print("[自动农场] 平台销毁完成")
         end
     end)
 end
@@ -499,22 +496,13 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
     Callback = function(state)
         print("[自动农场] Toggle 状态切换为:", state)
         autoFarmToggle.Text = "自动农场: " .. (state and "开启" or "关闭")
-
         if state then
             isFarming = true
-            UILibrary:Notify({
-                Title = "自动农场",
-                Text = "自动农场已启动",
-                Duration = 5
-            })
+            UILibrary:Notify({Title = "自动农场", Text = "自动农场已启动", Duration = 5})
             startAutoFarm()
         else
             stopAutoFarm()
-            UILibrary:Notify({
-                Title = "自动农场",
-                Text = "自动农场已停止",
-                Duration = 5
-            })
+            UILibrary:Notify({Title = "自动农场", Text = "自动农场已停止", Duration = 5})
         end
     end
 })
