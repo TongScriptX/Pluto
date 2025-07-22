@@ -321,11 +321,11 @@ local function initTargetCurrency()
 end
 pcall(initTargetCurrency)
 
--- 自动农场模块封装
--- 自动农场完整脚本（含调试输出）
+-- autofarm模块封装
+-- autofarm完整脚本（含调试输出）
 local autoFarmCard = UILibrary:CreateCard(mainFeaturesContent, { IsMultiElement = true })
 UILibrary:CreateLabel(autoFarmCard, {
-    Text = "自动农场设置",
+    Text = "autofarm",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 5)
 })
@@ -335,25 +335,25 @@ local platformFolder = nil
 local farmTask = nil
 
 local function stopAutoFarm()
-    print("[自动农场] Stop 被调用")
+    print("[autofarm] Stop 被调用")
     isFarming = false
     if farmTask then
         task.cancel(farmTask)
         farmTask = nil
-        print("[自动农场] 任务已取消")
+        print("[autofarm] 任务已取消")
     end
     if platformFolder then
         platformFolder:Destroy()
         platformFolder = nil
-        print("[自动农场] 平台已销毁")
+        print("[autofarm] 平台已销毁")
     end
 end
 
 local function startAutoFarm()
-    print("[自动农场] 尝试启动")
+    print("[autofarm] 尝试启动")
     local plr = game:GetService("Players").LocalPlayer
     if not plr then
-        warn("[自动农场] LocalPlayer 不存在")
+        warn("[autofarm] LocalPlayer 不存在")
         return
     end
     local username = plr.Name
@@ -362,38 +362,38 @@ local function startAutoFarm()
         return workspace:WaitForChild("Car", 5):WaitForChild(username .. "sCar", 5)
     end)
     if not success or not carModel then
-        warn("[自动农场] 未找到玩家车辆:", username .. "sCar")
-        UILibrary:Notify({Title="自动农场错误", Text="未找到玩家车辆", Duration=5})
+        warn("[autofarm] 未找到玩家车辆:", username .. "sCar")
+        UILibrary:Notify({Title="autofarm错误", Text="未找到玩家车辆", Duration=5})
         stopAutoFarm()
         return
     end
-    print("[自动农场] 找到车辆:", carModel.Name)
+    print("[autofarm] 找到车辆:", carModel.Name)
 
     local driveSeat = carModel:FindFirstChild("DriveSeat")
     if not driveSeat then
-        warn("[自动农场] 未找到 DriveSeat")
-        UILibrary:Notify({Title="自动农场错误", Text="未找到驾驶座位", Duration=5})
+        warn("[autofarm] 未找到 DriveSeat")
+        UILibrary:Notify({Title="autofarm错误", Text="未找到驾驶座位", Duration=5})
         stopAutoFarm()
         return
     end
 
     local body = carModel:FindFirstChild("Body")
     if not body then
-        warn("[自动农场] 未找到 Body")
-        UILibrary:Notify({Title="自动农场错误", Text="未找到 Body", Duration=5})
+        warn("[autofarm] 未找到 Body")
+        UILibrary:Notify({Title="autofarm错误", Text="未找到 Body", Duration=5})
         stopAutoFarm()
         return
     end
 
     local primaryPart = body:FindFirstChild("#Weight")
     if not primaryPart then
-        warn("[自动农场] 未找到 PrimaryPart (#Weight)")
-        UILibrary:Notify({Title="自动农场错误", Text="未找到 PrimaryPart (#Weight)", Duration=5})
+        warn("[autofarm] 未找到 PrimaryPart (#Weight)")
+        UILibrary:Notify({Title="autofarm错误", Text="未找到 PrimaryPart (#Weight)", Duration=5})
         stopAutoFarm()
         return
     end
     carModel.PrimaryPart = primaryPart
-    print("[自动农场] 设置 PrimaryPart 成功")
+    print("[autofarm] 设置 PrimaryPart 成功")
 
     platformFolder = Instance.new("Folder", workspace)
     platformFolder.Name = "AutoPlatform"
@@ -408,7 +408,7 @@ local function startAutoFarm()
         primaryPart.Position.Y + 5,
         primaryPart.Position.Z
     )
-    print("[自动农场] 平台创建成功")
+    print("[autofarm] 平台创建成功")
 
     local originPos = Vector3.new(
         primaryPart.Position.X,
@@ -422,11 +422,11 @@ local function startAutoFarm()
     local lastTpTime = tick()
 
     carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
-    print("[自动农场] 车辆已传送至起始位置")
+    print("[autofarm] 车辆已传送至起始位置")
 
     isFarming = true
     farmTask = task.spawn(function()
-        print("[自动农场] 循环任务开始")
+        print("[autofarm] 循环任务开始")
         while isFarming do
             currentPosX = currentPosX + distancePerTick
             local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
@@ -441,16 +441,16 @@ local function startAutoFarm()
                 currentPosX = originPos.X
                 carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
                 lastTpTime = tick()
-                print("[自动农场] 重置位置")
+                print("[autofarm] 重置位置")
             end
 
             task.wait(interval)
         end
-        print("[自动农场] 循环任务结束")
+        print("[autofarm] 循环任务结束")
         if platformFolder then
             platformFolder:Destroy()
             platformFolder = nil
-            print("[自动农场] 平台已销毁")
+            print("[autofarm] 平台已销毁")
         end
     end)
 end
@@ -511,19 +511,28 @@ local mainFeaturesTab, mainFeaturesContent = UILibrary:CreateTab(sidebar, titleL
     Active = false
 })
 
--- 卡片：自动农场
+-- 卡片：autofarm
+
+-- UI 部分（基于 UILibrary 和 mainFeaturesContent）
+local autoFarmCard = UILibrary:CreateCard(mainFeaturesContent, { IsMultiElement = true })
+UILibrary:CreateLabel(autoFarmCard, {
+    Text = "autofarm",
+    Size = UDim2.new(1, -10, 0, 20),
+    Position = UDim2.new(0, 5, 0, 5)
+})
+
 -- Toggle 控件绑定逻辑
 local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
-    Text = "自动农场",
+    Text = "autofarm",
     DefaultState = false,
     Position = UDim2.new(0, 5, 0, 30),
     Callback = function(state)
-        print("[自动农场] Toggle 状态切换为:", state)
+        print("[autofarm] Toggle 状态切换为:", state)
         if state then
-            UILibrary:Notify({Title = "自动农场", Text = "自动农场已启动", Duration = 5})
+            UILibrary:Notify({Title = "autofarm", Text = "autofarm已启动", Duration = 5})
             startAutoFarm()
         else
-            UILibrary:Notify({Title = "自动农场", Text = "自动农场已停止", Duration = 5})
+            UILibrary:Notify({Title = "autofarm", Text = "autofarm已停止", Duration = 5})
             stopAutoFarm()
         end
     end
