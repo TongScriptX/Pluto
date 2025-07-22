@@ -334,6 +334,7 @@ local sidebar = window.Sidebar
 local titleLabel = window.TitleLabel
 local mainPage = window.MainPage
 
+
 -- 悬浮按钮
 local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     MainFrame = mainFrame,
@@ -836,6 +837,7 @@ game:GetService("RunService").RenderStepped:Connect(function()
 end)
 
 _G.PRIMARY_COLOR = originalPrimaryColor
+
 -- 🌀 主循环开始
 while true do
     local currentTime = os.time()
