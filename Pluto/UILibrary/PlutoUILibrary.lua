@@ -6,7 +6,20 @@ local Players = game:GetService("Players")
 local UILibrary = {}
 
 
-local PRIMARY_COLOR = rawget(_G, "PRIMARY_COLOR") or Color3.fromRGB(63, 81, 181)
+local function decimalToColor3(decimal)
+    local r = math.floor(decimal / 65536) % 256
+    local g = math.floor(decimal / 256) % 256
+    local b = decimal % 256
+    return Color3.fromRGB(r, g, b)
+end
+
+local PRIMARY_COLOR = rawget(_G, "PRIMARY_COLOR")
+if type(PRIMARY_COLOR) == "number" then
+    PRIMARY_COLOR = decimalToColor3(PRIMARY_COLOR)
+elseif PRIMARY_COLOR == nil then
+    PRIMARY_COLOR = Color3.fromRGB(63, 81, 181) -- 默认颜色
+end
+
 -- 默认主题  
 local DEFAULT_THEME = {  
     Primary = Color3.fromRGB(63, 81, 181),  

@@ -7,13 +7,6 @@ local lastWebhookUrl = ""
 local lastSendTime = os.time()  -- 初始化为当前时间
 local lastCurrency = 0  -- 初始化为初始金额
 
-local function decimalToColor3(decimal)
-    local r = math.floor(decimal / 65536) % 256
-    local g = math.floor(decimal / 256) % 256
-    local b = decimal % 256
-    return Color3.fromRGB(r, g, b)
-end
-
 -- 加载 UI 模块
 local UILibrary
 local success, result = pcall(function()
@@ -449,8 +442,6 @@ local function startAutoFarm()
 end
 
 -- 创建主窗口
-local originalPrimaryColor = _G.PRIMARY_COLOR
-_G.PRIMARY_COLOR = decimalToColor3(_G.PRIMARY_COLOR)
 local window = UILibrary:CreateUIWindow()
 if not window then
     error("无法创建 UI 窗口")
@@ -832,8 +823,6 @@ game:GetService("RunService").RenderStepped:Connect(function()
         lastPosition = hrp.Position
     end
 end)
-
-_G.PRIMARY_COLOR = originalPrimaryColor
 
 -- 🌀 主循环开始
 while true do
