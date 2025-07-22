@@ -377,7 +377,7 @@ local mainFeaturesTab, mainFeaturesContent = UILibrary:CreateTab(sidebar, titleL
     Active = false
 })
 
--- 自动农场功能界面卡片
+-- 卡片：自动农场
 local autoFarmCard = UILibrary:CreateCard(mainFeaturesContent, { IsMultiElement = true })
 local autoFarmLabel = UILibrary:CreateLabel(autoFarmCard, {
     Text = "自动农场设置",
@@ -388,7 +388,6 @@ local autoFarmLabel = UILibrary:CreateLabel(autoFarmCard, {
 local isFarming = false
 local platformFolder = nil
 local farmTask = nil
-local toggleChanging = false -- 防止递归调用
 
 local function stopAutoFarm()
     isFarming = false
@@ -406,17 +405,24 @@ end
 
 local function startAutoFarm()
     print("[自动农场] 开始启动")
-    local plr = game.Players.LocalPlayer
+
+    local plr = game:GetService("Players").LocalPlayer
+    if not plr then
+        UILibrary:Notify({Title="自动农场错误", Text="找不到玩家", Duration=5})
+        stopAutoFarm()
+        autoFarmToggle:Set(false)
+        return
+    end
     local username = plr.Name
+
     local success, carModel = pcall(function()
         return workspace:WaitForChild("Car"):WaitForChild(username .. "sCar")
     end)
+
     if not success or not carModel then
         UILibrary:Notify({Title="自动农场错误", Text="未找到玩家车辆", Duration=5})
         stopAutoFarm()
-        toggleChanging = true
         autoFarmToggle:Set(false)
-        toggleChanging = false
         return
     end
 
@@ -424,9 +430,7 @@ local function startAutoFarm()
     if not driveSeat then
         UILibrary:Notify({Title="自动农场错误", Text="未找到驾驶座位", Duration=5})
         stopAutoFarm()
-        toggleChanging = true
         autoFarmToggle:Set(false)
-        toggleChanging = false
         return
     end
 
@@ -434,29 +438,27 @@ local function startAutoFarm()
     if not primaryPart then
         UILibrary:Notify({Title="自动农场错误", Text="未找到 PrimaryPart (#Weight)", Duration=5})
         stopAutoFarm()
-        toggleChanging = true
         autoFarmToggle:Set(false)
-        toggleChanging = false
         return
     end
 
     carModel.PrimaryPart = primaryPart
 
+    -- 创建平台
     platformFolder = Instance.new("Folder", workspace)
     platformFolder.Name = "AutoPlatform"
-
     local platform = Instance.new("Part", platformFolder)
     platform.Anchored = true
     platform.Size = Vector3.new(100000, 10, 10000)
-    platform.BrickColor = BrickColor.new("Dark stone grey")
-    platform.Material = Enum.Material.SmoothPlastic
-    -- 这里改成 +500，避免位置太远导致加载卡住
     platform.Position = Vector3.new(
-        primaryPart.Position.X + 500,
+        primaryPart.Position.X + 50000,
         primaryPart.Position.Y + 5,
         primaryPart.Position.Z
     )
+    platform.BrickColor = BrickColor.new("Dark stone grey")
+    platform.Material = Enum.Material.SmoothPlastic
 
+    -- 初始位置
     local originPos = Vector3.new(
         primaryPart.Position.X,
         platform.Position.Y + 5000,
@@ -468,6 +470,7 @@ local function startAutoFarm()
     local currentPosX = originPos.X
     local lastTpTime = tick()
 
+    -- 传送车辆上空高处
     carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
 
     farmTask = task.spawn(function()
@@ -478,15 +481,17 @@ local function startAutoFarm()
             carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
 
             if carModel.PrimaryPart then
-                carModel.PrimaryPart.Velocity = Vector3.new(0,0,0)
-                carModel.PrimaryPart.RotVelocity = Vector3.new(0,0,0)
+                carModel.PrimaryPart.Velocity = Vector3.zero
+                carModel.PrimaryPart.RotVelocity = Vector3.zero
             end
 
             if tick() - lastTpTime > 5 then
                 currentPosX = originPos.X
-                carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
+                carModel:PivotTo(CFrame.new(
+                    Vector3.new(currentPosX, originPos.Y, originPos.Z),
+                    Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)
+                ))
                 lastTpTime = tick()
-                print("[自动农场] 位置重置")
             end
 
             task.wait(interval)
@@ -505,7 +510,6 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
     DefaultState = false,
     Position = UDim2.new(0, 5, 0, 30),
     Callback = function(state)
-        if toggleChanging then return end
         print("[自动农场] Toggle 状态切换为:", state)
         autoFarmToggle.Text = "自动农场: " .. (state and "开启" or "关闭")
         if state then
