@@ -387,7 +387,110 @@ local autoFarmLabel = UILibrary:CreateLabel(autoFarmCard, {
 
 local isFarming = false
 local platformFolder = nil
-getfenv().test = false
+
+local function stopAutoFarm()
+    isFarming = false
+    if platformFolder then
+        platformFolder:Destroy()
+        platformFolder = nil
+    end
+end
+
+local function startAutoFarm()
+    local plr = game.Players.LocalPlayer
+    local username = plr.Name
+    local success, carModel = pcall(function()
+        return workspace:WaitForChild("Car"):WaitForChild(username .. "sCar")
+    end)
+
+    if not success or not carModel then
+        UILibrary:Notify({
+            Title = "自动农场错误",
+            Text = "未找到玩家车辆",
+            Duration = 5
+        })
+        stopAutoFarm()
+        autoFarmToggle:Set(false)
+        return
+    end
+
+    local driveSeat = carModel:FindFirstChild("DriveSeat")
+    if not driveSeat then
+        UILibrary:Notify({
+            Title = "自动农场错误",
+            Text = "未找到驾驶座位",
+            Duration = 5
+        })
+        stopAutoFarm()
+        autoFarmToggle:Set(false)
+        return
+    end
+
+    local primaryPart = carModel:FindFirstChild("Body") and carModel.Body:FindFirstChild("#Weight")
+    if not primaryPart then
+        UILibrary:Notify({
+            Title = "自动农场错误",
+            Text = "未找到 PrimaryPart (#Weight)",
+            Duration = 5
+        })
+        stopAutoFarm()
+        autoFarmToggle:Set(false)
+        return
+    end
+    carModel.PrimaryPart = primaryPart
+
+    platformFolder = Instance.new("Folder", workspace)
+    platformFolder.Name = "AutoPlatform"
+    local platform = Instance.new("Part", platformFolder)
+    platform.Anchored = true
+    platform.Size = Vector3.new(100000, 10, 10000)
+    platform.BrickColor = BrickColor.new("Dark stone grey")
+    platform.Material = Enum.Material.SmoothPlastic
+    platform.CFrame = CFrame.new(
+        primaryPart.Position.X + 50000,
+        primaryPart.Position.Y + 5,
+        primaryPart.Position.Z
+    )
+
+    local originPos = Vector3.new(
+        primaryPart.Position.X,
+        platform.CFrame.Y + 5000,
+        primaryPart.Position.Z
+    )
+    local speed = 600
+    local interval = 0.05
+    local distancePerTick = speed * interval
+    local currentPosX = originPos.X
+    local lastTpTime = tick()
+
+    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
+
+    task.spawn(function()
+        while isFarming do
+            currentPosX = currentPosX + distancePerTick
+            local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
+            carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
+
+            if carModel.PrimaryPart then
+                carModel.PrimaryPart.Velocity = Vector3.zero
+                carModel.PrimaryPart.RotVelocity = Vector3.zero
+            end
+
+            if tick() - lastTpTime > 5 then
+                currentPosX = originPos.X
+                carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
+                lastTpTime = tick()
+            end
+
+            task.wait(interval)
+        end
+
+        if platformFolder then
+            platformFolder:Destroy()
+            platformFolder = nil
+        end
+    end)
+end
 
 local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
     Text = "自动农场: 关闭",
@@ -395,138 +498,23 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
     Position = UDim2.new(0, 5, 0, 30),
     Callback = function(state)
         print("[自动农场] Toggle 状态切换为:", state)
-
-        isFarming = state
-        getfenv().test = state
-        if autoFarmToggle.SetText then
-            autoFarmToggle:SetText("自动农场: " .. (state and "开启" or "关闭"))
-        else
-            autoFarmToggle.Text = "自动农场: " .. (state and "开启" or "关闭")
-        end
+        autoFarmToggle.Text = "自动农场: " .. (state and "开启" or "关闭")
 
         if state then
+            isFarming = true
             UILibrary:Notify({
                 Title = "自动农场",
                 Text = "自动农场已启动",
                 Duration = 5
             })
-
-            task.spawn(function()
-                print("[自动农场] 开始执行自动农场任务")
-
-                local plr = game.Players.LocalPlayer
-                local username = plr.Name
-                print("[自动农场] 玩家名称:", username)
-
-                local success, carModel = pcall(function()
-                    return workspace:WaitForChild("Car"):WaitForChild(username .. "sCar")
-                end)
-                print("[自动农场] 检查车辆结果:", success, carModel)
-
-                if not success or not carModel then
-                    UILibrary:Notify({
-                        Title = "自动农场错误",
-                        Text = "未找到玩家车辆",
-                        Duration = 5
-                    })
-                    isFarming = false
-                    getfenv().test = false
-                    autoFarmToggle:Set(false)
-                    return
-                end
-
-                local driveSeat = carModel:FindFirstChild("DriveSeat")
-                if not driveSeat then
-                    UILibrary:Notify({
-                        Title = "自动农场错误",
-                        Text = "未找到驾驶座位",
-                        Duration = 5
-                    })
-                    isFarming = false
-                    getfenv().test = false
-                    autoFarmToggle:Set(false)
-                    return
-                end
-
-                local primaryPart = carModel:FindFirstChild("Body") and carModel.Body:FindFirstChild("#Weight")
-                if not primaryPart then
-                    UILibrary:Notify({
-                        Title = "自动农场错误",
-                        Text = "未找到 PrimaryPart (#Weight)",
-                        Duration = 5
-                    })
-                    isFarming = false
-                    getfenv().test = false
-                    autoFarmToggle:Set(false)
-                    return
-                end
-                carModel.PrimaryPart = primaryPart
-
-                platformFolder = Instance.new("Folder", workspace)
-                platformFolder.Name = "AutoPlatform"
-                local platform = Instance.new("Part", platformFolder)
-                platform.Anchored = true
-                platform.Size = Vector3.new(100000, 10, 10000)
-                platform.BrickColor = BrickColor.new("Dark stone grey")
-                platform.Material = Enum.Material.SmoothPlastic
-                platform.CFrame = CFrame.new(
-                    carModel.PrimaryPart.Position.X + 50000,
-                    carModel.PrimaryPart.Position.Y + 5,
-                    carModel.PrimaryPart.Position.Z
-                )
-
-                local originPos = Vector3.new(
-                    carModel.PrimaryPart.Position.X,
-                    platform.CFrame.Y + 5000,
-                    carModel.PrimaryPart.Position.Z
-                )
-                local speed = 600
-                local interval = 0.05
-                local distancePerTick = speed * interval
-                local currentPosX = originPos.X
-                local lastTpTime = tick()
-
-                carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
-                print("[自动农场] 已传送到初始位置")
-
-                while getfenv().test do
-                    currentPosX = currentPosX + distancePerTick
-                    local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
-                    carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
-
-                    if carModel.PrimaryPart then
-                        carModel.PrimaryPart.Velocity = Vector3.new(0, 0, 0)
-                        carModel.PrimaryPart.RotVelocity = Vector3.new(0, 0, 0)
-                    end
-
-                    if tick() - lastTpTime > 5 then
-                        currentPosX = originPos.X
-                        carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
-                        lastTpTime = tick()
-                        print("[自动农场] 复位位置")
-                    end
-
-                    task.wait(interval)
-                end
-
-                if platformFolder then
-                    platformFolder:Destroy()
-                    platformFolder = nil
-                end
-                print("[自动农场] 自动农场任务结束")
-            end)
+            startAutoFarm()
         else
+            stopAutoFarm()
             UILibrary:Notify({
                 Title = "自动农场",
                 Text = "自动农场已停止",
                 Duration = 5
             })
-
-            if platformFolder then
-                platformFolder:Destroy()
-                platformFolder = nil
-            end
-            print("[自动农场] 已关闭自动农场")
         end
     end
 })
