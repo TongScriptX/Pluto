@@ -1,8 +1,10 @@
 local placeId = game.PlaceId
 
-local DRIVING_EMPIRE_ID = 3351674303
-local GREENVILLE_ID = 891852901
-local Autopilot_Simulator = 11832484500
+local gameScripts = {
+    [3351674303] = "Driving_Empire",
+    [891852901]  = "Greenville",
+    [11832484500] = "Autopilot_Simulator"
+}
 
 local function loadRemoteScript(url)
     local success, res = pcall(function()
@@ -20,10 +22,11 @@ local function loadRemoteScript(url)
     end
 end
 
-if placeId == DRIVING_EMPIRE_ID then
-    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Games/Driving_Empire.lua")
-elseif placeId == GREENVILLE_ID then
-    loadRemoteScript("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Games/Greenville.lua")
+local gameName = gameScripts[placeId]
+if gameName then
+    local baseUrl = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Games/"
+    local scriptUrl = baseUrl .. gameName .. ".lua"
+    loadRemoteScript(scriptUrl)
 else
-    print("[Pluto-X]: 尚未支持，请等待")
+    print("[Pluto-X]: 尚未支持该游戏 PlaceId（" .. placeId .. "），请等待更新")
 end
