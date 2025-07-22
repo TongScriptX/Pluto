@@ -501,7 +501,6 @@ local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
 -- 标签页：主要功能
 local mainFeaturesTab, mainFeaturesContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "主要功能",
-    Active = true
 })
 
 -- 卡片：autofarm
