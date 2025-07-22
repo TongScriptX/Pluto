@@ -2,6 +2,7 @@ local placeId = game.PlaceId
 
 local DRIVING_EMPIRE_ID = 3351674303
 local GREENVILLE_ID = 891852901
+local Autopilot_Simulator = 11832484500
 
 local function loadRemoteScript(url)
     local success, res = pcall(function()
