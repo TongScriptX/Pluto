@@ -740,8 +740,15 @@ local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage
 -- 作者信息
 local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
     Text = "作者: tongblx",
-    SocialText = "加入 Discord 服务器",
-    socialCallback = function()
+    SocialText = "Discord 服务器链接："
+})
+
+-- 添加一个按钮用于复制 Discord 链接
+UILibrary:CreateButton(aboutContent, {
+    Text = "复制 Discord",
+    Position = UDim2.new(0, 10, 0, 80),
+    Size = UDim2.new(0, 160, 0, 30),
+    Callback = function()
         local link = "https://discord.gg/j20v0eWU8u"
         if setclipboard and type(link) == "string" then
             setclipboard(link)
@@ -757,7 +764,7 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
                 Duration = 2,
             })
         end
-    end
+    end,
 })
 
 -- 初始化欢迎消息
