@@ -1,19 +1,18 @@
 getgenv().PlutoLoaded = true
 
-local fiberUrl = "raw.githubusercontent.com/Aaron999S/FiberHub/main/Main"
-local luarmorUrl = "raw.githubusercontent.com/treeofplant/luarmor/main/loader.lua"
-
 local function checkStackForAllowedScripts()
     local fiberFound = false
     local luarmorFound = false
 
-    for level = 2, 10 do
-        local info = debug.getinfo(level, "S")
-        if not info then break end
+    for level = 2, 20 do
+        local ok, info = pcall(debug.getinfo, level, "S")
+        if not ok or not info then
+            break
+        end
         local src = info.source or ""
-        if src:find(fiberUrl, 1, true) then
+        if src:find("raw.githubusercontent.com/Aaron999S/FiberHub/main/Main", 1, true) then
             fiberFound = true
-        elseif src:find(luarmorUrl, 1, true) then
+        elseif src:find("raw.githubusercontent.com/treeofplant/luarmor/main/loader.lua", 1, true) then
             luarmorFound = true
         end
     end
@@ -31,6 +30,8 @@ if (fiber and luarmor) or (not fiber and not luarmor) then
     })
     while true do end
 end
+
+-- 这里是你后续正常代码逻辑，比如加载游戏脚本等
 
 local placeId = game.PlaceId
 
