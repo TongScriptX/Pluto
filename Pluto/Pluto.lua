@@ -9,45 +9,17 @@ local function kill(reason)
     return false
 end
 
+-- 仅检测 Pluto 是否携带 tongblx 标记
 local function checkPlutoInjection()
     if not env.tongblx then
-        return false, "tongblx 标记缺失"
-    end
-
-    local allowedKeys = {
-        ["tongblx"] = true,
-        ["FiberInjected"] = true,
-        ["LuarmorInjected"] = true
-    }
-
-    for k, _ in pairs(env) do
-        if not allowedKeys[k] then
-            return false, "Pluto 注入环境存在多余内容（" .. tostring(k) .. "）"
-        end
-    end
-
-    return true
-end
-
-local function checkFiberLuarmorInjection()
-    local fiber = env.FiberInjected == true
-    local luarmor = env.LuarmorInjected == true
-    if fiber and luarmor then
-        return false, "禁止同时加载 Fiber 和 Luarmor"
+        return false, "不要修改脚本"
     end
     return true
 end
 
--- 主逻辑检测
 local ok, err = checkPlutoInjection()
 if not ok then
-    kill("非法 Pluto 注入：" .. err)
-    return
-end
-
-local ok2, err2 = checkFiberLuarmorInjection()
-if not ok2 then
-    kill("非法注入：" .. err2)
+    kill("非法注入：" .. err)
     return
 end
 
