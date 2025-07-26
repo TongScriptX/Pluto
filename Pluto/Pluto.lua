@@ -1,4 +1,4 @@
-getgenv().PlutoLoaded = true
+local env = getgenv()
 
 local function kill(reason)
     game:GetService("StarterGui"):SetCore("SendNotification", {
@@ -6,45 +6,52 @@ local function kill(reason)
         Text = reason,
         Duration = 10
     })
-    return false -- 直接返回 false 表示停止后续逻辑
+    return false
 end
 
-local function checkStackForAllowedScripts()
-    local fiberUrl = "raw.githubusercontent.com/Aaron999S/FiberHub/main/Main"
-    local luaUrl   = "raw.githubusercontent.com/treeofplant/luarmor/main/loader.lua"
-    local plutoUrl = "pluto%-x%.vercel%.app"
-
-    local ok, trace = xpcall(function()
-        error("trace", 0)
-    end, function(err)
-        local fullTrace = debug.traceback(err, 2)
-        return string.sub(fullTrace, 1, 500)
-    end)
-
-    if not ok or not trace then
-        return kill("无法获取调用栈，注入停止")
+-- 只允许 PlutoInjected 为 true，且注入脚本纯净（即环境中仅有 PlutoInjected 且无其他字段）
+local function checkPlutoInjection()
+    if env.PlutoInjected ~= true then
+        return false, "PlutoInjected 标记缺失"
     end
 
-    local fiberFound = trace:find(fiberUrl, 1, true)
-    local luaFound   = trace:find(luaUrl, 1, true)
-    local plutoFound = trace:find(plutoUrl)
-
-    if not plutoFound then
-        return kill("非法注入：不要修改注入脚本，注入停止")
+    local count = 0
+    for k, v in pairs(env) do
+        count = count + 1
+        if k ~= "PlutoInjected" then
+            return false, "Pluto 注入时只允许存在 PlutoInjected 标记"
+        end
     end
 
-    if fiberFound and luaFound then
-        return kill("非法注入：检测到同时加载 Fiber 和 Luarmor，注入停止")
-    end
-
-    return true -- 通过检测，继续执行
+    return true
 end
 
-if not checkStackForAllowedScripts() then
-    return -- 直接退出，不继续执行后续代码
+local function checkFiberLuarmorInjection()
+    local fiber = env.FiberInjected == true
+    local luarmor = env.LuarmorInjected == true
+    if fiber and luarmor then
+        return false, "禁止同时加载 Fiber 和 Luarmor"
+    end
+    return true
 end
 
--- Pluto 主体逻辑
+-- 主逻辑检测
+local ok, err = checkPlutoInjection()
+if not ok then
+    kill("非法 Pluto 注入：" .. err)
+    return
+end
+
+local ok2, err2 = checkFiberLuarmorInjection()
+if not ok2 then
+    kill("非法注入：" .. err2)
+    return
+end
+
+-- 允许 Pluto + Fiber，或 Pluto + Luarmor，或 单独 Pluto 注入
+-- 但禁止 Fiber + Luarmor 同时注入
+
+-- 下面是你原本 Pluto 主脚本逻辑
 local placeId = game.PlaceId
 
 local gameScripts = {
