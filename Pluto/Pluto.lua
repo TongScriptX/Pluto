@@ -9,17 +9,20 @@ local function kill(reason)
     return false
 end
 
--- 只允许 PlutoInjected 为 true，且注入脚本纯净（即环境中仅有 PlutoInjected 且无其他字段）
 local function checkPlutoInjection()
-    if env.PlutoInjected ~= true then
-        return false, "PlutoInjected 标记缺失"
+    if not env.tongblx then
+        return false, "tongblx 标记缺失"
     end
 
-    local count = 0
-    for k, v in pairs(env) do
-        count = count + 1
-        if k ~= "PlutoInjected" then
-            return false, "Pluto 注入时只允许存在 PlutoInjected 标记"
+    local allowedKeys = {
+        ["tongblx"] = true,
+        ["FiberInjected"] = true,
+        ["LuarmorInjected"] = true
+    }
+
+    for k, _ in pairs(env) do
+        if not allowedKeys[k] then
+            return false, "Pluto 注入环境存在多余内容（" .. tostring(k) .. "）"
         end
     end
 
@@ -48,10 +51,7 @@ if not ok2 then
     return
 end
 
--- 允许 Pluto + Fiber，或 Pluto + Luarmor，或 单独 Pluto 注入
--- 但禁止 Fiber + Luarmor 同时注入
-
--- 下面是你原本 Pluto 主脚本逻辑
+-- Pluto 主体逻辑
 local placeId = game.PlaceId
 
 local gameScripts = {
@@ -84,30 +84,3 @@ if gameName then
 else
     warn("[Pluto-X]: 尚未支持该游戏 PlaceId（" .. placeId .. "），请等待更新")
 end
-
---[[
-    loadstring(game:HttpGet("https://pluto-x.vercel.app"))()
-    
-    loadstring(game:HttpGet("https://pluto-x.vercel.app"))()
-    print("hello")
-    
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Aaron999S/FiberHub/main/Main"))()
-    loadstring(game:HttpGet("https://pluto-x.vercel.app"))()
-    
-    getgenv().FiberInjected = true
-    local function safeLoad(url)
-    coroutine.wrap(function()
-        local ok, err = pcall(function()
-            loadstring(game:HttpGet(url))()
-        end)
-        if not ok then
-            warn("加载失败: " .. url .. "\n原因: " .. tostring(err))
-        end
-    end)()
-end
-
-safeLoad("https://pluto-x.vercel.app")
-safeLoad("https://raw.githubusercontent.com/Aaron999S/FiberHub/main/Main")
-
-
-]]
