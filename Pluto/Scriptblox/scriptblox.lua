@@ -132,7 +132,10 @@ local function appendSavedScript(sc)
         end
     end
 
-    -- 防止重复保存（根据 id）
+    -- 防止重复保存（根据 id 字段）
+    if not sc.id then
+        sc.id = tostring(math.random(1000000, 9999999)) -- 兜底生成一个 ID
+    end
     for _, v in ipairs(saved) do
         if v.id == sc.id then
             UILibrary:Notify({
@@ -152,6 +155,12 @@ local function appendSavedScript(sc)
         script = sc.script,
     })
 
+    -- 打印调试
+    print("准备保存，当前脚本总数：", #saved)
+    for i,v in ipairs(saved) do
+        print(i, v.title)
+    end
+
     local jsonText = HttpService:JSONEncode(saved)
     local ok, err = pcall(function()
         writefile("Pluto_X_Scriptblox.json", jsonText)
@@ -167,11 +176,93 @@ local function appendSavedScript(sc)
     return true
 end
 
--- 搜索函数
-function doSearch(keyword)
+local resultsPerPage = 5
+local currentPage = 1
+local totalPages = 1
+local currentKeyword = ""
+
+-- 分页按钮竖排区域，放在搜索框下面（可根据搜索框位置微调 Y）
+local pageControlsFrame = Instance.new("Frame")
+pageControlsFrame.Size = UDim2.new(0, 100, 0, 100)
+pageControlsFrame.Position = UDim2.new(0, 5, 0, 80) -- Y=80 是默认搜索框下，改成你实际高度
+pageControlsFrame.BackgroundTransparency = 1
+pageControlsFrame.Parent = tabContent
+
+local pageLayout = Instance.new("UIListLayout")
+pageLayout.Parent = pageControlsFrame
+pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+pageLayout.Padding = UDim.new(0, 6)
+
+-- 上一页按钮
+local prevBtn = UILibrary:CreateButton(pageControlsFrame, {
+    Text = "上一页",
+    Size = UDim2.new(1, 0, 0, 26),
+    Callback = function()
+        if currentPage > 1 then
+            currentPage -= 1
+            doSearch(currentKeyword, currentPage)
+        end
+    end
+})
+
+-- 页码标签
+local pageLabel = Instance.new("TextLabel")
+pageLabel.Parent = pageControlsFrame
+pageLabel.Size = UDim2.new(1, 0, 0, 26)
+pageLabel.BackgroundTransparency = 1
+pageLabel.Text = "第 1 页"
+pageLabel.TextColor3 = Color3.new(1,1,1)
+pageLabel.Font = Enum.Font.SourceSans
+pageLabel.TextSize = 16
+pageLabel.TextScaled = false
+pageLabel.TextXAlignment = Enum.TextXAlignment.Center
+pageLabel.TextYAlignment = Enum.TextYAlignment.Center
+
+-- 下一页按钮
+local nextBtn = UILibrary:CreateButton(pageControlsFrame, {
+    Text = "下一页",
+    Size = UDim2.new(1, 0, 0, 26),
+    Callback = function()
+        if currentPage < totalPages then
+            currentPage += 1
+            doSearch(currentKeyword, currentPage)
+        end
+    end
+})
+
+-- 搜索结果滚动区（位于分页按钮右侧）
+local resultsScrollingFrame = Instance.new("ScrollingFrame")
+resultsScrollingFrame.Parent = tabContent
+resultsScrollingFrame.Position = UDim2.new(0, 110, 0, 80)
+resultsScrollingFrame.Size = UDim2.new(1, -115, 1, -90)
+resultsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+resultsScrollingFrame.ScrollBarThickness = 6
+resultsScrollingFrame.BackgroundTransparency = 1
+
+local uiListLayout = Instance.new("UIListLayout")
+uiListLayout.Parent = resultsScrollingFrame
+uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+uiListLayout.Padding = UDim.new(0, 5)
+
+local function clearResults()
+    for _, child in pairs(resultsScrollingFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+end
+
+local currentScripts = {}
+
+function doSearch(keyword, page)
     clearResults()
     currentScripts = {}
-    local url = "https://scriptblox.com/api/script/search?q=" .. HttpService:UrlEncode(keyword) .. "&max=10&page=1"
+    currentKeyword = keyword
+    currentPage = page or 1
+
+    local maxPerRequest = 50 -- 提前加载较多，避免频繁请求
+    local url = "https://scriptblox.com/api/script/search?q=" .. HttpService:UrlEncode(keyword) .. "&max=" .. maxPerRequest .. "&page=1"
+
     local ok, res = pcall(function()
         return game:HttpGet(url)
     end)
@@ -188,7 +279,16 @@ function doSearch(keyword)
         return
     end
 
-    for index, sc in ipairs(data.result.scripts) do
+    local allResults = data.result.scripts
+    totalPages = math.ceil(#allResults / resultsPerPage)
+    if totalPages == 0 then totalPages = 1 end
+    if currentPage > totalPages then currentPage = totalPages end
+
+    local startIndex = (currentPage - 1) * resultsPerPage + 1
+    local endIndex = math.min(startIndex + resultsPerPage - 1, #allResults)
+
+    for index = startIndex, endIndex do
+        local sc = allResults[index]
         table.insert(currentScripts, sc)
 
         local card = UILibrary:CreateCard(resultsScrollingFrame, { IsMultiElement = true })
@@ -199,7 +299,7 @@ function doSearch(keyword)
         UILibrary:CreateLabel(card, { Text = "游戏: " .. (sc.game and sc.game.name or "未知"), TextSize = 12 })
         UILibrary:CreateLabel(card, { Text = "浏览量: " .. tostring(sc.views or 0), TextSize = 12 })
 
-        local injectBtn = UILibrary:CreateButton(card, {
+        UILibrary:CreateButton(card, {
             Text = "注入脚本",
             Position = UDim2.new(0, 5, 1, -35),
             Size = UDim2.new(0, 90, 0, 30),
@@ -230,7 +330,7 @@ function doSearch(keyword)
             end
         })
 
-        local saveBtn = UILibrary:CreateButton(card, {
+        UILibrary:CreateButton(card, {
             Text = "保存脚本",
             Position = UDim2.new(0, 105, 1, -35),
             Size = UDim2.new(0, 90, 0, 30),
@@ -250,12 +350,18 @@ function doSearch(keyword)
                         Text = "脚本《" .. (sc.title or "无标题") .. "》已保存",
                         Duration = 3
                     })
+                    refreshSavedList()
                 end
             end
         })
     end
 
-    local contentHeight = (#data.result.scripts) * (90 + 5) + 5
+    -- 更新页码标签
+    pageLabel.Text = string.format("第 %d / %d 页", currentPage, totalPages)
+
+    -- 自动调整滚动区域高度
+    local visibleCount = endIndex - startIndex + 1
+    local contentHeight = visibleCount * (90 + 5) + 5
     resultsScrollingFrame.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
 end
 
@@ -266,13 +372,13 @@ local savedTabBtn, savedTabContent = UILibrary:CreateTab(sidebar, titleLabel, ma
     Active = false,
 })
 
--- 确保有 UIListLayout
-local uiListLayout = savedTabContent:FindFirstChildOfClass("UIListLayout")
-if not uiListLayout then
-    uiListLayout = Instance.new("UIListLayout")
-    uiListLayout.Parent = savedTabContent
-    uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    uiListLayout.Padding = UDim.new(0, 5)
+-- 确保有 UIListLayout（用于已保存脚本）
+local savedListLayout = savedTabContent:FindFirstChildOfClass("UIListLayout")
+if not savedListLayout then
+    savedListLayout = Instance.new("UIListLayout")
+    savedListLayout.Parent = savedTabContent
+    savedListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    savedListLayout.Padding = UDim.new(0, 5)
 end
 
 -- 刷新按钮变量
@@ -324,10 +430,11 @@ local function refreshSavedList()
             TextXAlignment = Enum.TextXAlignment.Left,
         })
 
+        -- 注入按钮
         UILibrary:CreateButton(card, {
             Text = "注入",
-            Position = UDim2.new(0.6, 10, 0, 15),
-            Size = UDim2.new(0.15, -10, 0, 30),
+            Position = UDim2.new(0.6, 5, 0, 15),
+            Size = UDim2.new(0.12, -5, 0, 30),
             Callback = function()
                 if sc.script and #sc.script > 0 then
                     local func, err = loadstring(sc.script)
@@ -355,10 +462,11 @@ local function refreshSavedList()
             end,
         })
 
+        -- 删除按钮
         UILibrary:CreateButton(card, {
             Text = "删除",
-            Position = UDim2.new(0.78, 10, 0, 15),
-            Size = UDim2.new(0.15, -10, 0, 30),
+            Position = UDim2.new(0.73, 5, 0, 15),
+            Size = UDim2.new(0.12, -5, 0, 30),
             Callback = function()
                 local saved = readSavedScripts()
                 if saved then
@@ -368,7 +476,6 @@ local function refreshSavedList()
                             break
                         end
                     end
-                    local HttpService = game:GetService("HttpService")
                     writefile("Pluto_X_Scriptblox.json", HttpService:JSONEncode(saved))
                     UILibrary:Notify({
                         Title = "删除成功",
@@ -376,6 +483,29 @@ local function refreshSavedList()
                         Duration = 3,
                     })
                     refreshSavedList()
+                end
+            end,
+        })
+
+        -- 复制按钮
+        UILibrary:CreateButton(card, {
+            Text = "复制",
+            Position = UDim2.new(0.86, 5, 0, 15),
+            Size = UDim2.new(0.12, -10, 0, 30),
+            Callback = function()
+                if setclipboard and type(sc.script) == "string" then
+                    setclipboard(sc.script)
+                    UILibrary:Notify({
+                        Title = "已复制",
+                        Text = "脚本内容已复制到剪贴板",
+                        Duration = 2,
+                    })
+                else
+                    UILibrary:Notify({
+                        Title = "复制失败",
+                        Text = "无法访问剪贴板功能",
+                        Duration = 2,
+                    })
                 end
             end,
         })
