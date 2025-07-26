@@ -6,7 +6,7 @@ local function kill(reason)
         Text = reason,
         Duration = 10
     })
-    while true do end
+    return false -- 直接返回 false 表示停止后续逻辑
 end
 
 local function checkStackForAllowedScripts()
@@ -17,11 +17,12 @@ local function checkStackForAllowedScripts()
     local ok, trace = xpcall(function()
         error("trace", 0)
     end, function(err)
-        return debug.traceback(err, 2)
+        local fullTrace = debug.traceback(err, 2)
+        return string.sub(fullTrace, 1, 500)
     end)
 
     if not ok or not trace then
-        kill("无法获取调用栈")
+        return kill("无法获取调用栈，注入停止")
     end
 
     local fiberFound = trace:find(fiberUrl, 1, true)
@@ -29,15 +30,19 @@ local function checkStackForAllowedScripts()
     local plutoFound = trace:find(plutoUrl)
 
     if not plutoFound then
-        kill("非法注入：不要修改注入脚本")
+        return kill("非法注入：不要修改注入脚本，注入停止")
     end
 
     if fiberFound and luaFound then
-        kill("非法注入：检测到同时加载 Fiber 和 Luarmor")
+        return kill("非法注入：检测到同时加载 Fiber 和 Luarmor，注入停止")
     end
+
+    return true -- 通过检测，继续执行
 end
 
-checkStackForAllowedScripts()
+if not checkStackForAllowedScripts() then
+    return -- 直接退出，不继续执行后续代码
+end
 
 -- Pluto 主体逻辑
 local placeId = game.PlaceId
