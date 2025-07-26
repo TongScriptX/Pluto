@@ -84,3 +84,30 @@ if gameName then
 else
     warn("[Pluto-X]: 尚未支持该游戏 PlaceId（" .. placeId .. "），请等待更新")
 end
+
+--[[
+    loadstring(game:HttpGet("https://pluto-x.vercel.app"))()
+    
+    loadstring(game:HttpGet("https://pluto-x.vercel.app"))()
+    print("hello")
+    
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Aaron999S/FiberHub/main/Main"))()
+    loadstring(game:HttpGet("https://pluto-x.vercel.app"))()
+    
+    getgenv().FiberInjected = true
+    local function safeLoad(url)
+    coroutine.wrap(function()
+        local ok, err = pcall(function()
+            loadstring(game:HttpGet(url))()
+        end)
+        if not ok then
+            warn("加载失败: " .. url .. "\n原因: " .. tostring(err))
+        end
+    end)()
+end
+
+safeLoad("https://pluto-x.vercel.app")
+safeLoad("https://raw.githubusercontent.com/Aaron999S/FiberHub/main/Main")
+
+
+]]
