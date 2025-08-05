@@ -5,8 +5,7 @@ local HttpService = game:GetService("HttpService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- 你的GitHub原始文件Raw链接（注意替换为你自己仓库的URL）
-local url = "https://raw.githubusercontent.com/你的用户名/仓库名/分支名/ConsoleUI.lua"
+local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Console/ConsoleUI.lua"
 
 -- Http请求获取UI代码
 local success, uiCode = pcall(function()
