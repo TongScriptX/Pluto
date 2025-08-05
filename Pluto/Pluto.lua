@@ -29,7 +29,8 @@ local placeId = game.PlaceId
 local gameScripts = {
     [3351674303] = "Driving_Empire",
     [891852901]  = "Greenville",
-    [11832484500] = "Autopilot_Simulator"
+    [11832484500] = "Autopilot_Simulator",
+    [5865858426] = "Retail_Tycoon_2"
 }
 
 local function loadRemoteScript(url)
