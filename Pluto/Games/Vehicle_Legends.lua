@@ -60,25 +60,35 @@ end
 
 -- 获取初始金额
 local initialCurrency = 0
-local player = game.Players.LocalPlayer
+local player = game:GetService("Players").LocalPlayer
 
 local function fetchCurrentCurrency()
-    local success, currencyValue = pcall(function()
-        return player:WaitForChild("leaderstats", 5)
-            :WaitForChild("Cash", 5).Value
-    end)
-    if success and currencyValue then
-        return math.floor(currencyValue)
-    end
-    UILibrary:Notify({ Title = "错误", Text = "无法获取金额（Cash）", Duration = 5 })
-    return nil
+	local success, currencyValue = pcall(function()
+		local text = player:WaitForChild("PlayerGui", 5)
+			:WaitForChild("ScreenGui", 5)
+			:WaitForChild("leaderstatAmounts", 5)
+			:WaitForChild("Credits", 5)
+			:WaitForChild("TextLabel", 5).Text
+
+		-- 提取文本中的金额，例如 "$79,000" -> 79000
+		local numberString = text:match("%$([%d,]+)")
+		numberString = numberString and numberString:gsub(",", "")
+		return tonumber(numberString)
+	end)
+
+	if success and currencyValue then
+		return math.floor(currencyValue)
+	end
+
+	UILibrary:Notify({ Title = "错误", Text = "无法获取金额（Credits）", Duration = 5 })
+	return nil
 end
 
 local success, currencyValue = pcall(fetchCurrentCurrency)
 if success and currencyValue then
-    initialCurrency = currencyValue
-    lastCurrency = currencyValue
-    UILibrary:Notify({ Title = "初始化成功", Text = "初始金额: " .. tostring(initialCurrency), Duration = 5 })
+	initialCurrency = currencyValue
+	lastCurrency = currencyValue
+	UILibrary:Notify({ Title = "初始化成功", Text = "初始金额: " .. tostring(initialCurrency), Duration = 5 })
 end
 
 -- 反挂机
