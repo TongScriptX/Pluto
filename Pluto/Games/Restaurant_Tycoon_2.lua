@@ -43,8 +43,7 @@ local config = {
     notificationInterval = 30,
     welcomeSent = false,
     targetCurrency = 0,
-    enableTargetKick = false,
-    autoCollectEnabled = false
+    enableTargetKick = false
 }
 
 -- 颜色定义
@@ -61,15 +60,14 @@ end
 
 -- 获取初始金额
 local initialCurrency = 0
-local player = game.Players.LocalPlayer
+local player = game:GetService("Players").LocalPlayer
 
 local function fetchCurrentCurrency()
-    local success, currencyValue = pcall(function()
-        return player:WaitForChild("leaderstats", 5)
-            :WaitForChild("Cash", 5).Value
+    local success, result = pcall(function()
+        return player.leaderstats.Cash.Value
     end)
-    if success and currencyValue then
-        return math.floor(currencyValue)
+    if success and result then
+        return math.floor(result)
     end
     UILibrary:Notify({ Title = "错误", Text = "无法获取金额（Cash）", Duration = 5 })
     return nil
@@ -297,6 +295,69 @@ local function initTargetCurrency()
 end
 pcall(initTargetCurrency)
 
+-- 自动收钱逻辑
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ClientTycoonInput = ReplicatedStorage:WaitForChild("Events"):WaitForChild("ClientTycoonInput")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+-- 查找玩家的 Tycoon
+local function findPlayerTycoon()
+    for _, t in pairs(workspace:WaitForChild("Tycoons"):GetChildren()) do
+        if t:FindFirstChild("Player") and t.Player.Value == LocalPlayer then
+            return t
+        end
+    end
+    return nil
+end
+
+-- 封装自动收钱函数
+local function autoCollectFunction()
+    while true do
+        if not config.autoCollectEnabled then
+            wait(1)
+            return  -- 退出协程，允许重新创建
+        end
+
+        local tycoon = findPlayerTycoon()
+        if not tycoon then
+            UILibrary:Notify({
+                Title = "自动收钱错误",
+                Text = "未找到你的 Tycoon",
+                Duration = 5
+            })
+            warn("未找到你的 Tycoon")
+            config.autoCollectEnabled = false
+            autoCollectToggle:Set(false)
+            saveConfig()
+            wait(5)
+            return
+        end
+
+        local surface = tycoon:WaitForChild("Items"):WaitForChild("OftenFiltered"):WaitForChild("Surface")
+        for _, item in pairs(surface:GetChildren()) do
+            if item:FindFirstChild("Bill") then
+                local args = {
+                    tycoon,
+                    {
+                        name = "CollectBill",
+                        model = item
+                    }
+                }
+                ClientTycoonInput:FireServer(unpack(args))
+                print("[自动收钱] 收集: " .. item.Name)
+                wait(0.1)
+            end
+        end
+        wait(1)
+    end
+end
+
+-- 初始化时根据配置启动自动收钱
+if config.autoCollectEnabled then
+    autoCollectCoroutine = coroutine.wrap(autoCollectFunction)()
+end
+
 -- 创建主窗口
 local window = UILibrary:CreateUIWindow()
 if not window then
@@ -342,6 +403,44 @@ local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已启用",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 5)
+})
+
+-- 标签页：主要功能
+local mainFuncTab, mainFuncContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "主要功能",
+})
+
+-- 卡片：自动收钱
+local autoCollectCard = UILibrary:CreateCard(mainFuncContent)
+local autoCollectCoroutine = nil  -- 用于存储自动收钱协程
+local autoCollectToggle = UILibrary:CreateToggle(autoCollectCard, {
+    Text = "自动收钱",
+    DefaultState = config.autoCollectEnabled,
+    Callback = function(state)
+        config.autoCollectEnabled = state
+        if state then
+            -- 启动自动收钱协程
+            if not autoCollectCoroutine then
+                autoCollectCoroutine = coroutine.wrap(autoCollectFunction)()
+            end
+            UILibrary:Notify({
+                Title = "配置更新",
+                Text = "自动收钱已开启",
+                Duration = 5
+            })
+        else
+            -- 停止自动收钱协程
+            if autoCollectCoroutine then
+                autoCollectCoroutine = nil  -- 协程将通过状态检查自动停止
+            end
+            UILibrary:Notify({
+                Title = "配置更新",
+                Text = "自动收钱已关闭",
+                Duration = 5
+            })
+        end
+        saveConfig()
+    end
 })
 
 -- 标签页：通知
