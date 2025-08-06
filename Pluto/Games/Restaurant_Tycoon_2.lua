@@ -215,8 +215,8 @@ local function dispatchWebhook(payload)
         return false
     end
 
-    print("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
-    print("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
+   -- print("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
+  --  print("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
 
     local success, res = pcall(function()
         return requestFunc({
@@ -726,6 +726,8 @@ local lastMoveTime = tick()
 local lastPosition = nil
 local idleThreshold = 300
 local checkInterval = 1
+local lastCurrencyCheckTime = tick()
+local lastCurrencyCheckValue = 0
 
 -- 确保角色可用
 local character = player.Character or player.CharacterAdded:Wait()
