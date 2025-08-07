@@ -1057,28 +1057,37 @@ end
 local unchangedCount = 0
 local webhookDisabled = false
 local startTime = os.time()
+local lastSendTime = os.time()
+local lastCurrency = nil
+local initialCurrency = fetchCurrentCurrency()
 
--- 初始化变量
-local lastMoveTime = tick()
-local lastPosition = nil
-local idleThreshold = 300 -- 超过300秒没动算掉线
-local checkInterval = 1 -- 每秒检测一次
+local checkInterval = 1
 
 local player = game.Players.LocalPlayer
 local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
 
--- 每帧检测位置变化
-game:GetService("RunService").RenderStepped:Connect(function()
-    local hrp = character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        if lastPosition then
-            if (hrp.Position - lastPosition).Magnitude > 0.1 then
-                lastMoveTime = tick()
-            end
-        end
-        lastPosition = hrp.Position
-    end
+-- 掉线检测
+local Players = game:GetService("Players")
+local GuiService = game:GetService("GuiService")
+local NetworkClient = game:GetService("NetworkClient")
+
+local player = Players.LocalPlayer
+local disconnected = false
+
+-- 网络断开（断线、掉线）
+NetworkClient.ChildRemoved:Connect(function()
+	if not disconnected then
+		warn("[掉线检测] 网络断开")
+		disconnected = true
+	end
+end)
+
+-- 错误提示（被踢、封禁等）
+GuiService.ErrorMessageChanged:Connect(function(msg)
+	if msg and msg ~= "" and not disconnected then
+		warn("[掉线检测] 错误提示：" .. msg)
+		disconnected = true
+	end
 end)
 
 local function formatElapsedTime(seconds)
@@ -1134,7 +1143,7 @@ while true do
     end
 
     -- ⚠️ 掉线检测
-    if tick() - lastMoveTime >= idleThreshold and not webhookDisabled then
+    if disconnected and not webhookDisabled then
         webhookDisabled = true
         dispatchWebhook({
             embeds = {{
@@ -1149,7 +1158,7 @@ while true do
         })
         UILibrary:Notify({
             Title = "掉线检测",
-            Text = "检测到玩家长时间未移动，已停止发送 Webhook",
+            Text = "检测到玩家连接异常，已停止发送 Webhook",
             Duration = 5
         })
     end
