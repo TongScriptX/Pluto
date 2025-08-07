@@ -114,7 +114,7 @@ local old = mt.__namecall
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     if method == "FireServer" and self.Name == "JoinAfkServer" then
-        warn("⚠️ 已拦截 JoinAfkServer:FireServer()")
+        warn("[反检测] 已拦截 JoinAfkServer:FireServer()")
         return
     end
     return old(self, ...)
