@@ -98,6 +98,28 @@ player.Idled:Connect(function()
     UILibrary:Notify({ Title = "反挂机", Text = "检测到闲置，已自动操作", Duration = 3 })
 end)
 
+-- 反检测
+local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+local loadingGui = PlayerGui:FindFirstChild("LoadingGui")
+if loadingGui then
+    loadingGui:Destroy()  -- 或者 loadingGui.Enabled = false
+    warn("[反检测] 已屏蔽 LoadingGui")
+end
+
+local mt = getrawmetatable(game)
+setreadonly(mt, false)
+
+local old = mt.__namecall
+mt.__namecall = newcclosure(function(self, ...)
+    local method = getnamecallmethod()
+    if method == "FireServer" and self.Name == "JoinAfkServer" then
+        warn("⚠️ 已拦截 JoinAfkServer:FireServer()")
+        return
+    end
+    return old(self, ...)
+end)
+
 -- 保存配置
 local function saveConfig()
     pcall(function()
@@ -348,10 +370,18 @@ local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
 
 -- 卡片：反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
+
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已启用",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 5)
+})
+
+-- 卡片内容：反检测
+local antiDetectLabel = UILibrary:CreateLabel(antiAfkCard, {
+    Text = "反检测已启用",
+    Size = UDim2.new(1, -10, 0, 20),
+    Position = UDim2.new(0, 5, 0, 30)
 })
 
 -- 标签页：通知

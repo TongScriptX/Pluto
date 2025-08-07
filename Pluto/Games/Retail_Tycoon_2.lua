@@ -625,7 +625,7 @@ local startTime = os.time()
 local lastSendTime = 0
 local lastMoveTime = tick()
 local lastPosition = nil
-local idleThreshold = 300
+local idleThreshold = 600
 local checkInterval = 1
 local lastCurrencyCheckTime = tick()
 local lastCurrencyCheckValue = 0
@@ -700,7 +700,7 @@ while true do
                 embeds = {{
                     title = "⚠️ 掉线检测",
                     description = string.format(
-                        "**游戏**: %s\n**用户**: %s\n检测到玩家掉线（位置与金额5分钟无变化）",
+                        "**游戏**: %s\n**用户**: %s\n检测到玩家掉线（位置与金额10分钟无变化）",
                         gameName, username
                     ),
                     color = 16753920,
@@ -710,7 +710,7 @@ while true do
             })
             UILibrary:Notify({
                 Title = "掉线疑似",
-                Text = "5分钟内位置与金额未变，Webhook 已停止",
+                Text = "10分钟内位置与金额未变，Webhook 已停止",
                 Duration = 5
             })
         else
