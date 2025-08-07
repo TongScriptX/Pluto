@@ -99,13 +99,19 @@ player.Idled:Connect(function()
 end)
 
 -- 反检测
-local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-local loadingGui = PlayerGui:FindFirstChild("LoadingGui")
-if loadingGui then
-    loadingGui:Destroy()  -- 或者 loadingGui.Enabled = false
-    warn("[反检测] 已屏蔽 LoadingGui")
-end
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+RunService.RenderStepped:Connect(function()
+    local loadingGui = PlayerGui:FindFirstChild("LoadingGui")
+    if loadingGui then
+        loadingGui:Destroy()
+        warn("[反检测] 已屏蔽加载页面")
+    end
+end)
 
 local mt = getrawmetatable(game)
 setreadonly(mt, false)
@@ -114,7 +120,7 @@ local old = mt.__namecall
 mt.__namecall = newcclosure(function(self, ...)
     local method = getnamecallmethod()
     if method == "FireServer" and self.Name == "JoinAfkServer" then
-        warn("[反检测] 已拦截 JoinAfkServer:FireServer()")
+        warn("[反检测] 已拦截传送")
         return
     end
     return old(self, ...)
