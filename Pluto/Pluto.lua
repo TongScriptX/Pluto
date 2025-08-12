@@ -32,7 +32,8 @@ local gameScripts = {
     [11832484500] = "Autopilot_Simulator",
     [5865858426] = "Retail_Tycoon_2",
     [3398014311] = "Restaurant_Tycoon_2",
-    [4566572536] = "Vehicle_Legends"
+    [4566572536] = "Vehicle_Legends",
+    [4618049391] = "Tang_Country"
 }
 
 local function loadRemoteScript(url)
