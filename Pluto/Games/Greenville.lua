@@ -570,7 +570,7 @@ local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage
 -- 作者信息
 local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
     Text = "作者: tongblx",
-    SocialText = "Discord 服务器链接："
+    SocialText = "感谢使用"
 })
 
 -- 添加一个按钮用于复制 Discord 链接

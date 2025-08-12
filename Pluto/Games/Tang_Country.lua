@@ -36,14 +36,14 @@ if not http_request then
 end
 
 -- 配置文件
-local configFile = "Pluto_X_AS_config.json"
+local configFile = "Pluto_X_TC_config.json"
 local config = {
     webhookUrl = "",
     notifyCash = false,
     notificationInterval = 30,
     welcomeSent = false,
     targetCurrency = 0,
-    enableTargetKick = false
+    enableTargetKick = false,
 }
 
 -- 颜色定义
@@ -59,44 +59,25 @@ if success and info then
 end
 
 -- 获取初始金额
-local player = game.Players.LocalPlayer
-
--- 千分位格式化函数
-local function formatWithCommas(amount)
-    local formatted = tostring(amount)
-    local k
-    while true do
-        formatted, k = formatted:gsub("^(-?%d+)(%d%d%d)", '%1,%2')
-        if k == 0 then break end
-    end
-    return formatted
-end
+local initialCurrency = 0
+local player = game:GetService("Players").LocalPlayer
 
 local function fetchCurrentCurrency()
-    local success, cashValue = pcall(function()
-        local leaderstats = player:WaitForChild("leaderstats", 5)
-        if leaderstats then
-            local cash = leaderstats:WaitForChild("Cash", 5)
-            if cash and cash:IsA("IntValue") or cash:IsA("NumberValue") then
-                return cash.Value
-            end
-        end
-        return nil
+    local success, currencyValue = pcall(function()
+        return player:WaitForChild("Money", 5).Value
     end)
-    if success and cashValue then
-        return math.floor(cashValue)
-    else
-        UILibrary:Notify({ Title = "错误", Text = "无法找到金额数据", Duration = 5 })
-        return nil
+    if success and currencyValue then
+        return math.floor(currencyValue)
     end
+    UILibrary:Notify({ Title = "错误", Text = "无法获取金额（Money）", Duration = 5 })
+    return nil
 end
 
 local success, currencyValue = pcall(fetchCurrentCurrency)
 if success and currencyValue then
     initialCurrency = currencyValue
     lastCurrency = currencyValue
-    local formattedCurrency = formatWithCommas(currencyValue)
-    UILibrary:Notify({ Title = "初始化成功", Text = "初始金额: " .. formattedCurrency, Duration = 5 })
+    UILibrary:Notify({ Title = "初始化成功", Text = "初始金额: " .. tostring(initialCurrency), Duration = 5 })
 end
 
 -- 反挂机
@@ -234,8 +215,9 @@ local function dispatchWebhook(payload)
         return false
     end
 
-    print("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
+--[[    print("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
     print("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
+    ]]
 
     local success, res = pcall(function()
         return requestFunc({
@@ -314,131 +296,366 @@ local function initTargetCurrency()
 end
 pcall(initTargetCurrency)
 
--- autofarm模块封装
--- autofarm完整脚本（含调试输出）
-local isFarming = false
-local platformFolder = nil
-local farmTask = nil
+-- Autofarm
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local LogService = game:GetService("LogService")
 
-local function stopAutoFarm()
-    print("[autofarm] Stop 被调用")
-    isFarming = false
-    if farmTask then
-        task.cancel(farmTask)
-        farmTask = nil
-        print("[autofarm] 任务已取消")
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local humanoid = Character:WaitForChild("Humanoid")
+
+local TEAM_NAME = "Trucker"
+local VEHICLE_MODEL_NAME = "2012 Shacman M3000 4X2"
+local ROUTE_NAME = "routeA"
+local OFFSET_DISTANCE = -20
+local HEIGHT_OFFSET_START = 20
+local HEIGHT_OFFSET_END = 0
+local STEP_COUNT = 20
+local STEP_DELAY = 0.1
+local MAX_RETRY = 5
+
+local route = Workspace:WaitForChild("TruckingJob"):WaitForChild("Coal"):WaitForChild(ROUTE_NAME)
+local spawnedCars = Workspace:WaitForChild("SpawnedCars")
+
+local TeamSwitchEvent = ReplicatedStorage:WaitForChild("Feature_RemoteEvent"):WaitForChild("TeamSwitch")
+local ClientRequestCoalTrucks = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Shared"):WaitForChild("Network"):WaitForChild("RemoteFunctions"):WaitForChild("ClientRequestCoalTrucks")
+local ClientRequestCoalJob = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Shared"):WaitForChild("Network"):WaitForChild("RemoteFunctions"):WaitForChild("ClientRequestCoalJob")
+local ClientCoalRequester = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Shared"):WaitForChild("Network"):WaitForChild("RemoteFunctions"):WaitForChild("ClientCoalRequester")
+local ClientRequestEndCoalJob = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Shared"):WaitForChild("Network"):WaitForChild("RemoteFunctions"):WaitForChild("ClientRequestEndCoalJob")
+
+local depotPart = Workspace.TruckingJob:WaitForChild("Depot")
+local pickupPart = route:WaitForChild("Pickup")
+local dropoffPart = route:WaitForChild("Dropoff")
+
+local function waitForCondition(conditionFunc, maxWait, interval)
+    maxWait = maxWait or 10
+    interval = interval or 0.1
+    local waited = 0
+    while waited < maxWait do
+        local ok, result = pcall(conditionFunc)
+        if ok and result then
+            return true
+        end
+        task.wait(interval)
+        waited = waited + interval
     end
-    if platformFolder then
-        platformFolder:Destroy()
-        platformFolder = nil
-        print("[autofarm] 平台已销毁")
+    return false
+end
+
+local function getModelCenter(model)
+    if not model then return nil end
+    local parts = {}
+    for _, c in ipairs(model:GetChildren()) do
+        if c:IsA("BasePart") then
+            table.insert(parts, c)
+        end
+    end
+    if #parts == 0 then return nil end
+
+    local minVec = parts[1].Position
+    local maxVec = parts[1].Position
+    for _, p in ipairs(parts) do
+        local pos = p.Position
+        minVec = Vector3.new(
+            math.min(minVec.X, pos.X),
+            math.min(minVec.Y, pos.Y),
+            math.min(minVec.Z, pos.Z)
+        )
+        maxVec = Vector3.new(
+            math.max(maxVec.X, pos.X),
+            math.max(maxVec.Y, pos.Y),
+            math.max(maxVec.Z, pos.Z)
+        )
+    end
+    return (minVec + maxVec) / 2
+end
+
+local function getForwardVector(part)
+    local size = part.Size
+    local cframe = part.CFrame
+    if size.X > size.Z then
+        return cframe.RightVector
+    else
+        return cframe.LookVector
     end
 end
 
-local function startAutoFarm()
-    print("[autofarm] 尝试启动")
-    local plr = game:GetService("Players").LocalPlayer
-    if not plr then
-        warn("[autofarm] LocalPlayer 不存在")
-        return
-    end
-    local username = plr.Name
-
-    local success, carModel = pcall(function()
-        return workspace:WaitForChild("Car", 5):WaitForChild(username .. "sCar", 5)
-    end)
-    if not success or not carModel then
-        warn("[autofarm] 未找到玩家车辆:", username .. "sCar")
-        UILibrary:Notify({Title="autofarm错误", Text="未找到玩家车辆", Duration=5})
-        stopAutoFarm()
-        return
-    end
-    print("[autofarm] 找到车辆:", carModel.Name)
-
-    local driveSeat = carModel:FindFirstChild("DriveSeat")
-    if not driveSeat then
-        warn("[autofarm] 未找到 DriveSeat")
-        UILibrary:Notify({Title="autofarm错误", Text="未找到驾驶座位", Duration=5})
-        stopAutoFarm()
-        return
-    end
-
-    local body = carModel:FindFirstChild("Body")
-    if not body then
-        warn("[autofarm] 未找到 Body")
-        UILibrary:Notify({Title="autofarm错误", Text="未找到 Body", Duration=5})
-        stopAutoFarm()
-        return
-    end
-
-    local primaryPart = body:FindFirstChild("#Weight")
-    if not primaryPart then
-        warn("[autofarm] 未找到 PrimaryPart (#Weight)")
-        UILibrary:Notify({Title="autofarm错误", Text="未找到 PrimaryPart (#Weight)", Duration=5})
-        stopAutoFarm()
-        return
-    end
-    carModel.PrimaryPart = primaryPart
-    print("[autofarm] 设置 PrimaryPart 成功")
-
-    platformFolder = Instance.new("Folder", workspace)
-    platformFolder.Name = "AutoPlatform"
-
-    local platform = Instance.new("Part", platformFolder)
-    platform.Anchored = true
-    platform.Size = Vector3.new(100000, 10, 10000)
-    platform.BrickColor = BrickColor.new("Dark stone grey")
-    platform.Material = Enum.Material.SmoothPlastic
-    platform.Position = Vector3.new(
-        primaryPart.Position.X + 50000,
-        primaryPart.Position.Y + 5,
-        primaryPart.Position.Z
-    )
-    print("[autofarm] 平台创建成功")
-
-    local originPos = Vector3.new(
-        primaryPart.Position.X,
-        platform.Position.Y + 5000,
-        primaryPart.Position.Z
-    )
-    local speed = 600
-    local interval = 0.05
-    local distancePerTick = speed * interval
-    local currentPosX = originPos.X
-    local lastTpTime = tick()
-
-    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
-    print("[autofarm] 车辆已传送至起始位置")
-
-    isFarming = true
-    farmTask = task.spawn(function()
-        print("[autofarm] 循环任务开始")
-        while isFarming do
-            currentPosX = currentPosX + distancePerTick
-            local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
-            carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
-
-            if carModel.PrimaryPart then
-                carModel.PrimaryPart.Velocity = Vector3.zero
-                carModel.PrimaryPart.RotVelocity = Vector3.zero
+local function smoothTeleportVehicle(vehicle, targetPos, forwardVector)
+    for attempt = 1, MAX_RETRY do
+        if not vehicle.PrimaryPart then
+            vehicle.PrimaryPart = vehicle:FindFirstChildWhichIsA("BasePart") or vehicle:FindFirstChild("Body") or vehicle:FindFirstChild("Chassis")
+            if not vehicle.PrimaryPart then
+                warn("[Error] 车辆无有效主部件，无法传送")
+                return false
             end
-
-            if tick() - lastTpTime > 5 then
-                currentPosX = originPos.X
-                carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
-                lastTpTime = tick()
-                print("[autofarm] 重置位置")
-            end
-
-            task.wait(interval)
         end
-        print("[autofarm] 循环任务结束")
-        if platformFolder then
-            platformFolder:Destroy()
-            platformFolder = nil
-            print("[autofarm] 平台已销毁")
+
+        local originalPrimary = vehicle.PrimaryPart
+        local vehicleCenter = getModelCenter(vehicle)
+        if not vehicleCenter then
+            warn("[Error] 车辆中心点获取失败，无法传送")
+            return false
+        end
+
+        local offsetVector = originalPrimary.CFrame:PointToObjectSpace(vehicleCenter)
+        local adjustedTargetPos = targetPos - forwardVector * offsetVector.Z
+        local startHeight = adjustedTargetPos.Y + HEIGHT_OFFSET_START
+        local endHeight = adjustedTargetPos.Y + HEIGHT_OFFSET_END
+        local stepHeight = (startHeight - endHeight) / STEP_COUNT
+
+        local yawAngle = math.atan2(forwardVector.Z, forwardVector.X)
+        local rotationOnly = CFrame.Angles(0, -yawAngle + math.pi / 2, 0)
+
+        local baseCFrame = CFrame.new(adjustedTargetPos.X, startHeight, adjustedTargetPos.Z) * rotationOnly
+        vehicle:SetPrimaryPartCFrame(baseCFrame)
+
+        for i = 1, STEP_COUNT do
+            local currentCFrame = vehicle.PrimaryPart.CFrame
+            local pos = currentCFrame.Position
+            vehicle:SetPrimaryPartCFrame(CFrame.new(pos.X, pos.Y - stepHeight, pos.Z) * rotationOnly)
+            task.wait(STEP_DELAY)
+        end
+
+        return true
+    end
+    warn("[Error] 多次尝试传送车辆失败")
+    return false
+end
+
+local satInSeatFlag = false
+LogService.MessageOut:Connect(function(message, messageType)
+    if messageType == Enum.MessageType.MessageOutput then
+        if string.find(message, "//INSPARE: AC6 Loaded") then
+            satInSeatFlag = true
+        end
+    end
+end)
+
+local function sitInDriveSeat(humanoid, seat)
+    satInSeatFlag = false
+
+    for attempt = 1, MAX_RETRY do
+        humanoid.Sit = false
+        task.wait(0.1)
+
+        if not seat.Parent or not seat:IsDescendantOf(Workspace) then
+            local ready = waitForCondition(function()
+                return seat.Parent and seat:IsDescendantOf(Workspace)
+            end, 5, 0.1)
+            if not ready then
+                warn("[Warn] 驾驶座未准备好，等待超时，重试中")
+                task.wait(0.5)
+                continue
+            end
+        end
+
+        local cframeAbove = seat.CFrame * CFrame.new(0, 3, 0)
+        HumanoidRootPart.CFrame = cframeAbove
+        task.wait(0.1)
+
+        humanoid.Sit = true
+
+        local satDown = waitForCondition(function()
+            return humanoid.Sit == true or satInSeatFlag
+        end, 5, 0.1)
+
+        if satDown then
+            print("[Info] 成功坐上驾驶座")
+            return true
+        else
+            warn("[Warn] 坐上驾驶座尝试失败，重试中")
+            task.wait(0.3)
+        end
+    end
+
+    warn("[Error] 多次尝试坐上驾驶座失败")
+    return false
+end
+
+local function invokeWithRetry(func, ...)
+    for attempt = 1, MAX_RETRY do
+        local success, result = pcall(func, ...)
+        if success then
+            return true, result
+        else
+            warn(string.format("[Warn] 第%d次调用失败，错误：%s", attempt, tostring(result)))
+            task.wait(0.5)
+        end
+    end
+    return false, nil
+end
+
+local function waitForVehicleSpawn(carName, timeout)
+    timeout = timeout or 15
+    local vehicle
+    local found = false
+    local startTime = tick()
+
+    local conn
+    local eventFired = Instance.new("BindableEvent")
+
+    conn = spawnedCars.ChildAdded:Connect(function(child)
+        if child.Name == carName then
+            vehicle = child
+            found = true
+            eventFired:Fire()
         end
     end)
+
+    if spawnedCars:FindFirstChild(carName) then
+        vehicle = spawnedCars[carName]
+        found = true
+    end
+
+    if not found then
+        eventFired.Event:Wait()
+    end
+
+    conn:Disconnect()
+    if found then return true, vehicle end
+
+    while tick() - startTime < timeout do
+        if spawnedCars:FindFirstChild(carName) then
+            return true, spawnedCars[carName]
+        end
+        task.wait(0.3)
+    end
+
+    return false, nil
+end
+
+local function loadCoal(carName)
+    for i = 1, MAX_RETRY do
+        local success, err = pcall(function()
+            ClientCoalRequester:InvokeServer("LoadCoal")
+        end)
+        if not success then
+            warn("[Warn] 装煤请求失败，重试中:", err)
+            task.wait(0.5)
+            continue
+        end
+
+        local coalLoaded = waitForCondition(function()
+            local vehicleCheck = spawnedCars:FindFirstChild(carName)
+            if not vehicleCheck then return false end
+            local coalPart = vehicleCheck:FindFirstChild("Misc")
+                and vehicleCheck.Misc:FindFirstChild("Trailer")
+                and vehicleCheck.Misc.Trailer:FindFirstChild("Body")
+                and vehicleCheck.Misc.Trailer.Body:FindFirstChild("COAL")
+            return coalPart ~= nil
+        end, 10, 0.3)
+
+        if coalLoaded then
+            print("[Info] 装煤成功")
+            return true
+        else
+            warn("[Warn] 未检测到煤炭，重试中")
+        end
+    end
+    warn("[Error] 装煤多次失败")
+    return false
+end
+
+local function unloadCoal()
+    local success, err = pcall(function()
+        ClientCoalRequester:InvokeServer("UnloadCoal")
+    end)
+    if not success then
+        warn("[Warn] 卸煤请求失败:", err)
+        return false
+    end
+    print("[Info] 卸煤请求已发送，无需等待完成")
+    return true
+end
+
+local function main()
+    TeamSwitchEvent:FireServer(TEAM_NAME)
+    local switched = waitForCondition(function()
+        return LocalPlayer.Team and LocalPlayer.Team.Name == TEAM_NAME
+    end, 10, 0.2)
+    if not switched then
+        warn("[Error] 切换团队超时")
+        return false
+    end
+
+    HumanoidRootPart.CFrame = depotPart.CFrame + Vector3.new(0, 5, 0)
+    task.wait(0.3)
+
+    local success, ret = invokeWithRetry(function()
+        return ClientRequestCoalTrucks:InvokeServer()
+    end)
+    if not success then
+        warn("[Error] 接任务失败")
+        return false
+    end
+
+    local success2, vehicle = invokeWithRetry(function()
+        return ClientRequestCoalJob:InvokeServer(route, VEHICLE_MODEL_NAME)
+    end)
+    if not success2 or not vehicle then
+        warn("[Error] 生成车辆失败")
+        return false
+    end
+
+    local carName = LocalPlayer.Name .. "'s Car"
+    local vehicleAppeared, spawnedVehicle = waitForVehicleSpawn(carName, 15)
+    if not vehicleAppeared then
+        warn("[Error] 等待车辆生成超时")
+        return false
+    end
+    vehicle = spawnedVehicle
+
+    local driveSeat
+    local driveSeatReady = waitForCondition(function()
+        driveSeat = vehicle:FindFirstChild("DriveSeat")
+        return driveSeat ~= nil
+    end, 10, 0.2)
+    if not driveSeatReady then
+        warn("[Error] 未找到驾驶座")
+        return false
+    end
+
+    if not sitInDriveSeat(humanoid, driveSeat) then
+        return false
+    end
+
+    local pickupForward = getForwardVector(pickupPart)
+    local pickupPos = pickupPart.Position
+    local offsetTargetPos = pickupPos + pickupForward * OFFSET_DISTANCE
+    if not smoothTeleportVehicle(vehicle, offsetTargetPos, pickupForward) then
+        warn("[Error] 传送车辆到装煤点失败")
+        return false
+    end
+
+    if not loadCoal(carName) then
+        return false
+    end
+
+    local dropoffForward = getForwardVector(dropoffPart)
+    local dropoffPos = dropoffPart.Position
+    local offsetDropoffPos = dropoffPos + dropoffForward * OFFSET_DISTANCE
+
+    if not smoothTeleportVehicle(vehicle, offsetDropoffPos, dropoffForward) then
+        warn("[Error] 传送车辆到卸煤点失败")
+        return false
+    end
+
+    unloadCoal()
+
+    TeamSwitchEvent:FireServer("Civilian")
+    local backSwitched = waitForCondition(function()
+        return LocalPlayer.Team and LocalPlayer.Team.Name == "Civilian"
+    end, 10, 0.2)
+    if not backSwitched then
+        warn("[Error] 切换回 Civilian 超时")
+        return false
+    end
+
+    print("[Info] 本轮任务完成，已切回 Civilian。")
+    return true
 end
 
 -- 创建主窗口
@@ -451,7 +668,6 @@ local screenGui = window.ScreenGui
 local sidebar = window.Sidebar
 local titleLabel = window.TitleLabel
 local mainPage = window.MainPage
-
 
 -- 悬浮按钮
 local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
@@ -489,32 +705,42 @@ local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Position = UDim2.new(0, 5, 0, 5)
 })
 
--- 标签页：主要功能
-local mainFeaturesTab, mainFeaturesContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "主要功能",
+-- 标签页：Autofarm
+local autofarmTab, autofarmContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "Autofarm"
 })
 
--- 卡片：autofarm
-local autoFarmCard = UILibrary:CreateCard(mainFeaturesContent, { IsMultiElement = true })
-UILibrary:CreateLabel(autoFarmCard, {
-    Text = "autofarm",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5)
-})
+-- 卡片：Autofarm 设置
+local autofarmCard = UILibrary:CreateCard(autofarmContent)
 
--- Toggle 控件绑定逻辑
-local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
-    Text = "autofarm",
-    DefaultState = false,
-    Position = UDim2.new(0, 5, 0, 30),
-    Callback = function(state)
-        print("[autofarm] Toggle 状态切换为:", state)
-        if state then
-            UILibrary:Notify({Title = "autofarm", Text = "autofarm已启动", Duration = 5})
-            startAutoFarm()
+local autofarmEnabled = false
+local autofarmTask
+
+local function autofarmLoop()
+    while autofarmEnabled do
+        local success = main()
+        if not success then
+            warn("[Warn] 本轮任务失败，5 秒后重试")
+            task.wait(5)
         else
-            UILibrary:Notify({Title = "autofarm", Text = "autofarm已停止", Duration = 5})
-            stopAutoFarm()
+            print("[Info] 等待 3 秒开始下一轮任务")
+            task.wait(3)
+        end
+    end
+    print("[Info] Autofarm 已停止")
+end
+
+local autofarmToggle = UILibrary:CreateToggle(autofarmCard, {
+    Text = "Autofarm",
+    DefaultState = false,
+    Callback = function(state)
+        autofarmEnabled = state
+        UILibrary:Notify({ Title = "Autofarm", Text = "Autofarm: " .. (state and "开启" or "关闭"), Duration = 5 })
+
+        if autofarmEnabled then
+            if not autofarmTask or autofarmTask.Status ~= Enum.ThreadStatus.Running then
+                autofarmTask = task.spawn(autofarmLoop)
+            end
         end
     end
 })
@@ -799,6 +1025,8 @@ initializeCurrency()
 local startTime = os.time()
 local lastSendTime = 0
 local checkInterval = 1
+local lastCurrencyCheckTime = tick()
+local lastCurrencyCheckValue = 0
 
 -- 确保角色可用
 local character = player.Character or player.CharacterAdded:Wait()
