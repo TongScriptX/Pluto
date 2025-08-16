@@ -6,10 +6,12 @@ function module.CreateUI(playerGui)
     gui.Name = "OneTimeConsoleGui"
     gui.ResetOnSpawn = false
 
+    -- 主框架
     local frame = Instance.new("Frame", gui)
     frame.Size = UDim2.new(0.8, 0, 0.5, 0)
     frame.Position = UDim2.new(0.1, 0, 0.25, 0)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.Visible = false  -- 初始隐藏
 
     local scroll = Instance.new("ScrollingFrame", frame)
     scroll.Size = UDim2.new(1, 0, 0.85, 0)
@@ -17,24 +19,23 @@ function module.CreateUI(playerGui)
     scroll.ScrollBarThickness = 6
     scroll.BackgroundTransparency = 1
 
-    local textBox = Instance.new("TextBox", scroll)
-    textBox.Size = UDim2.new(1, 0, 1, 0)
-    textBox.ClearTextOnFocus = false
-    textBox.TextEditable = false
-    textBox.TextWrapped = true
-    textBox.TextColor3 = Color3.fromRGB(240, 240, 240)
-    textBox.Font = Enum.Font.Code
-    textBox.TextSize = 14
-    textBox.BackgroundTransparency = 1
-    textBox.TextXAlignment = Enum.TextXAlignment.Left
-    textBox.TextYAlignment = Enum.TextYAlignment.Top
-    -- 禁止聚焦编辑
-    textBox.Focused:Connect(function() textBox:ReleaseFocus() end)
+    local textLabel = Instance.new("TextLabel", scroll)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.TextWrapped = true
+    textLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+    textLabel.Font = Enum.Font.Code
+    textLabel.TextSize = 14
+    textLabel.BackgroundTransparency = 1
+    textLabel.TextXAlignment = Enum.TextXAlignment.Left
+    textLabel.TextYAlignment = Enum.TextYAlignment.Top
+    textLabel.Text = ""
+    textLabel.TextScaled = false
+    textLabel.RichText = false
 
     local copyBtn = Instance.new("TextButton", frame)
     copyBtn.Size = UDim2.new(0, 140, 0, 40)
     copyBtn.Position = UDim2.new(1, -150, 0.85, 0)
-    copyBtn.Text = "复制并关闭"
+    copyBtn.Text = "复制并清空"
     copyBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
     local notice = Instance.new("TextLabel", frame)
@@ -47,9 +48,52 @@ function module.CreateUI(playerGui)
     notice.TextXAlignment = Enum.TextXAlignment.Left
     notice.Text = ""
 
+    -- 悬浮按钮
+    local floatBtn = Instance.new("TextButton", gui)
+    floatBtn.Size = UDim2.new(0, 60, 0, 60)
+    floatBtn.Position = UDim2.new(0, 20, 0.7, 0)
+    floatBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    floatBtn.Text = "≡"
+    floatBtn.TextSize = 24
+
+    -- 拖动逻辑
+    local dragging, dragInput, dragStart, startPos
+    floatBtn.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = floatBtn.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
+        end
+    end)
+    floatBtn.InputChanged:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            dragInput = input
+        end
+    end)
+    game:GetService("UserInputService").InputChanged:Connect(function(input)
+        if input == dragInput and dragging then
+            local delta = input.Position - dragStart
+            floatBtn.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    -- 点击切换显示
+    floatBtn.MouseButton1Click:Connect(function()
+        frame.Visible = not frame.Visible
+    end)
+
     return {
         Gui = gui,
-        TextBox = textBox,
+        Frame = frame,
+        TextLabel = textLabel,
         CopyBtn = copyBtn,
         Notice = notice,
         Scroll = scroll
