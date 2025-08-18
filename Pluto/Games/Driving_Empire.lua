@@ -229,7 +229,12 @@ local function teleportTo(cframe)
 end
 
 local function cleanup()
-    if tempPlatform then tempPlatform:Destroy() end
+    if tempPlatform then
+        if tempPlatform.Parent then
+            tempPlatform:Destroy()
+        end
+        tempPlatform = nil
+    end
     if originalCFrame then
         local vehicles = workspace:FindFirstChild("Vehicles")
         local vehicle = vehicles and vehicles:FindFirstChild(username)
