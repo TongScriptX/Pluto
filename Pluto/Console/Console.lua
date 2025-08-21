@@ -21,9 +21,11 @@ end
 local uiModule = loadstring(uiCode)()
 local ui = uiModule.CreateUI(playerGui)
 
--- 清除旧日志
-LogService:ClearOutput()
+-- 自动 CanvasSize
+ui.Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ui.Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
+-- 保存日志
 local output = ""
 
 -- 根据类型获取颜色
@@ -39,25 +41,28 @@ local function getColor(msgType)
     end
 end
 
--- 在TextLabel中追加一行彩色文本
+-- 在 Scroll 中追加一行彩色文本
 local function appendLog(msg, msgType)
     output ..= ("[%s] %s\n"):format(msgType.Name, msg)
 
     local line = Instance.new("TextLabel")
-    line.Size = UDim2.new(1, 0, 0, 20)
+    line.Size = UDim2.new(1, -10, 0, 20)
     line.BackgroundTransparency = 1
     line.TextColor3 = getColor(msgType)
     line.TextXAlignment = Enum.TextXAlignment.Left
     line.Font = Enum.Font.Code
     line.TextSize = 14
     line.Text = ("[%s] %s"):format(msgType.Name, msg)
-    line.Parent = ui.LogContainer -- 假设UI里有一个ScrollingFrame叫LogContainer
+    line.Parent = ui.Scroll
 end
 
--- 监听消息
+-- 监听消息 (先挂钩)
 local conn = LogService.MessageOut:Connect(function(msg, msgType)
     appendLog(msg, msgType)
 end)
+
+-- 清除旧日志 (后清空)
+LogService:ClearOutput()
 
 -- 复制函数
 local function trySetClipboard(text)
@@ -85,7 +90,7 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
 
     -- 清空日志
     output = ""
-    for _, child in ipairs(ui.LogContainer:GetChildren()) do
+    for _, child in ipairs(ui.Scroll:GetChildren()) do
         if child:IsA("TextLabel") then
             child:Destroy()
         end
