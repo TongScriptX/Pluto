@@ -25,11 +25,41 @@ local ui = uiModule.CreateUI(playerGui)
 LogService:ClearOutput()
 
 local output = ""
-local conn = LogService.MessageOut:Connect(function(msg, msgType)
+
+-- 根据类型获取颜色
+local function getColor(msgType)
+    if msgType == Enum.MessageType.MessageOutput then
+        return Color3.fromRGB(255, 255, 255) -- 白色
+    elseif msgType == Enum.MessageType.MessageWarning then
+        return Color3.fromRGB(255, 215, 0) -- 黄色
+    elseif msgType == Enum.MessageType.MessageError then
+        return Color3.fromRGB(255, 69, 58) -- 红色
+    else
+        return Color3.fromRGB(200, 200, 200) -- 默认灰
+    end
+end
+
+-- 在TextLabel中追加一行彩色文本
+local function appendLog(msg, msgType)
     output ..= ("[%s] %s\n"):format(msgType.Name, msg)
-    ui.TextLabel.Text = output
+
+    local line = Instance.new("TextLabel")
+    line.Size = UDim2.new(1, 0, 0, 20)
+    line.BackgroundTransparency = 1
+    line.TextColor3 = getColor(msgType)
+    line.TextXAlignment = Enum.TextXAlignment.Left
+    line.Font = Enum.Font.Code
+    line.TextSize = 14
+    line.Text = ("[%s] %s"):format(msgType.Name, msg)
+    line.Parent = ui.LogContainer -- 假设UI里有一个ScrollingFrame叫LogContainer
+end
+
+-- 监听消息
+local conn = LogService.MessageOut:Connect(function(msg, msgType)
+    appendLog(msg, msgType)
 end)
 
+-- 复制函数
 local function trySetClipboard(text)
     if setclipboard then
         setclipboard(text)
@@ -44,6 +74,7 @@ local function trySetClipboard(text)
     return false
 end
 
+-- 点击复制按钮
 ui.CopyBtn.MouseButton1Click:Connect(function()
     local success = trySetClipboard(output)
     if success then
@@ -54,5 +85,9 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
 
     -- 清空日志
     output = ""
-    ui.TextLabel.Text = ""
+    for _, child in ipairs(ui.LogContainer:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
 end)
