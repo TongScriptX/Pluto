@@ -11,16 +11,18 @@ function module.CreateUI(playerGui)
     frame.Size = UDim2.new(0.8, 0, 0.5, 0)
     frame.Position = UDim2.new(0.1, 0, 0.25, 0)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    frame.Visible = false  -- 初始隐藏
+    frame.Visible = false
 
     local scroll = Instance.new("ScrollingFrame", frame)
     scroll.Size = UDim2.new(1, 0, 0.85, 0)
-    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.ScrollBarThickness = 6
     scroll.BackgroundTransparency = 1
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
-    -- 删除原本那个固定 textLabel，不再需要
+    -- UIListLayout
+    local layout = Instance.new("UIListLayout", scroll)
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, 2)
 
     local copyBtn = Instance.new("TextButton", frame)
     copyBtn.Size = UDim2.new(0, 140, 0, 40)
@@ -38,7 +40,6 @@ function module.CreateUI(playerGui)
     notice.TextXAlignment = Enum.TextXAlignment.Left
     notice.Text = ""
 
-    -- 悬浮按钮
     local floatBtn = Instance.new("TextButton", gui)
     floatBtn.Size = UDim2.new(0, 60, 0, 60)
     floatBtn.Position = UDim2.new(0, 20, 0.7, 0)
@@ -75,7 +76,6 @@ function module.CreateUI(playerGui)
         end
     end)
 
-    -- 点击切换显示
     floatBtn.MouseButton1Click:Connect(function()
         frame.Visible = not frame.Visible
     end)

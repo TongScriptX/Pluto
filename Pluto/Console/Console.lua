@@ -21,23 +21,19 @@ end
 local uiModule = loadstring(uiCode)()
 local ui = uiModule.CreateUI(playerGui)
 
--- 自动 CanvasSize
-ui.Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ui.Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-
 -- 保存日志
 local output = ""
 
 -- 根据类型获取颜色
 local function getColor(msgType)
     if msgType == Enum.MessageType.MessageOutput then
-        return Color3.fromRGB(255, 255, 255) -- 白色
+        return Color3.fromRGB(255, 255, 255)
     elseif msgType == Enum.MessageType.MessageWarning then
-        return Color3.fromRGB(255, 215, 0) -- 黄色
+        return Color3.fromRGB(255, 215, 0)
     elseif msgType == Enum.MessageType.MessageError then
-        return Color3.fromRGB(255, 69, 58) -- 红色
+        return Color3.fromRGB(255, 69, 58)
     else
-        return Color3.fromRGB(200, 200, 200) -- 默认灰
+        return Color3.fromRGB(200, 200, 200)
     end
 end
 
@@ -56,12 +52,12 @@ local function appendLog(msg, msgType)
     line.Parent = ui.Scroll
 end
 
--- 监听消息 (先挂钩)
+-- 监听消息
 local conn = LogService.MessageOut:Connect(function(msg, msgType)
     appendLog(msg, msgType)
 end)
 
--- 清除旧日志 (后清空)
+-- 清除旧日志
 LogService:ClearOutput()
 
 -- 复制函数
