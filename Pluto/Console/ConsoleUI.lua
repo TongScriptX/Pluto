@@ -15,22 +15,12 @@ function module.CreateUI(playerGui)
 
     local scroll = Instance.new("ScrollingFrame", frame)
     scroll.Size = UDim2.new(1, 0, 0.85, 0)
-    scroll.CanvasSize = UDim2.new(0, 0, 10, 0)
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
     scroll.ScrollBarThickness = 6
     scroll.BackgroundTransparency = 1
+    scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
-    local textLabel = Instance.new("TextLabel", scroll)
-    textLabel.Size = UDim2.new(1, 0, 1, 0)
-    textLabel.TextWrapped = true
-    textLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
-    textLabel.Font = Enum.Font.Code
-    textLabel.TextSize = 14
-    textLabel.BackgroundTransparency = 1
-    textLabel.TextXAlignment = Enum.TextXAlignment.Left
-    textLabel.TextYAlignment = Enum.TextYAlignment.Top
-    textLabel.Text = ""
-    textLabel.TextScaled = false
-    textLabel.RichText = false
+    -- 删除原本那个固定 textLabel，不再需要
 
     local copyBtn = Instance.new("TextButton", frame)
     copyBtn.Size = UDim2.new(0, 140, 0, 40)
@@ -93,7 +83,6 @@ function module.CreateUI(playerGui)
     return {
         Gui = gui,
         Frame = frame,
-        TextLabel = textLabel,
         CopyBtn = copyBtn,
         Notice = notice,
         Scroll = scroll
