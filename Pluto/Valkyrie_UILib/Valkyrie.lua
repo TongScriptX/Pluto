@@ -634,7 +634,7 @@ function Valkyrie:CreateThemeContent(container)
     
     -- 主色调选择器
     local accentColorPicker = self:CreateColorPicker(colorFrame, "主色调", UDim2.new(0, 15, 0, 50), self.currentTheme.Accent)
-    accentColorPicker.ColorChanged:Connect(function(color)
+    accentColorPicker.ColorChanged.Event:Connect(function(color)
         self.currentTheme.Accent = color
         self.currentTheme.AccentHover = Color3.fromRGB(
             math.min(255, color.R * 255 + 20),
@@ -693,7 +693,7 @@ function Valkyrie:CreateColorPicker(parent, name, position, defaultColor)
         local slider = self:CreateSlider(frame, colorName, UDim2.new(0, 130 + (i-1) * 80, 0, 5), values[i], 0, 255)
         sliders[colorName] = slider
         
-        slider.ValueChanged:Connect(function(value)
+        slider.ValueChanged.Event:Connect(function(value)
             values[i] = value
             local newColor = Color3.fromRGB(values[1], values[2], values[3])
             colorPreview.BackgroundColor3 = newColor
@@ -1250,11 +1250,13 @@ function Valkyrie:Notify(config)
     
     -- 自动消失
     if duration > 0 then
-        wait(duration)
-        local slideOut = TweenService:Create(notif, TweenInfo.new(0.3), {Position = UDim2.new(1, 0, 0, 0)})
-        slideOut:Play()
-        slideOut.Completed:Connect(function()
-            notif:Destroy()
+        spawn(function()
+            wait(duration)
+            local slideOut = TweenService:Create(notif, TweenInfo.new(0.3), {Position = UDim2.new(1, 0, 0, 0)})
+            slideOut:Play()
+            slideOut.Completed:Connect(function()
+                notif:Destroy()
+            end)
         end)
     end
 end
@@ -1284,6 +1286,7 @@ function Valkyrie:CreateExampleComponents()
         })
         
         -- 显示欢迎通知
+        wait(0.5)
         self:Notify({
             Title = "欢迎使用 Valkyrie!",
             Message = "UI 库已成功加载，您可以开始使用所有功能。",
@@ -1537,3 +1540,70 @@ end
 
 -- 返回库对象
 return Valkyrie
+
+--[[
+使用示例:
+
+local Valkyrie = require(script.ValkyrieUI)
+
+-- 创建 UI 实例
+local ui = Valkyrie.new({
+    Title = "我的脚本",
+    Theme = "Dark",
+    Size = UDim2.new(0, 600, 0, 400)
+})
+
+-- 显示 UI
+ui:Show()
+
+-- 添加自定义标签页
+local mainTab = ui:AddCustomTab("主要功能", "rbxassetid://7072707318", function(container)
+    -- 添加按钮
+    ui:AddButton(container, {
+        Text = "传送到大厅",
+        Position = UDim2.new(0, 10, 0, 10),
+        Callback = function()
+            print("传送功能")
+        end
+    })
+    
+    -- 添加开关
+    ui:AddToggle(container, {
+        Text = "飞行模式",
+        Position = UDim2.new(0, 10, 0, 60),
+        Default = false,
+        Callback = function(enabled)
+            print("飞行模式:", enabled)
+        end
+    })
+    
+    -- 添加滑块
+    ui:AddSlider(container, {
+        Text = "行走速度",
+        Position = UDim2.new(0, 10, 0, 110),
+        Default = 16,
+        Min = 1,
+        Max = 100,
+        Callback = function(value)
+            print("速度设置为:", value)
+        end
+    })
+end)
+
+-- 创建胶囊组件
+ui:CreateCapsule("快速传送", "TextButton", {
+    Text = "传送",
+    Position = UDim2.new(0, 100, 0, 100)
+})
+
+-- 发送通知
+ui:Notify({
+    Title = "脚本已加载!",
+    Message = "所有功能都已准备就绪",
+    Type = "Success",
+    Duration = 3
+})
+
+-- 创建示例组件
+ui:CreateExampleComponents()
+]]
