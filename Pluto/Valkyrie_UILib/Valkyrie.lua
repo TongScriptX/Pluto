@@ -131,8 +131,11 @@ function Valkyrie:CreateMainUI()
     -- 使窗口可拖拽
     self:MakeDraggable()
     
-    -- 移动端适配
-    self:AdaptForMobile()
+    -- 移动端适配 - 在所有组件创建完成后调用
+    spawn(function()
+        wait(0.1)
+        self:AdaptForMobile()
+    end)
 end
 
 -- 创建标题栏
@@ -814,17 +817,19 @@ end
 -- 切换标签页
 function Valkyrie:SwitchTab(tabName)
     for name, tab in pairs(self.tabs) do
-        local isActive = name == tabName
-        tab.content.Visible = isActive
-        tab.active = isActive
-        
-        local targetColor = isActive and self.currentTheme.Accent or self.currentTheme.Primary
-        local targetTextColor = isActive and Color3.fromRGB(255, 255, 255) or self.currentTheme.TextSecondary
-        local targetIconColor = isActive and Color3.fromRGB(255, 255, 255) or self.currentTheme.TextSecondary
-        
-        TweenService:Create(tab.button, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
-        TweenService:Create(tab.text, TweenInfo.new(0.3), {TextColor3 = targetTextColor}):Play()
-        TweenService:Create(tab.icon, TweenInfo.new(0.3), {ImageColor3 = targetIconColor}):Play()
+        if tab and tab.content and tab.button and tab.text and tab.icon then
+            local isActive = name == tabName
+            tab.content.Visible = isActive
+            tab.active = isActive
+            
+            local targetColor = isActive and self.currentTheme.Accent or self.currentTheme.Primary
+            local targetTextColor = isActive and Color3.fromRGB(255, 255, 255) or self.currentTheme.TextSecondary
+            local targetIconColor = isActive and Color3.fromRGB(255, 255, 255) or self.currentTheme.TextSecondary
+            
+            TweenService:Create(tab.button, TweenInfo.new(0.3), {BackgroundColor3 = targetColor}):Play()
+            TweenService:Create(tab.text, TweenInfo.new(0.3), {TextColor3 = targetTextColor}):Play()
+            TweenService:Create(tab.icon, TweenInfo.new(0.3), {ImageColor3 = targetIconColor}):Play()
+        end
     end
 end
 
@@ -1077,15 +1082,20 @@ function Valkyrie:AdaptForMobile()
         self.MainFrame.Position = UDim2.new(0.05, 0, 0.1, 0)
         
         -- 调整悬浮按钮大小
-        self.FloatingButton.Size = UDim2.new(0, 70, 0, 70)
-        self.FloatingButton.Position = UDim2.new(1, -90, 1, -90)
-        
-        -- 调整字体大小
-        for _, tab in pairs(self.tabs) do
-            if tab.text then
-                tab.text.TextSize = 16
-            end
+        if self.FloatingButton then
+            self.FloatingButton.Size = UDim2.new(0, 70, 0, 70)
+            self.FloatingButton.Position = UDim2.new(1, -90, 1, -90)
         end
+        
+        -- 调整字体大小 - 稍后在标签页创建后调用
+        spawn(function()
+            wait(0.1) -- 等待标签页创建完成
+            for _, tab in pairs(self.tabs) do
+                if tab and tab.text then
+                    tab.text.TextSize = 16
+                end
+            end
+        end)
     end
 end
 
