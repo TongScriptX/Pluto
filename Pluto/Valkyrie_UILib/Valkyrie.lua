@@ -281,7 +281,10 @@ function Valkyrie:CreateContentArea()
     sidebarLayout.Parent = self.SidebarFrame
     
     local sidebarPadding = Instance.new("UIPadding")
-    sidebarPadding.PaddingAll = UDim.new(0, 5)
+    sidebarPadding.PaddingTop = UDim.new(0, 5)
+    sidebarPadding.PaddingBottom = UDim.new(0, 5)
+    sidebarPadding.PaddingLeft = UDim.new(0, 5)
+    sidebarPadding.PaddingRight = UDim.new(0, 5)
     sidebarPadding.Parent = self.SidebarFrame
     
     -- 右侧内容框架
@@ -427,7 +430,10 @@ function Valkyrie:AddTab(name, icon, defaultSelected)
     contentLayout.Parent = tabContent
     
     local contentPadding = Instance.new("UIPadding")
-    contentPadding.PaddingAll = UDim.new(0, 10)
+    contentPadding.PaddingTop = UDim.new(0, 10)
+    contentPadding.PaddingBottom = UDim.new(0, 10)
+    contentPadding.PaddingLeft = UDim.new(0, 10)
+    contentPadding.PaddingRight = UDim.new(0, 10)
     contentPadding.Parent = tabContent
     
     -- 标签页切换事件
@@ -718,7 +724,10 @@ function Valkyrie:CreateContentSection(parent, config)
     sectionLayout.Parent = section
     
     local sectionPadding = Instance.new("UIPadding")
-    sectionPadding.PaddingAll = UDim.new(0, 10)
+    sectionPadding.PaddingTop = UDim.new(0, 10)
+    sectionPadding.PaddingBottom = UDim.new(0, 10)
+    sectionPadding.PaddingLeft = UDim.new(0, 10)
+    sectionPadding.PaddingRight = UDim.new(0, 10)
     sectionPadding.Parent = section
     
     -- 标题
