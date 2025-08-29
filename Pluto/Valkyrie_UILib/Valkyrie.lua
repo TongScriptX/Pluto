@@ -72,13 +72,17 @@ function Valkyrie.new(config)
     self.config = config or {}
     self.config.Title = self.config.Title or "Valkyrie UI"
     self.config.FloatingIcon = self.config.FloatingIcon or Icons.Roblox
-    self.config.Size = UDim2.new(0, 500, 0, 350) -- 缩小尺寸适配手机
-    self.config.Position = UDim2.new(0.5, -250, 0.5, -175)
+    self.config.Size = UDim2.new(0, 400, 0, 400) -- 改为方形窗口
+    self.config.Position = UDim2.new(0.5, -200, 0.5, -200)
     
     -- 状态
     self.isVisible = false
     self.isInitialized = false
-    self.currentTheme = table.clone(DefaultTheme)
+    self.currentTheme = {}
+    -- 复制默认主题
+    for k, v in pairs(DefaultTheme) do
+        self.currentTheme[k] = v
+    end
     self.customTheme = nil
     self.tabs = {}
     self.capsules = {}
@@ -440,12 +444,7 @@ function Valkyrie:AddTab(name, icon, defaultSelected)
     tabButton.MouseButton1Click:Connect(function()
         self:SafeExecute(function()
             self:SwitchTab(name)
-            self:Notify({
-                Title = "标签页切换",
-                Message = "已切换到: " .. name,
-                Type = "Info",
-                Duration = 1
-            })
+            -- 删除互动通知
         end, "切换标签页时出错")
     end)
     
@@ -627,12 +626,6 @@ function Valkyrie:CreateThemeContent(container)
                 )
                 self:UpdateTheme()
                 self:SaveConfig()
-                self:Notify({
-                    Title = "主题已更新",
-                    Message = "主色调已更改并保存",
-                    Type = "Success",
-                    Duration = 2
-                })
             end, "更新主色调时出错")
         end
     })
@@ -646,12 +639,6 @@ function Valkyrie:CreateThemeContent(container)
                 self.currentTheme.Primary = color
                 self:UpdateTheme()
                 self:SaveConfig()
-                self:Notify({
-                    Title = "主题已更新",
-                    Message = "背景色已更改并保存",
-                    Type = "Success",
-                    Duration = 2
-                })
             end, "更新背景色时出错")
         end
     })
@@ -667,15 +654,12 @@ function Valkyrie:CreateThemeContent(container)
         text = "重置",
         callback = function()
             self:SafeExecute(function()
-                self.currentTheme = table.clone(DefaultTheme)
+                -- 复制默认主题
+                for k, v in pairs(DefaultTheme) do
+                    self.currentTheme[k] = v
+                end
                 self:UpdateTheme()
                 self:SaveConfig()
-                self:Notify({
-                    Title = "主题已重置",
-                    Message = "已恢复为默认主题",
-                    Type = "Success",
-                    Duration = 2
-                })
             end, "重置主题时出错")
         end
     })
@@ -692,12 +676,7 @@ function Valkyrie:CreateThemeContent(container)
                         self.FloatingButton.Image = assetId
                     end
                     self:SaveConfig()
-                    self:Notify({
-                        Title = "图标已更新",
-                        Message = "悬浮按钮图标已更改",
-                        Type = "Success",
-                        Duration = 2
-                    })
+                end
                 end
             end, "更新图标时出错")
         end
@@ -759,17 +738,18 @@ function Valkyrie:CreateContentSection(parent, config)
     return section
 end
 
--- 创建行项目（左侧名称，右侧控件）
+    -- 创建行项目（左侧名称，右侧控件）
 function Valkyrie:CreateRowItem(parent, name, config, description)
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 35)
+    local rowHeight = description and 60 or 45 -- 增加高度适应竖向排列
+    row.Size = UDim2.new(1, 0, 0, rowHeight)
     row.BackgroundTransparency = 1
     row.LayoutOrder = #parent:GetChildren()
     row.Parent = parent
     
     -- 名称标签
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0.6, -5, 1, 0)
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = name
@@ -781,9 +761,8 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     
     -- 描述标签（如果有）
     if description then
-        nameLabel.Size = UDim2.new(0.6, -5, 0, 20)
         local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(0.6, -5, 0, 15)
+        descLabel.Size = UDim2.new(1, 0, 0, 15)
         descLabel.Position = UDim2.new(0, 0, 0, 20)
         descLabel.BackgroundTransparency = 1
         descLabel.Text = description
@@ -792,14 +771,16 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         descLabel.TextXAlignment = Enum.TextXAlignment.Left
         descLabel.Font = Enum.Font.Gotham
         descLabel.Parent = row
-        row.Size = UDim2.new(1, 0, 0, 50)
     end
+    
+    -- 控件位置（竖向排列）
+    local controlY = description and 35 or 22
     
     -- 控件
     if config.type == "button" then
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0.4, -5, 0, 25)
-        button.Position = UDim2.new(0.6, 5, 0, 5)
+        button.Size = UDim2.new(1, 0, 0, 25)
+        button.Position = UDim2.new(0, 0, 0, controlY)
         button.BackgroundColor3 = self.currentTheme.Accent
         button.BorderSizePixel = 0
         button.Text = config.text or "按钮"
@@ -826,13 +807,13 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         
     elseif config.type == "toggle" then
         local toggle = self:CreateToggle(row, config.default or false, config.callback)
-        toggle.frame.Size = UDim2.new(0, 50, 0, 25)
-        toggle.frame.Position = UDim2.new(1, -55, 0, 5)
+        toggle.frame.Size = UDim2.new(0, 60, 0, 25)
+        toggle.frame.Position = UDim2.new(0, 0, 0, controlY)
         
     elseif config.type == "slider" then
         local sliderFrame = Instance.new("Frame")
-        sliderFrame.Size = UDim2.new(0.4, -5, 0, 25)
-        sliderFrame.Position = UDim2.new(0.6, 5, 0, 5)
+        sliderFrame.Size = UDim2.new(1, 0, 0, 30) -- 延长滑块长度
+        sliderFrame.Position = UDim2.new(0, 0, 0, controlY)
         sliderFrame.BackgroundTransparency = 1
         sliderFrame.Parent = row
         
@@ -840,11 +821,10 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         
     elseif config.type == "textbox" then
         local textbox = Instance.new("TextBox")
-        textbox.Size = UDim2.new(0.4, -5, 0, 25)
-        textbox.Position = UDim2.new(0.6, 5, 0, 5)
-        textbox.BackgroundColor3 = self.currentTheme.Primary
-        textbox.BorderSizePixel = 1
-        textbox.BorderColor3 = self.currentTheme.Border
+        textbox.Size = UDim2.new(1, 0, 0, 25)
+        textbox.Position = UDim2.new(0, 0, 0, controlY)
+        textbox.BackgroundColor3 = self.currentTheme.Secondary
+        textbox.BorderSizePixel = 0
         textbox.Text = config.default or ""
         textbox.PlaceholderText = config.placeholder or ""
         textbox.TextColor3 = self.currentTheme.Text
@@ -866,8 +846,8 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         
     elseif config.type == "color" then
         local colorFrame = Instance.new("Frame")
-        colorFrame.Size = UDim2.new(0.4, -5, 0, 25)
-        colorFrame.Position = UDim2.new(0.6, 5, 0, 5)
+        colorFrame.Size = UDim2.new(1, 0, 0, 25)
+        colorFrame.Position = UDim2.new(0, 0, 0, controlY)
         colorFrame.BackgroundTransparency = 1
         colorFrame.Parent = row
         
@@ -971,16 +951,11 @@ function Valkyrie:CreateToggle(parent, default, callback)
             TweenService:Create(thumb, TweenInfo.new(0.2), {Position = targetPos}):Play()
             TweenService:Create(switchFrame, TweenInfo.new(0.2), {BackgroundColor3 = targetColor}):Play()
             
+            -- 删除互动通知
+            
             if callback then
                 callback(toggle.enabled)
             end
-            
-            self:Notify({
-                Title = "开关状态",
-                Message = toggle.enabled and "已开启" or "已关闭",
-                Type = "Info",
-                Duration = 1
-            })
         end, "切换开关时出错")
     end)
     
@@ -999,11 +974,10 @@ function Valkyrie:CreateSlider(parent, default, min, max, callback)
     
     -- 数值显示和输入框
     local valueBox = Instance.new("TextBox")
-    valueBox.Size = UDim2.new(0, 50, 0, 20)
-    valueBox.Position = UDim2.new(1, -50, 0, 0)
-    valueBox.BackgroundColor3 = self.currentTheme.Primary
-    valueBox.BorderSizePixel = 1
-    valueBox.BorderColor3 = self.currentTheme.Border
+    valueBox.Size = UDim2.new(0, 60, 0, 20)
+    valueBox.Position = UDim2.new(1, -60, 0, 0)
+    valueBox.BackgroundColor3 = self.currentTheme.Secondary
+    valueBox.BorderSizePixel = 0
     valueBox.Text = tostring(math.floor(slider.value))
     valueBox.TextColor3 = self.currentTheme.Text
     valueBox.TextSize = 10
@@ -1016,7 +990,7 @@ function Valkyrie:CreateSlider(parent, default, min, max, callback)
     
     -- 滑轨
     local track = Instance.new("Frame")
-    track.Size = UDim2.new(1, -60, 0, 4)
+    track.Size = UDim2.new(1, -70, 0, 4)
     track.Position = UDim2.new(0, 0, 0.5, -2)
     track.BackgroundColor3 = self.currentTheme.Border
     track.BorderSizePixel = 0
@@ -1101,9 +1075,10 @@ function Valkyrie:CreateSlider(parent, default, min, max, callback)
             local newValue = tonumber(valueBox.Text)
             if newValue then
                 updateSlider(newValue)
-                self:Notify({
-                    Title = "数值已更新",
-                    Message = "滑块数值: " .. math.floor(newValue),
+            else
+                valueBox.Text = tostring(math.floor(slider.value))
+            end
+        end(newValue),
                     Type = "Success",
                     Duration = 1
                 })
