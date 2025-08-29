@@ -1357,6 +1357,27 @@ end
 function Valkyrie:CreateCapsule(name, capsuleTypeData, config)
     config = config or {}
     
+    -- 验证 capsuleTypeData
+    if not capsuleTypeData then
+        self:Notify({
+            Title = "创建失败",
+            Message = "胶囊类型数据无效",
+            Type = "Error",
+            Duration = 2
+        })
+        return nil
+    end
+    
+    if not capsuleTypeData.type then
+        self:Notify({
+            Title = "创建失败", 
+            Message = "胶囊类型缺少type字段",
+            Type = "Error",
+            Duration = 2
+        })
+        return nil
+    end
+    
     -- 检查名称重复
     if self.capsules[name] then
         self:Notify({
@@ -1413,6 +1434,17 @@ end
 
 -- 创建胶囊内容
 function Valkyrie:CreateCapsuleContent(parent, capsuleTypeData, name, config)
+    -- 安全检查
+    if not capsuleTypeData then
+        warn("CreateCapsuleContent: capsuleTypeData is nil")
+        return nil
+    end
+    
+    if not capsuleTypeData.type then
+        warn("CreateCapsuleContent: capsuleTypeData.type is nil")
+        return nil
+    end
+    
     if capsuleTypeData.type == "Button" then
         local button = Instance.new("TextButton")
         button.Size = UDim2.new(1, -10, 1, -10)
@@ -1489,7 +1521,10 @@ function Valkyrie:CreateCapsuleContent(parent, capsuleTypeData, name, config)
         if capsuleTypeData.functionality then
             spawn(function()
                 while label.Parent do
-                    label.Text = capsuleTypeData.functionality()
+                    local success, result = pcall(capsuleTypeData.functionality)
+                    if success and result then
+                        label.Text = result
+                    end
                     wait(1)
                 end
             end)
@@ -1912,13 +1947,18 @@ function Valkyrie:SaveConfig()
             capsules = {}
         }
         
-        -- 保存配置时也要保存类型数据
+        -- 保存胶囊配置
         for name, capsule in pairs(self.capsules) do
-            config.capsules[name] = {
-                type = capsule.type,
-                typeName = capsule.typeData.name, -- 保存类型名称用于重新加载
-                position = {x = capsule.position.X, y = capsule.position.Y}
-            }
+            if capsule.typeData and capsule.typeData.name then
+                config.capsules[name] = {
+                    type = capsule.type,
+                    typeName = capsule.typeData.name,
+                    position = {
+                        x = capsule.position and capsule.position.X or 100, 
+                        y = capsule.position and capsule.position.Y or 100
+                    }
+                }
+            end
         end
         
         local jsonConfig = HttpService:JSONEncode(config)
@@ -1935,7 +1975,7 @@ function Valkyrie:SaveConfig()
     if not success then
         self:Notify({
             Title = "保存失败",
-            Message = "配置保存时出错",
+            Message = "配置保存时出错: " .. tostring(err),
             Type = "Error",
             Duration = 2
         })
@@ -1977,14 +2017,28 @@ function Valkyrie:LoadSavedCapsules()
         for name, config in pairs(self.savedCapsulesConfig) do
             spawn(function()
                 wait(0.1)
-                local capsule = self:CreateCapsule(name, config.type, {
-                    position = Vector2.new(config.position.x, config.position.y)
-                })
+                -- 查找对应的胶囊类型数据
+                local capsuleTypeData = nil
+                for _, typeData in ipairs(CapsuleTypes) do
+                    if typeData.name == config.typeName then
+                        capsuleTypeData = typeData
+                        break
+                    end
+                end
+                
+                if capsuleTypeData then
+                    self:CreateCapsule(name, capsuleTypeData, {
+                        position = Vector2.new(config.position.x, config.position.y)
+                    })
+                else
+                    warn("Cannot find capsule type: " .. tostring(config.typeName))
+                end
             end)
         end
         self.savedCapsulesConfig = nil
     end
 end
+
 
 -- 销毁UI
 function Valkyrie:Destroy()
