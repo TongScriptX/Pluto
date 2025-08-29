@@ -868,26 +868,44 @@ end
 
 -- 创建行项目（左侧名称，右侧控件）
 function Valkyrie:CreateRowItem(parent, name, config, description)
+    -- 确定行高
+    local rowHeight = 30 -- 基础高度：名称标签
+    if description then rowHeight = rowHeight + 20 end -- 如果有描述，增加高度
+
+    -- 根据控件类型增加高度
+    if config.type == "button" then
+        rowHeight = rowHeight + 30 -- 按钮高度 + 间距
+    elseif config.type == "toggle" then
+        rowHeight = rowHeight + 30 -- 开关容器高度 + 间距
+    elseif config.type == "slider" then
+        rowHeight = rowHeight + 40 -- 滑块容器高度 + 间距
+    elseif config.type == "textbox" then
+        rowHeight = rowHeight + 30 -- 文本框高度 + 间距
+    elseif config.type == "color" then
+        rowHeight = rowHeight + 40 -- 颜色选择器容器高度 + 间距
+    end
+
+    -- 创建行容器 Frame
     local row = Instance.new("Frame")
-    local rowHeight = description and 70 or 50
-    row.Size = UDim2.new(1, 0, 0, rowHeight)
-    row.BackgroundTransparency = 1  -- 确保行背景透明
-    row.BorderSizePixel = 0  -- 移除边框
+    row.Size = UDim2.new(1, 0, 0, rowHeight) -- 使用计算出的高度
+    row.BackgroundTransparency = 1 -- 关键：确保行容器本身透明，不显示背景色
+    row.BorderSizePixel = 0
     row.LayoutOrder = #parent:GetChildren()
+    row.Name = name .. "Row" -- 可选：给行命名方便调试
     row.Parent = parent
 
-    -- 添加 UIListLayout 来管理 row 内部的垂直排列
+    -- 使用 UIListLayout 管理内部垂直排列
     local rowLayout = Instance.new("UIListLayout")
     rowLayout.FillDirection = Enum.FillDirection.Vertical
     rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    rowLayout.Padding = UDim.new(0, 2)
+    rowLayout.Padding = UDim.new(0, 2) -- 控件间的垂直间距
     rowLayout.Parent = row
 
     -- 名称标签
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(1, 0, 0, 20)
-    nameLabel.BackgroundTransparency = 1  -- 确保背景透明
-    nameLabel.BorderSizePixel = 0  -- 移除边框
+    nameLabel.BackgroundTransparency = 1 -- 确保背景透明
+    nameLabel.BorderSizePixel = 0 -- 移除边框
     nameLabel.Text = name
     nameLabel.TextColor3 = self.currentTheme.Text
     nameLabel.TextSize = 14
@@ -900,8 +918,8 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     if description then
         descLabel = Instance.new("TextLabel")
         descLabel.Size = UDim2.new(1, 0, 0, 15)
-        descLabel.BackgroundTransparency = 1  -- 确保背景透明
-        descLabel.BorderSizePixel = 0  -- 移除边框
+        descLabel.BackgroundTransparency = 1 -- 确保背景透明
+        descLabel.BorderSizePixel = 0 -- 移除边框
         descLabel.Text = description
         descLabel.TextColor3 = self.currentTheme.TextSecondary
         descLabel.TextSize = 11
@@ -914,99 +932,101 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     -- 控件
     if config.type == "button" then
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 25)
+        button.Size = UDim2.new(1, 0, 0, 25) -- 调整按钮高度
         button.BackgroundColor3 = self.currentTheme.Accent
         button.BorderSizePixel = 0
         button.Text = config.text or "按钮"
         button.TextColor3 = Color3.fromRGB(255, 255, 255)
         button.TextSize = 12
         button.Font = Enum.Font.Gotham
-        button.Parent = row
-        
+        button.Parent = row -- 直接作为 row 的子项
         local buttonCorner = Instance.new("UICorner")
         buttonCorner.CornerRadius = UDim.new(0, 4)
         buttonCorner.Parent = button
-        
         if config.callback then
             button.MouseButton1Click:Connect(config.callback)
         end
-        
         button.MouseEnter:Connect(function()
             TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.AccentHover}):Play()
         end)
         button.MouseLeave:Connect(function()
             TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.Accent}):Play()
         end)
-        
+
     elseif config.type == "toggle" then
-        local toggleContainer = Instance.new("Frame")
-        toggleContainer.Size = UDim2.new(1, 0, 0, 25)
-        toggleContainer.BackgroundTransparency = 1  -- 确保容器透明
-        toggleContainer.BorderSizePixel = 0
-        toggleContainer.Parent = row
-        
-        local toggle = self:CreateToggle(toggleContainer, config.default or false, config.callback)
-        toggle.frame.Size = UDim2.new(0, 60, 0, 25)
-        toggle.frame.Position = UDim2.new(0, 0, 0, 0)
-        
+        -- 创建开关，但不给其容器添加背景色
+        local toggle = self:CreateToggle(row, config.default or false, config.callback) -- 直接作为 row 的子项
+        -- toggle.frame.Size = UDim2.new(1, 0, 0, 25) -- 如果需要调整开关容器大小
+        -- toggle.frame.Position = UDim2.new(0, 0, 0, 0) -- 通常不需要，因为 ListLayout 会处理
+
     elseif config.type == "slider" then
+        -- 创建滑块，但不给其容器添加背景色
         local sliderFrame = Instance.new("Frame")
-        sliderFrame.Size = UDim2.new(1, 0, 0, 35)
-        sliderFrame.BackgroundTransparency = 1  -- 确保容器透明
+        sliderFrame.Size = UDim2.new(1, 0, 0, 35) -- 设置滑块区域高度
+        sliderFrame.BackgroundTransparency = 1 -- 关键：确保容器透明
         sliderFrame.BorderSizePixel = 0
-        sliderFrame.Parent = row
-        
-        local slider = self:CreateSlider(sliderFrame, 
-            capsuleTypeData and capsuleTypeData.default or config.default or 50, 
-            capsuleTypeData and capsuleTypeData.min or config.min or 0, 
-            capsuleTypeData and capsuleTypeData.max or config.max or 100, 
+        sliderFrame.Parent = row -- 作为 row 的子项
+
+        -- 传递 capsuleTypeData 或 config 的 min/max/default
+        local min_val = (config.min or 0)
+        local max_val = (config.max or 100)
+        local default_val = (config.default or ((min_val + max_val) / 2)) -- 默认值逻辑
+
+        local slider = self:CreateSlider(sliderFrame, default_val, min_val, max_val,
             function(value)
                 if config.callback then
                     config.callback(value)
                 end
             end)
-            
+
     elseif config.type == "textbox" then
         local textbox = Instance.new("TextBox")
-        textbox.Size = UDim2.new(1, 0, 0, 25)
-        textbox.BackgroundColor3 = self.currentTheme.Secondary
+        textbox.Size = UDim2.new(1, 0, 0, 25) -- 调整文本框高度
+        textbox.BackgroundColor3 = self.currentTheme.Secondary -- 文本框通常需要背景色以便输入
+        textbox.BackgroundTransparency = 0 -- 确保背景色可见
         textbox.BorderSizePixel = 0
         textbox.Text = config.default or ""
         textbox.PlaceholderText = config.placeholder or ""
         textbox.TextColor3 = self.currentTheme.Text
         textbox.TextSize = 12
         textbox.Font = Enum.Font.Gotham
-        textbox.Parent = row
-        
+        textbox.Parent = row -- 直接作为 row 的子项
         local textboxCorner = Instance.new("UICorner")
         textboxCorner.CornerRadius = UDim.new(0, 4)
         textboxCorner.Parent = textbox
-        
         if config.callback then
             textbox.FocusLost:Connect(function(enterPressed)
-                if enterPressed then
+                 -- 可以移除 enterPressed 条件，失去焦点即触发
+                 -- if enterPressed then
                     config.callback(textbox.Text)
-                end
+                 -- end
             end)
         end
-        
+
     elseif config.type == "color" then
+         -- 创建颜色选择器，但不给其容器添加背景色
         local colorFrame = Instance.new("Frame")
-        colorFrame.Size = UDim2.new(1, 0, 0, 30)
-        colorFrame.BackgroundTransparency = 1  -- 确保容器透明
+        colorFrame.Size = UDim2.new(1, 0, 0, 35) -- 设置颜色选择器区域高度
+        colorFrame.BackgroundTransparency = 1 -- 关键：确保容器透明
         colorFrame.BorderSizePixel = 0
-        colorFrame.Parent = row
-        
+        colorFrame.Parent = row -- 作为 row 的子项
+
         local colorPicker = self:CreateColorPicker(colorFrame, config.default or Color3.fromRGB(255, 255, 255), config.callback)
+
     end
 
-    -- 动态调整 row 高度以适应内容
-    rowLayout.Changed:Connect(function()
-        local contentHeight = rowLayout.AbsoluteContentSize.Y
-        if contentHeight > 0 then
-            row.Size = UDim2.new(1, 0, 0, contentHeight + 5)
-        end
-    end)
+    -- 注意：移除了原来动态调整 row 高度的 rowLayout.Changed 连接，
+    -- 因为我们已经根据内容预先计算了高度。如果内容高度动态变化很复杂，
+    -- 可以保留，但需要确保它不会与预设高度冲突或导致闪烁。
+    -- 如果保留，确保只在必要时更新，并且逻辑正确。
+    -- [[
+    -- rowLayout.Changed:Connect(function()
+    --     local contentHeight = rowLayout.AbsoluteContentSize.Y
+    --     if contentHeight > 0 then
+    --         row.Size = UDim2.new(1, 0, 0, contentHeight + 5) -- +5 是为了底部 padding
+    --     end
+    -- end)
+    -- ]]
 
     return row
 end
