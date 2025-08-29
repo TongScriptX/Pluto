@@ -785,8 +785,7 @@ function Valkyrie:CreateThemeContent(container)
                     end
                     self:SaveConfig()
                 end
-                end
-            end, "更新图标时出错")
+            end, "更新图标时出错") -- ← 修复点：将多余的 end 移除
         end
     })
 end
