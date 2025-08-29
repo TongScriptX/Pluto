@@ -274,17 +274,36 @@ function Valkyrie:CreateMainUI()
     self.ScreenGui.ResetOnSpawn = false
     self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     self.ScreenGui.IgnoreGuiInset = true
-    self.ScreenGui.Parent = CoreGui
+    self.ScreenGui.Parent = game:GetService("CoreGui") -- 确保正确引用CoreGui
+    
+    -- 确保主题已初始化
+    if not self.currentTheme then
+        self.currentTheme = {
+            Primary = Color3.fromRGB(40, 40, 40),
+            Secondary = Color3.fromRGB(30, 30, 30),
+            Accent = Color3.fromRGB(0, 120, 215),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextSecondary = Color3.fromRGB(200, 200, 200)
+        }
+    end
+    
+    -- 确保配置已初始化
+    if not self.config then
+        self.config = {
+            Size = UDim2.new(0, 600, 0, 400),
+            Position = UDim2.new(0.5, -300, 0.5, -200)
+        }
+    end
     
     -- 主框架
     self.MainFrame = Instance.new("Frame")
     self.MainFrame.Name = "MainFrame"
     self.MainFrame.Size = self.config.Size
     self.MainFrame.Position = self.config.Position
-    self.MainFrame.BackgroundColor3 = self.currentTheme.Primary
+    self.MainFrame.BackgroundColor3 = self.currentTheme.Primary or Color3.fromRGB(40, 40, 40) -- 添加默认值
     self.MainFrame.BorderSizePixel = 0
     self.MainFrame.Visible = false
-    self.MainFrame.Active = true -- 使UI不可穿透
+    self.MainFrame.Active = true
     self.MainFrame.Parent = self.ScreenGui
     
     -- 圆角
@@ -300,7 +319,7 @@ function Valkyrie:CreateMainUI()
     self:AdaptForMobile()
     
     -- 创建默认标签页
-    self:AddTab("主页", Icons.Home, true) -- 默认选中
+    self:AddTab("主页", Icons.Home, true)
     self:AddTab("胶囊管理", Icons.Settings)
     self:AddTab("主题设置", Icons.Edit)
 end
