@@ -803,7 +803,7 @@ function Valkyrie:CreateThemeContent(container)
                     end
                     self:SaveConfig()
                 end
-            end, "更新图标时出错") -- ← 修复点：将多余的 end 移除
+            end, "更新图标时出错")
         end
     })
 end
@@ -816,24 +816,23 @@ function Valkyrie:CreateContentSection(parent, config)
     section.BorderSizePixel = 0
     section.LayoutOrder = #parent:GetChildren()
     section.Parent = parent
-    
     local sectionCorner = Instance.new("UICorner")
     sectionCorner.CornerRadius = UDim.new(0, 8)
     sectionCorner.Parent = section
-    
+
     local sectionLayout = Instance.new("UIListLayout")
     sectionLayout.FillDirection = Enum.FillDirection.Vertical
     sectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
     sectionLayout.Padding = UDim.new(0, 5)
     sectionLayout.Parent = section
-    
+
     local sectionPadding = Instance.new("UIPadding")
     sectionPadding.PaddingTop = UDim.new(0, 10)
     sectionPadding.PaddingBottom = UDim.new(0, 10)
     sectionPadding.PaddingLeft = UDim.new(0, 10)
     sectionPadding.PaddingRight = UDim.new(0, 10)
     sectionPadding.Parent = section
-    
+
     -- 标题
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -845,7 +844,7 @@ function Valkyrie:CreateContentSection(parent, config)
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.LayoutOrder = 1
     titleLabel.Parent = section
-    
+
     -- 添加项目
     for i, item in ipairs(config.items or {}) do
         if item.type == "label" then
@@ -854,74 +853,83 @@ function Valkyrie:CreateContentSection(parent, config)
             self:CreateButton(section, item.text, item.callback, i + 1)
         end
     end
-    
-    -- 更新大小
+
+    -- 更新大小 - 确保连接正确
     sectionLayout.Changed:Connect(function()
-        section.Size = UDim2.new(1, 0, 0, sectionLayout.AbsoluteContentSize.Y + 20)
+        -- 添加 padding 的高度
+        local totalHeight = sectionLayout.AbsoluteContentSize.Y + 20 -- 10 top + 10 bottom padding
+        if totalHeight > 0 then
+            section.Size = UDim2.new(1, 0, 0, totalHeight)
+        end
     end)
-    
+
     return section
 end
 
-    -- 创建行项目（左侧名称，右侧控件）
+-- 创建行项目（左侧名称，右侧控件）
 function Valkyrie:CreateRowItem(parent, name, config, description)
     local row = Instance.new("Frame")
-    local rowHeight = description and 60 or 45 -- 增加高度适应竖向排列
+    -- 根据是否有描述调整高度
+    local rowHeight = description and 70 or 50 -- 稍微增加高度以适应内容和间距
     row.Size = UDim2.new(1, 0, 0, rowHeight)
     row.BackgroundTransparency = 1
     row.LayoutOrder = #parent:GetChildren()
     row.Parent = parent
-    
+
+    -- 添加 UIListLayout 来管理 row 内部的垂直排列
+    local rowLayout = Instance.new("UIListLayout")
+    rowLayout.FillDirection = Enum.FillDirection.Vertical
+    rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    rowLayout.Padding = UDim.new(0, 2) -- 添加一点垂直间距
+    rowLayout.Parent = row
+
     -- 名称标签
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(1, 0, 0, 20)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    -- nameLabel.Position = UDim2.new(0, 0, 0, 0) -- 不再需要手动设置 Position
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = name
     nameLabel.TextColor3 = self.currentTheme.Text
     nameLabel.TextSize = 14
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.Font = Enum.Font.Gotham
-    nameLabel.Parent = row
-    
+    nameLabel.Parent = row -- LayoutOrder 由添加顺序决定
+
+    local descLabel = nil
     -- 描述标签（如果有）
     if description then
-        local descLabel = Instance.new("TextLabel")
+        descLabel = Instance.new("TextLabel")
         descLabel.Size = UDim2.new(1, 0, 0, 15)
-        descLabel.Position = UDim2.new(0, 0, 0, 20)
+        -- descLabel.Position = UDim2.new(0, 0, 0, 20) -- 不再需要手动设置 Position
         descLabel.BackgroundTransparency = 1
         descLabel.Text = description
         descLabel.TextColor3 = self.currentTheme.TextSecondary
         descLabel.TextSize = 11
         descLabel.TextXAlignment = Enum.TextXAlignment.Left
         descLabel.Font = Enum.Font.Gotham
+        descLabel.TextWrapped = true -- 允许文字换行
         descLabel.Parent = row
     end
-    
-    -- 控件位置（竖向排列）
-    local controlY = description and 35 or 22
-    
+
     -- 控件
     if config.type == "button" then
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(1, 0, 0, 25)
-        button.Position = UDim2.new(0, 0, 0, controlY)
+        -- button.Size = UDim2.new(1, 0, 0, 25)
+        -- button.Position = UDim2.new(0, 0, 0, controlY) -- 不再需要手动设置 Position
+        button.Size = UDim2.new(1, 0, 0, 25) -- 固定高度
         button.BackgroundColor3 = self.currentTheme.Accent
         button.BorderSizePixel = 0
         button.Text = config.text or "按钮"
         button.TextColor3 = Color3.fromRGB(255, 255, 255)
         button.TextSize = 12
         button.Font = Enum.Font.Gotham
-        button.Parent = row
-        
+        button.Parent = row -- 会被 UIListLayout 自动排列
         local buttonCorner = Instance.new("UICorner")
         buttonCorner.CornerRadius = UDim.new(0, 4)
         buttonCorner.Parent = button
-        
         if config.callback then
             button.MouseButton1Click:Connect(config.callback)
         end
-        
         -- 悬停效果
         button.MouseEnter:Connect(function()
             TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.AccentHover}):Play()
@@ -929,25 +937,24 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         button.MouseLeave:Connect(function()
             TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.Accent}):Play()
         end)
-        
     elseif config.type == "toggle" then
         local toggle = self:CreateToggle(row, config.default or false, config.callback)
         toggle.frame.Size = UDim2.new(0, 60, 0, 25)
-        toggle.frame.Position = UDim2.new(0, 0, 0, controlY)
-        
+        -- toggle.frame.Position = UDim2.new(0, 0, 0, controlY) -- 不再需要手动设置 Position
+        toggle.frame.Parent = row -- 会被 UIListLayout 自动排列
     elseif config.type == "slider" then
         local sliderFrame = Instance.new("Frame")
-        sliderFrame.Size = UDim2.new(1, 0, 0, 30) -- 延长滑块长度
-        sliderFrame.Position = UDim2.new(0, 0, 0, controlY)
+        -- sliderFrame.Size = UDim2.new(1, 0, 0, 30) -- 延长滑块长度
+        -- sliderFrame.Position = UDim2.new(0, 0, 0, controlY)
+        sliderFrame.Size = UDim2.new(1, 0, 0, 35) -- 固定高度
         sliderFrame.BackgroundTransparency = 1
-        sliderFrame.Parent = row
-        
+        sliderFrame.Parent = row -- 会被 UIListLayout 自动排列
         local slider = self:CreateSlider(sliderFrame, config.default or 50, config.min or 0, config.max or 100, config.callback)
-        
     elseif config.type == "textbox" then
         local textbox = Instance.new("TextBox")
-        textbox.Size = UDim2.new(1, 0, 0, 25)
-        textbox.Position = UDim2.new(0, 0, 0, controlY)
+        -- textbox.Size = UDim2.new(1, 0, 0, 25)
+        -- textbox.Position = UDim2.new(0, 0, 0, controlY)
+        textbox.Size = UDim2.new(1, 0, 0, 25) -- 固定高度
         textbox.BackgroundColor3 = self.currentTheme.Secondary
         textbox.BorderSizePixel = 0
         textbox.Text = config.default or ""
@@ -955,12 +962,10 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         textbox.TextColor3 = self.currentTheme.Text
         textbox.TextSize = 12
         textbox.Font = Enum.Font.Gotham
-        textbox.Parent = row
-        
+        textbox.Parent = row -- 会被 UIListLayout 自动排列
         local textboxCorner = Instance.new("UICorner")
         textboxCorner.CornerRadius = UDim.new(0, 4)
         textboxCorner.Parent = textbox
-        
         if config.callback then
             textbox.FocusLost:Connect(function(enterPressed)
                 if enterPressed then
@@ -968,17 +973,26 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
                 end
             end)
         end
-        
     elseif config.type == "color" then
         local colorFrame = Instance.new("Frame")
-        colorFrame.Size = UDim2.new(1, 0, 0, 25)
-        colorFrame.Position = UDim2.new(0, 0, 0, controlY)
+        -- colorFrame.Size = UDim2.new(1, 0, 0, 25)
+        -- colorFrame.Position = UDim2.new(0, 0, 0, controlY)
+        colorFrame.Size = UDim2.new(1, 0, 0, 30) -- 固定高度
         colorFrame.BackgroundTransparency = 1
-        colorFrame.Parent = row
-        
+        colorFrame.Parent = row -- 会被 UIListLayout 自动排列
         local colorPicker = self:CreateColorPicker(colorFrame, config.default or Color3.fromRGB(255, 255, 255), config.callback)
     end
-    
+
+    -- 动态调整 row 高度以适应内容
+    rowLayout.Changed:Connect(function()
+        -- 确保 rowLayout.AbsoluteContentSize.Y 是有效的
+        local contentHeight = rowLayout.AbsoluteContentSize.Y
+        if contentHeight > 0 then -- 避免初始为0的情况
+             -- 添加一些内边距
+            row.Size = UDim2.new(1, 0, 0, contentHeight + 5)
+        end
+    end)
+
     return row
 end
 
