@@ -837,7 +837,7 @@ function Valkyrie:CreateContentSection(parent, config)
     -- 标题
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Size = UDim2.new(1, 0, 0, 25)
-    titleLabel.BackgroundTransparency = 1  -- 确保背景透明
+    titleLabel.BackgroundTransparency = 0  -- 确保背景透明
     titleLabel.Text = config.title
     titleLabel.TextColor3 = self.currentTheme.Text
     titleLabel.TextSize = 16
