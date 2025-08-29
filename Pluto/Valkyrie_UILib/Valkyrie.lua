@@ -180,17 +180,19 @@ function Valkyrie.new(config)
     self.config = config or {}
     self.config.Title = self.config.Title or "Valkyrie UI"
     self.config.FloatingIcon = self.config.FloatingIcon or Icons.Roblox
-    self.config.Size = UDim2.new(0, 400, 0, 400) -- 改为方形窗口
-    self.config.Position = UDim2.new(0.5, -200, 0.5, -200)
+    self.config.Size = self.config.Size or UDim2.new(0, 400, 0, 400)
+    self.config.Position = self.config.Position or UDim2.new(0.5, -200, 0.5, -200)
     
     -- 状态
     self.isVisible = false
     self.isInitialized = false
+    
+    -- 初始化主题 (确保在使用前完全初始化)
     self.currentTheme = {}
-    -- 复制默认主题
     for k, v in pairs(DefaultTheme) do
         self.currentTheme[k] = v
     end
+    
     self.customTheme = nil
     self.tabs = {}
     self.capsules = {}
@@ -205,6 +207,7 @@ function Valkyrie.new(config)
     
     return self
 end
+
 
 -- 启动动画
 function Valkyrie:ShowStartupAnimation()
@@ -274,33 +277,29 @@ function Valkyrie:CreateMainUI()
     self.ScreenGui.ResetOnSpawn = false
     self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     self.ScreenGui.IgnoreGuiInset = true
-    self.ScreenGui.Parent = game:GetService("CoreGui") -- 确保正确引用CoreGui
+    self.ScreenGui.Parent = CoreGui
     
-    -- 确保主题已初始化
-    if not self.currentTheme then
-        self.currentTheme = {
-            Primary = Color3.fromRGB(40, 40, 40),
-            Secondary = Color3.fromRGB(30, 30, 30),
-            Accent = Color3.fromRGB(0, 120, 215),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextSecondary = Color3.fromRGB(200, 200, 200)
-        }
+    -- 确保主题已正确初始化
+    if not self.currentTheme or not self.currentTheme.Primary then
+        self.currentTheme = {}
+        for k, v in pairs(DefaultTheme) do
+            self.currentTheme[k] = v
+        end
     end
     
     -- 确保配置已初始化
     if not self.config then
-        self.config = {
-            Size = UDim2.new(0, 600, 0, 400),
-            Position = UDim2.new(0.5, -300, 0.5, -200)
-        }
+        self.config = {}
     end
+    self.config.Size = self.config.Size or UDim2.new(0, 400, 0, 400)
+    self.config.Position = self.config.Position or UDim2.new(0.5, -200, 0.5, -200)
     
     -- 主框架
     self.MainFrame = Instance.new("Frame")
     self.MainFrame.Name = "MainFrame"
     self.MainFrame.Size = self.config.Size
     self.MainFrame.Position = self.config.Position
-    self.MainFrame.BackgroundColor3 = self.currentTheme.Primary or Color3.fromRGB(40, 40, 40) -- 添加默认值
+    self.MainFrame.BackgroundColor3 = self.currentTheme.Primary
     self.MainFrame.BorderSizePixel = 0
     self.MainFrame.Visible = false
     self.MainFrame.Active = true
@@ -330,11 +329,11 @@ function Valkyrie:CreateTitleBar()
     self.TitleBar.Name = "TitleBar"
     self.TitleBar.Size = UDim2.new(1, 0, 0, 40)
     self.TitleBar.Position = UDim2.new(0, 0, 0, 0)
-    self.TitleBar.BackgroundColor3 = self.currentTheme.Secondary
+    self.TitleBar.BackgroundColor3 = self.currentTheme.Secondary or Color3.fromRGB(35, 35, 45)
     self.TitleBar.BorderSizePixel = 0
     self.TitleBar.Parent = self.MainFrame
     
-    -- 标题栏圆角
+    -- Rest of the function remains the same...
     local titleCorner = Instance.new("UICorner")
     titleCorner.CornerRadius = UDim.new(0, 12)
     titleCorner.Parent = self.TitleBar
@@ -346,18 +345,18 @@ function Valkyrie:CreateTitleBar()
     titleLabel.Position = UDim2.new(0, 15, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = self.config.Title
-    titleLabel.TextColor3 = self.currentTheme.Text
+    titleLabel.TextColor3 = self.currentTheme.Text or Color3.fromRGB(255, 255, 255)
     titleLabel.TextSize = 16
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.Parent = self.TitleBar
     
-    -- 关闭按钮（销毁）
+    -- 关闭按钮
     local closeButton = Instance.new("ImageButton")
     closeButton.Name = "CloseButton"
     closeButton.Size = UDim2.new(0, 25, 0, 25)
     closeButton.Position = UDim2.new(1, -32, 0, 7.5)
-    closeButton.BackgroundColor3 = self.currentTheme.Error
+    closeButton.BackgroundColor3 = self.currentTheme.Error or Color3.fromRGB(240, 71, 71)
     closeButton.BorderSizePixel = 0
     closeButton.Image = Icons.Close
     closeButton.ImageColor3 = Color3.fromRGB(255, 255, 255)
@@ -386,7 +385,7 @@ function Valkyrie:CreateTitleBar()
     end)
     
     closeButton.MouseLeave:Connect(function()
-        TweenService:Create(closeButton, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.Error}):Play()
+        TweenService:Create(closeButton, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.Error or Color3.fromRGB(240, 71, 71)}):Play()
     end)
 end
 
