@@ -52,10 +52,118 @@ local Icons = {
 
 -- 胶囊功能类型
 local CapsuleTypes = {
-    {name = "按钮", type = "Button", desc = "可点击的按钮组件"},
-    {name = "开关", type = "Toggle", desc = "开启/关闭切换开关"},
-    {name = "滑块", type = "Slider", desc = "数值调节滑块"},
-    {name = "标签", type = "Label", desc = "显示文本信息"}
+    {
+        name = "飞行开关", 
+        type = "Toggle", 
+        desc = "开启/关闭飞行功能",
+        functionality = function(enabled)
+            local player = Players.LocalPlayer
+            if player and player.Character then
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                if humanoid then
+                    if enabled then
+                        -- 启用飞行
+                        local bodyVelocity = Instance.new("BodyVelocity")
+                        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+                        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+                        bodyVelocity.Parent = player.Character.HumanoidRootPart
+                        player.Character:SetAttribute("Flying", true)
+                        player.Character:SetAttribute("BodyVelocity", bodyVelocity)
+                    else
+                        -- 禁用飞行
+                        local bodyVelocity = player.Character:GetAttribute("BodyVelocity")
+                        if bodyVelocity then
+                            bodyVelocity:Destroy()
+                        end
+                        player.Character:SetAttribute("Flying", false)
+                    end
+                end
+            end
+        end
+    },
+    {
+        name = "速度滑块", 
+        type = "Slider", 
+        desc = "调节行走速度 (16-100)",
+        min = 16,
+        max = 100,
+        default = 16,
+        functionality = function(value)
+            local player = Players.LocalPlayer
+            if player and player.Character then
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.WalkSpeed = value
+                end
+            end
+        end
+    },
+    {
+        name = "跳跃高度", 
+        type = "Slider", 
+        desc = "调节跳跃高度 (50-200)",
+        min = 50,
+        max = 200,
+        default = 50,
+        functionality = function(value)
+            local player = Players.LocalPlayer
+            if player and player.Character then
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                if humanoid then
+                    humanoid.JumpPower = value
+                end
+            end
+        end
+    },
+    {
+        name = "无限跳跃", 
+        type = "Toggle", 
+        desc = "开启/关闭无限跳跃",
+        functionality = function(enabled)
+            local player = Players.LocalPlayer
+            if player and player.Character then
+                player.Character:SetAttribute("InfiniteJump", enabled)
+                
+                if enabled then
+                    -- 连接无限跳跃功能
+                    local connection
+                    connection = UserInputService.JumpRequest:Connect(function()
+                        if player.Character and player.Character:GetAttribute("InfiniteJump") then
+                            local humanoid = player.Character:FindFirstChild("Humanoid")
+                            if humanoid then
+                                humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                            end
+                        else
+                            connection:Disconnect()
+                        end
+                    end)
+                end
+            end
+        end
+    },
+    {
+        name = "传送到出生点", 
+        type = "Button", 
+        desc = "一键传送到出生点",
+        functionality = function()
+            local player = Players.LocalPlayer
+            if player and player.Character then
+                local spawnLocation = workspace:FindFirstChild("SpawnLocation")
+                if spawnLocation then
+                    player.Character:MoveTo(spawnLocation.Position + Vector3.new(0, 5, 0))
+                end
+            end
+        end
+    },
+    {
+        name = "玩家信息", 
+        type = "Label", 
+        desc = "显示当前玩家信息",
+        functionality = function()
+            local player = Players.LocalPlayer
+            return "玩家: " .. player.Name .. " | ID: " .. player.UserId
+        end
+    }
 }
 
 -- 创建 UI 实例
@@ -1141,11 +1249,11 @@ function Valkyrie:CreateColorPicker(parent, defaultColor, callback)
 end
 
 -- 显示创建胶囊对话框
-function Valkyrie:ShowCreateCapsuleDialog(capsuleType)
+function Valkyrie:ShowCreateCapsuleDialog(capsuleTypeData)
     -- 创建对话框
     local dialog = Instance.new("Frame")
-    dialog.Size = UDim2.new(0, 300, 0, 200)
-    dialog.Position = UDim2.new(0.5, -150, 0.5, -100)
+    dialog.Size = UDim2.new(0, 300, 0, 150)
+    dialog.Position = UDim2.new(0.5, -150, 0.5, -75)
     dialog.BackgroundColor3 = self.currentTheme.Primary
     dialog.BorderSizePixel = 0
     dialog.Parent = self.ScreenGui
@@ -1158,28 +1266,23 @@ function Valkyrie:ShowCreateCapsuleDialog(capsuleType)
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, 0, 0, 40)
     title.BackgroundTransparency = 1
-    title.Text = "创建 " .. capsuleType.name
+    title.Text = "创建 " .. capsuleTypeData.name
     title.TextColor3 = self.currentTheme.Text
     title.TextSize = 16
     title.Font = Enum.Font.GothamBold
     title.Parent = dialog
     
-    -- 名称输入
-    local nameBox = Instance.new("TextBox")
-    nameBox.Size = UDim2.new(1, -20, 0, 35)
-    nameBox.Position = UDim2.new(0, 10, 0, 50)
-    nameBox.BackgroundColor3 = self.currentTheme.Secondary
-    nameBox.BorderSizePixel = 0
-    nameBox.PlaceholderText = "输入胶囊名称..."
-    nameBox.Text = ""
-    nameBox.TextColor3 = self.currentTheme.Text
-    nameBox.TextSize = 14
-    nameBox.Font = Enum.Font.Gotham
-    nameBox.Parent = dialog
-    
-    local nameCorner = Instance.new("UICorner")
-    nameCorner.CornerRadius = UDim.new(0, 6)
-    nameCorner.Parent = nameBox
+    -- 描述
+    local desc = Instance.new("TextLabel")
+    desc.Size = UDim2.new(1, -20, 0, 30)
+    desc.Position = UDim2.new(0, 10, 0, 40)
+    desc.BackgroundTransparency = 1
+    desc.Text = capsuleTypeData.desc
+    desc.TextColor3 = self.currentTheme.TextSecondary
+    desc.TextSize = 12
+    desc.Font = Enum.Font.Gotham
+    desc.TextWrapped = true
+    desc.Parent = dialog
     
     -- 按钮区域
     local buttonFrame = Instance.new("Frame")
@@ -1226,35 +1329,19 @@ function Valkyrie:ShowCreateCapsuleDialog(capsuleType)
     end)
     
     createBtn.MouseButton1Click:Connect(function()
-        local name = nameBox.Text
-        if name and name ~= "" then
-            self:CreateCapsule(name, capsuleType.type)
-            dialog:Destroy()
-            self:Notify({
-                Title = "胶囊已创建",
-                Message = "成功创建胶囊: " .. name,
-                Type = "Success",
-                Duration = 3
-            })
-        else
-            self:Notify({
-                Title = "创建失败",
-                Message = "请输入胶囊名称",
-                Type = "Error",
-                Duration = 2
-            })
-        end
-    end)
-    
-    nameBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            createBtn.MouseButton1Click:Fire()
-        end
+        self:CreateCapsule(capsuleTypeData.name, capsuleTypeData)
+        dialog:Destroy()
+        self:Notify({
+            Title = "胶囊已创建",
+            Message = "成功创建胶囊: " .. capsuleTypeData.name,
+            Type = "Success",
+            Duration = 3
+        })
     end)
 end
 
 -- 创建胶囊
-function Valkyrie:CreateCapsule(name, capsuleType, config)
+function Valkyrie:CreateCapsule(name, capsuleTypeData, config)
     config = config or {}
     
     -- 检查名称重复
@@ -1270,14 +1357,15 @@ function Valkyrie:CreateCapsule(name, capsuleType, config)
     
     local capsule = {
         name = name,
-        type = capsuleType,
+        type = capsuleTypeData.type,
+        typeData = capsuleTypeData,
         position = config.position or self:GetNextCapsulePosition()
     }
     
     -- 创建胶囊框架
     local frame = Instance.new("Frame")
     frame.Name = name .. "Capsule"
-    frame.Size = config.size or self:GetCapsuleSize(capsuleType)
+    frame.Size = config.size or self:GetCapsuleSize(capsuleTypeData)
     frame.Position = UDim2.new(0, capsule.position.X, 0, capsule.position.Y)
     frame.BackgroundColor3 = self.currentTheme.Secondary
     frame.BorderSizePixel = 0
@@ -1289,7 +1377,7 @@ function Valkyrie:CreateCapsule(name, capsuleType, config)
     frameCorner.Parent = frame
     
     -- 创建胶囊内容
-    local content = self:CreateCapsuleContent(frame, capsuleType, name, config)
+    local content = self:CreateCapsuleContent(frame, capsuleTypeData, name, config)
     
     -- 使胶囊可拖拽
     self:MakeCapsuleDraggable(frame, capsule)
@@ -1311,8 +1399,8 @@ function Valkyrie:CreateCapsule(name, capsuleType, config)
 end
 
 -- 创建胶囊内容
-function Valkyrie:CreateCapsuleContent(parent, type, name, config)
-    if type == "Button" then
+function Valkyrie:CreateCapsuleContent(parent, capsuleTypeData, name, config)
+    if capsuleTypeData.type == "Button" then
         local button = Instance.new("TextButton")
         button.Size = UDim2.new(1, -10, 1, -10)
         button.Position = UDim2.new(0, 5, 0, 5)
@@ -1330,21 +1418,15 @@ function Valkyrie:CreateCapsuleContent(parent, type, name, config)
         
         button.MouseButton1Click:Connect(function()
             self:SafeExecute(function()
-                self:Notify({
-                    Title = "按钮点击",
-                    Message = name .. " 被点击了",
-                    Type = "Info",
-                    Duration = 2
-                })
-                if config.callback then
-                    config.callback()
+                if capsuleTypeData.functionality then
+                    capsuleTypeData.functionality()
                 end
-            end, "按钮点击时出错")
+            end, "按钮功能执行时出错")
         end)
         
         return button
         
-    elseif type == "Toggle" then
+    elseif capsuleTypeData.type == "Toggle" then
         local toggleFrame = Instance.new("Frame")
         toggleFrame.Size = UDim2.new(1, -10, 1, -10)
         toggleFrame.Position = UDim2.new(0, 5, 0, 5)
@@ -1352,29 +1434,33 @@ function Valkyrie:CreateCapsuleContent(parent, type, name, config)
         toggleFrame.Parent = parent
         
         local toggle = self:CreateToggle(toggleFrame, config.default or false, function(enabled)
-            if config.callback then
-                config.callback(enabled)
+            if capsuleTypeData.functionality then
+                capsuleTypeData.functionality(enabled)
             end
         end)
         
         return toggle
         
-    elseif type == "Slider" then
+    elseif capsuleTypeData.type == "Slider" then
         local sliderFrame = Instance.new("Frame")
         sliderFrame.Size = UDim2.new(1, -10, 1, -10)
         sliderFrame.Position = UDim2.new(0, 5, 0, 5)
         sliderFrame.BackgroundTransparency = 1
         sliderFrame.Parent = parent
         
-        local slider = self:CreateSlider(sliderFrame, config.default or 50, config.min or 0, config.max or 100, function(value)
-            if config.callback then
-                config.callback(value)
-            end
-        end)
+        local slider = self:CreateSlider(sliderFrame, 
+            capsuleTypeData.default or config.default or 50, 
+            capsuleTypeData.min or config.min or 0, 
+            capsuleTypeData.max or config.max or 100, 
+            function(value)
+                if capsuleTypeData.functionality then
+                    capsuleTypeData.functionality(value)
+                end
+            end)
         
         return slider
         
-    elseif type == "Label" then
+    elseif capsuleTypeData.type == "Label" then
         local label = Instance.new("TextLabel")
         label.Size = UDim2.new(1, -10, 1, -10)
         label.Position = UDim2.new(0, 5, 0, 5)
@@ -1386,6 +1472,16 @@ function Valkyrie:CreateCapsuleContent(parent, type, name, config)
         label.TextWrapped = true
         label.Parent = parent
         
+        -- 如果是玩家信息标签，定期更新
+        if capsuleTypeData.functionality then
+            spawn(function()
+                while label.Parent do
+                    label.Text = capsuleTypeData.functionality()
+                    wait(1)
+                end
+            end)
+        end
+        
         return label
     end
     
@@ -1393,15 +1489,15 @@ function Valkyrie:CreateCapsuleContent(parent, type, name, config)
 end
 
 -- 获取胶囊尺寸
-function Valkyrie:GetCapsuleSize(type)
-    if type == "Button" then
+function Valkyrie:GetCapsuleSize(capsuleTypeData)
+    if capsuleTypeData.type == "Button" then
         return UDim2.new(0, 120, 0, 35)
-    elseif type == "Toggle" then
+    elseif capsuleTypeData.type == "Toggle" then
         return UDim2.new(0, 80, 0, 35)
-    elseif type == "Slider" then
+    elseif capsuleTypeData.type == "Slider" then
         return UDim2.new(0, 150, 0, 35)
-    elseif type == "Label" then
-        return UDim2.new(0, 100, 0, 35)
+    elseif capsuleTypeData.type == "Label" then
+        return UDim2.new(0, 140, 0, 35)
     end
     return UDim2.new(0, 100, 0, 35)
 end
@@ -1437,17 +1533,12 @@ function Valkyrie:MakeCapsuleDraggable(frame, capsule)
     
     frame.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            -- 删除互动通知，保存新位置
             if dragging then
                 dragging = false
                 -- 保存新位置
                 capsule.position = Vector2.new(frame.Position.X.Offset, frame.Position.Y.Offset)
                 self:SaveConfig()
-                self:Notify({
-                    Title = "胶囊已移动",
-                    Message = capsule.name .. " 位置已保存",
-                    Type = "Success",
-                    Duration = 1
-                })
             end
         end
     end)
@@ -1482,7 +1573,7 @@ function Valkyrie:RefreshCapsuleList()
                     self:DeleteCapsule(name)
                 end, "删除胶囊时出错")
             end
-        }, capsule.type .. " 胶囊")
+        }, capsule.typeData.name .. " - " .. capsule.typeData.desc)
     end
 end
 
@@ -1713,7 +1804,7 @@ function Valkyrie:UpdateTheme()
     self.MainFrame.BackgroundColor3 = self.currentTheme.Primary
     if self.TitleBar then self.TitleBar.BackgroundColor3 = self.currentTheme.Secondary end
     if self.SidebarFrame then self.SidebarFrame.BackgroundColor3 = self.currentTheme.Secondary end
-    if self.ContentFrame then self.ContentFrame.BackgroundColor3 = self.currentTheme.Background end
+    if self.ContentFrame then self.ContentFrame.BackgroundColor3 = self.currentTheme.Primary end
     if self.FloatingButton then self.FloatingButton.BackgroundColor3 = self.currentTheme.Accent end
     
     -- 更新所有标签页
@@ -1773,9 +1864,9 @@ end
 -- 移动端适配
 function Valkyrie:AdaptForMobile()
     if UserInputService.TouchEnabled and self.MainFrame then
-        -- 调整主窗口大小和位置
-        self.MainFrame.Size = UDim2.new(0.9, 0, 0.7, 0)
-        self.MainFrame.Position = UDim2.new(0.05, 0, 0.15, 0)
+        -- 调整主窗口大小和位置 (保持方形)
+        self.MainFrame.Size = UDim2.new(0.85, 0, 0.6, 0)
+        self.MainFrame.Position = UDim2.new(0.075, 0, 0.2, 0)
         
         -- 调整悬浮按钮
         if self.FloatingButton then
@@ -1808,10 +1899,11 @@ function Valkyrie:SaveConfig()
             capsules = {}
         }
         
-        -- 保存胶囊配置
+        -- 保存配置时也要保存类型数据
         for name, capsule in pairs(self.capsules) do
             config.capsules[name] = {
                 type = capsule.type,
+                typeName = capsule.typeData.name, -- 保存类型名称用于重新加载
                 position = {x = capsule.position.X, y = capsule.position.Y}
             }
         end
