@@ -1183,14 +1183,10 @@ function Valkyrie:CreateSlider(parent, default, min, max, callback)
             if newValue then
                 updateSlider(newValue)
             else
+                -- 输入无效时恢复原值
                 valueBox.Text = tostring(math.floor(slider.value))
-            end
-        end(newValue),
-                    Type = "Success",
-                    Duration = 1
-                })
-            else
-                valueBox.Text = tostring(math.floor(slider.value))
+                -- 可选：播放提示音或提示错误
+                warn("Invalid input in slider textbox")
             end
         end
     end)
