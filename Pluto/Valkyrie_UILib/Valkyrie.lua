@@ -867,39 +867,25 @@ function Valkyrie:CreateContentSection(parent, config)
 end
 
 -- 创建行项目
+-- 极简版本 - 完全不使用容器Frame
 function Valkyrie:CreateRowItem(parent, name, config, description)
-    -- 主行容器
-    local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 50)
-    row.BackgroundTransparency = 1
-    row.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- 设置为白色但完全透明
-    row.BorderSizePixel = 0
-    row.Parent = parent
-
-    -- 左侧文本区域
-    local textArea = Instance.new("Frame")
-    textArea.Size = UDim2.new(0.6, -5, 1, 0)
-    textArea.Position = UDim2.new(0, 0, 0, 0)
-    textArea.BackgroundTransparency = 1
-    textArea.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    textArea.BorderSizePixel = 0
-    textArea.Parent = row
-
-    -- 右侧控件区域
-    local controlArea = Instance.new("Frame")
-    controlArea.Size = UDim2.new(0.4, 0, 1, 0)
-    controlArea.Position = UDim2.new(0.6, 5, 0, 0)
-    controlArea.BackgroundTransparency = 1
-    controlArea.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    controlArea.BorderSizePixel = 0
-    controlArea.Parent = row
-
-    -- 名称标签
+    local children = parent:GetChildren()
+    local yOffset = 0
+    
+    -- 计算当前应该放置的Y位置（跳过UIListLayout等非GUI元素）
+    for _, child in pairs(children) do
+        if child:IsA("GuiObject") then
+            yOffset = yOffset + child.Size.Y.Offset + 5 -- 5像素间距
+        end
+    end
+    
+    local totalHeight = description and 50 or 30
+    
+    -- 直接创建名称标签
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(1, 0, 0, 18)
-    nameLabel.Position = UDim2.new(0, 0, 0, 0)
+    nameLabel.Size = UDim2.new(0.6, -10, 0, 18)
+    nameLabel.Position = UDim2.new(0, 5, 0, yOffset)
     nameLabel.BackgroundTransparency = 1
-    nameLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.BorderSizePixel = 0
     nameLabel.Text = name
     nameLabel.TextColor3 = self.currentTheme.Text
@@ -907,18 +893,14 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.TextYAlignment = Enum.TextYAlignment.Top
     nameLabel.Font = Enum.Font.Gotham
-    nameLabel.Parent = textArea
+    nameLabel.Parent = parent
 
-    -- 描述标签（如果有）
-    local descLabel = nil
-    local totalHeight = 30 -- 基础高度
-    
+    -- 如果有描述，直接创建描述标签
     if description then
-        descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(1, 0, 0, 15)
-        descLabel.Position = UDim2.new(0, 0, 0, 20)
+        local descLabel = Instance.new("TextLabel")
+        descLabel.Size = UDim2.new(0.6, -10, 0, 15)
+        descLabel.Position = UDim2.new(0, 5, 0, yOffset + 20)
         descLabel.BackgroundTransparency = 1
-        descLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         descLabel.BorderSizePixel = 0
         descLabel.Text = description
         descLabel.TextColor3 = self.currentTheme.TextSecondary
@@ -927,23 +909,23 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         descLabel.TextYAlignment = Enum.TextYAlignment.Top
         descLabel.Font = Enum.Font.Gotham
         descLabel.TextWrapped = true
-        descLabel.Parent = textArea
-        
-        totalHeight = 50 -- 有描述时增加高度
+        descLabel.Parent = parent
     end
 
-    -- 根据控件类型创建控件
+    -- 直接创建控件，不使用容器
+    local controlYOffset = yOffset + (totalHeight - 25) / 2 -- 垂直居中控件
+    
     if config.type == "button" then
         local control = Instance.new("TextButton")
-        control.Size = UDim2.new(1, 0, 0, 25)
-        control.Position = UDim2.new(0, 0, 0.5, -12.5)
+        control.Size = UDim2.new(0.35, 0, 0, 25)
+        control.Position = UDim2.new(0.65, 0, 0, controlYOffset)
         control.BackgroundColor3 = self.currentTheme.Accent
         control.BorderSizePixel = 0
         control.Text = config.text or "按钮"
         control.TextColor3 = Color3.fromRGB(255, 255, 255)
         control.TextSize = 12
         control.Font = Enum.Font.Gotham
-        control.Parent = controlArea
+        control.Parent = parent
         
         local buttonCorner = Instance.new("UICorner")
         buttonCorner.CornerRadius = UDim.new(0, 4)
@@ -961,22 +943,31 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         end)
         
     elseif config.type == "toggle" then
-        local toggleData = self:CreateToggle(controlArea, config.default or false, config.callback)
+        -- 为toggle创建一个最小的invisible容器
+        local toggleContainer = Instance.new("Frame")
+        toggleContainer.Size = UDim2.new(0, 50, 0, 25)
+        toggleContainer.Position = UDim2.new(1, -55, 0, controlYOffset)
+        toggleContainer.BackgroundTransparency = 1
+        toggleContainer.BorderSizePixel = 0
+        toggleContainer.Parent = parent
+        
+        local toggleData = self:CreateToggle(toggleContainer, config.default or false, config.callback)
         if toggleData and toggleData.frame then
-            toggleData.frame.Size = UDim2.new(0, 50, 0, 25)
-            toggleData.frame.Position = UDim2.new(1, -50, 0.5, -12.5)
+            toggleData.frame.Size = UDim2.new(1, 0, 1, 0)
+            toggleData.frame.Position = UDim2.new(0, 0, 0, 0)
         end
         
     elseif config.type == "slider" then
-        totalHeight = math.max(totalHeight, 60) -- 滑块需要更多空间
+        totalHeight = math.max(totalHeight, 60)
+        controlYOffset = yOffset + (totalHeight - 35) / 2
         
+        -- 滑块需要容器来正确工作
         local sliderContainer = Instance.new("Frame")
-        sliderContainer.Size = UDim2.new(1, 0, 0, 35)
-        sliderContainer.Position = UDim2.new(0, 0, 0.5, -17.5)
+        sliderContainer.Size = UDim2.new(0.35, 0, 0, 35)
+        sliderContainer.Position = UDim2.new(0.65, 0, 0, controlYOffset)
         sliderContainer.BackgroundTransparency = 1
-        sliderContainer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         sliderContainer.BorderSizePixel = 0
-        sliderContainer.Parent = controlArea
+        sliderContainer.Parent = parent
         
         self:CreateSlider(sliderContainer, 
             config.default or 50, 
@@ -986,8 +977,8 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
             
     elseif config.type == "textbox" then
         local control = Instance.new("TextBox")
-        control.Size = UDim2.new(1, 0, 0, 25)
-        control.Position = UDim2.new(0, 0, 0.5, -12.5)
+        control.Size = UDim2.new(0.35, 0, 0, 25)
+        control.Position = UDim2.new(0.65, 0, 0, controlYOffset)
         control.BackgroundColor3 = self.currentTheme.Secondary
         control.BorderSizePixel = 0
         control.Text = config.default or ""
@@ -995,7 +986,7 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         control.TextColor3 = self.currentTheme.Text
         control.TextSize = 12
         control.Font = Enum.Font.Gotham
-        control.Parent = controlArea
+        control.Parent = parent
         
         local textboxCorner = Instance.new("UICorner")
         textboxCorner.CornerRadius = UDim.new(0, 4)
@@ -1011,28 +1002,29 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         
     elseif config.type == "color" then
         totalHeight = math.max(totalHeight, 55)
-        self:CreateColorPicker(controlArea, config.default or Color3.fromRGB(255, 255, 255), config.callback)
+        controlYOffset = yOffset + (totalHeight - 30) / 2
+        
+        -- 颜色选择器需要容器
+        local colorContainer = Instance.new("Frame")
+        colorContainer.Size = UDim2.new(0.35, 0, 0, 30)
+        colorContainer.Position = UDim2.new(0.65, 0, 0, controlYOffset)
+        colorContainer.BackgroundTransparency = 1
+        colorContainer.BorderSizePixel = 0
+        colorContainer.Parent = parent
+        
+        self:CreateColorPicker(colorContainer, config.default or Color3.fromRGB(255, 255, 255), config.callback)
     end
 
-    -- 设置最终行高度
-    row.Size = UDim2.new(1, 0, 0, totalHeight)
+    -- 创建一个invisible占位符来标记这个行项目的总高度
+    local spacer = Instance.new("Frame")
+    spacer.Size = UDim2.new(1, 0, 0, totalHeight)
+    spacer.Position = UDim2.new(0, 0, 0, yOffset)
+    spacer.BackgroundTransparency = 1
+    spacer.BorderSizePixel = 0
+    spacer.Visible = false -- 完全不可见，只用来占位
+    spacer.Parent = parent
 
-    return row
-end
-
--- 创建标签
-function Valkyrie:CreateLabel(parent, text, layoutOrder)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 25)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = self.currentTheme.TextSecondary
-    label.TextSize = 14
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.LayoutOrder = layoutOrder or 1
-    label.Parent = parent
-    return label
+    return spacer -- 返回占位符作为参考
 end
 
 -- 创建按钮
