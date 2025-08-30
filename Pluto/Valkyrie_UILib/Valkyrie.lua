@@ -343,6 +343,7 @@ function Valkyrie:CreateTitleBar()
     titleLabel.Name = "Title"
     titleLabel.Size = UDim2.new(1, -80, 1, 0)
     titleLabel.Position = UDim2.new(0, 15, 0, 0)
+    titleLabel.BackgroundColor3 = self.currentTheme.Primary
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = self.config.Title
     titleLabel.TextColor3 = self.currentTheme.Text or Color3.fromRGB(255, 255, 255)
@@ -523,6 +524,7 @@ function Valkyrie:AddTab(name, icon, defaultSelected)
     iconLabel.Name = "Icon"
     iconLabel.Size = UDim2.new(0, 20, 0, 20)
     iconLabel.Position = UDim2.new(0, 10, 0.5, -10)
+    iconLabel.BackgroundColor3 = self.currentTheme.Primary
     iconLabel.BackgroundTransparency = 1
     iconLabel.Image = icon
     iconLabel.ImageColor3 = self.currentTheme.TextSecondary
@@ -533,6 +535,7 @@ function Valkyrie:AddTab(name, icon, defaultSelected)
     textLabel.Name = "Text"
     textLabel.Size = UDim2.new(1, -40, 1, 0)
     textLabel.Position = UDim2.new(0, 35, 0, 0)
+    textLabel.BackgroundColor3 = self.currentTheme.Primary
     textLabel.BackgroundTransparency = 1
     textLabel.Text = name
     textLabel.TextColor3 = self.currentTheme.TextSecondary
@@ -546,6 +549,7 @@ function Valkyrie:AddTab(name, icon, defaultSelected)
     tabContent.Name = name .. "Content"
     tabContent.Size = UDim2.new(1, -10, 1, -10)
     tabContent.Position = UDim2.new(0, 5, 0, 5)
+    tabContent.BackgroundColor3 = self.currentTheme.Primary
     tabContent.BackgroundTransparency = 1
     tabContent.BorderSizePixel = 0
     tabContent.ScrollBarThickness = 6
@@ -1271,6 +1275,7 @@ function Valkyrie:CreateColorPicker(parent, defaultColor, callback)
     local rgbFrame = Instance.new("Frame")
     rgbFrame.Size = UDim2.new(1, -30, 1, 0)
     rgbFrame.Position = UDim2.new(0, 30, 0, 0)
+    rgbFrame.BackgroundColor3 = self.currentTheme.Primary
     rgbFrame.BackgroundTransparency = 1
     rgbFrame.Parent = parent
     
@@ -1282,6 +1287,7 @@ function Valkyrie:CreateColorPicker(parent, defaultColor, callback)
         local sliderFrame = Instance.new("Frame")
         sliderFrame.Size = UDim2.new(1/3, -2, 1, 0)
         sliderFrame.Position = UDim2.new((i-1)/3, (i-1)*2, 0, 0)
+        sliderFrame.BackgroundColor3 = self.currentTheme.Primary
         sliderFrame.BackgroundTransparency = 1
         sliderFrame.Parent = rgbFrame
         
