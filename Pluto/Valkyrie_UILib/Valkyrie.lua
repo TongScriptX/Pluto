@@ -808,21 +808,6 @@ function Valkyrie:CreateThemeContent(container)
     })
 end
 
--- 创建标签
-function Valkyrie:CreateLabel(parent, text, layoutOrder)
-    local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 25)
-    label.BackgroundTransparency = 1
-    label.Text = text
-    label.TextColor3 = self.currentTheme.TextSecondary
-    label.TextSize = 14
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Font = Enum.Font.Gotham
-    label.LayoutOrder = layoutOrder or 1
-    label.Parent = parent
-    return label
-end
-
 -- 创建内容区块
 function Valkyrie:CreateContentSection(parent, config)
     local section = Instance.new("Frame")
@@ -881,120 +866,114 @@ function Valkyrie:CreateContentSection(parent, config)
     return section
 end
 
--- 创建行项目
--- 完全避免Frame - 只创建必要的GUI元素
+-- 创建行项目（左侧名称，右侧控件）
 function Valkyrie:CreateRowItem(parent, name, config, description)
-    -- 计算Y位置 - 遍历现有子元素
-    local yPos = 5 -- 起始位置
-    for _, child in pairs(parent:GetChildren()) do
-        if child:IsA("GuiObject") and child.Visible then
-            local childBottom = child.Position.Y.Offset + child.Size.Y.Offset
-            if childBottom > yPos - 5 then
-                yPos = childBottom + 5
-            end
-        end
-    end
-    
-    local rowHeight = description and 50 or 30
+    local row = Instance.new("Frame")
+    local rowHeight = description and 70 or 50
+    row.Size = UDim2.new(1, 0, 0, rowHeight)
+    row.BackgroundColor3 = self.currentTheme.Primary
+    row.BackgroundTransparency = 1  -- 确保行背景透明
+    row.BorderSizePixel = 0  -- 移除边框
+    row.LayoutOrder = #parent:GetChildren()
+    row.Parent = parent
 
-    -- 名称标签 - 直接创建，不使用任何容器
+    -- 添加 UIListLayout 来管理 row 内部的垂直排列
+    local rowLayout = Instance.new("UIListLayout")
+    rowLayout.FillDirection = Enum.FillDirection.Vertical
+    rowLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    rowLayout.Padding = UDim.new(0, 2)
+    rowLayout.Parent = row
+
+    -- 名称标签
     local nameLabel = Instance.new("TextLabel")
-    nameLabel.Size = UDim2.new(0.6, -10, 0, 18)
-    nameLabel.Position = UDim2.new(0, 5, 0, yPos)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.BorderSizePixel = 0
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.BackgroundColor3 = self.currentTheme.Primary
+    nameLabel.BackgroundTransparency = 1  -- 确保背景透明
+    nameLabel.BorderSizePixel = 0  -- 移除边框
     nameLabel.Text = name
     nameLabel.TextColor3 = self.currentTheme.Text
     nameLabel.TextSize = 14
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
     nameLabel.Font = Enum.Font.Gotham
-    nameLabel.Parent = parent
+    nameLabel.Parent = row
 
-    -- 描述标签（如果需要）
+    local descLabel = nil
+    -- 描述标签（如果有）
     if description then
-        local descLabel = Instance.new("TextLabel")
-        descLabel.Size = UDim2.new(0.6, -10, 0, 15)
-        descLabel.Position = UDim2.new(0, 5, 0, yPos + 22)
-        descLabel.BackgroundTransparency = 1
-        descLabel.BorderSizePixel = 0
+        descLabel = Instance.new("TextLabel")
+        descLabel.Size = UDim2.new(1, 0, 0, 15)
+        descLabel.BackgroundColor3 = self.currentTheme.Primary
+        descLabel.BackgroundTransparency = 1  -- 确保背景透明
+        descLabel.BorderSizePixel = 0  -- 移除边框
         descLabel.Text = description
         descLabel.TextColor3 = self.currentTheme.TextSecondary
         descLabel.TextSize = 11
         descLabel.TextXAlignment = Enum.TextXAlignment.Left
         descLabel.Font = Enum.Font.Gotham
         descLabel.TextWrapped = true
-        descLabel.Parent = parent
+        descLabel.Parent = row
     end
 
-    -- 控件位置（右侧，垂直居中）
-    local controlY = yPos + (rowHeight - 25) / 2
-
-    -- 根据类型创建控件 - 绝对不创建Frame容器
+    -- 控件
     if config.type == "button" then
         local button = Instance.new("TextButton")
-        button.Size = UDim2.new(0.35, 0, 0, 25)
-        button.Position = UDim2.new(0.65, 0, 0, controlY)
+        button.Size = UDim2.new(1, 0, 0, 25)
         button.BackgroundColor3 = self.currentTheme.Accent
         button.BorderSizePixel = 0
         button.Text = config.text or "按钮"
         button.TextColor3 = Color3.fromRGB(255, 255, 255)
         button.TextSize = 12
         button.Font = Enum.Font.Gotham
-        button.Parent = parent
+        button.Parent = row
         
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 4)
-        corner.Parent = button
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 4)
+        buttonCorner.Parent = button
         
         if config.callback then
             button.MouseButton1Click:Connect(config.callback)
         end
         
-    elseif config.type == "toggle" then
-        -- 手动创建toggle，不使用CreateToggle函数
-        local toggleBg = Instance.new("TextLabel") -- 使用TextLabel而不是Frame
-        toggleBg.Size = UDim2.new(0, 50, 0, 25)
-        toggleBg.Position = UDim2.new(1, -55, 0, controlY)
-        toggleBg.BackgroundColor3 = config.default and self.currentTheme.Accent or self.currentTheme.Secondary
-        toggleBg.BorderSizePixel = 0
-        toggleBg.Text = ""
-        toggleBg.Parent = parent
-        
-        local toggleCorner = Instance.new("UICorner")
-        toggleCorner.CornerRadius = UDim.new(0, 12)
-        toggleCorner.Parent = toggleBg
-        
-        local toggleButton = Instance.new("TextButton")
-        toggleButton.Size = UDim2.new(0, 21, 0, 21)
-        toggleButton.Position = config.default and UDim2.new(0, 27, 0, 2) or UDim2.new(0, 2, 0, 2)
-        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        toggleButton.BorderSizePixel = 0
-        toggleButton.Text = ""
-        toggleButton.Parent = toggleBg
-        
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 10)
-        buttonCorner.Parent = toggleButton
-        
-        local isToggled = config.default or false
-        toggleButton.MouseButton1Click:Connect(function()
-            isToggled = not isToggled
-            
-            local newBgColor = isToggled and self.currentTheme.Accent or self.currentTheme.Secondary
-            local newPos = isToggled and UDim2.new(0, 27, 0, 2) or UDim2.new(0, 2, 0, 2)
-            
-            TweenService:Create(toggleBg, TweenInfo.new(0.2), {BackgroundColor3 = newBgColor}):Play()
-            TweenService:Create(toggleButton, TweenInfo.new(0.2), {Position = newPos}):Play()
-            
-            if config.callback then
-                config.callback(isToggled)
-            end
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.AccentHover}):Play()
+        end)
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.Accent}):Play()
         end)
         
+    elseif config.type == "toggle" then
+        local toggleContainer = Instance.new("Frame")
+        toggleContainer.Size = UDim2.new(1, 0, 0, 25)
+        toggleContainer.BackgroundColor3 = self.currentTheme.Primary
+        toggleContainer.BackgroundTransparency = 1  -- 确保容器透明
+        toggleContainer.BorderSizePixel = 0
+        toggleContainer.Parent = row
+        
+        local toggle = self:CreateToggle(toggleContainer, config.default or false, config.callback)
+        toggle.frame.Size = UDim2.new(0, 60, 0, 25)
+        toggle.frame.Position = UDim2.new(0, 0, 0, 0)
+        
+    elseif config.type == "slider" then
+        local sliderFrame = Instance.new("Frame")
+        sliderFrame.Size = UDim2.new(1, 0, 0, 35)
+        sliderFrame.BackgroundColor3 = self.currentTheme.Primary
+        sliderFrame.BackgroundTransparency = 1  -- 确保容器透明
+        sliderFrame.BorderSizePixel = 0
+        sliderFrame.Parent = row
+        
+        local slider = self:CreateSlider(sliderFrame, 
+            capsuleTypeData and capsuleTypeData.default or config.default or 50, 
+            capsuleTypeData and capsuleTypeData.min or config.min or 0, 
+            capsuleTypeData and capsuleTypeData.max or config.max or 100, 
+            function(value)
+                if config.callback then
+                    config.callback(value)
+                end
+            end)
+            
     elseif config.type == "textbox" then
         local textbox = Instance.new("TextBox")
-        textbox.Size = UDim2.new(0.35, 0, 0, 25)
-        textbox.Position = UDim2.new(0.65, 0, 0, controlY)
+        textbox.Size = UDim2.new(1, 0, 0, 25)
         textbox.BackgroundColor3 = self.currentTheme.Secondary
         textbox.BorderSizePixel = 0
         textbox.Text = config.default or ""
@@ -1002,11 +981,11 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         textbox.TextColor3 = self.currentTheme.Text
         textbox.TextSize = 12
         textbox.Font = Enum.Font.Gotham
-        textbox.Parent = parent
+        textbox.Parent = row
         
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, 4)
-        corner.Parent = textbox
+        local textboxCorner = Instance.new("UICorner")
+        textboxCorner.CornerRadius = UDim.new(0, 4)
+        textboxCorner.Parent = textbox
         
         if config.callback then
             textbox.FocusLost:Connect(function(enterPressed)
@@ -1015,19 +994,42 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
                 end
             end)
         end
-    end
-    
-    -- 对于slider和colorpicker，我们可能需要调用原有函数，但传入parent而不是容器
-    if config.type == "slider" then
-        rowHeight = 60
-        -- 这里需要修改CreateSlider函数使其能接受直接的parent和位置参数
-        print("Slider需要特殊处理")
-    elseif config.type == "color" then  
-        rowHeight = 55
-        print("ColorPicker需要特殊处理")
+        
+    elseif config.type == "color" then
+        local colorFrame = Instance.new("Frame")
+        colorFrame.Size = UDim2.new(1, 0, 0, 30)
+        colorFrame.BackgroundColor3 = self.currentTheme.Primary
+        colorFrame.BackgroundTransparency = 1  -- 确保容器透明
+        colorFrame.BorderSizePixel = 0
+        colorFrame.Parent = row
+        
+        local colorPicker = self:CreateColorPicker(colorFrame, config.default or Color3.fromRGB(255, 255, 255), config.callback)
     end
 
-    return yPos + rowHeight -- 返回下一个元素应该放置的Y位置
+    -- 动态调整 row 高度以适应内容
+    rowLayout.Changed:Connect(function()
+        local contentHeight = rowLayout.AbsoluteContentSize.Y
+        if contentHeight > 0 then
+            row.Size = UDim2.new(1, 0, 0, contentHeight + 5)
+        end
+    end)
+
+    return row
+end
+
+-- 创建标签
+function Valkyrie:CreateLabel(parent, text, layoutOrder)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 25)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = self.currentTheme.TextSecondary
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.LayoutOrder = layoutOrder or 1
+    label.Parent = parent
+    return label
 end
 
 -- 创建按钮
@@ -1068,6 +1070,7 @@ function Valkyrie:CreateToggle(parent, default, callback)
     
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(0, 50, 0, 25)
+    frame.BackgroundColor3 = self.currentTheme.Primary
     frame.BackgroundTransparency = 1  -- 确保容器透明
     frame.BorderSizePixel = 0  -- 移除边框
     frame.Parent = parent
@@ -1096,6 +1099,7 @@ function Valkyrie:CreateToggle(parent, default, callback)
     
     local button = Instance.new("TextButton")
     button.Size = UDim2.new(1, 0, 1, 0)
+    button.BackgroundColor3 = self.currentTheme.Primary
     button.BackgroundTransparency = 1
     button.BorderSizePixel = 0  -- 移除边框
     button.Text = ""
@@ -1127,6 +1131,7 @@ function Valkyrie:CreateSlider(parent, default, min, max, callback)
     
     local frame = Instance.new("Frame")
     frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = self.currentTheme.Primary
     frame.BackgroundTransparency = 1  -- 确保容器透明
     frame.BorderSizePixel = 0  -- 移除边框
     frame.Parent = parent
