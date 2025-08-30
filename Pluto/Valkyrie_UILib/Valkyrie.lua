@@ -1015,6 +1015,21 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     return yPos + rowHeight -- 返回下一个元素应该放置的Y位置
 end
 
+-- 创建标签
+function Valkyrie:CreateLabel(parent, text, layoutOrder)
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 0, 25)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = self.currentTheme.TextSecondary
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Font = Enum.Font.Gotham
+    label.LayoutOrder = layoutOrder or 1
+    label.Parent = parent
+    return label
+end
+
 -- 创建按钮
 function Valkyrie:CreateButton(parent, text, callback, layoutOrder)
     local button = Instance.new("TextButton")
