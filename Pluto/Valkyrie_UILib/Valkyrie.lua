@@ -1,6 +1,6 @@
--- Valkyrie UI Library v2.0 - 优化版 (无背景色修改版)
+-- Valkyrie UI Library beta
 -- 简约、精致、高级的用户界面设计
--- 修改说明: 移除了大部分元素的默认灰色背景 (BackgroundColor3)，使其更透明或使用主题背景色。
+
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Players = game:GetService("Players")
@@ -25,7 +25,7 @@ local DefaultTheme = {
     Success = Color3.fromRGB(34, 197, 94),
     Warning = Color3.fromRGB(245, 158, 11),
     Error = Color3.fromRGB(239, 68, 68),
-    Background = Color3.fromRGB(15, 15, 18), -- 新增背景色用于需要轻微区分的区域
+    Background = Color3.fromRGB(15, 15, 18),
     Surface = Color3.fromRGB(30, 31, 38)
 }
 -- 简化的图标系统
@@ -273,11 +273,8 @@ function Valkyrie:CreateTitleBar()
     closeButton.Name = "CloseButton"
     closeButton.Size = UDim2.new(0, 32, 0, 32)
     closeButton.Position = UDim2.new(1, -44, 0, 9)
-    -- 确保 BackgroundColor3 始终有一个 Color3 值
-    -- 如果 self.currentTheme.Background 是 nil，则使用一个默认的深色或透明色
-    closeButton.BackgroundColor3 = self.currentTheme.Background or self.currentTheme.Surface or Color3.fromRGB(30, 31, 38) -- 添加后备选项
-    closeButton.BackgroundTransparency = 0.8 -- 使用透明度
-    -- closeButton.BackgroundColor3 = self.currentTheme.Surface -- 可以选择保留这行作为后备，如果 Background 不够好
+    -- 使用 or 操作符提供默认 Color3 值，防止 nil 错误
+    closeButton.BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface or Color3.fromRGB(30, 31, 38)
     closeButton.BorderSizePixel = 0
     closeButton.Text = "×"
     closeButton.TextColor3 = self.currentTheme.Text
@@ -305,9 +302,9 @@ function Valkyrie:CreateTitleBar()
     end)
 
     closeButton.MouseLeave:Connect(function()
-        -- 同样确保恢复时也有默认值
+        -- 同样为 MouseLeave 事件提供默认值
         TweenService:Create(closeButton, TweenInfo.new(0.2), {
-            BackgroundColor3 = self.currentTheme.Background or self.currentTheme.Surface or Color3.fromRGB(30, 31, 38),
+            BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface or Color3.fromRGB(30, 31, 38),
             TextColor3 = self.currentTheme.Text
         }):Play()
     end)
@@ -634,9 +631,8 @@ function Valkyrie:CreateThemeContent(container)
     local iconInput = Instance.new("TextBox")
     iconInput.Size = UDim2.new(0, 120, 0, 28)
     iconInput.Position = UDim2.new(1, -124, 0.5, -14)
-    -- iconInput.BackgroundColor3 = self.currentTheme.Surface -- 移除
-    iconInput.BackgroundTransparency = 0.8 -- 使用透明度
-    iconInput.BackgroundColor3 = self.currentTheme.Background -- 或使用主题背景色
+    -- 为 iconInput 添加默认值
+    iconInput.BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface or Color3.fromRGB(30, 31, 38)
     iconInput.BorderSizePixel = 0
     iconInput.PlaceholderText = "资产 ID"
     iconInput.Text = ""
@@ -808,7 +804,7 @@ function Valkyrie:ShowColorPicker(currentColor, callback)
     local picker = Instance.new("Frame")
     picker.Size = UDim2.new(0, 280, 0, 200)
     picker.Position = UDim2.new(0.5, -140, 0.5, -100)
-    picker.BackgroundColor3 = self.currentTheme.Primary
+    picker.BackgroundColor3 = self.currentTheme.Primary or DefaultTheme.Primary or Color3.fromRGB(18, 18, 22) -- 添加默认值
     picker.BorderSizePixel = 0
     picker.Parent = self.ScreenGui
     local pickerCorner = Instance.new("UICorner")
@@ -856,9 +852,8 @@ function Valkyrie:ShowColorPicker(currentColor, callback)
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 60, 0, 30)
     closeBtn.Position = UDim2.new(1, -76, 1, -42)
-    -- closeBtn.BackgroundColor3 = self.currentTheme.Surface -- 移除
-    closeBtn.BackgroundTransparency = 0.8 -- 使用透明度
-    closeBtn.BackgroundColor3 = self.currentTheme.Background -- 或使用主题背景色
+    -- 为 closeBtn 添加默认值
+    closeBtn.BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface or Color3.fromRGB(30, 31, 38)
     closeBtn.BorderSizePixel = 0
     closeBtn.Text = "完成"
     closeBtn.TextColor3 = self.currentTheme.Text
