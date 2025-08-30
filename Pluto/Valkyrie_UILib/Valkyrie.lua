@@ -117,6 +117,7 @@ local CapsuleTypes = {
         end
     }
 }
+
 -- 创建实例
 function Valkyrie.new(config)
     if Valkyrie.instance then
@@ -131,11 +132,13 @@ function Valkyrie.new(config)
     self.config.Position = self.config.Position or UDim2.new(0.5, -210, 0.5, -190)
     self.isVisible = false
     self.isInitialized = false
-    -- 主题初始化
+    
+    -- 确保主题完整初始化
     self.currentTheme = {}
     for k, v in pairs(DefaultTheme) do
         self.currentTheme[k] = v
     end
+    
     self.tabs = {}
     self.capsules = {}
     self.notifications = {}
@@ -144,6 +147,7 @@ function Valkyrie.new(config)
     self:ShowStartupAnimation()
     return self
 end
+
 -- 启动动画
 function Valkyrie:ShowStartupAnimation()
     local startupGui = Instance.new("ScreenGui")
@@ -213,15 +217,18 @@ function Valkyrie:CreateMainUI()
     self.ScreenGui.ResetOnSpawn = false
     self.ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     self.ScreenGui.Parent = CoreGui
+    
     self.MainFrame = Instance.new("Frame")
     self.MainFrame.Name = "MainFrame"
     self.MainFrame.Size = self.config.Size
     self.MainFrame.Position = self.config.Position
-    self.MainFrame.BackgroundColor3 = self.currentTheme.Primary
+    -- 确保颜色值有效
+    self.MainFrame.BackgroundColor3 = self.currentTheme.Primary or DefaultTheme.Primary
     self.MainFrame.BorderSizePixel = 0
     self.MainFrame.Visible = false
     self.MainFrame.Active = true
     self.MainFrame.Parent = self.ScreenGui
+    
     local shadow = Instance.new("ImageLabel")
     shadow.Name = "DropShadow"
     shadow.Size = UDim2.new(1, 16, 1, 16)
@@ -232,12 +239,15 @@ function Valkyrie:CreateMainUI()
     shadow.ImageTransparency = 0.8
     shadow.ZIndex = -1
     shadow.Parent = self.MainFrame
+    
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = self.MainFrame
+    
     local shadowCorner = Instance.new("UICorner")
     shadowCorner.CornerRadius = UDim.new(0, 16)
     shadowCorner.Parent = shadow
+    
     self:CreateTitleBar()
     self:CreateContentArea()
     self:CreateNotificationSystem()
@@ -263,7 +273,7 @@ function Valkyrie:CreateTitleBar()
     titleLabel.Position = UDim2.new(0, 24, 0, 0)
     titleLabel.BackgroundTransparency = 1
     titleLabel.Text = self.config.Title
-    titleLabel.TextColor3 = self.currentTheme.Text
+    titleLabel.TextColor3 = self.currentTheme.Text or DefaultTheme.Text
     titleLabel.TextSize = 20
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Font = Enum.Font.GothamBold
@@ -273,11 +283,10 @@ function Valkyrie:CreateTitleBar()
     closeButton.Name = "CloseButton"
     closeButton.Size = UDim2.new(0, 32, 0, 32)
     closeButton.Position = UDim2.new(1, -44, 0, 9)
-    -- 使用 or 操作符提供默认 Color3 值，防止 nil 错误
-    closeButton.BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface or Color3.fromRGB(30, 31, 38)
+    closeButton.BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface
     closeButton.BorderSizePixel = 0
     closeButton.Text = "×"
-    closeButton.TextColor3 = self.currentTheme.Text
+    closeButton.TextColor3 = self.currentTheme.Text or DefaultTheme.Text
     closeButton.TextSize = 18
     closeButton.Font = Enum.Font.GothamBold
     closeButton.Parent = self.TitleBar
@@ -296,16 +305,15 @@ function Valkyrie:CreateTitleBar()
 
     closeButton.MouseEnter:Connect(function()
         TweenService:Create(closeButton, TweenInfo.new(0.2), {
-            BackgroundColor3 = self.currentTheme.Error,
+            BackgroundColor3 = self.currentTheme.Error or DefaultTheme.Error,
             TextColor3 = Color3.fromRGB(255, 255, 255)
         }):Play()
     end)
 
     closeButton.MouseLeave:Connect(function()
-        -- 同样为 MouseLeave 事件提供默认值
         TweenService:Create(closeButton, TweenInfo.new(0.2), {
-            BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface or Color3.fromRGB(30, 31, 38),
-            TextColor3 = self.currentTheme.Text
+            BackgroundColor3 = self.currentTheme.Surface or DefaultTheme.Surface,
+            TextColor3 = self.currentTheme.Text or DefaultTheme.Text
         }):Play()
     end)
 end
@@ -1526,8 +1534,13 @@ function Valkyrie:LoadConfig()
             local jsonConfig = readfile(CONFIG_FOLDER .. "/" .. CONFIG_FILE)
             local config = HttpService:JSONDecode(jsonConfig)
             if config then
+                -- 安全地合并主题配置
                 if config.theme then
-                    self.currentTheme = config.theme
+                    for k, v in pairs(config.theme) do
+                        if DefaultTheme[k] and v then -- 确保值存在且有效
+                            self.currentTheme[k] = v
+                        end
+                    end
                 end
                 if config.floatingIcon then
                     self.config.FloatingIcon = config.floatingIcon
@@ -1537,6 +1550,7 @@ function Valkyrie:LoadConfig()
         end
     end)
     if not success then
+        -- 如果加载失败，重置为默认主题
         self.currentTheme = {}
         for k, v in pairs(DefaultTheme) do
             self.currentTheme[k] = v
