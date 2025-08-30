@@ -253,9 +253,10 @@ function Valkyrie:CreateTitleBar()
     self.TitleBar.Name = "TitleBar"
     self.TitleBar.Size = UDim2.new(1, 0, 0, 50)
     self.TitleBar.Position = UDim2.new(0, 0, 0, 0)
-    self.TitleBar.BackgroundTransparency = 1 -- 透明背景
+    self.TitleBar.BackgroundTransparency = 1
     self.TitleBar.BorderSizePixel = 0
     self.TitleBar.Parent = self.MainFrame
+
     local titleLabel = Instance.new("TextLabel")
     titleLabel.Name = "Title"
     titleLabel.Size = UDim2.new(1, -60, 1, 0)
@@ -267,22 +268,27 @@ function Valkyrie:CreateTitleBar()
     titleLabel.TextXAlignment = Enum.TextXAlignment.Left
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.Parent = self.TitleBar
+
     local closeButton = Instance.new("TextButton")
     closeButton.Name = "CloseButton"
     closeButton.Size = UDim2.new(0, 32, 0, 32)
     closeButton.Position = UDim2.new(1, -44, 0, 9)
-    -- closeButton.BackgroundColor3 = self.currentTheme.Surface -- 移除或改为透明
+    -- 确保 BackgroundColor3 始终有一个 Color3 值
+    -- 如果 self.currentTheme.Background 是 nil，则使用一个默认的深色或透明色
+    closeButton.BackgroundColor3 = self.currentTheme.Background or self.currentTheme.Surface or Color3.fromRGB(30, 31, 38) -- 添加后备选项
     closeButton.BackgroundTransparency = 0.8 -- 使用透明度
-    closeButton.BackgroundColor3 = self.currentTheme.Background -- 或使用主题背景色
+    -- closeButton.BackgroundColor3 = self.currentTheme.Surface -- 可以选择保留这行作为后备，如果 Background 不够好
     closeButton.BorderSizePixel = 0
     closeButton.Text = "×"
     closeButton.TextColor3 = self.currentTheme.Text
     closeButton.TextSize = 18
     closeButton.Font = Enum.Font.GothamBold
     closeButton.Parent = self.TitleBar
+
     local closeCorner = Instance.new("UICorner")
     closeCorner.CornerRadius = UDim.new(0, 8)
     closeCorner.Parent = closeButton
+
     closeButton.MouseButton1Click:Connect(function()
         self:SafeExecute(function()
             self:Notify("已关闭", "UI 已完全销毁", "warning")
@@ -290,23 +296,23 @@ function Valkyrie:CreateTitleBar()
             self:Destroy()
         end, "关闭UI时出错")
     end)
+
     closeButton.MouseEnter:Connect(function()
         TweenService:Create(closeButton, TweenInfo.new(0.2), {
             BackgroundColor3 = self.currentTheme.Error,
             TextColor3 = Color3.fromRGB(255, 255, 255)
         }):Play()
     end)
+
     closeButton.MouseLeave:Connect(function()
-        -- TweenService:Create(closeButton, TweenInfo.new(0.2), {
-        --     BackgroundColor3 = self.currentTheme.Surface,
-        --     TextColor3 = self.currentTheme.Text
-        -- }):Play()
+        -- 同样确保恢复时也有默认值
         TweenService:Create(closeButton, TweenInfo.new(0.2), {
-            BackgroundColor3 = self.currentTheme.Background, -- 恢复为主题背景色
+            BackgroundColor3 = self.currentTheme.Background or self.currentTheme.Surface or Color3.fromRGB(30, 31, 38),
             TextColor3 = self.currentTheme.Text
         }):Play()
     end)
 end
+
 -- 创建内容区域
 function Valkyrie:CreateContentArea()
     local separator = Instance.new("Frame")
