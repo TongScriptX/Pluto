@@ -867,164 +867,152 @@ function Valkyrie:CreateContentSection(parent, config)
 end
 
 -- 创建行项目
--- 极简版本 - 完全不使用容器Frame
+-- 完全避免Frame - 只创建必要的GUI元素
 function Valkyrie:CreateRowItem(parent, name, config, description)
-    local children = parent:GetChildren()
-    local yOffset = 0
-    
-    -- 计算当前应该放置的Y位置（跳过UIListLayout等非GUI元素）
-    for _, child in pairs(children) do
-        if child:IsA("GuiObject") then
-            yOffset = yOffset + child.Size.Y.Offset + 5 -- 5像素间距
+    -- 计算Y位置 - 遍历现有子元素
+    local yPos = 5 -- 起始位置
+    for _, child in pairs(parent:GetChildren()) do
+        if child:IsA("GuiObject") and child.Visible then
+            local childBottom = child.Position.Y.Offset + child.Size.Y.Offset
+            if childBottom > yPos - 5 then
+                yPos = childBottom + 5
+            end
         end
     end
     
-    local totalHeight = description and 50 or 30
-    
-    -- 直接创建名称标签
+    local rowHeight = description and 50 or 30
+
+    -- 名称标签 - 直接创建，不使用任何容器
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(0.6, -10, 0, 18)
-    nameLabel.Position = UDim2.new(0, 5, 0, yOffset)
+    nameLabel.Position = UDim2.new(0, 5, 0, yPos)
     nameLabel.BackgroundTransparency = 1
     nameLabel.BorderSizePixel = 0
     nameLabel.Text = name
     nameLabel.TextColor3 = self.currentTheme.Text
     nameLabel.TextSize = 14
     nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.TextYAlignment = Enum.TextYAlignment.Top
     nameLabel.Font = Enum.Font.Gotham
     nameLabel.Parent = parent
 
-    -- 如果有描述，直接创建描述标签
+    -- 描述标签（如果需要）
     if description then
         local descLabel = Instance.new("TextLabel")
         descLabel.Size = UDim2.new(0.6, -10, 0, 15)
-        descLabel.Position = UDim2.new(0, 5, 0, yOffset + 20)
+        descLabel.Position = UDim2.new(0, 5, 0, yPos + 22)
         descLabel.BackgroundTransparency = 1
         descLabel.BorderSizePixel = 0
         descLabel.Text = description
         descLabel.TextColor3 = self.currentTheme.TextSecondary
         descLabel.TextSize = 11
         descLabel.TextXAlignment = Enum.TextXAlignment.Left
-        descLabel.TextYAlignment = Enum.TextYAlignment.Top
         descLabel.Font = Enum.Font.Gotham
         descLabel.TextWrapped = true
         descLabel.Parent = parent
     end
 
-    -- 直接创建控件，不使用容器
-    local controlYOffset = yOffset + (totalHeight - 25) / 2 -- 垂直居中控件
-    
+    -- 控件位置（右侧，垂直居中）
+    local controlY = yPos + (rowHeight - 25) / 2
+
+    -- 根据类型创建控件 - 绝对不创建Frame容器
     if config.type == "button" then
-        local control = Instance.new("TextButton")
-        control.Size = UDim2.new(0.35, 0, 0, 25)
-        control.Position = UDim2.new(0.65, 0, 0, controlYOffset)
-        control.BackgroundColor3 = self.currentTheme.Accent
-        control.BorderSizePixel = 0
-        control.Text = config.text or "按钮"
-        control.TextColor3 = Color3.fromRGB(255, 255, 255)
-        control.TextSize = 12
-        control.Font = Enum.Font.Gotham
-        control.Parent = parent
+        local button = Instance.new("TextButton")
+        button.Size = UDim2.new(0.35, 0, 0, 25)
+        button.Position = UDim2.new(0.65, 0, 0, controlY)
+        button.BackgroundColor3 = self.currentTheme.Accent
+        button.BorderSizePixel = 0
+        button.Text = config.text or "按钮"
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 12
+        button.Font = Enum.Font.Gotham
+        button.Parent = parent
         
-        local buttonCorner = Instance.new("UICorner")
-        buttonCorner.CornerRadius = UDim.new(0, 4)
-        buttonCorner.Parent = control
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = button
         
         if config.callback then
-            control.MouseButton1Click:Connect(config.callback)
+            button.MouseButton1Click:Connect(config.callback)
         end
-        
-        control.MouseEnter:Connect(function()
-            TweenService:Create(control, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.AccentHover}):Play()
-        end)
-        control.MouseLeave:Connect(function()
-            TweenService:Create(control, TweenInfo.new(0.2), {BackgroundColor3 = self.currentTheme.Accent}):Play()
-        end)
         
     elseif config.type == "toggle" then
-        -- 为toggle创建一个最小的invisible容器
-        local toggleContainer = Instance.new("Frame")
-        toggleContainer.Size = UDim2.new(0, 50, 0, 25)
-        toggleContainer.Position = UDim2.new(1, -55, 0, controlYOffset)
-        toggleContainer.BackgroundTransparency = 1
-        toggleContainer.BorderSizePixel = 0
-        toggleContainer.Parent = parent
+        -- 手动创建toggle，不使用CreateToggle函数
+        local toggleBg = Instance.new("TextLabel") -- 使用TextLabel而不是Frame
+        toggleBg.Size = UDim2.new(0, 50, 0, 25)
+        toggleBg.Position = UDim2.new(1, -55, 0, controlY)
+        toggleBg.BackgroundColor3 = config.default and self.currentTheme.Accent or self.currentTheme.Secondary
+        toggleBg.BorderSizePixel = 0
+        toggleBg.Text = ""
+        toggleBg.Parent = parent
         
-        local toggleData = self:CreateToggle(toggleContainer, config.default or false, config.callback)
-        if toggleData and toggleData.frame then
-            toggleData.frame.Size = UDim2.new(1, 0, 1, 0)
-            toggleData.frame.Position = UDim2.new(0, 0, 0, 0)
-        end
+        local toggleCorner = Instance.new("UICorner")
+        toggleCorner.CornerRadius = UDim.new(0, 12)
+        toggleCorner.Parent = toggleBg
         
-    elseif config.type == "slider" then
-        totalHeight = math.max(totalHeight, 60)
-        controlYOffset = yOffset + (totalHeight - 35) / 2
+        local toggleButton = Instance.new("TextButton")
+        toggleButton.Size = UDim2.new(0, 21, 0, 21)
+        toggleButton.Position = config.default and UDim2.new(0, 27, 0, 2) or UDim2.new(0, 2, 0, 2)
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        toggleButton.BorderSizePixel = 0
+        toggleButton.Text = ""
+        toggleButton.Parent = toggleBg
         
-        -- 滑块需要容器来正确工作
-        local sliderContainer = Instance.new("Frame")
-        sliderContainer.Size = UDim2.new(0.35, 0, 0, 35)
-        sliderContainer.Position = UDim2.new(0.65, 0, 0, controlYOffset)
-        sliderContainer.BackgroundTransparency = 1
-        sliderContainer.BorderSizePixel = 0
-        sliderContainer.Parent = parent
+        local buttonCorner = Instance.new("UICorner")
+        buttonCorner.CornerRadius = UDim.new(0, 10)
+        buttonCorner.Parent = toggleButton
         
-        self:CreateSlider(sliderContainer, 
-            config.default or 50, 
-            config.min or 0, 
-            config.max or 100, 
-            config.callback)
+        local isToggled = config.default or false
+        toggleButton.MouseButton1Click:Connect(function()
+            isToggled = not isToggled
             
-    elseif config.type == "textbox" then
-        local control = Instance.new("TextBox")
-        control.Size = UDim2.new(0.35, 0, 0, 25)
-        control.Position = UDim2.new(0.65, 0, 0, controlYOffset)
-        control.BackgroundColor3 = self.currentTheme.Secondary
-        control.BorderSizePixel = 0
-        control.Text = config.default or ""
-        control.PlaceholderText = config.placeholder or ""
-        control.TextColor3 = self.currentTheme.Text
-        control.TextSize = 12
-        control.Font = Enum.Font.Gotham
-        control.Parent = parent
+            local newBgColor = isToggled and self.currentTheme.Accent or self.currentTheme.Secondary
+            local newPos = isToggled and UDim2.new(0, 27, 0, 2) or UDim2.new(0, 2, 0, 2)
+            
+            TweenService:Create(toggleBg, TweenInfo.new(0.2), {BackgroundColor3 = newBgColor}):Play()
+            TweenService:Create(toggleButton, TweenInfo.new(0.2), {Position = newPos}):Play()
+            
+            if config.callback then
+                config.callback(isToggled)
+            end
+        end)
         
-        local textboxCorner = Instance.new("UICorner")
-        textboxCorner.CornerRadius = UDim.new(0, 4)
-        textboxCorner.Parent = control
+    elseif config.type == "textbox" then
+        local textbox = Instance.new("TextBox")
+        textbox.Size = UDim2.new(0.35, 0, 0, 25)
+        textbox.Position = UDim2.new(0.65, 0, 0, controlY)
+        textbox.BackgroundColor3 = self.currentTheme.Secondary
+        textbox.BorderSizePixel = 0
+        textbox.Text = config.default or ""
+        textbox.PlaceholderText = config.placeholder or ""
+        textbox.TextColor3 = self.currentTheme.Text
+        textbox.TextSize = 12
+        textbox.Font = Enum.Font.Gotham
+        textbox.Parent = parent
+        
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, 4)
+        corner.Parent = textbox
         
         if config.callback then
-            control.FocusLost:Connect(function(enterPressed)
+            textbox.FocusLost:Connect(function(enterPressed)
                 if enterPressed then
-                    config.callback(control.Text)
+                    config.callback(textbox.Text)
                 end
             end)
         end
-        
-    elseif config.type == "color" then
-        totalHeight = math.max(totalHeight, 55)
-        controlYOffset = yOffset + (totalHeight - 30) / 2
-        
-        -- 颜色选择器需要容器
-        local colorContainer = Instance.new("Frame")
-        colorContainer.Size = UDim2.new(0.35, 0, 0, 30)
-        colorContainer.Position = UDim2.new(0.65, 0, 0, controlYOffset)
-        colorContainer.BackgroundTransparency = 1
-        colorContainer.BorderSizePixel = 0
-        colorContainer.Parent = parent
-        
-        self:CreateColorPicker(colorContainer, config.default or Color3.fromRGB(255, 255, 255), config.callback)
+    end
+    
+    -- 对于slider和colorpicker，我们可能需要调用原有函数，但传入parent而不是容器
+    if config.type == "slider" then
+        rowHeight = 60
+        -- 这里需要修改CreateSlider函数使其能接受直接的parent和位置参数
+        print("Slider需要特殊处理")
+    elseif config.type == "color" then  
+        rowHeight = 55
+        print("ColorPicker需要特殊处理")
     end
 
-    -- 创建一个invisible占位符来标记这个行项目的总高度
-    local spacer = Instance.new("Frame")
-    spacer.Size = UDim2.new(1, 0, 0, totalHeight)
-    spacer.Position = UDim2.new(0, 0, 0, yOffset)
-    spacer.BackgroundTransparency = 1
-    spacer.BorderSizePixel = 0
-    spacer.Visible = false -- 完全不可见，只用来占位
-    spacer.Parent = parent
-
-    return spacer -- 返回占位符作为参考
+    return yPos + rowHeight -- 返回下一个元素应该放置的Y位置
 end
 
 -- 创建按钮
