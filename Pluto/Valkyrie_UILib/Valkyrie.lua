@@ -870,8 +870,9 @@ end
 function Valkyrie:CreateRowItem(parent, name, config, description)
     -- 主行容器
     local row = Instance.new("Frame")
-    row.Size = UDim2.new(1, 0, 0, 50) -- 初始高度，会自动调整
+    row.Size = UDim2.new(1, 0, 0, 50)
     row.BackgroundTransparency = 1
+    row.BackgroundColor3 = Color3.fromRGB(255, 255, 255) -- 设置为白色但完全透明
     row.BorderSizePixel = 0
     row.Parent = parent
 
@@ -880,6 +881,7 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     textArea.Size = UDim2.new(0.6, -5, 1, 0)
     textArea.Position = UDim2.new(0, 0, 0, 0)
     textArea.BackgroundTransparency = 1
+    textArea.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     textArea.BorderSizePixel = 0
     textArea.Parent = row
 
@@ -888,6 +890,7 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     controlArea.Size = UDim2.new(0.4, 0, 1, 0)
     controlArea.Position = UDim2.new(0.6, 5, 0, 0)
     controlArea.BackgroundTransparency = 1
+    controlArea.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     controlArea.BorderSizePixel = 0
     controlArea.Parent = row
 
@@ -896,6 +899,7 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
     nameLabel.Size = UDim2.new(1, 0, 0, 18)
     nameLabel.Position = UDim2.new(0, 0, 0, 0)
     nameLabel.BackgroundTransparency = 1
+    nameLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.BorderSizePixel = 0
     nameLabel.Text = name
     nameLabel.TextColor3 = self.currentTheme.Text
@@ -907,13 +911,14 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
 
     -- 描述标签（如果有）
     local descLabel = nil
-    local totalHeight = 25 -- 基础高度
+    local totalHeight = 30 -- 基础高度
     
     if description then
         descLabel = Instance.new("TextLabel")
         descLabel.Size = UDim2.new(1, 0, 0, 15)
         descLabel.Position = UDim2.new(0, 0, 0, 20)
         descLabel.BackgroundTransparency = 1
+        descLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         descLabel.BorderSizePixel = 0
         descLabel.Text = description
         descLabel.TextColor3 = self.currentTheme.TextSecondary
@@ -924,14 +929,12 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         descLabel.TextWrapped = true
         descLabel.Parent = textArea
         
-        totalHeight = 45 -- 有描述时增加高度
+        totalHeight = 50 -- 有描述时增加高度
     end
 
-    -- 根据控件类型创建控件并调整高度
-    local control = nil
-    
+    -- 根据控件类型创建控件
     if config.type == "button" then
-        control = Instance.new("TextButton")
+        local control = Instance.new("TextButton")
         control.Size = UDim2.new(1, 0, 0, 25)
         control.Position = UDim2.new(0, 0, 0.5, -12.5)
         control.BackgroundColor3 = self.currentTheme.Accent
@@ -959,29 +962,30 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         
     elseif config.type == "toggle" then
         local toggleData = self:CreateToggle(controlArea, config.default or false, config.callback)
-        control = toggleData.frame
-        control.Size = UDim2.new(0, 50, 0, 25)
-        control.Position = UDim2.new(1, -50, 0.5, -12.5)
+        if toggleData and toggleData.frame then
+            toggleData.frame.Size = UDim2.new(0, 50, 0, 25)
+            toggleData.frame.Position = UDim2.new(1, -50, 0.5, -12.5)
+        end
         
     elseif config.type == "slider" then
-        totalHeight = math.max(totalHeight, 55) -- 滑块需要更多空间
+        totalHeight = math.max(totalHeight, 60) -- 滑块需要更多空间
         
-        -- 滑块容器
         local sliderContainer = Instance.new("Frame")
         sliderContainer.Size = UDim2.new(1, 0, 0, 35)
         sliderContainer.Position = UDim2.new(0, 0, 0.5, -17.5)
         sliderContainer.BackgroundTransparency = 1
+        sliderContainer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
         sliderContainer.BorderSizePixel = 0
         sliderContainer.Parent = controlArea
         
-        control = self:CreateSlider(sliderContainer, 
+        self:CreateSlider(sliderContainer, 
             config.default or 50, 
             config.min or 0, 
             config.max or 100, 
             config.callback)
             
     elseif config.type == "textbox" then
-        control = Instance.new("TextBox")
+        local control = Instance.new("TextBox")
         control.Size = UDim2.new(1, 0, 0, 25)
         control.Position = UDim2.new(0, 0, 0.5, -12.5)
         control.BackgroundColor3 = self.currentTheme.Secondary
@@ -1006,19 +1010,12 @@ function Valkyrie:CreateRowItem(parent, name, config, description)
         end
         
     elseif config.type == "color" then
-        totalHeight = math.max(totalHeight, 50) -- 颜色选择器需要更多空间
-        local colorPicker = self:CreateColorPicker(controlArea, config.default or Color3.fromRGB(255, 255, 255), config.callback)
+        totalHeight = math.max(totalHeight, 55)
+        self:CreateColorPicker(controlArea, config.default or Color3.fromRGB(255, 255, 255), config.callback)
     end
 
     -- 设置最终行高度
     row.Size = UDim2.new(1, 0, 0, totalHeight)
-    
-    -- 添加底部间距
-    local spacer = Instance.new("Frame")
-    spacer.Size = UDim2.new(1, 0, 0, 5)
-    spacer.BackgroundTransparency = 1
-    spacer.BorderSizePixel = 0
-    spacer.Parent = parent
 
     return row
 end
