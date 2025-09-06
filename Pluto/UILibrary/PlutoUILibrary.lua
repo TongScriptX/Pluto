@@ -6,39 +6,46 @@ local HttpService = game:GetService("HttpService")
 
 local UILibrary = {}
 
--- TopbarPlus GitHub 注入
-local TopbarPlus do
+--// TopbarPlus Loader
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local TopbarPlus
+
+do
     local success, result = pcall(function()
-        -- 首先尝试从 ReplicatedStorage 加载
-        local tbp = game:GetService("ReplicatedStorage"):FindFirstChild("TopbarPlus")
+        -- 优先从 ReplicatedStorage 读取
+        local tbp = ReplicatedStorage:FindFirstChild("TopbarPlus")
         if tbp then
             return require(tbp)
         end
-        
-        -- 如果没有，尝试从 GitHub 动态加载
-        local httpSuccess, response = pcall(function()
-            return HttpService:GetAsync("https://raw.githubusercontent.com/Validark/TopbarPlus/main/src/TopbarPlus.lua", true)
+
+        -- 尝试从 GitHub 动态加载 (httpget 本地执行器可用)
+        local response
+        local httpSuccess, httpError = pcall(function()
+            response = httpget("https://raw.githubusercontent.com/Validark/TopbarPlus/main/src/TopbarPlus.lua")
         end)
-        
+
         if httpSuccess and response then
             local module = Instance.new("ModuleScript")
             module.Name = "TopbarPlus"
             module.Source = response
-            module.Parent = game:GetService("ReplicatedStorage")
+            module.Parent = ReplicatedStorage
             return require(module)
+        else
+            return nil, httpError
         end
-        
-        return nil
     end)
-    
-    if not success or not result then
-        warn("[TopbarPlus]: Failed to load TopbarPlus:", result or "not found")
-        TopbarPlus = nil
-    else
-        print("✅ TopbarPlus loaded successfully from GitHub")
+
+    if success and result then
         TopbarPlus = result
+        rconsoleprint("[TopbarPlus] ✅ 成功加载 TopbarPlus 模块\n")
+    else
+        TopbarPlus = nil
+        rconsoleprint("[TopbarPlus] ❌ 加载失败: " .. tostring(result) .. "\n")
     end
 end
+
+return TopbarPlus
 
 -- 颜色转换函数
 local function decimalToColor3(decimal)
