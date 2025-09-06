@@ -2,25 +2,40 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
 
 local UILibrary = {}
 
--- TopbarPlus 注入
+-- TopbarPlus GitHub 注入
 local TopbarPlus do
     local success, result = pcall(function()
-        -- 优先从 ReplicatedStorage 加载
+        -- 首先尝试从 ReplicatedStorage 加载
         local tbp = game:GetService("ReplicatedStorage"):FindFirstChild("TopbarPlus")
         if tbp then
             return require(tbp)
-        else
-            -- 否则从 Asset 加载（TopbarPlus 官方模型 ID）
-            return require(7244702830)
         end
+        
+        -- 如果没有，尝试从 GitHub 动态加载
+        local httpSuccess, response = pcall(function()
+            return HttpService:GetAsync("https://raw.githubusercontent.com/Validark/TopbarPlus/main/src/TopbarPlus.lua", true)
+        end)
+        
+        if httpSuccess and response then
+            local module = Instance.new("ModuleScript")
+            module.Name = "TopbarPlus"
+            module.Source = response
+            module.Parent = game:GetService("ReplicatedStorage")
+            return require(module)
+        end
+        
+        return nil
     end)
-    if not success then
-        warn("[TopbarPlus]: Failed to load TopbarPlus:", result)
+    
+    if not success or not result then
+        warn("[TopbarPlus]: Failed to load TopbarPlus:", result or "not found")
         TopbarPlus = nil
     else
+        print("✅ TopbarPlus loaded successfully from GitHub")
         TopbarPlus = result
     end
 end
@@ -338,7 +353,7 @@ function UILibrary:CreateButton(parent, options)
     return button
 end
 
--- 替换：创建顶部栏按钮（使用 TopbarPlus）
+-- 创建顶部栏按钮（使用 TopbarPlus）
 function UILibrary:CreateTopbarButton(options)
     if not TopbarPlus then
         warn("[TopbarButton]: TopbarPlus is not loaded")
@@ -356,7 +371,7 @@ function UILibrary:CreateTopbarButton(options)
     local button = TopbarPlus.API.newButton({
         Name = "PlutoUI",
         Title = options.Title or "Pluto UI",
-        Icon = options.Icon or "", -- Fluent UI: Settings
+        Icon = options.Icon or "", -- Fluent UI: Settings
         Order = options.Order or 100,
         Callback = function()
             if not button.Active then return end
@@ -390,13 +405,6 @@ function UILibrary:CreateTopbarButton(options)
     if options.Tooltip then
         button:SetTooltip(options.Tooltip)
     end
-
-    -- 可选：自定义颜色（TopbarPlus 默认适配主题）
-    -- button:SetColors({
-    --     Normal = THEME.Primary,
-    --     Hover = THEME.Accent,
-    --     Active = THEME.Success
-    -- })
 
     button.Active = true
     return button
@@ -785,7 +793,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         task.defer(function()
             content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + paddingY)
         end)
-    end)
+    end
 
     local function switchToThisTab()
         for _, child in ipairs(mainPage:GetChildren()) do
