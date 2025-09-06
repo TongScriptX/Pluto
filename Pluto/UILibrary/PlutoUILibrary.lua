@@ -2,32 +2,10 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
-local HttpService = game:GetService("HttpService")
 
 local UILibrary = {}
 
---// TopbarPlus Loader
-local HttpService = game:GetService("HttpService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local url = "https://raw.githubusercontent.com/1ForeverHD/TopbarPlus/refs/heads/main/src/init.lua"
-local success, response = pcall(function()
-    return HttpService:GetAsync(url)
-end)
-
-if success and response then
-    local moduleScript = Instance.new("ModuleScript")
-    moduleScript.Name = "TopbarPlus"
-    moduleScript.Source = response
-    moduleScript.Parent = ReplicatedStorage
-
-    local TopbarPlus = require(moduleScript)
-    print("[TopbarPlus] ✅ 成功加载 TopbarPlus 模块")
-else
-    warn("[TopbarPlus] ❌ 加载失败：" .. (response or "未知错误"))
-end
-
--- 颜色转换函数
 local function decimalToColor3(decimal)
     local r = math.floor(decimal / 65536) % 256
     local g = math.floor(decimal / 256) % 256
@@ -42,17 +20,17 @@ elseif PRIMARY_COLOR == nil then
     PRIMARY_COLOR = Color3.fromRGB(63, 81, 181) -- 默认颜色
 end
 
--- 默认主题
-local DEFAULT_THEME = {
-    Primary = Color3.fromRGB(63, 81, 181),
-    Background = Color3.fromRGB(30, 30, 30),
-    SecondaryBackground = Color3.fromRGB(46, 46, 46),
-    Accent = Color3.fromRGB(92, 107, 192),
-    Text = Color3.fromRGB(255, 255, 255),
-    Success = Color3.fromRGB(76, 175, 80),
-    Error = Color3.fromRGB(244, 67, 54),
-    Font = Enum.Font.Roboto
-}
+-- 默认主题  
+local DEFAULT_THEME = {  
+    Primary = Color3.fromRGB(63, 81, 181),  
+    Background = Color3.fromRGB(30, 30, 30),  
+    SecondaryBackground = Color3.fromRGB(46, 46, 46),  
+    Accent = Color3.fromRGB(92, 107, 192),  
+    Text = Color3.fromRGB(255, 255, 255),  
+    Success = Color3.fromRGB(76, 175, 80),  
+    Error = Color3.fromRGB(244, 67, 54),  
+    Font = Enum.Font.Roboto  
+}  
 
 -- UI 样式常量（调整为 4pt 网格）
 local UI_STYLES = {
@@ -70,7 +48,7 @@ local UI_STYLES = {
     TitleBarHeight     = 32
 }
 
--- 获取可用字体
+-- 备选字体
 local function getAvailableFont()
     local fonts = {Enum.Font.Roboto, Enum.Font.Arial, Enum.Font.SourceSans}
     for _, font in ipairs(fonts) do
@@ -87,24 +65,24 @@ local function getAvailableFont()
     return Enum.Font.SourceSans
 end
 
--- 当前主题
-local THEME = {
-    Primary = PRIMARY_COLOR or DEFAULT_THEME.Primary,
-    Background = DEFAULT_THEME.Background,
-    SecondaryBackground = DEFAULT_THEME.SecondaryBackground,
-    Accent = DEFAULT_THEME.Accent,
-    Text = DEFAULT_THEME.Text,
-    Success = DEFAULT_THEME.Success,
-    Error = DEFAULT_THEME.Error,
-    Font = getAvailableFont()
-}
+-- 当前主题  
+local THEME = {  
+    Primary = PRIMARY_COLOR or DEFAULT_THEME.Primary,  
+    Background = DEFAULT_THEME.Background,  
+    SecondaryBackground = DEFAULT_THEME.SecondaryBackground,  
+    Accent = DEFAULT_THEME.Accent,  
+    Text = DEFAULT_THEME.Text,  
+    Success = DEFAULT_THEME.Success,  
+    Error = DEFAULT_THEME.Error,  
+    Font = getAvailableFont()  
+}  
 
--- 验证主题值
-for key, value in pairs(THEME) do
-    if key ~= "Font" and value == nil then
-        warn("[Theme]: Invalid value for " .. key .. ", using default")
-        THEME[key] = DEFAULT_THEME[key]
-    end
+-- 验证主题值  
+for key, value in pairs(THEME) do  
+    if key ~= "Font" and value == nil then  
+        warn("[Theme]: Invalid value for " .. key .. ", using default")  
+        THEME[key] = DEFAULT_THEME[key]  
+    end  
 end
 
 -- 动画配置
@@ -190,10 +168,10 @@ function UILibrary:Notify(options)
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
         Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding + UI_STYLES.LabelHeight),
-        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 1, -UI_STYLES.Padding * 2 - UI_STYLES.LabelHeight),
+        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 1, -UI_STYLES.Padding * 2 - UI_STYLES.LabelHeight), -- 自动适应父级高度
         TextSize = 12,
         TextWrapped = true
-    })
+        })
     textLabel.ZIndex = 12
 
     task.wait(0.1)
@@ -260,8 +238,8 @@ function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.AutomaticSize = Enum.AutomaticSize.Y
-    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0)
+    card.AutomaticSize = Enum.AutomaticSize.Y -- 自动适应高度
+    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0) -- 宽度固定，高度自适应
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
     card.Position = UDim2.new(0, UI_STYLES.Padding, 0, 0)
@@ -275,16 +253,17 @@ function UILibrary:CreateCard(parent, options)
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 2)
+    layout.Padding = UDim.new(0, 2) -- 缩小内部元素间距
     layout.Parent = card
 
     local padding = Instance.new("UIPadding")
     padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
     padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingTop = UDim.new(0, 2)
+    padding.PaddingTop = UDim.new(0, 2) -- 减少上下内边距
     padding.PaddingBottom = UDim.new(0, 2)
     padding.Parent = card
 
+    -- 动画仅用于初始位置，不再设置固定透明度
     TweenService:Create(card, self.TWEEN_INFO_UI, {
         Position = UDim2.new(0, 0, 0, 0),
         BackgroundTransparency = 0.3
@@ -303,6 +282,7 @@ function UILibrary:CreateButton(parent, options)
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
     button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
+    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.4
     button.Text = options.Text or ""
@@ -340,60 +320,76 @@ function UILibrary:CreateButton(parent, options)
     return button
 end
 
--- 创建顶部栏按钮（使用 TopbarPlus）
-function UILibrary:CreateTopbarButton(options)
-    if not TopbarPlus then
-        warn("[TopbarButton]: TopbarPlus is not loaded")
+-- 悬浮按钮模块
+function UILibrary:CreateFloatingButton(parent, options)
+    if not parent then
+        warn("[FloatingButton]: Creation failed: Parent is nil")
         return nil
     end
-
     options = options or {}
-    local mainFrame = options.MainFrame
-    if not mainFrame then
-        warn("[TopbarButton]: MainFrame is required")
+    local button = Instance.new("TextButton")
+    button.Name = "FloatingButton"
+    button.Size = UDim2.new(0, 30, 0, 30)
+    button.Position = UDim2.new(1, -40, 1, -80)
+    button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
+    button.BackgroundTransparency = 0.2
+    button.Text = options.Text or "T"
+    button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+    button.TextSize = 12
+    button.Font = THEME.Font
+    button.Rotation = 0
+    button.Parent = parent
+    button.Visible = true
+    button.ZIndex = 15
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 15)
+    corner.Parent = button
+
+    if not button.Parent then
+        warn("[FloatingButton]: Button has no parent after creation")
+        button:Destroy()
         return nil
     end
 
-    -- 创建 TopbarPlus 按钮
-    local button = TopbarPlus.API.newButton({
-        Name = "PlutoUI",
-        Title = options.Title or "Pluto UI",
-        Icon = options.Icon or "", -- Fluent UI: Settings
-        Order = options.Order or 100,
-        Callback = function()
+    local mainFrame = options.MainFrame
+    local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -UI_STYLES.WindowWidth / 2, 0.5, -UI_STYLES.WindowHeight / 2)
+    local lastKnownPos = firstOpenPos
+    if mainFrame then
+        button.MouseButton1Click:Connect(function()
             if not button.Active then return end
             button.Active = false
-
             local isVisible = not mainFrame.Visible
+            button.Text = isVisible and "L" or "T"
             mainFrame.Visible = true
+            mainFrame.Position = isVisible and (lastKnownPos or firstOpenPos) or firstOpenPos
             mainFrame.ZIndex = isVisible and 5 or 1
-
-            -- 动画显示/隐藏
             local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, isVisible)
             for _, t in ipairs(tweens) do
                 t:Play()
             end
-
-            local bgTween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
+            local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
                 BackgroundTransparency = isVisible and 0.5 or 1
             })
-            bgTween:Play()
-
-            bgTween.Completed:Connect(function()
+            tween:Play()
+            tween.Completed:Connect(function()
                 if not isVisible then
                     mainFrame.Visible = false
+                    lastKnownPos = mainFrame.Position
                 end
                 button.Active = true
             end)
-        end
-    })
-
-    -- 可选：悬停提示
-    if options.Tooltip then
-        button:SetTooltip(options.Tooltip)
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Rotation = isVisible and 45 or 0}):Play()
+        end)
     end
 
-    button.Active = true
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
+    end)
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
+    end)
+
+    self:MakeDraggable(button, button)
     return button
 end
 
@@ -533,7 +529,7 @@ function UILibrary:CreateToggle(parent, options)
 end
 
 -- 拖拽模块
-local developmentMode = false
+local developmentMode = false -- 设置为 false 时将不输出调试信息
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
@@ -699,29 +695,14 @@ function UILibrary:CreateUIWindow(options)
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     pageCorner.Parent = mainPage
 
-    -- 绑定拖拽到标题栏和侧边栏
     self:MakeDraggable(titleBar, mainFrame)
     self:MakeDraggable(sidebar, mainFrame)
 
-    -- 延迟淡入动画
     task.delay(0.05, function()
         for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)) do
             t:Play()
         end
     end)
-
-    -- ✅ 创建顶部栏按钮（替代 FloatingButton）
-    if TopbarPlus then
-        self:CreateTopbarButton({
-            MainFrame = mainFrame,
-            Title = "Pluto UI",
-            Tooltip = "Toggle Pluto UI Window",
-            Icon = "",
-            Order = 100
-        })
-    else
-        warn("[Window]: TopbarPlus not available, skipping topbar button creation.")
-    end
 
     return {
         MainFrame = mainFrame,
@@ -780,7 +761,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         task.defer(function()
             content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + paddingY)
         end)
-    end
+    end)
 
     local function switchToThisTab()
         for _, child in ipairs(mainPage:GetChildren()) do
