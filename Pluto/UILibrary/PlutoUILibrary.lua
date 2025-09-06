@@ -7,39 +7,25 @@ local HttpService = game:GetService("HttpService")
 local UILibrary = {}
 
 --// TopbarPlus Loader
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local TopbarPlus
+local url = "https://raw.githubusercontent.com/1ForeverHD/TopbarPlus/refs/heads/main/src/init.lua"
+local success, response = pcall(function()
+    return HttpService:GetAsync(url)
+end)
 
-do
-    local success, result = pcall(function()
-        -- 尝试从 ReplicatedStorage 加载
-        local tbp = ReplicatedStorage:FindFirstChild("TopbarPlus")
-        if tbp then
-            return require(tbp)
-        end
+if success and response then
+    local moduleScript = Instance.new("ModuleScript")
+    moduleScript.Name = "TopbarPlus"
+    moduleScript.Source = response
+    moduleScript.Parent = ReplicatedStorage
 
-        -- 如果没有，尝试从 DevForum 获取源码
-        local url = "https://devforum.roblox.com/t/topbarplus-v331-construct-topbar-icons-with-ease-customise-them-with-themes-dropdowns-captions-labels-and-more/1017485"
-        local response = HttpService:GetAsync(url)
-        local moduleScript = Instance.new("ModuleScript")
-        moduleScript.Name = "TopbarPlus"
-        moduleScript.Source = response
-        moduleScript.Parent = ReplicatedStorage
-        return require(moduleScript)
-    end)
-
-    if success and result then
-        TopbarPlus = result
-        rconsoleprint("[TopbarPlus] ✅ 成功加载 TopbarPlus 模块\n")
-    else
-        TopbarPlus = nil
-        rconsoleprint("[TopbarPlus] ❌ 加载失败: " .. tostring(result) .. "\n")
-    end
+    local TopbarPlus = require(moduleScript)
+    print("[TopbarPlus] ✅ 成功加载 TopbarPlus 模块")
+else
+    warn("[TopbarPlus] ❌ 加载失败：" .. (response or "未知错误"))
 end
-
-return TopbarPlus
 
 -- 颜色转换函数
 local function decimalToColor3(decimal)
