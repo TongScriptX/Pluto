@@ -8,32 +8,26 @@ local UILibrary = {}
 
 --// TopbarPlus Loader
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 
 local TopbarPlus
 
 do
     local success, result = pcall(function()
-        -- 优先从 ReplicatedStorage 读取
+        -- 尝试从 ReplicatedStorage 加载
         local tbp = ReplicatedStorage:FindFirstChild("TopbarPlus")
         if tbp then
             return require(tbp)
         end
 
-        -- 尝试从 GitHub 动态加载 (httpget 本地执行器可用)
-        local response
-        local httpSuccess, httpError = pcall(function()
-            response = httpget("https://raw.githubusercontent.com/Validark/TopbarPlus/main/src/TopbarPlus.lua")
-        end)
-
-        if httpSuccess and response then
-            local module = Instance.new("ModuleScript")
-            module.Name = "TopbarPlus"
-            module.Source = response
-            module.Parent = ReplicatedStorage
-            return require(module)
-        else
-            return nil, httpError
-        end
+        -- 如果没有，尝试从 DevForum 获取源码
+        local url = "https://devforum.roblox.com/t/topbarplus-v331-construct-topbar-icons-with-ease-customise-them-with-themes-dropdowns-captions-labels-and-more/1017485"
+        local response = HttpService:GetAsync(url)
+        local moduleScript = Instance.new("ModuleScript")
+        moduleScript.Name = "TopbarPlus"
+        moduleScript.Source = response
+        moduleScript.Parent = ReplicatedStorage
+        return require(moduleScript)
     end)
 
     if success and result then
