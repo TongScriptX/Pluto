@@ -8,8 +8,9 @@ local UILibrary = {}
 -- 存储已创建的UI实例
 UILibrary._instances = {}
 
--- 存储通知队列
+-- 存储通知队列 - 改进的数据结构
 UILibrary._notifications = {}
+UILibrary._notificationId = 0
 
 local function decimalToColor3(decimal)
     local r = math.floor(decimal / 65536) % 256
@@ -50,7 +51,11 @@ local UI_STYLES = {
     WindowWidth        = 400,
     WindowHeight       = 300,
     SidebarWidth       = 80,
-    TitleBarHeight     = 32
+    TitleBarHeight     = 32,
+    -- 通知相关样式
+    NotificationSpacing = 4, -- 减少间隔
+    NotificationWidth = 200,
+    NotificationMargin = 10
 }
 
 -- 备选字体
@@ -96,7 +101,7 @@ UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.Ea
 UILibrary.THEME = THEME
 UILibrary.UI_STYLES = UI_STYLES
 
--- 销毁已存在的UI实例
+-- 销毁已存在的UI实例 - 增强版本
 function UILibrary:DestroyExistingInstances()
     -- 销毁所有PlutoUILibrary相关的ScreenGui
     if Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui") then
@@ -113,20 +118,21 @@ function UILibrary:DestroyExistingInstances()
     
     -- 清空通知队列
     UILibrary._notifications = {}
+    UILibrary._notificationId = 0
 end
 
 -- 通知容器
 local notificationContainer = nil
 local screenGui = nil
 
--- 初始化通知容器
+-- 初始化通知容器 - 改进版本
 local function initNotificationContainer()
     if not Players.LocalPlayer then
         warn("[Notification]: LocalPlayer not found")
         return false
     end
 
-    -- 如果通知容器已存在且有效，直接返回
+    -- 检查现有容器是否有效
     if UILibrary._instances.notificationContainer and 
        UILibrary._instances.notificationContainer.Parent and
        UILibrary._instances.screenGui and
@@ -134,6 +140,14 @@ local function initNotificationContainer()
         notificationContainer = UILibrary._instances.notificationContainer
         screenGui = UILibrary._instances.screenGui
         return true
+    end
+
+    -- 销毁旧的通知 ScreenGui
+    local playerGui = Players.LocalPlayer.PlayerGui
+    for _, child in ipairs(playerGui:GetChildren()) do
+        if child.Name == "PlutoUILibrary" then
+            child:Destroy()
+        end
     end
 
     -- 创建新的ScreenGui
@@ -149,19 +163,19 @@ local function initNotificationContainer()
     screenGui.ResetOnSpawn = false
     screenGui.Enabled = true
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.DisplayOrder = 10
+    screenGui.DisplayOrder = 15 -- 提高显示层级
     
     -- 存储实例引用
     UILibrary._instances.screenGui = screenGui
 
     notificationContainer = Instance.new("Frame")
     notificationContainer.Name = "NotificationContainer"
-    notificationContainer.Size = UDim2.new(0, 200, 1, 0)  -- 增加宽度确保完整显示
-    notificationContainer.Position = UDim2.new(1, -210, 0, 0)  -- 调整位置让通知完全可见
+    notificationContainer.Size = UDim2.new(0, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 1, 0)
+    notificationContainer.Position = UDim2.new(1, -(UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin), 0, 0)
     notificationContainer.BackgroundTransparency = 1
     notificationContainer.Parent = screenGui
     notificationContainer.Visible = true
-    notificationContainer.ZIndex = 10
+    notificationContainer.ZIndex = 20
     
     -- 存储实例引用
     UILibrary._instances.notificationContainer = notificationContainer
@@ -169,7 +183,74 @@ local function initNotificationContainer()
     return true
 end
 
--- 通知模块
+-- 计算通知位置
+local function calculateNotificationPosition(newNotification)
+    local totalHeight = 20 -- 顶部边距
+    
+    for _, notifData in ipairs(UILibrary._notifications) do
+        if notifData.frame and notifData.frame.Parent and notifData.frame.Visible then
+            if notifData.frame ~= newNotification then
+                totalHeight = totalHeight + notifData.frame.AbsoluteSize.Y + UI_STYLES.NotificationSpacing
+            else
+                break
+            end
+        end
+    end
+    
+    return totalHeight
+end
+
+-- 重新排列所有通知位置
+local function rearrangeNotifications()
+    local currentY = 20 -- 顶部边距
+    
+    for i, notifData in ipairs(UILibrary._notifications) do
+        if notifData.frame and notifData.frame.Parent and notifData.frame.Visible then
+            local targetPos = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, currentY)
+            
+            if notifData.frame.Position ~= targetPos then
+                local moveTween = TweenService:Create(notifData.frame, UILibrary.TWEEN_INFO_UI, {
+                    Position = targetPos
+                })
+                moveTween:Play()
+            end
+            
+            currentY = currentY + notifData.frame.AbsoluteSize.Y + UI_STYLES.NotificationSpacing
+        end
+    end
+end
+
+-- 移除通知
+local function removeNotification(notificationData)
+    if not notificationData or not notificationData.frame then
+        return
+    end
+    
+    local notification = notificationData.frame
+    
+    -- 从队列中移除
+    for i, notifData in ipairs(UILibrary._notifications) do
+        if notifData.id == notificationData.id then
+            table.remove(UILibrary._notifications, i)
+            break
+        end
+    end
+    
+    -- 滑出动画
+    local slideOutTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_UI, {
+        Position = UDim2.new(1, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 0, notification.Position.Y.Offset),
+        BackgroundTransparency = 1
+    })
+    
+    slideOutTween:Play()
+    slideOutTween.Completed:Connect(function()
+        notification:Destroy()
+        -- 重新排列剩余通知
+        rearrangeNotifications()
+    end)
+end
+
+-- 通知模块 - 完全重写
 function UILibrary:Notify(options)
     options = options or {}
     if not initNotificationContainer() then
@@ -177,20 +258,20 @@ function UILibrary:Notify(options)
         return nil
     end
 
-    local NOTIFICATION_WIDTH = 180
-    local MARGIN = 10
+    -- 生成唯一ID
+    UILibrary._notificationId = UILibrary._notificationId + 1
+    local notificationId = UILibrary._notificationId
 
     local notification = Instance.new("Frame")
-    notification.Name = "Notification"
-    notification.Size = UDim2.new(0, NOTIFICATION_WIDTH, 0, 0)
+    notification.Name = "Notification_" .. notificationId
+    notification.Size = UDim2.new(0, UI_STYLES.NotificationWidth, 0, 0)
     notification.AutomaticSize = Enum.AutomaticSize.Y
-    notification.AnchorPoint = Vector2.new(1, 0) -- 右上角作为锚点
+    notification.AnchorPoint = Vector2.new(1, 0)
     notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     notification.BackgroundTransparency = 1
-    notification.Position = UDim2.new(1, NOTIFICATION_WIDTH + MARGIN, 0, 30) -- 初始在屏幕右外侧，稍微向下偏移
     notification.Parent = notificationContainer
     notification.Visible = true
-    notification.ZIndex = 11
+    notification.ZIndex = 21
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
@@ -211,100 +292,61 @@ function UILibrary:Notify(options)
     local titleLabel = self:CreateLabel(notification, {
         Text = options.Title or "Notification",
         Size = UDim2.new(1, 0, 0, UI_STYLES.LabelHeight),
-        TextSize = 12
+        TextSize = 13
     })
-    titleLabel.ZIndex = 12
+    titleLabel.ZIndex = 22
 
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
         Size = UDim2.new(1, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        TextSize = 12,
+        TextSize = 11,
         TextWrapped = true
     })
-    textLabel.ZIndex = 12
+    textLabel.ZIndex = 22
 
-    -- 计算最终位置
-    local function calculateFinalPosition()
-        local totalHeight = 30
-        for i, notif in ipairs(UILibrary._notifications) do
-            if notif == notification then
-                return totalHeight
-            end
-            if notif.Visible and notif.Parent then
-                totalHeight = totalHeight + notif.AbsoluteSize.Y + UI_STYLES.Padding
-            end
-        end
-        return totalHeight
-    end
-
-    -- 添加到通知队列
-    table.insert(UILibrary._notifications, notification)
+    -- 创建通知数据
+    local notificationData = {
+        id = notificationId,
+        frame = notification,
+        duration = options.Duration or 3,
+        startTime = tick()
+    }
 
     -- 等待布局计算完成
-    task.wait(0.1)
-    local finalY = calculateFinalPosition()
-    notification.Position = UDim2.new(1, NOTIFICATION_WIDTH + MARGIN, 0, finalY)
-
+    task.wait(0.05)
+    
+    -- 设置初始位置（屏幕右外侧）
+    local finalY = calculateNotificationPosition(notification)
+    notification.Position = UDim2.new(1, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 0, finalY)
+    
+    -- 添加到队列
+    table.insert(UILibrary._notifications, notificationData)
+    
+    -- 向上移动现有通知为新通知腾出空间
+    for i = 1, #UILibrary._notifications - 1 do
+        local notifData = UILibrary._notifications[i]
+        if notifData.frame and notifData.frame.Parent and notifData.frame.Visible then
+            local currentPos = notifData.frame.Position
+            local newY = currentPos.Y.Offset - (notification.AbsoluteSize.Y + UI_STYLES.NotificationSpacing)
+            local moveTween = TweenService:Create(notifData.frame, UILibrary.TWEEN_INFO_UI, {
+                Position = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, 0, newY)
+            })
+            moveTween:Play()
+        end
+    end
+    
     -- 滑入动画
-    local slideInTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
-        Position = UDim2.new(1, -MARGIN, 0, finalY),
-        BackgroundTransparency = 0.2
+    local slideInTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_UI, {
+        Position = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, finalY),
+        BackgroundTransparency = 0.1
     })
     slideInTween:Play()
-
-    -- 移动现有通知
-    local function moveExistingNotifications(offsetY)
-        for i = #UILibrary._notifications, 1, -1 do
-            local notif = UILibrary._notifications[i]
-            if notif ~= notification and notif.Visible and notif.Parent then
-                local currentPos = notif.Position
-                local newPos = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, currentPos.Y.Scale, currentPos.Y.Offset - offsetY)
-                local moveTween = TweenService:Create(notif, self.TWEEN_INFO_UI, {Position = newPos})
-                moveTween:Play()
-            end
-        end
-    end
-
-    if #UILibrary._notifications > 1 then
-        moveExistingNotifications(notification.AbsoluteSize.Y + UI_STYLES.Padding)
-    end
-
+    
     -- 自动移除通知
     task.spawn(function()
-        task.wait(options.Duration or 3)
-        if notification.Parent then
-            -- 滑出动画
-            local slideOutTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
-                Position = UDim2.new(1, NOTIFICATION_WIDTH + MARGIN, 0, notification.Position.Y.Offset),
-                BackgroundTransparency = 1
-            })
-            slideOutTween:Play()
-            slideOutTween.Completed:Wait()
-
-            -- 从队列中移除
-            for i, notif in ipairs(UILibrary._notifications) do
-                if notif == notification then
-                    table.remove(UILibrary._notifications, i)
-                    break
-                end
-            end
-
-            -- 向下移动其他通知
-            local function moveNotificationsDown(offsetY)
-                for i, notif in ipairs(UILibrary._notifications) do
-                    if notif.Visible and notif.Parent then
-                        local currentPos = notif.Position
-                        local newPos = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, currentPos.Y.Scale, currentPos.Y.Offset + offsetY)
-                        local moveTween = TweenService:Create(notif, self.TWEEN_INFO_UI, {Position = newPos})
-                        moveTween:Play()
-                    end
-                end
-            end
-            moveNotificationsDown(notification.AbsoluteSize.Y + UI_STYLES.Padding)
-
-            notification:Destroy()
-        end
+        task.wait(notificationData.duration)
+        removeNotification(notificationData)
     end)
 
     return notification
@@ -520,6 +562,11 @@ function UILibrary:CreateLabel(parent, options)
     label.Visible = true
     label.ZIndex = 3
 
+    -- 添加自动高度支持
+    if options.AutomaticSize then
+        label.AutomaticSize = options.AutomaticSize
+    end
+
     local success, err = pcall(function()
         TweenService:Create(label, self.TWEEN_INFO_UI, {TextTransparency = 0}):Play()
     end)
@@ -697,7 +744,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     end)
 end
 
--- 主窗口模块
+-- 主窗口模块 - 增强销毁功能
 function UILibrary:CreateUIWindow(options)
     options = options or {}
     if not Players.LocalPlayer then
@@ -712,6 +759,14 @@ function UILibrary:CreateUIWindow(options)
             oldWindow.ScreenGui:Destroy()
         end
         UILibrary._instances.mainWindow = nil
+    end
+
+    -- 额外检查并销毁遗留的窗口GUI
+    local playerGui = Players.LocalPlayer.PlayerGui
+    for _, child in ipairs(playerGui:GetChildren()) do
+        if child.Name == "PlutoUILibraryWindow" then
+            child:Destroy()
+        end
     end
 
     local screenSize = GuiService:GetScreenResolution()
