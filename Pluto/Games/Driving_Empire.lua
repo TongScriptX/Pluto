@@ -778,12 +778,12 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
 local webhookCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 local webhookLabel = UILibrary:CreateLabel(webhookCard, {
     Text = "Webhook 地址",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5)
+    --Size = UDim2.new(1, -10, 0, 20),
+    --Position = UDim2.new(0, 5, 0, 5)
 })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "输入 Webhook 地址",
-    Position = UDim2.new(0, 5, 0, 30),
+    --Position = UDim2.new(0, 5, 0, 30),
     OnFocusLost = function(text)
         if not text then return end
         local oldUrl = config.webhookUrl
@@ -858,12 +858,12 @@ debugLog("上榜踢出开关创建:", toggleLeaderboardKick.Parent and "父对�
 local intervalCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
     Text = "通知间隔（分钟）",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5)
+    --Size = UDim2.new(1, -10, 0, 20),
+    --Position = UDim2.new(0, 5, 0, 5)
 })
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "输入间隔时间",
-    Position = UDim2.new(0, 5, 0, 30),
+    --Position = UDim2.new(0, 5, 0, 30),
     OnFocusLost = function(text)
         if not text then return end
         local num = tonumber(text)
@@ -934,13 +934,13 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
 
 UILibrary:CreateLabel(targetCurrencyCard, {
     Text = "目标金额",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 30)
+    --Size = UDim2.new(1, -10, 0, 20),
+    --Position = UDim2.new(0, 5, 0, 30)
 })
 
 local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     PlaceholderText = "输入目标金额",
-    Position = UDim2.new(0, 5, 0, 50),
+    --Position = UDim2.new(0, 5, 0, 50),
     OnFocusLost = function(text)
         text = text and text:match("^%s*(.-)%s*$")
         print("[目标金额] 输入框失焦内容:", text)
@@ -1033,8 +1033,8 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
 -- 添加一个按钮用于复制 Discord 链接
 UILibrary:CreateButton(aboutContent, {
     Text = "复制 Discord",
-    Position = UDim2.new(0, 10, 0, 80),
-    Size = UDim2.new(0, 160, 0, 30),
+    --Position = UDim2.new(0, 10, 0, 80),
+    --Size = UDim2.new(0, 160, 0, 30),
     Callback = function()
         local link = "https://discord.gg/j20v0eWU8u"
         if setclipboard and type(link) == "string" then
