@@ -195,9 +195,10 @@ function UILibrary:Notify(options)
     notification.Name = "Notification"
     notification.Size = UDim2.new(0, NOTIFICATION_WIDTH, 0, 0)
     notification.AutomaticSize = Enum.AutomaticSize.Y
+    notification.AnchorPoint = Vector2.new(1, 0) -- 右上角作为锚点
     notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     notification.BackgroundTransparency = 1
-    notification.Position = UDim2.new(1, MARGIN, 0, 0) -- 初始在右侧屏幕外
+    notification.Position = UDim2.new(1, MARGIN + NOTIFICATION_WIDTH, 0, 0) -- 初始在屏幕右外侧
     notification.Parent = notificationContainer
     notification.Visible = true
     notification.ZIndex = 11
@@ -251,12 +252,11 @@ function UILibrary:Notify(options)
 
     task.wait(0.05)
     local finalY = calculateFinalPosition()
-    notification.Position = UDim2.new(1, MARGIN, 0, finalY)
-    notification.BackgroundTransparency = 0.3
+    notification.Position = UDim2.new(1, MARGIN + NOTIFICATION_WIDTH, 0, finalY)
 
-    -- 滑入
+    -- 滑入动画
     local slideInTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
-        Position = UDim2.new(1, -(NOTIFICATION_WIDTH + MARGIN), 0, finalY),
+        Position = UDim2.new(1, -MARGIN, 0, finalY),
         BackgroundTransparency = 0.3
     })
     slideInTween:Play()
@@ -280,9 +280,9 @@ function UILibrary:Notify(options)
     task.spawn(function()
         task.wait(options.Duration or 3)
         if notification.Parent then
-            -- 滑出
+            -- 滑出动画
             local slideOutTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
-                Position = UDim2.new(1, MARGIN, 0, notification.Position.Y.Offset),
+                Position = UDim2.new(1, MARGIN + NOTIFICATION_WIDTH, 0, notification.Position.Y.Offset),
                 BackgroundTransparency = 1
             })
             slideOutTween:Play()
