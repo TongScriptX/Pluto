@@ -60,7 +60,7 @@ local config = {
 }
 
 -- 颜色定义
-_G.PRIMARY_COLOR = Color3.fromRGB(40, 38, 89) -- 设置为 #282659
+_G.PRIMARY_COLOR = Color3.fromRGB(63, 81, 181)
 
 -- 获取游戏信息
 local gameName = "未知游戏"
