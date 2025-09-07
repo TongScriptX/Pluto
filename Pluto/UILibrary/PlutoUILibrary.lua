@@ -79,7 +79,7 @@ local THEME = {
 
 -- 验证主题值  
 for key, value in pairs(THEME) do  
-    if key ~= "Font" and value == nil then  
+    if key ~= "Font" and value == nil then
         warn("[Theme]: Invalid value for " .. key .. ", using default")  
         THEME[key] = DEFAULT_THEME[key]  
     end  
@@ -159,16 +159,12 @@ function UILibrary:Notify(options)
 
     local titleLabel = self:CreateLabel(notification, {
         Text = options.Title or "Notification",
-        Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding),
-        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight),
         TextSize = 12
     })
     titleLabel.ZIndex = 12
 
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
-        Position = UDim2.new(0, UI_STYLES.Padding, 0, UI_STYLES.Padding + UI_STYLES.LabelHeight),
-        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 1, -UI_STYLES.Padding * 2 - UI_STYLES.LabelHeight), -- 自动适应父级高度
         TextSize = 12,
         TextWrapped = true
         })
@@ -242,7 +238,6 @@ function UILibrary:CreateCard(parent, options)
     card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0) -- 宽度固定，高度自适应
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
-    card.Position = UDim2.new(0, UI_STYLES.Padding, 0, 0)
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
@@ -265,7 +260,6 @@ function UILibrary:CreateCard(parent, options)
 
     -- 动画仅用于初始位置，不再设置固定透明度
     TweenService:Create(card, self.TWEEN_INFO_UI, {
-        Position = UDim2.new(0, 0, 0, 0),
         BackgroundTransparency = 0.3
     }):Play()
 
@@ -403,7 +397,6 @@ function UILibrary:CreateLabel(parent, options)
     local label = Instance.new("TextLabel")
     label.Name = "Label_" .. (options.Text or "Unnamed")
     label.Size = options.Size or UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight)
-    label.Position = options.Position or UDim2.new(0, UI_STYLES.Padding, 0, 0)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
     label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -639,7 +632,6 @@ function UILibrary:CreateUIWindow(options)
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
-    sidebar.Position = UDim2.new(0, 0, 0, 0)
     sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
     sidebar.BackgroundTransparency = 0
     sidebar.Parent = mainFrame
@@ -674,7 +666,6 @@ function UILibrary:CreateUIWindow(options)
 
     local titleLabel = self:CreateLabel(titleBar, {
         Text = "Home",
-        Size = UDim2.new(1, 0, 1, 0),
         TextXAlignment = Enum.TextXAlignment.Center,
         TextSize = 14,
         TextTransparency = 0
@@ -818,7 +809,6 @@ function UILibrary:CreateAuthorInfo(parent, options)
     local authorFrame = self:CreateCard(parent, {IsMultiElement = true})
     local authorLabel = self:CreateLabel(authorFrame, {
         Text = options.Text or "",
-        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight),
         TextSize = 12
     })
     authorLabel.ZIndex = 3
