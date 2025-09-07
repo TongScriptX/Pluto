@@ -1,349 +1,485 @@
-## PlutoUILibrary 使用教程
+# Pluto UI Library 使用文档
 
 ## 目录
-- [创建主窗口](#创建主窗口)
-- [创建标签页](#创建标签页)
-- [创建卡片](#创建卡片)
-- [创建按钮](#创建按钮)
-- [创建悬浮按钮](#创建悬浮按钮)
-- [创建文本标签](#创建文本标签)
-- [创建输入框](#创建输入框)
-- [创建开关](#创建开关)
-- [创建通知](#创建通知)
-- [创建作者信息](#创建作者信息)
-- [切换主题](#切换主题)
-- [启用拖拽](#启用拖拽)
+- [简介](#简介)
+- [安装](#安装)
+- [快速开始](#快速开始)
+- [核心组件](#核心组件)
+  - [主窗口 (CreateUIWindow)](#主窗口-createuiwindow)
+  - [标签页 (CreateTab)](#标签页-createtab)
+  - [卡片 (CreateCard)](#卡片-createcard)
+  - [按钮 (CreateButton)](#按钮-createbutton)
+  - [标签 (CreateLabel)](#标签-createlabel)
+  - [输入框 (CreateTextBox)](#输入框-createtextbox)
+  - [开关 (CreateToggle)](#开关-createtoggle)
+  - [悬浮按钮 (CreateFloatingButton)](#悬浮按钮-createfloatingbutton)
+  - [通知 (Notify)](#通知-notify)
+- [主题系统](#主题系统)
+  - [设置主题 (SetTheme)](#设置主题-settheme)
+  - [自定义颜色](#自定义颜色)
+- [高级功能](#高级功能)
+  - [自动布局](#自动布局)
+  - [拖拽功能](#拖拽功能)
+  - [动画效果](#动画效果)
+- [完整示例](#完整示例)
+- [API 参考](#api-参考)
 
----
+## 简介
 
-## 创建主窗口
+Pluto UI Library 是一个功能强大的 Roblox UI 库，提供了现代化的界面组件和自动布局系统。它采用 Material Design 风格，支持主题定制、动画效果和响应式设计。
 
-**功能**：创建包含侧边栏、标题栏和主内容区域的窗口。
+## 安装
 
-**返回值**：包含：
-- `MainFrame`：主框架
-- `ScreenGui`：屏幕 GUI
-- `Sidebar`：侧边栏
-- `TitleLabel`：标题标签
-- `MainPage`：主内容区域
-
-**示例**：
-
-```lua
-local window = UILibrary:CreateUIWindow()
+local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"))()
 ```
 
-**效果**：创建 400x300 像素窗口，包含侧边栏和标题栏。
-
----
-
-## 创建标签页
-
-**功能**：创建标签页系统，支持动态切换内容。
-
-**参数**：
-- `sidebar`（Instance）：侧边栏框架
-- `titleLabel`（Instance）：标题标签
-- `mainPage`（Instance）：主内容区域
-- `options`（表）：
-  - `Text`（字符串）：标签页名称
-  - `Active`（布尔值）：初始激活，默认 `false`
-
-**返回值**：
-- `TextButton`：标签页按钮
-- `ScrollingFrame`：标签页内容框架
-
-**示例**：
+## 快速开始
 
 ```lua
-local window = UILibrary:CreateUIWindow()
-local tab1, content1 = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
-    Text = "Tab 1",
+-- 创建主窗口
+local window = UILibrary:CreateUIWindow({
+    Title = "我的应用"
+})
+
+-- 创建标签页
+local homeTab, homeContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
+    Text = "主页",
     Active = true
 })
-local tab2, content2 = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
-    Text = "Tab 2"
+
+-- 创建卡片
+local card = UILibrary:CreateCard(homeContent)
+
+-- 添加内容
+local titleLabel = UILibrary:CreateLabel(card, {
+    Text = "欢迎使用 Pluto UI Library",
+    TextSize = 14
 })
-```
 
-**效果**：创建两个标签页，初始显示 "Tab 1"，点击侧边栏按钮切换内容。
+local descriptionLabel = UILibrary:CreateLabel(card, {
+    Text = "这是一个现代化的 UI 库，支持自动布局和主题定制。"
+})
 
----
-
-## 创建卡片
-
-**功能**：创建圆角卡片容器，用于组织 UI 元素。
-
-**参数**：
-- `parent`（Instance）：父对象
-- `options`（表）：
-  - `IsMultiElement`（布尔值）：多元素卡片（高度 90 像素），默认 `false`（高度 60 像素）
-
-**返回值**：卡片的 `Frame` 实例
-
-**示例**：
-
-```lua
-local window = UILibrary:CreateUIWindow()
-local card = UILibrary:CreateCard(window.MainPage, { IsMultiElement = true })
-```
-
-**效果**：在主窗口内容区域创建多元素卡片容器。
-
----
-
-## 创建按钮
-
-**功能**：创建交互式按钮，支持点击回调和悬停效果。
-
-**参数**：
-- `parent`（Instance）：父对象
-- `options`（表）：
-  - `Text`（字符串）：按钮文本
-  - `BackgroundColor3`（Color3）：背景颜色，默认主题 Primary
-  - `BackgroundTransparency`（数字）：背景透明度，默认 `0.5`
-  - `Callback`（函数）：点击回调
-
-**返回值**：按钮的 `TextButton` 实例
-
-**示例**：
-
-```lua
-local window = UILibrary:CreateUIWindow()
-local card = UILibrary:CreateCard(window.MainPage)
-UILibrary:CreateButton(card, {
-    Text = "Click Me",
+-- 创建按钮
+local button = UILibrary:CreateButton(card, {
+    Text = "点击我",
     Callback = function()
-        print("Button clicked!")
+        UILibrary:Notify({
+            Title = "通知",
+            Text = "按钮被点击了！",
+            Duration = 3
+        })
     end
 })
 ```
 
-**效果**：在卡片中创建文本为 "Click Me" 的按钮，点击打印 "Button clicked!"。
+## 核心组件
 
----
+### 主窗口 (CreateUIWindow)
 
-## 创建悬浮按钮
-
-**功能**：创建可拖拽悬浮按钮，用于切换主窗口显隐。
-
-**参数**：
-- `parent`（Instance）：父对象
-- `options`（表）：
-  - `Text`（字符串）：按钮文本，默认 `"T"`
-  - `MainFrame`（Instance）：关联主窗口框架
-
-**返回值**：悬浮按钮的 `TextButton` 实例
-
-**示例**：
+创建应用程序的主窗口。
 
 ```lua
-local window = UILibrary:CreateUIWindow()
-local floatingButton = UILibrary:CreateFloatingButton(window.ScreenGui, {
-    MainFrame = window.MainFrame,
-    Text = "Menu"
+local window = UILibrary:CreateUIWindow({
+    Title = "窗口标题"
 })
 ```
 
-**效果**：创建悬浮按钮，点击切换主窗口显/隐，可拖拽移动。
+**返回值：**
+- `MainFrame`: 主窗口框架
+- `ScreenGui`: 屏幕GUI
+- `Sidebar`: 侧边栏
+- `TitleLabel`: 标题标签
+- `MainPage`: 主内容区域
 
----
+### 标签页 (CreateTab)
 
-## 创建文本标签
-
-**功能**：创建文本标签，支持自定义大小、位置和对齐。
-
-**参数**：
-- `parent`（Instance）：父对象
-- `options`（表）：
-  - `Text`（字符串）：标签文本
-  - `Size`（UDim2）：大小，默认 `1,-2*Padding,0,LabelHeight`
-  - `Position`（UDim2）：位置，默认 `0,Padding,0,Padding`
-  - `TextSize`（整数）：文本大小，默认 `12`
-  - `TextXAlignment`（Enum.TextXAlignment）：水平对齐，默认 `Left`
-
-**返回值**：标签的 `TextLabel` 实例
-
-**示例**：
+创建侧边栏标签页。
 
 ```lua
-local window = UILibrary:CreateUIWindow()
-local card = UILibrary:CreateCard(window.MainPage)
-UILibrary:CreateLabel(card, {
-    Text = "Settings",
-    TextSize = 14,
-    TextXAlignment = Enum.TextXAlignment.Center
+local tabButton, tabContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "标签名称",    -- 标签显示文本
+    Active = false        -- 是否默认激活
 })
 ```
 
-**效果**：在卡片中创建居中显示的 "Settings" 标签，字体大小 14。
+### 卡片 (CreateCard)
 
----
-
-## 创建输入框
-
-**功能**：创建文本输入框，支持焦点事件和占位符。
-
-**参数**：
-- `parent`（Instance）：父对象
-- `options`（表）：
-  - `PlaceholderText`（字符串）：占位符文本
-  - `Text`（字符串）：初始文本，默认 `""`
-  - `OnFocusLost`（函数）：失去焦点回调
-
-**返回值**：输入框的 `TextBox` 实例
-
-**示例**：
+创建内容卡片容器。
 
 ```lua
-local window = UILibrary:CreateUIWindow()
-local card = UILibrary:CreateCard(window.MainPage)
-UILibrary:CreateTextBox(card, {
-    PlaceholderText = "Enter your name",
-    OnFocusLost = function()
-        print("Input submitted")
+local card = UILibrary:CreateCard(parent, {
+    IsMultiElement = false -- 是否为多元素卡片（影响高度）
+})
+```
+
+### 按钮 (CreateButton)
+
+创建交互按钮。
+
+```lua
+local button = UILibrary:CreateButton(parent, {
+    Text = "按钮文本",                    -- 按钮显示文本
+    BackgroundColor3 = Color3.fromRGB(),  -- 背景颜色（可选）
+    BackgroundTransparency = 0.4,         -- 背景透明度（可选）
+    Callback = function()                 -- 点击回调函数
+        -- 按钮点击逻辑
     end
 })
 ```
 
-**效果**：创建占位符为 "Enter your name" 的输入框，失去焦点打印 "Input submitted"。
+### 标签 (CreateLabel)
 
----
-
-## 创建开关
-
-**功能**：创建开关控件，支持状态切换和回调。
-
-**参数**：
-- `parent`（Instance）：父对象
-- `options`（表）：
-  - `Text`（字符串）：开关标签文本
-  - `DefaultState`（布尔值）：初始状态，默认 `false`
-  - `Callback`（函数）：状态改变回调，接收新状态
-
-**返回值**：
-- `Frame`：开关容器框架
-- `boolean`：当前状态
-
-**示例**：
+创建文本标签。
 
 ```lua
-local window = UILibrary:CreateUIWindow()
-local card = UILibrary:CreateCard(window.MainPage)
-local toggle, state = UILibrary:CreateToggle(card, {
-    Text = "Sound",
-    DefaultState = true,
-    Callback = function(newState)
-        print("Sound is now", newState and "ON" or "OFF")
+local label = UILibrary:CreateLabel(parent, {
+    Text = "标签文本",                    -- 显示文本
+    TextSize = 12,                       -- 字体大小（可选）
+    TextXAlignment = Enum.TextXAlignment.Left -- 文本对齐方式（可选）
+})
+```
+
+### 输入框 (CreateTextBox)
+
+创建文本输入框。
+
+```lua
+local textBox = UILibrary:CreateTextBox(parent, {
+    PlaceholderText = "提示文本",         -- 占位符文本
+    Text = "默认文本",                    -- 默认值（可选）
+    TextSize = 12,                       -- 字体大小（可选）
+    OnFocusLost = function(text)         -- 失去焦点时的回调
+        print("输入内容:", text)
     end
 })
 ```
 
-**效果**：创建初始开启的 "Sound" 开关，切换时打印状态。
+### 开关 (CreateToggle)
 
----
-
-## 创建通知
-
-**功能**：在右下角显示弹出式通知。
-
-**参数**：
-- `options`（表）：
-  - `Title`（字符串）：标题，默认 `"Notification"`
-  - `Text`（字符串）：内容，默认 `""`
-  - `Duration`（数字）：显示时间（秒），默认 `3`
-
-**返回值**：通知的 `Frame` 实例
-
-**示例**：
+创建开关组件。
 
 ```lua
-UILibrary:Notify({
-    Title = "Welcome!",
-    Text = "Thanks for using UILibrary!",
-    Duration = 5
-})
-```
-
-**效果**：显示标题为 "Welcome!"、内容为 "Thanks for using UILibrary!" 的通知，持续 5 秒。
-
----
-
-## 创建作者信息
-
-**功能**：创建包含作者信息和社交按钮的卡片。
-
-**参数**：
-- `parent`（Instance）：父对象
-- `options`（表）：
-  - `Text`（字符串）：作者信息文本
-  - `SocialText`（字符串）：社交按钮文本
-  - `SocialCallback`（函数）：社交按钮点击回调
-
-**返回值**：作者卡片的 `Frame` 实例
-
-**示例**：
-
-```lua
-local window = UILibrary:CreateUIWindow()
-UILibrary:CreateAuthorInfo(window.MainPage, {
-    Text = "Created by DevX",
-    SocialText = "Follow",
-    SocialCallback = function()
-        print("Followed!")
+local toggle, state = UILibrary:CreateToggle(parent, {
+    Text = "开关标签",                    -- 开关标签文本
+    DefaultState = false,                 -- 默认状态（可选）
+    Callback = function(newState)         -- 状态改变回调
+        print("开关状态:", newState)
     end
 })
 ```
 
-**效果**：创建包含 "Created by DevX" 和 "Follow" 按钮的卡片。
+### 悬浮按钮 (CreateFloatingButton)
 
----
+创建悬浮操作按钮。
 
-## 切换主题
+```lua
+local floatingButton = UILibrary:CreateFloatingButton(parent, {
+    Text = "T",                          -- 按钮文本
+    MainFrame = window.MainFrame,        -- 关联的主窗口
+    Callback = function()                -- 点击回调（可选）
+        -- 悬浮按钮逻辑
+    end
+})
+```
 
-**功能**：动态切换 UI 主题（颜色和字体）。
+### 通知 (Notify)
 
-**参数**：
-- `newTheme`（表）：
-  - `Primary`（Color3）：主色调
-  - `Background`（Color3）：背景色
-  - `SecondaryBackground`（Color3）：次背景色
-  - `Accent`（Color3）：高亮色
-  - `Text`（Color3）：文本色
-  - `Success`（Color3）：成功状态色
-  - `Error`（Color3）：错误状态色
-  - `Font`（Enum.Font）：字体
+显示通知消息。
 
-**返回值**：无
+```lua
+local notification = UILibrary:Notify({
+    Title = "通知标题",                   -- 通知标题
+    Text = "通知内容",                    -- 通知文本
+    Duration = 3                         -- 显示时长（秒，默认3秒）
+})
+```
 
-**示例**：
+## 主题系统
+
+### 设置主题 (SetTheme)
+
+自定义界面主题。
 
 ```lua
 UILibrary:SetTheme({
-    Primary = Color3.fromRGB(100, 100, 255),
-    Background = Color3.fromRGB(50, 50, 50),
-    Font = Enum.Font.Arial
+    Primary = Color3.fromRGB(255, 87, 34),      -- 主色调
+    Background = Color3.fromRGB(30, 30, 30),     -- 背景色
+    SecondaryBackground = Color3.fromRGB(46, 46, 46), -- 次背景色
+    Accent = Color3.fromRGB(255, 152, 0),       -- 强调色
+    Text = Color3.fromRGB(255, 255, 255),       -- 文字颜色
+    Success = Color3.fromRGB(76, 175, 80),      -- 成功颜色
+    Error = Color3.fromRGB(244, 67, 54),        -- 错误颜色
+    Font = Enum.Font.Roboto                     -- 字体
 })
 ```
 
-**效果**：切换 UI 主题为新颜色方案和 Arial 字体。
+### 自定义颜色
 
----
-
-## 启用拖拽
-
-**功能**：使 UI 元素可拖拽移动。
-
-**参数**：
-- `gui`（Instance）：要应用拖拽的 UI 对象
-
-**返回值**：无
-
-**示例**：
+你也可以通过全局变量设置主色调：
 
 ```lua
-local window = UILibrary:CreateUIWindow()
-UILibrary:MakeDraggable(window.MainFrame)
+_G.PRIMARY_COLOR = 0xFF5722 -- 设置为十六进制颜色值
+-- 然后加载 UILibrary
+local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"))()
 ```
 
-**效果**：使主窗口可通过鼠标或触摸拖拽移动。
+## 高级功能
+
+### 自动布局
+
+Pluto UI Library 采用自动布局系统，所有组件会根据添加顺序自动排列：
+
+```lua
+-- 创建卡片
+local card = UILibrary:CreateCard(parent)
+
+-- 添加组件，无需指定位置
+UILibrary:CreateLabel(card, {Text = "标题"})
+UILibrary:CreateLabel(card, {Text = "描述内容"})
+UILibrary:CreateButton(card, {Text = "操作按钮"})
+```
+
+### 拖拽功能
+
+主窗口和悬浮按钮支持拖拽：
+
+```lua
+-- 主窗口默认支持拖拽（通过标题栏和侧边栏）
+-- 悬浮按钮也支持拖拽
+```
+
+### 动画效果
+
+所有组件都内置了平滑的动画效果：
+
+```lua
+-- 按钮点击动画
+-- 通知显示/隐藏动画
+-- 标签页切换动画
+-- 开关切换动画
+```
+
+## 完整示例
+
+```lua
+-- 加载 UI 库
+local UILibrary = require(game.ReplicatedStorage.UILibrary)
+
+-- 创建主窗口
+local window = UILibrary:CreateUIWindow({
+    Title = "Pluto UI 示例"
+})
+
+-- 创建主页标签
+local homeTab, homeContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
+    Text = "主页",
+    Active = true
+})
+
+-- 创建设置标签
+local settingsTab, settingsContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
+    Text = "设置"
+})
+
+-- === 主页内容 ===
+-- 用户信息卡片
+local userCard = UILibrary:CreateCard(homeContent)
+UILibrary:CreateLabel(userCard, {
+    Text = "用户信息",
+    TextSize = 14
+})
+UILibrary:CreateLabel(userCard, {
+    Text = "用户名: Player123"
+})
+UILibrary:CreateLabel(userCard, {
+    Text = "等级: 15"
+})
+
+-- 操作卡片
+local actionCard = UILibrary:CreateCard(homeContent)
+UILibrary:CreateLabel(actionCard, {
+    Text = "快捷操作",
+    TextSize = 14
+})
+
+UILibrary:CreateButton(actionCard, {
+    Text = "开始游戏",
+    Callback = function()
+        UILibrary:Notify({
+            Title = "游戏开始",
+            Text = "游戏即将开始，请准备！"
+        })
+    end
+})
+
+UILibrary:CreateButton(actionCard, {
+    Text = "查看成就",
+    Callback = function()
+        UILibrary:Notify({
+            Title = "成就",
+            Text = "暂无新成就"
+        })
+    end
+})
+
+-- === 设置页面内容 ===
+-- 显示设置
+local displayCard = UILibrary:CreateCard(settingsContent)
+UILibrary:CreateLabel(displayCard, {
+    Text = "显示设置",
+    TextSize = 14
+})
+
+-- 音量控制
+UILibrary:CreateLabel(displayCard, {
+    Text = "音量控制"
+})
+
+local volumeSlider = Instance.new("Frame") -- 简化的滑块示例
+volumeSlider.Size = UDim2.new(1, 0, 0, 20)
+volumeSlider.Parent = displayCard
+
+-- 游戏设置
+local gameCard = UILibrary:CreateCard(settingsContent)
+UILibrary:CreateLabel(gameCard, {
+    Text = "游戏设置",
+    TextSize = 14
+})
+
+local autoSaveToggle, autoSaveState = UILibrary:CreateToggle(gameCard, {
+    Text = "自动保存",
+    DefaultState = true,
+    Callback = function(state)
+        print("自动保存设置:", state)
+    end
+})
+
+-- 创建悬浮按钮
+UILibrary:CreateFloatingButton(window.MainFrame, {
+    Text = "T",
+    MainFrame = window.MainFrame
+})
+
+-- 自定义主题（可选）
+UILibrary:SetTheme({
+    Primary = Color3.fromRGB(63, 81, 181),
+    Background = Color3.fromRGB(30, 30, 30),
+    SecondaryBackground = Color3.fromRGB(46, 46, 46),
+    Accent = Color3.fromRGB(92, 107, 192),
+    Text = Color3.fromRGB(255, 255, 255),
+    Success = Color3.fromRGB(76, 175, 80),
+    Error = Color3.fromRGB(244, 67, 54)
+})
+```
+
+## API 参考
+
+### 主要方法
+
+| 方法 | 参数 | 返回值 | 描述 |
+|------|------|--------|------|
+| `CreateUIWindow(options)` | `table` | `window` | 创建主窗口 |
+| `CreateTab(sidebar, titleLabel, mainPage, options)` | `Frame, Label, Frame, table` | `tabButton, tabContent` | 创建标签页 |
+| `CreateCard(parent, options)` | `Instance, table` | `Frame` | 创建卡片 |
+| `CreateButton(parent, options)` | `Instance, table` | `TextButton` | 创建按钮 |
+| `CreateLabel(parent, options)` | `Instance, table` | `TextLabel` | 创建标签 |
+| `CreateTextBox(parent, options)` | `Instance, table` | `TextBox` | 创建输入框 |
+| `CreateToggle(parent, options)` | `Instance, table` | `Frame, boolean` | 创建开关 |
+| `CreateFloatingButton(parent, options)` | `Instance, table` | `TextButton` | 创建悬浮按钮 |
+| `Notify(options)` | `table` | `Frame` | 显示通知 |
+| `SetTheme(theme)` | `table` | `void` | 设置主题 |
+
+### 选项参数
+
+#### Window Options
+```lua
+{
+    Title = "窗口标题" -- 字符串
+}
+```
+
+#### Tab Options
+```lua
+{
+    Text = "标签文本",    -- 字符串
+    Active = false        -- 布尔值
+}
+```
+
+#### Card Options
+```lua
+{
+    IsMultiElement = false -- 布尔值
+}
+```
+
+#### Button Options
+```lua
+{
+    Text = "按钮文本",                    -- 字符串
+    BackgroundColor3 = Color3,            -- Color3
+    BackgroundTransparency = 0.4,         -- 数字 (0-1)
+    Callback = function() end             -- 函数
+}
+```
+
+#### Label Options
+```lua
+{
+    Text = "标签文本",                    -- 字符串
+    TextSize = 12,                       -- 数字
+    TextXAlignment = Enum.TextXAlignment -- 枚举
+}
+```
+
+#### TextBox Options
+```lua
+{
+    PlaceholderText = "提示文本",         -- 字符串
+    Text = "默认文本",                    -- 字符串
+    TextSize = 12,                       -- 数字
+    OnFocusLost = function(text) end     -- 函数
+}
+```
+
+#### Toggle Options
+```lua
+{
+    Text = "开关标签",                    -- 字符串
+    DefaultState = false,                 -- 布尔值
+    Callback = function(state) end        -- 函数
+}
+```
+
+#### FloatingButton Options
+```lua
+{
+    Text = "按钮文本",                    -- 字符串
+    MainFrame = Frame,                    -- Frame实例
+    Callback = function() end             -- 函数
+}
+```
+
+#### Notify Options
+```lua
+{
+    Title = "通知标题",                   -- 字符串
+    Text = "通知内容",                    -- 字符串
+    Duration = 3                         -- 数字（秒）
+}
+```
+
+#### Theme Options
+```lua
+{
+    Primary = Color3,                    -- 主色调
+    Background = Color3,                 -- 背景色
+    SecondaryBackground = Color3,        -- 次背景色
+    Accent = Color3,                     -- 强调色
+    Text = Color3,                       -- 文字颜色
+    Success = Color3,                    -- 成功颜色
+    Error = Color3,                      -- 错误颜色
+    Font = Enum.Font                     -- 字体枚举
+}
+```
