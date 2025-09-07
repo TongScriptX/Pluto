@@ -264,7 +264,7 @@ UILibrary:CreateButton(card, {Text = "操作按钮"})
 
 ```lua
 -- 加载 UI 库
-local UILibrary = require(game.ReplicatedStorage.UILibrary)
+local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"))()
 
 -- 创建主窗口
 local window = UILibrary:CreateUIWindow({
