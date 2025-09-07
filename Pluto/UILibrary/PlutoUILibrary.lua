@@ -5,6 +5,8 @@ local Players = game:GetService("Players")
 
 local UILibrary = {}
 
+-- 存储已创建的UI实例
+UILibrary._instances = {}
 
 local function decimalToColor3(decimal)
     local r = math.floor(decimal / 65536) % 256
@@ -91,6 +93,36 @@ UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.Ea
 UILibrary.THEME = THEME
 UILibrary.UI_STYLES = UI_STYLES
 
+-- 销毁已存在的UI实例
+function UILibrary:DestroyExistingInstances()
+    -- 销毁主窗口实例
+    if UILibrary._instances.mainWindow then
+        local window = UILibrary._instances.mainWindow
+        if window.ScreenGui and window.ScreenGui.Parent then
+            window.ScreenGui:Destroy()
+        end
+        UILibrary._instances.mainWindow = nil
+    end
+    
+    -- 销毁通知容器
+    if UILibrary._instances.notificationContainer then
+        local container = UILibrary._instances.notificationContainer
+        if container.Parent then
+            container:Destroy()
+        end
+        UILibrary._instances.notificationContainer = nil
+    end
+    
+    -- 销毁屏幕GUI
+    if UILibrary._instances.screenGui then
+        local screenGui = UILibrary._instances.screenGui
+        if screenGui.Parent then
+            screenGui:Destroy()
+        end
+        UILibrary._instances.screenGui = nil
+    end
+end
+
 -- 通知容器
 local notificationContainer = nil
 local screenGui = nil
@@ -102,37 +134,48 @@ local function initNotificationContainer()
         return false
     end
 
-    if not screenGui or not screenGui.Parent then
-        screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "PlutoUILibrary"
-        local success, err = pcall(function()
-            screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 30)
-        end)
-        if not success then
-            warn("[Notification]: ScreenGui initialization failed: ", err)
-            return false
-        end
-        screenGui.ResetOnSpawn = false
-        screenGui.Enabled = true
-        screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        screenGui.DisplayOrder = 10
+    -- 销毁已存在的实例
+    if UILibrary._instances.notificationContainer and UILibrary._instances.notificationContainer.Parent then
+        UILibrary._instances.notificationContainer:Destroy()
+    end
+    if UILibrary._instances.screenGui and UILibrary._instances.screenGui.Parent then
+        UILibrary._instances.screenGui:Destroy()
     end
 
-    if not notificationContainer or not notificationContainer.Parent then
-        notificationContainer = Instance.new("Frame")
-        notificationContainer.Name = "NotificationContainer"
-        notificationContainer.Size = UDim2.new(0, 180, 0, 240)
-        notificationContainer.Position = UDim2.new(1, -190, 1, -300)
-        notificationContainer.BackgroundTransparency = 1
-        notificationContainer.Parent = screenGui
-        notificationContainer.Visible = true
-        notificationContainer.ZIndex = 10
-        local layout = Instance.new("UIListLayout")
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = UDim.new(0, UI_STYLES.Padding)
-        layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-        layout.Parent = notificationContainer
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PlutoUILibrary"
+    local success, err = pcall(function()
+        screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 30)
+    end)
+    if not success then
+        warn("[Notification]: ScreenGui initialization failed: ", err)
+        return false
     end
+    screenGui.ResetOnSpawn = false
+    screenGui.Enabled = true
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder = 10
+    
+    -- 存储实例引用
+    UILibrary._instances.screenGui = screenGui
+
+    notificationContainer = Instance.new("Frame")
+    notificationContainer.Name = "NotificationContainer"
+    notificationContainer.Size = UDim2.new(0, 180, 0, 240)
+    notificationContainer.Position = UDim2.new(1, -190, 1, -300)
+    notificationContainer.BackgroundTransparency = 1
+    notificationContainer.Parent = screenGui
+    notificationContainer.Visible = true
+    notificationContainer.ZIndex = 10
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.Padding = UDim.new(0, UI_STYLES.Padding)
+    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    layout.Parent = notificationContainer
+    
+    -- 存储实例引用
+    UILibrary._instances.notificationContainer = notificationContainer
+    
     return true
 end
 
@@ -612,6 +655,14 @@ function UILibrary:CreateUIWindow(options)
         return nil
     end
 
+    -- 销毁已存在的主窗口实例
+    if UILibrary._instances.mainWindow then
+        local oldWindow = UILibrary._instances.mainWindow
+        if oldWindow.ScreenGui and oldWindow.ScreenGui.Parent then
+            oldWindow.ScreenGui:Destroy()
+        end
+    end
+
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
@@ -714,13 +765,17 @@ function UILibrary:CreateUIWindow(options)
         end
     end)
 
-    return {
+    -- 存储实例引用
+    local windowInstance = {
         MainFrame = mainFrame,
         ScreenGui = screenGui,
         Sidebar = sidebar,
         TitleLabel = titleLabel,
         MainPage = mainPage
     }
+    UILibrary._instances.mainWindow = windowInstance
+
+    return windowInstance
 end
 
 -- 标签页模块
