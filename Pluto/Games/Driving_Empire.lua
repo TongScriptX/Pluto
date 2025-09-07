@@ -718,21 +718,21 @@ local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, main
 local generalCard = UILibrary:CreateCard(generalContent, { IsMultiElement = true })
 local gameLabel = UILibrary:CreateLabel(generalCard, {
     Text = "游戏: " .. gameName,
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5)
+   -- Size = UDim2.new(1, -10, 0, 20),
+   -- Position = UDim2.new(0, 5, 0, 5)
 })
 local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
     Text = "已赚金额: 0",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 30)
+   -- Size = UDim2.new(1, -10, 0, 20),
+   -- Position = UDim2.new(0, 5, 0, 30)
 })
 
 -- 卡片：反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已启用",
-    Size = UDim2.new(1, -10, 0, 20),
-    Position = UDim2.new(0, 5, 0, 5)
+   -- Size = UDim2.new(1, -10, 0, 20),
+   -- Position = UDim2.new(0, 5, 0, 5)
 })
 
 -- 标签页：主要功能
