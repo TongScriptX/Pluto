@@ -98,32 +98,18 @@ UILibrary.UI_STYLES = UI_STYLES
 
 -- 销毁已存在的UI实例
 function UILibrary:DestroyExistingInstances()
-    -- 销毁主窗口实例
-    if UILibrary._instances.mainWindow then
-        local window = UILibrary._instances.mainWindow
-        if window.ScreenGui and window.ScreenGui.Parent then
-            window.ScreenGui:Destroy()
+    -- 销毁所有PlutoUILibrary相关的ScreenGui
+    if Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui") then
+        local playerGui = Players.LocalPlayer.PlayerGui
+        for _, child in ipairs(playerGui:GetChildren()) do
+            if child.Name == "PlutoUILibrary" or child.Name == "PlutoUILibraryWindow" then
+                child:Destroy()
+            end
         end
-        UILibrary._instances.mainWindow = nil
     end
     
-    -- 销毁通知容器
-    if UILibrary._instances.notificationContainer then
-        local container = UILibrary._instances.notificationContainer
-        if container.Parent then
-            container:Destroy()
-        end
-        UILibrary._instances.notificationContainer = nil
-    end
-    
-    -- 销毁屏幕GUI
-    if UILibrary._instances.screenGui then
-        local screenGui = UILibrary._instances.screenGui
-        if screenGui.Parent then
-            screenGui:Destroy()
-        end
-        UILibrary._instances.screenGui = nil
-    end
+    -- 清空实例引用
+    UILibrary._instances = {}
     
     -- 清空通知队列
     UILibrary._notifications = {}
@@ -140,14 +126,17 @@ local function initNotificationContainer()
         return false
     end
 
-    -- 销毁已存在的实例
-    if UILibrary._instances.notificationContainer and UILibrary._instances.notificationContainer.Parent then
-        UILibrary._instances.notificationContainer:Destroy()
-    end
-    if UILibrary._instances.screenGui and UILibrary._instances.screenGui.Parent then
-        UILibrary._instances.screenGui:Destroy()
+    -- 如果通知容器已存在且有效，直接返回
+    if UILibrary._instances.notificationContainer and 
+       UILibrary._instances.notificationContainer.Parent and
+       UILibrary._instances.screenGui and
+       UILibrary._instances.screenGui.Parent then
+        notificationContainer = UILibrary._instances.notificationContainer
+        screenGui = UILibrary._instances.screenGui
+        return true
     end
 
+    -- 创建新的ScreenGui
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "PlutoUILibrary"
     local success, err = pcall(function()
@@ -167,8 +156,8 @@ local function initNotificationContainer()
 
     notificationContainer = Instance.new("Frame")
     notificationContainer.Name = "NotificationContainer"
-    notificationContainer.Size = UDim2.new(0, 180, 1, 0)
-    notificationContainer.Position = UDim2.new(1, 0, 0, 0)
+    notificationContainer.Size = UDim2.new(0, 200, 1, 0)  -- 增加宽度确保完整显示
+    notificationContainer.Position = UDim2.new(1, -210, 0, 0)  -- 调整位置让通知完全可见
     notificationContainer.BackgroundTransparency = 1
     notificationContainer.Parent = screenGui
     notificationContainer.Visible = true
@@ -198,7 +187,7 @@ function UILibrary:Notify(options)
     notification.AnchorPoint = Vector2.new(1, 0) -- 右上角作为锚点
     notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     notification.BackgroundTransparency = 1
-    notification.Position = UDim2.new(1, MARGIN + NOTIFICATION_WIDTH, 0, 0) -- 初始在屏幕右外侧
+    notification.Position = UDim2.new(1, NOTIFICATION_WIDTH + MARGIN, 0, 30) -- 初始在屏幕右外侧，稍微向下偏移
     notification.Parent = notificationContainer
     notification.Visible = true
     notification.ZIndex = 11
@@ -235,8 +224,7 @@ function UILibrary:Notify(options)
     })
     textLabel.ZIndex = 12
 
-    table.insert(UILibrary._notifications, notification)
-
+    -- 计算最终位置
     local function calculateFinalPosition()
         local totalHeight = 30
         for i, notif in ipairs(UILibrary._notifications) do
@@ -250,17 +238,22 @@ function UILibrary:Notify(options)
         return totalHeight
     end
 
-    task.wait(0.05)
+    -- 添加到通知队列
+    table.insert(UILibrary._notifications, notification)
+
+    -- 等待布局计算完成
+    task.wait(0.1)
     local finalY = calculateFinalPosition()
-    notification.Position = UDim2.new(1, MARGIN + NOTIFICATION_WIDTH, 0, finalY)
+    notification.Position = UDim2.new(1, NOTIFICATION_WIDTH + MARGIN, 0, finalY)
 
     -- 滑入动画
     local slideInTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
         Position = UDim2.new(1, -MARGIN, 0, finalY),
-        BackgroundTransparency = 0.3
+        BackgroundTransparency = 0.2
     })
     slideInTween:Play()
 
+    -- 移动现有通知
     local function moveExistingNotifications(offsetY)
         for i = #UILibrary._notifications, 1, -1 do
             local notif = UILibrary._notifications[i]
@@ -277,17 +270,19 @@ function UILibrary:Notify(options)
         moveExistingNotifications(notification.AbsoluteSize.Y + UI_STYLES.Padding)
     end
 
+    -- 自动移除通知
     task.spawn(function()
         task.wait(options.Duration or 3)
         if notification.Parent then
             -- 滑出动画
             local slideOutTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
-                Position = UDim2.new(1, MARGIN + NOTIFICATION_WIDTH, 0, notification.Position.Y.Offset),
+                Position = UDim2.new(1, NOTIFICATION_WIDTH + MARGIN, 0, notification.Position.Y.Offset),
                 BackgroundTransparency = 1
             })
             slideOutTween:Play()
             slideOutTween.Completed:Wait()
 
+            -- 从队列中移除
             for i, notif in ipairs(UILibrary._notifications) do
                 if notif == notification then
                     table.remove(UILibrary._notifications, i)
@@ -295,6 +290,7 @@ function UILibrary:Notify(options)
                 end
             end
 
+            -- 向下移动其他通知
             local function moveNotificationsDown(offsetY)
                 for i, notif in ipairs(UILibrary._notifications) do
                     if notif.Visible and notif.Parent then
@@ -392,7 +388,6 @@ function UILibrary:CreateButton(parent, options)
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
     button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
-    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.4
     button.Text = options.Text or ""
@@ -716,6 +711,7 @@ function UILibrary:CreateUIWindow(options)
         if oldWindow.ScreenGui and oldWindow.ScreenGui.Parent then
             oldWindow.ScreenGui:Destroy()
         end
+        UILibrary._instances.mainWindow = nil
     end
 
     local screenSize = GuiService:GetScreenResolution()
@@ -891,7 +887,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
                 child.BackgroundTransparency = 1
                 child.ZIndex = 6
                 child.CanvasPosition = Vector2.new(0, 0)
-                print("[Tab]: 隐藏标签页:", child.Name)
             end
         end
 
@@ -916,7 +911,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         end
 
         titleLabel.Text = tabText
-        print("[Tab]: 切换至标签页:", content.Name)
     end
 
     tabButton.MouseButton1Click:Connect(switchToThisTab)
