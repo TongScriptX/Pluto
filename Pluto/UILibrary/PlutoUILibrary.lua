@@ -237,7 +237,7 @@ function UILibrary:Notify(options)
     
     -- 计算通知的最终位置
     local function calculateFinalPosition()
-        local totalHeight = 0
+        local totalHeight = 30 -- 从距离顶部30px开始
         for i, notif in ipairs(UILibrary._notifications) do
             if notif == notification then
                 return totalHeight
