@@ -146,7 +146,8 @@ function UILibrary:Notify(options)
 
     local notification = Instance.new("Frame")
     notification.Name = "Notification"
-    notification.Size = UDim2.new(0, 180, 0, 100)
+    notification.Size = UDim2.new(0, 180, 0, 0) -- 高度自动适应
+    notification.AutomaticSize = Enum.AutomaticSize.Y
     notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     notification.BackgroundTransparency = 0.3
     notification.Position = UDim2.new(0, 0, 0, 90)
@@ -157,17 +158,34 @@ function UILibrary:Notify(options)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = notification
 
+    -- 添加内边距
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
+    padding.Parent = notification
+
+    -- 添加垂直布局
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, 2)
+    listLayout.Parent = notification
+
     local titleLabel = self:CreateLabel(notification, {
         Text = options.Title or "Notification",
+        Size = UDim2.new(1, 0, 0, UI_STYLES.LabelHeight),
         TextSize = 12
     })
     titleLabel.ZIndex = 12
 
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
+        Size = UDim2.new(1, 0, 0, 0),
+        AutomaticSize = Enum.AutomaticSize.Y,
         TextSize = 12,
         TextWrapped = true
-        })
+    })
     textLabel.ZIndex = 12
 
     task.wait(0.1)
@@ -396,7 +414,7 @@ function UILibrary:CreateLabel(parent, options)
     options = options or {}
     local label = Instance.new("TextLabel")
     label.Name = "Label_" .. (options.Text or "Unnamed")
-    label.Size = options.Size or UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.LabelHeight)
+    label.Size = options.Size or UDim2.new(1, 0, 0, UI_STYLES.LabelHeight)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
     label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -666,6 +684,7 @@ function UILibrary:CreateUIWindow(options)
 
     local titleLabel = self:CreateLabel(titleBar, {
         Text = "Home",
+        Size = UDim2.new(1, 0, 1, 0),
         TextXAlignment = Enum.TextXAlignment.Center,
         TextSize = 14,
         TextTransparency = 0
