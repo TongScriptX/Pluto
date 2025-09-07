@@ -8,6 +8,9 @@ local UILibrary = {}
 -- 存储已创建的UI实例
 UILibrary._instances = {}
 
+-- 存储通知队列
+UILibrary._notifications = {}
+
 local function decimalToColor3(decimal)
     local r = math.floor(decimal / 65536) % 256
     local g = math.floor(decimal / 256) % 256
@@ -121,6 +124,9 @@ function UILibrary:DestroyExistingInstances()
         end
         UILibrary._instances.screenGui = nil
     end
+    
+    -- 清空通知队列
+    UILibrary._notifications = {}
 end
 
 -- 通知容器
@@ -161,17 +167,12 @@ local function initNotificationContainer()
 
     notificationContainer = Instance.new("Frame")
     notificationContainer.Name = "NotificationContainer"
-    notificationContainer.Size = UDim2.new(0, 180, 0, 240)
-    notificationContainer.Position = UDim2.new(1, -190, 1, -300)
+    notificationContainer.Size = UDim2.new(0, 180, 1, 0)
+    notificationContainer.Position = UDim2.new(1, 0, 0, 0)
     notificationContainer.BackgroundTransparency = 1
     notificationContainer.Parent = screenGui
     notificationContainer.Visible = true
     notificationContainer.ZIndex = 10
-    local layout = Instance.new("UIListLayout")
-    layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, UI_STYLES.Padding)
-    layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-    layout.Parent = notificationContainer
     
     -- 存储实例引用
     UILibrary._instances.notificationContainer = notificationContainer
@@ -192,8 +193,8 @@ function UILibrary:Notify(options)
     notification.Size = UDim2.new(0, 180, 0, 0) -- 高度自动适应
     notification.AutomaticSize = Enum.AutomaticSize.Y
     notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    notification.BackgroundTransparency = 0.3
-    notification.Position = UDim2.new(0, 0, 0, 90)
+    notification.BackgroundTransparency = 1 -- 初始透明
+    notification.Position = UDim2.new(1, 0, 0, 0) -- 右侧外部
     notification.Parent = notificationContainer
     notification.Visible = true
     notification.ZIndex = 11
@@ -231,27 +232,91 @@ function UILibrary:Notify(options)
     })
     textLabel.ZIndex = 12
 
-    task.wait(0.1)
-    local success, err = pcall(function()
-        local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 50)})
-        tween:Play()
-    end)
-    if not success then
-        warn("[Notification]: Animation failed: ", err)
-        notification.Position = UDim2.new(0, 0, 0, 50)
+    -- 将通知添加到队列
+    table.insert(UILibrary._notifications, notification)
+    
+    -- 计算通知的最终位置
+    local function calculateFinalPosition()
+        local totalHeight = 0
+        for i, notif in ipairs(UILibrary._notifications) do
+            if notif == notification then
+                return totalHeight
+            end
+            if notif.Visible and notif.Parent then
+                totalHeight = totalHeight + notif.AbsoluteSize.Y + UI_STYLES.Padding
+            end
+        end
+        return totalHeight
+    end
+
+    -- 滑入动画
+    task.wait(0.05) -- 等待尺寸计算完成
+    local finalY = calculateFinalPosition()
+    notification.Position = UDim2.new(1, 0, 0, finalY)
+    notification.BackgroundTransparency = 0.3
+    
+    local slideInTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
+        Position = UDim2.new(1, -190, 0, finalY), -- 从右侧滑入
+        BackgroundTransparency = 0.3
+    })
+    slideInTween:Play()
+
+    -- 当有新通知时，将现有通知向上移动
+    local function moveExistingNotifications(offsetY)
+        for i = #UILibrary._notifications, 1, -1 do
+            local notif = UILibrary._notifications[i]
+            if notif ~= notification and notif.Visible and notif.Parent then
+                local currentPos = notif.Position
+                local newPos = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, currentPos.Y.Scale, currentPos.Y.Offset - offsetY)
+                local moveTween = TweenService:Create(notif, self.TWEEN_INFO_UI, {
+                    Position = newPos
+                })
+                moveTween:Play()
+            end
+        end
+    end
+
+    -- 如果不是第一个通知，移动现有通知
+    if #UILibrary._notifications > 1 then
+        moveExistingNotifications(notification.AbsoluteSize.Y + UI_STYLES.Padding)
     end
 
     task.spawn(function()
         task.wait(options.Duration or 3)
         if notification.Parent then
-            local success, err = pcall(function()
-                local tween = TweenService:Create(notification, self.TWEEN_INFO_UI, {Position = UDim2.new(0, 0, 0, 90)})
-                tween:Play()
-                tween.Completed:Wait()
-            end)
-            if not success then
-                warn("[Notification]: Exit animation failed: ", err)
+            -- 滑出动画
+            local slideOutTween = TweenService:Create(notification, self.TWEEN_INFO_UI, {
+                Position = UDim2.new(1, 0, 0, notification.Position.Y.Offset), -- 向右滑出
+                BackgroundTransparency = 1
+            })
+            slideOutTween:Play()
+            
+            slideOutTween.Completed:Wait()
+            
+            -- 从队列中移除
+            for i, notif in ipairs(UILibrary._notifications) do
+                if notif == notification then
+                    table.remove(UILibrary._notifications, i)
+                    break
+                end
             end
+            
+            -- 将下方通知向下滑动填补空位
+            local function moveNotificationsDown(offsetY)
+                for i, notif in ipairs(UILibrary._notifications) do
+                    if notif.Visible and notif.Parent then
+                        local currentPos = notif.Position
+                        local newPos = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, currentPos.Y.Scale, currentPos.Y.Offset + offsetY)
+                        local moveTween = TweenService:Create(notif, self.TWEEN_INFO_UI, {
+                            Position = newPos
+                        })
+                        moveTween:Play()
+                    end
+                end
+            end
+            
+            moveNotificationsDown(notification.AbsoluteSize.Y + UI_STYLES.Padding)
+            
             notification:Destroy()
         end
     end)
