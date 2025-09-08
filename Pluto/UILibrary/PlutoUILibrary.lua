@@ -8,9 +8,10 @@ local UILibrary = {}
 -- 存储已创建的UI实例
 UILibrary._instances = {}
 
--- 存储通知队列 - 改进的数据结构
+-- 通知队列管理 - 改进版本
 UILibrary._notifications = {}
 UILibrary._notificationId = 0
+UILibrary._isProcessingQueue = false -- 防止并发处理
 
 local function decimalToColor3(decimal)
     local r = math.floor(decimal / 65536) % 256
@@ -183,8 +184,8 @@ local function initNotificationContainer()
     return true
 end
 
--- 计算通知位置（右下角，从下往上排列）
-local function calculateNotificationPosition(newNotification)
+-- 计算通知应该显示的Y位置（考虑所有现有通知，包括正在动画的）
+local function calculateNotificationYPosition()
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
@@ -192,23 +193,27 @@ local function calculateNotificationPosition(newNotification)
     
     local totalHeight = 20 -- 底部边距
     
-    -- 计算现有通知占用的高度
+    -- 计算所有现有通知（包括正在动画中的）占用的高度
     for _, notifData in ipairs(UILibrary._notifications) do
-        if notifData.frame and notifData.frame.Parent and notifData.frame.Visible then
-            if notifData.frame ~= newNotification then
-                totalHeight = totalHeight + notifData.frame.AbsoluteSize.Y + UI_STYLES.NotificationSpacing
-            else
-                break
-            end
+        if notifData.frame and notifData.frame.Parent then
+            -- 使用预估高度，避免等待布局计算
+            local estimatedHeight = notifData.estimatedHeight or 80
+            totalHeight = totalHeight + estimatedHeight + UI_STYLES.NotificationSpacing
         end
     end
     
     -- 从屏幕底部向上计算位置
-    return screenSize.Y - totalHeight - (newNotification and newNotification.AbsoluteSize.Y or 80)
+    return screenSize.Y - totalHeight - 80 -- 80是新通知的预估高度
 end
 
--- 重新排列所有通知位置（右下角排列）
+-- 重新排列所有通知位置（确保动画独立且流畅）
 local function rearrangeNotifications()
+    if UILibrary._isProcessingQueue then
+        return -- 防止并发处理导致的位置计算错误
+    end
+    
+    UILibrary._isProcessingQueue = true
+    
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
@@ -216,30 +221,36 @@ local function rearrangeNotifications()
     
     local currentY = 20 -- 底部边距
     
-    -- 从最新的通知开始，从下往上排列
+    -- 从最新的通知开始，从下往上重新排列
     for i = #UILibrary._notifications, 1, -1 do
         local notifData = UILibrary._notifications[i]
         if notifData.frame and notifData.frame.Parent and notifData.frame.Visible then
-            local targetY = screenSize.Y - currentY - notifData.frame.AbsoluteSize.Y
+            local frameHeight = notifData.frame.AbsoluteSize.Y > 0 and notifData.frame.AbsoluteSize.Y or notifData.estimatedHeight or 80
+            local targetY = screenSize.Y - currentY - frameHeight
             local targetPos = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, targetY)
             
-            -- 使用独立的动画，不会被其他通知干扰
-            if notifData.frame.Position ~= targetPos then
-                local moveTween = TweenService:Create(notifData.frame, UILibrary.TWEEN_INFO_UI, {
-                    Position = targetPos
-                })
-                moveTween:Play()
-                
-                -- 存储动画引用，确保可以独立管理
-                notifData.moveTween = moveTween
+            -- 取消之前的移动动画
+            if notifData.moveTween then
+                notifData.moveTween:Cancel()
             end
             
-            currentY = currentY + notifData.frame.AbsoluteSize.Y + UI_STYLES.NotificationSpacing
+            -- 创建新的独立移动动画
+            if math.abs(notifData.frame.Position.Y.Offset - targetY) > 1 then
+                notifData.moveTween = TweenService:Create(notifData.frame, UILibrary.TWEEN_INFO_UI, {
+                    Position = targetPos
+                })
+                notifData.moveTween:Play()
+            end
+            
+            currentY = currentY + frameHeight + UI_STYLES.NotificationSpacing
         end
     end
+    
+    task.wait(0.05) -- 短暂延迟确保动画开始
+    UILibrary._isProcessingQueue = false
 end
 
--- 移除通知（改进版本，确保动画独立）
+-- 移除通知（改进版本，确保队列管理正确）
 local function removeNotification(notificationData)
     if not notificationData or not notificationData.frame then
         return
@@ -247,12 +258,18 @@ local function removeNotification(notificationData)
     
     local notification = notificationData.frame
     
-    -- 停止任何进行中的移动动画
+    -- 停止所有相关动画
     if notificationData.moveTween then
         notificationData.moveTween:Cancel()
+        notificationData.moveTween = nil
     end
     if notificationData.slideInTween then
         notificationData.slideInTween:Cancel()
+        notificationData.slideInTween = nil
+    end
+    if notificationData.autoRemoveConnection then
+        notificationData.autoRemoveConnection:Disconnect()
+        notificationData.autoRemoveConnection = nil
     end
     
     -- 从队列中移除
@@ -271,14 +288,16 @@ local function removeNotification(notificationData)
     
     slideOutTween:Play()
     slideOutTween.Completed:Connect(function()
-        notification:Destroy()
-        -- 重新排列剩余通知
-        task.wait(0.05) -- 短暂延迟确保销毁完成
+        if notification and notification.Parent then
+            notification:Destroy()
+        end
+        -- 延迟重新排列，确保销毁完成
+        task.wait(0.1)
         rearrangeNotifications()
     end)
 end
 
--- 通知模块 - 完全重写（右下角显示，独立动画）
+-- 通知模块 - 完全重写（支持队列管理，防止重叠）
 function UILibrary:Notify(options)
     options = options or {}
     if not initNotificationContainer() then
@@ -289,6 +308,10 @@ function UILibrary:Notify(options)
     -- 生成唯一ID
     UILibrary._notificationId = UILibrary._notificationId + 1
     local notificationId = UILibrary._notificationId
+
+    -- 预先计算位置（基于当前队列状态）
+    local targetY = calculateNotificationYPosition()
+    local estimatedHeight = 80 -- 预估通知高度
 
     local notification = Instance.new("Frame")
     notification.Name = "Notification_" .. notificationId
@@ -333,69 +356,59 @@ function UILibrary:Notify(options)
     })
     textLabel.ZIndex = 22
 
-    -- 创建通知数据
+    -- 创建通知数据并立即添加到队列
     local notificationData = {
         id = notificationId,
         frame = notification,
         duration = options.Duration or 3,
         startTime = tick(),
+        estimatedHeight = estimatedHeight,
         slideInTween = nil,
-        moveTween = nil
+        moveTween = nil,
+        autoRemoveConnection = nil
     }
 
-    -- 等待布局完全计算完成
-    task.wait(0.1)
-    
-    -- 获取屏幕尺寸
-    local screenSize = GuiService:GetScreenResolution()
-    if screenSize == Vector2.new(0, 0) then
-        screenSize = Vector2.new(720, 1280)
-    end
-    
-    -- 计算最终位置（右下角）
-    local finalY = calculateNotificationPosition(notification)
-    
-    -- 设置初始位置（屏幕右外侧，在最终Y位置）
-    notification.Position = UDim2.new(1, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 0, finalY)
-    
-    -- 添加到队列（在开始动画之前）
+    -- 立即添加到队列，确保位置计算正确
     table.insert(UILibrary._notifications, notificationData)
-    
-    -- 为新通知腾出空间 - 向上移动现有通知
+
+    -- 设置初始位置（屏幕右外侧）
+    notification.Position = UDim2.new(1, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 0, targetY)
+
+    -- 等待布局计算完成，然后更新实际高度
     task.spawn(function()
-        for i = 1, #UILibrary._notifications - 1 do
-            local notifData = UILibrary._notifications[i]
-            if notifData.frame and notifData.frame.Parent and notifData.frame.Visible then
-                -- 停止现有的移动动画
-                if notifData.moveTween then
-                    notifData.moveTween:Cancel()
-                end
-                
-                local currentPos = notifData.frame.Position
-                local newY = currentPos.Y.Offset - (notification.AbsoluteSize.Y + UI_STYLES.NotificationSpacing)
-                
-                -- 创建独立的移动动画
-                notifData.moveTween = TweenService:Create(notifData.frame, UILibrary.TWEEN_INFO_UI, {
-                    Position = UDim2.new(currentPos.X.Scale, currentPos.X.Offset, 0, newY)
-                })
-                notifData.moveTween:Play()
-            end
+        local attempts = 0
+        while notification.AbsoluteSize.Y <= 1 and attempts < 50 do
+            task.wait(0.02)
+            attempts = attempts + 1
+        end
+        
+        if notification.AbsoluteSize.Y > 1 then
+            notificationData.estimatedHeight = notification.AbsoluteSize.Y
+        end
+        
+        -- 重新排列所有通知以适应实际高度
+        rearrangeNotifications()
+    end)
+
+    -- 独立的滑入动画（带延迟，确保动画流畅）
+    task.spawn(function()
+        local delayTime = math.min(#UILibrary._notifications * 0.1, 0.5) -- 最多0.5秒延迟
+        task.wait(delayTime)
+        
+        if notification.Parent then -- 确保通知仍然存在
+            notificationData.slideInTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_UI, {
+                Position = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, targetY),
+                BackgroundTransparency = 0.1
+            })
+            notificationData.slideInTween:Play()
         end
     end)
-    
-    -- 独立的滑入动画
-    task.wait(0.05) -- 短暂延迟确保位置计算完成
-    notificationData.slideInTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_UI, {
-        Position = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, finalY),
-        BackgroundTransparency = 0.1
-    })
-    notificationData.slideInTween:Play()
-    
-    -- 自动移除通知
-    task.spawn(function()
-        task.wait(notificationData.duration)
+
+    -- 自动移除通知（使用连接管理）
+    notificationData.autoRemoveConnection = task.spawn(function()
+        task.wait(notificationData.duration + (math.min(#UILibrary._notifications * 0.1, 0.5))) -- 考虑延迟时间
         
-        -- 确保通知仍然存在
+        -- 确保通知仍然存在且数据有效
         if notification.Parent and notificationData.frame then
             removeNotification(notificationData)
         end
