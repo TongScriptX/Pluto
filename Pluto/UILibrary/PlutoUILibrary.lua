@@ -267,9 +267,11 @@ local function removeNotification(notificationData)
         notificationData.slideInTween:Cancel()
         notificationData.slideInTween = nil
     end
-    if notificationData.autoRemoveConnection then
-        notificationData.autoRemoveConnection:Disconnect()
-        notificationData.autoRemoveConnection = nil
+    
+    -- 取消自动移除任务（修复：使用task.cancel而不是Disconnect）
+    if notificationData.autoRemoveTask then
+        task.cancel(notificationData.autoRemoveTask)
+        notificationData.autoRemoveTask = nil
     end
     
     -- 从队列中移除
@@ -365,7 +367,7 @@ function UILibrary:Notify(options)
         estimatedHeight = estimatedHeight,
         slideInTween = nil,
         moveTween = nil,
-        autoRemoveConnection = nil
+        autoRemoveTask = nil -- 修复：改为task而不是connection
     }
 
     -- 立即添加到队列，确保位置计算正确
@@ -404,9 +406,10 @@ function UILibrary:Notify(options)
         end
     end)
 
-    -- 自动移除通知（使用连接管理）
-    notificationData.autoRemoveConnection = task.spawn(function()
-        task.wait(notificationData.duration + (math.min(#UILibrary._notifications * 0.1, 0.5))) -- 考虑延迟时间
+    -- 自动移除通知（修复：使用task而不是connection）
+    notificationData.autoRemoveTask = task.spawn(function()
+        local totalWaitTime = notificationData.duration + (math.min(#UILibrary._notifications * 0.1, 0.5)) -- 考虑延迟时间
+        task.wait(totalWaitTime)
         
         -- 确保通知仍然存在且数据有效
         if notification.Parent and notificationData.frame then
