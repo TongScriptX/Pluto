@@ -29,7 +29,7 @@
 Pluto UI Library 是一个功能强大的 Roblox UI 库，提供了现代化的界面组件和自动布局系统。它采用 Material Design 风格，支持主题定制、动画效果和响应式设计。
 
 ## 安装
-
+```lua
 local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"))()
 ```
 
