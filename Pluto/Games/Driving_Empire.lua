@@ -125,6 +125,89 @@ end
 -- 自动生成车辆函数
 local performAutoSpawnVehicle
 
+-- 并发获取车辆数据
+local function fetchVehicleStatsConcurrent(vehicleNames, GetVehicleStats)
+    local results = {}
+    local threads = {}
+    
+    -- 为每个车辆创建协程
+    for _, vehicleName in ipairs(vehicleNames) do
+        local thread = coroutine.create(function()
+            local success, result = pcall(function()
+                return GetVehicleStats:InvokeServer(vehicleName)
+            end)
+            
+            if success and type(result) == "table" and result.Generic_TopSpeed then
+                results[vehicleName] = {
+                    name = vehicleName,
+                    speed = result.Generic_TopSpeed
+                }
+            end
+        end)
+        table.insert(threads, thread)
+    end
+    
+    -- 启动所有协程
+    for _, thread in ipairs(threads) do
+        coroutine.resume(thread)
+    end
+    
+    -- 等待所有协程完成，使用更短的等待时间
+    local completed = 0
+    local maxWait = 50 -- 最多等待5秒
+    local waitCount = 0
+    
+    while completed < #threads and waitCount < maxWait do
+        completed = 0
+        for _, thread in ipairs(threads) do
+            if coroutine.status(thread) == "dead" then
+                completed = completed + 1
+            end
+        end
+        
+        if completed < #threads then
+            wait(0.1)
+            waitCount = waitCount + 1
+        end
+    end
+    
+    return results
+end
+
+-- 快速查找最快车辆
+local function findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
+    local ownedVehicles = {}
+    local vehicleCount = 0
+    
+    -- 快速收集拥有的车辆
+    for _, vehicleValue in pairs(vehiclesFolder:GetChildren()) do
+        if vehicleValue:IsA("BoolValue") and vehicleValue.Value == true then
+            table.insert(ownedVehicles, vehicleValue.Name)
+            vehicleCount = vehicleCount + 1
+        end
+    end
+    
+    if #ownedVehicles == 0 then
+        return nil, -1, vehicleCount
+    end
+    
+    debugLog("[AutoSpawnVehicle] 找到", vehicleCount, "辆拥有的车辆，开始并发获取数据...")
+    
+    -- 并发获取所有车辆数据
+    local vehicleData = fetchVehicleStatsConcurrent(ownedVehicles, GetVehicleStats)
+    
+    -- 快速找到最快的车辆
+    local fastestName, fastestSpeed = nil, -1
+    for _, data in pairs(vehicleData) do
+        if data.speed > fastestSpeed then
+            fastestSpeed = data.speed
+            fastestName = data.name
+        end
+    end
+    
+    return fastestName, fastestSpeed, vehicleCount
+end
+
 performAutoSpawnVehicle = function()
     if not config.autoSpawnVehicleEnabled then
         debugLog("[AutoSpawnVehicle] 功能未启用，跳过生成")
@@ -132,6 +215,7 @@ performAutoSpawnVehicle = function()
     end
 
     debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
+    local startTime = tick()
 
     local Players = game:GetService("Players")
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -165,15 +249,11 @@ performAutoSpawnVehicle = function()
         return
     end
 
-    -- 等待 PlayerGui 加载
-    local playerGui = localPlayer:FindFirstChild("PlayerGui")
+    -- 快速获取 PlayerGui
+    local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
     if not playerGui then
-        localPlayer:WaitForChild("PlayerGui", 10)
-        playerGui = localPlayer:FindFirstChild("PlayerGui")
-        if not playerGui then
-            warn("[AutoSpawnVehicle] PlayerGui 加载超时")
-            return
-        end
+        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
+        return
     end
 
     local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
@@ -188,46 +268,12 @@ performAutoSpawnVehicle = function()
         return
     end
 
-    debugLog("[AutoSpawnVehicle] 所有必要对象已找到，开始搜索车辆...")
-
-    -- 获取车辆数据的安全函数
-    local function fetchVehicleStats(vehicleName)
-        local success, result = pcall(function()
-            return GetVehicleStats:InvokeServer(vehicleName)
-        end)
-        if success and type(result) == "table" and result.Generic_TopSpeed then
-            return result
-        end
-        return nil
-    end
-
-    -- 搜索最快的车辆
-    local fastestName, fastestSpeed = nil, -1
-    local vehicleCount = 0
-
-    for _, vehicleValue in pairs(vehiclesFolder:GetChildren()) do
-        if vehicleValue:IsA("BoolValue") and vehicleValue.Value == true then
-            vehicleCount = vehicleCount + 1
-            local vehicleName = vehicleValue.Name
-            debugLog("[AutoSpawnVehicle] 检查车辆:", vehicleName)
-            
-            local stats = fetchVehicleStats(vehicleName)
-            if stats and type(stats.Generic_TopSpeed) == "number" then
-                local speed = stats.Generic_TopSpeed
-                debugLog("[AutoSpawnVehicle] 车辆:", vehicleName, "速度:", speed)
-                
-                if speed > fastestSpeed then
-                    fastestSpeed = speed
-                    fastestName = vehicleName
-                    debugLog("[AutoSpawnVehicle] 找到更快车辆:", vehicleName, "速度:", speed)
-                end
-            else
-                debugLog("[AutoSpawnVehicle] 车辆", vehicleName, "数据无效")
-            end
-        end
-    end
-
-    debugLog("[AutoSpawnVehicle] 搜索完成，拥有车辆数:", vehicleCount, "最快车辆:", fastestName, "速度:", fastestSpeed)
+    -- 使用快速搜索
+    local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
+    
+    local searchTime = tick() - startTime
+    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
+    debugLog("[AutoSpawnVehicle] 拥有车辆数:", vehicleCount, "最快车辆:", fastestName, "速度:", fastestSpeed)
 
     -- 生成车辆
     if fastestName and fastestSpeed > 0 then
@@ -237,15 +283,16 @@ performAutoSpawnVehicle = function()
         
         if success then
             UILibrary:Notify({
-                Title = "自动刷车",
-                Text = "已生成最快车辆: " .. fastestName .. " (速度: " .. tostring(fastestSpeed) .. ")",
+                Title = "自动生成",
+                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
+                    fastestName, tostring(fastestSpeed), searchTime),
                 Duration = 5
             })
             debugLog("[AutoSpawnVehicle] 成功生成车辆:", fastestName)
         else
             warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
             UILibrary:Notify({
-                Title = "自动刷车",
+                Title = "自动生成",
                 Text = "生成车辆失败: " .. tostring(err),
                 Duration = 5
             })
@@ -253,7 +300,7 @@ performAutoSpawnVehicle = function()
     else
         warn("[AutoSpawnVehicle] 未找到有效车辆数据")
         UILibrary:Notify({
-            Title = "自动刷车",
+            Title = "自动生成",
             Text = "未找到可生成的车辆",
             Duration = 5
         })
@@ -326,7 +373,7 @@ local function loadConfig()
                 if not success then
                     warn("[AutoSpawnVehicle] 启动时生成车辆失败:", err)
                     UILibrary:Notify({
-                        Title = "自动刷车",
+                        Title = "自动生成",
                         Text = "启动时生成失败: " .. tostring(err),
                         Duration = 5
                     })
@@ -334,7 +381,7 @@ local function loadConfig()
             else
                 warn("[AutoSpawnVehicle] performAutoSpawnVehicle 函数未定义")
                 UILibrary:Notify({
-                    Title = "自动刷车",
+                    Title = "自动生成",
                     Text = "函数未正确定义",
                     Duration = 5
                 })
@@ -963,14 +1010,14 @@ local toggleAutoSpawnVehicle = UILibrary:CreateToggle(autoSpawnVehicleCard, {
                     if not success then
                         warn("[AutoSpawnVehicle] 手动触发生成失败:", err)
                         UILibrary:Notify({
-                            Title = "自动刷车",
+                            Title = "自动生成",
                             Text = "生成失败: " .. tostring(err),
                             Duration = 5
                         })
                     end
                 else
                     UILibrary:Notify({
-                        Title = "自动刷车",
+                        Title = "自动生成",
                         Text = "函数未准备就绪",
                         Duration = 5
                     })
