@@ -57,6 +57,7 @@ local config = {
     targetCurrency = 0,
     enableTargetKick = false,
     onlineRewardEnabled = false,
+    autoSpawnVehicleEnabled = false,
 }
 
 -- 颜色定义
@@ -121,13 +122,150 @@ local function saveConfig()
     end)
 end
 
+-- 自动生成车辆函数
+local performAutoSpawnVehicle
+
+performAutoSpawnVehicle = function()
+    if not config.autoSpawnVehicleEnabled then
+        debugLog("[AutoSpawnVehicle] 功能未启用，跳过生成")
+        return
+    end
+
+    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
+
+    local Players = game:GetService("Players")
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+    local localPlayer = Players.LocalPlayer
+    if not localPlayer then
+        warn("[AutoSpawnVehicle] 无法获取本地玩家")
+        return
+    end
+
+    -- 检查必要的服务和对象
+    if not ReplicatedStorage then
+        warn("[AutoSpawnVehicle] ReplicatedStorage 不可用")
+        return
+    end
+
+    local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+    if not remotesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
+        return
+    end
+
+    local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
+    local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
+    if not GetVehicleStats then
+        warn("[AutoSpawnVehicle] 未找到 GetVehicleStats")
+        return
+    end
+    if not VehicleEvent then
+        warn("[AutoSpawnVehicle] 未找到 VehicleEvent")
+        return
+    end
+
+    -- 等待 PlayerGui 加载
+    local playerGui = localPlayer:FindFirstChild("PlayerGui")
+    if not playerGui then
+        localPlayer:WaitForChild("PlayerGui", 10)
+        playerGui = localPlayer:FindFirstChild("PlayerGui")
+        if not playerGui then
+            warn("[AutoSpawnVehicle] PlayerGui 加载超时")
+            return
+        end
+    end
+
+    local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
+    if not statsPanel then
+        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
+        return
+    end
+
+    local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
+    if not vehiclesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
+        return
+    end
+
+    debugLog("[AutoSpawnVehicle] 所有必要对象已找到，开始搜索车辆...")
+
+    -- 获取车辆数据的安全函数
+    local function fetchVehicleStats(vehicleName)
+        local success, result = pcall(function()
+            return GetVehicleStats:InvokeServer(vehicleName)
+        end)
+        if success and type(result) == "table" and result.Generic_TopSpeed then
+            return result
+        end
+        return nil
+    end
+
+    -- 搜索最快的车辆
+    local fastestName, fastestSpeed = nil, -1
+    local vehicleCount = 0
+
+    for _, vehicleValue in pairs(vehiclesFolder:GetChildren()) do
+        if vehicleValue:IsA("BoolValue") and vehicleValue.Value == true then
+            vehicleCount = vehicleCount + 1
+            local vehicleName = vehicleValue.Name
+            debugLog("[AutoSpawnVehicle] 检查车辆:", vehicleName)
+            
+            local stats = fetchVehicleStats(vehicleName)
+            if stats and type(stats.Generic_TopSpeed) == "number" then
+                local speed = stats.Generic_TopSpeed
+                debugLog("[AutoSpawnVehicle] 车辆:", vehicleName, "速度:", speed)
+                
+                if speed > fastestSpeed then
+                    fastestSpeed = speed
+                    fastestName = vehicleName
+                    debugLog("[AutoSpawnVehicle] 找到更快车辆:", vehicleName, "速度:", speed)
+                end
+            else
+                debugLog("[AutoSpawnVehicle] 车辆", vehicleName, "数据无效")
+            end
+        end
+    end
+
+    debugLog("[AutoSpawnVehicle] 搜索完成，拥有车辆数:", vehicleCount, "最快车辆:", fastestName, "速度:", fastestSpeed)
+
+    -- 生成车辆
+    if fastestName and fastestSpeed > 0 then
+        local success, err = pcall(function()
+            VehicleEvent:FireServer("Spawn", fastestName)
+        end)
+        
+        if success then
+            UILibrary:Notify({
+                Title = "自动刷车",
+                Text = "已生成最快车辆: " .. fastestName .. " (速度: " .. tostring(fastestSpeed) .. ")",
+                Duration = 5
+            })
+            debugLog("[AutoSpawnVehicle] 成功生成车辆:", fastestName)
+        else
+            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
+            UILibrary:Notify({
+                Title = "自动刷车",
+                Text = "生成车辆失败: " .. tostring(err),
+                Duration = 5
+            })
+        end
+    else
+        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
+        UILibrary:Notify({
+            Title = "自动刷车",
+            Text = "未找到可生成的车辆",
+            Duration = 5
+        })
+    end
+end
+
 -- 加载配置
 local function loadConfig()
     if isfile(configFile) then
         local success, result = pcall(function()
             return HttpService:JSONDecode(readfile(configFile))
         end)
-
         if success and type(result) == "table" then
             local userConfig = result[username]
             if userConfig and type(userConfig) == "table" then
@@ -163,12 +301,45 @@ local function loadConfig()
         })
         saveConfig()
     end
-
+    
     -- 检查 webhookUrl 是否需要触发欢迎消息
     if config.webhookUrl ~= "" and config.webhookUrl ~= lastWebhookUrl then
         config.welcomeSent = false
         sendWelcomeMessage()
         lastWebhookUrl = config.webhookUrl
+    end
+
+    -- 自动生成车辆启动检查
+    if config.autoSpawnVehicleEnabled then
+        debugLog("[AutoSpawnVehicle] 配置为开启状态，准备启动...")
+        spawn(function()
+            if not game:IsLoaded() then
+                game.Loaded:Wait()
+            end
+            task.wait(5) -- 增加等待时间
+            
+            debugLog("[AutoSpawnVehicle] 开始尝试生成车辆...")
+            
+            -- 确保函数存在
+            if performAutoSpawnVehicle and type(performAutoSpawnVehicle) == "function" then
+                local success, err = pcall(performAutoSpawnVehicle)
+                if not success then
+                    warn("[AutoSpawnVehicle] 启动时生成车辆失败:", err)
+                    UILibrary:Notify({
+                        Title = "自动刷车",
+                        Text = "启动时生成失败: " .. tostring(err),
+                        Duration = 5
+                    })
+                end
+            else
+                warn("[AutoSpawnVehicle] performAutoSpawnVehicle 函数未定义")
+                UILibrary:Notify({
+                    Title = "自动刷车",
+                    Text = "函数未正确定义",
+                    Duration = 5
+                })
+            end
+        end)
     end
 end
 
@@ -688,6 +859,7 @@ local function claimPlaytimeRewards()
     end)
 end
 
+
 -- 创建主窗口
 local window = UILibrary:CreateUIWindow()
 if not window then
@@ -768,6 +940,45 @@ if config.onlineRewardEnabled then
     debugLog("[PlaytimeRewards] 配置为开启状态，尝试启动...")
     claimPlaytimeRewards()
 end
+
+-- 卡片 自动生成车辆
+local autoSpawnVehicleCard = UILibrary:CreateCard(mainFeatureContent)
+local toggleAutoSpawnVehicle = UILibrary:CreateToggle(autoSpawnVehicleCard, {
+    Text = "自动生成车辆",
+    DefaultState = config.autoSpawnVehicleEnabled,
+    Callback = function(state)
+        config.autoSpawnVehicleEnabled = state
+        UILibrary:Notify({
+            Title = "配置更新",
+            Text = "自动生成车辆: " .. (state and "开启" or "关闭"),
+            Duration = 5
+        })
+        saveConfig()
+        
+        if state then
+            spawn(function()
+                task.wait(0.5)
+                if performAutoSpawnVehicle and type(performAutoSpawnVehicle) == "function" then
+                    local success, err = pcall(performAutoSpawnVehicle)
+                    if not success then
+                        warn("[AutoSpawnVehicle] 手动触发生成失败:", err)
+                        UILibrary:Notify({
+                            Title = "自动刷车",
+                            Text = "生成失败: " .. tostring(err),
+                            Duration = 5
+                        })
+                    end
+                else
+                    UILibrary:Notify({
+                        Title = "自动刷车",
+                        Text = "函数未准备就绪",
+                        Duration = 5
+                    })
+                end
+            end)
+        end
+    end
+})
 
 -- 标签页：通知
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
