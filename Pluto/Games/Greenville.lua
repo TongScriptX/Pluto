@@ -87,13 +87,6 @@ if success and currencyValue then
     UILibrary:Notify({ Title = "初始化成功", Text = "初始金额: " .. tostring(initialCurrency), Duration = 5 })
 end
 
--- 反挂机
-player.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
-    UILibrary:Notify({ Title = "反挂机", Text = "检测到闲置，已自动操作", Duration = 3 })
-end)
-
 -- 保存配置
 local function saveConfig()
     pcall(function()
@@ -344,7 +337,7 @@ local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
 -- 卡片：反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
-    Text = "反挂机已启用",
+    Text = "安全起见，反挂机未启用",
     Size = UDim2.new(1, -10, 0, 20),
     Position = UDim2.new(0, 5, 0, 5)
 })
