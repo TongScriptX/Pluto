@@ -42,13 +42,15 @@ local function appendLog(msg, msgType)
     output ..= ("[%s] %s\n"):format(msgType.Name, msg)
 
     local line = Instance.new("TextLabel")
-    line.Size = UDim2.new(1, -10, 0, 20)
+    line.Size = UDim2.new(1, -10, 0, 0) -- 高度设为0，自动调整
+    line.AutomaticSize = Enum.AutomaticSize.Y
     line.BackgroundTransparency = 1
     line.TextColor3 = getColor(msgType)
     line.TextXAlignment = Enum.TextXAlignment.Left
     line.Font = Enum.Font.Code
     line.TextSize = 14
     line.Text = ("[%s] %s"):format(msgType.Name, msg)
+    line.TextWrapped = true
     line.Parent = ui.Scroll
 end
 

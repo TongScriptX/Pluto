@@ -19,7 +19,7 @@ function module.CreateUI(playerGui)
     scroll.BackgroundTransparency = 1
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
-    -- UIListLayout
+    -- UIListLayout 自动排列日志项
     local layout = Instance.new("UIListLayout", scroll)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 2)
