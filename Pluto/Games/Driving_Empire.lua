@@ -6,7 +6,6 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local lastWebhookUrl = ""
 local lastSendTime = os.time()
-local lastCurrency = initialCurrency
 --调试模式
 local DEBUG_MODE = false
 
@@ -54,8 +53,9 @@ local config = {
     leaderboardKick = false,
     notificationInterval = 30,
     welcomeSent = false,
-    targetCurrency = 0,
+    targetEarnedAmount = 0, -- 修改：目标赚取金额
     enableTargetKick = false,
+    lastSavedCurrency = 0, -- 新增：上次保存的金额数值
     onlineRewardEnabled = false,
     autoSpawnVehicleEnabled = false,
 }
@@ -85,10 +85,27 @@ local function fetchCurrentCurrency()
     UILibrary:Notify({ Title = "错误", Text = "无法找到排行榜或金额数据", Duration = 5 })
     return nil
 end
+
+-- 计算实际赚取金额的函数
+local function calculateEarnedAmount(currentCurrency)
+    if not currentCurrency then return 0 end
+    if config.lastSavedCurrency > 0 then
+        -- 使用上次保存的金额作为基准
+        return currentCurrency - config.lastSavedCurrency
+    else
+        -- 首次运行，使用初始金额
+        return currentCurrency - initialCurrency
+    end
+end
+
 local success, currencyValue = pcall(fetchCurrentCurrency)
 if success and currencyValue then
     initialCurrency = currencyValue
-    UILibrary:Notify({ Title = "初始化成功", Text = "初始金额: " .. tostring(initialCurrency), Duration = 5 })
+    -- 如果没有保存过金额，则使用当前金额作为起始点
+    if config.lastSavedCurrency == 0 then
+        config.lastSavedCurrency = currencyValue
+    end
+    UILibrary:Notify({ Title = "初始化成功", Text = "当前金额: " .. tostring(initialCurrency), Duration = 5 })
 end
 
 -- 反挂机
@@ -373,7 +390,7 @@ local function loadConfig()
                 if not success then
                     warn("[AutoSpawnVehicle] 启动时生成车辆失败:", err)
                     UILibrary:Notify({
-                        Title = "自动生成",
+                        Title = "自动刷车",
                         Text = "启动时生成失败: " .. tostring(err),
                         Duration = 5
                     })
@@ -381,8 +398,8 @@ local function loadConfig()
             else
                 warn("[AutoSpawnVehicle] performAutoSpawnVehicle 函数未定义")
                 UILibrary:Notify({
-                    Title = "自动生成",
-                    Text = "函数未正确定义",
+                    Title = "自动刷车",
+                    Text = "函数未准备就绪",
                     Duration = 5
                 })
             end
@@ -679,21 +696,24 @@ local function sendWelcomeMessage()
     end
 end
 
--- 初始化时校验目标金额
-local function initTargetCurrency()
-    local current = fetchCurrentCurrency() or 0
-    if config.enableTargetKick and config.targetCurrency > 0 and current >= config.targetCurrency then
+-- 修改：初始化时校验目标赚取金额
+local function initTargetEarnedAmount()
+    local currentCurrency = fetchCurrentCurrency() or 0
+    local currentEarned = calculateEarnedAmount(currentCurrency)
+    
+    if config.enableTargetKick and config.targetEarnedAmount > 0 and currentEarned >= config.targetEarnedAmount then
         UILibrary:Notify({
-            Title = "目标金额已达成",
-            Text = "当前金额已超过目标，已关闭踢出功能，未执行退出",
+            Title = "目标赚取金额已达成",
+            Text = string.format("当前已赚取 %s，已超过目标 %s，已关闭踢出功能", 
+                formatNumber(currentEarned), formatNumber(config.targetEarnedAmount)),
             Duration = 5
         })
         config.enableTargetKick = false
-        config.targetCurrency = 0
+        config.targetEarnedAmount = 0
         saveConfig()
     end
 end
-pcall(initTargetCurrency)
+pcall(initTargetEarnedAmount)
 
 -- 在线时长奖励领取
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -937,21 +957,15 @@ local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, main
 local generalCard = UILibrary:CreateCard(generalContent, { IsMultiElement = true })
 local gameLabel = UILibrary:CreateLabel(generalCard, {
     Text = "游戏: " .. gameName,
-   -- Size = UDim2.new(1, -10, 0, 20),
-   -- Position = UDim2.new(0, 5, 0, 5)
 })
 local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
     Text = "已赚金额: 0",
-   -- Size = UDim2.new(1, -10, 0, 20),
-   -- Position = UDim2.new(0, 5, 0, 30)
 })
 
 -- 卡片：反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
 local antiAfkLabel = UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已启用",
-   -- Size = UDim2.new(1, -10, 0, 20),
-   -- Position = UDim2.new(0, 5, 0, 5)
 })
 
 -- 标签页：主要功能
@@ -1010,14 +1024,14 @@ local toggleAutoSpawnVehicle = UILibrary:CreateToggle(autoSpawnVehicleCard, {
                     if not success then
                         warn("[AutoSpawnVehicle] 手动触发生成失败:", err)
                         UILibrary:Notify({
-                            Title = "自动生成",
+                            Title = "自动刷车",
                             Text = "生成失败: " .. tostring(err),
                             Duration = 5
                         })
                     end
                 else
                     UILibrary:Notify({
-                        Title = "自动生成",
+                        Title = "自动刷车",
                         Text = "函数未准备就绪",
                         Duration = 5
                     })
@@ -1036,12 +1050,9 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
 local webhookCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 local webhookLabel = UILibrary:CreateLabel(webhookCard, {
     Text = "Webhook 地址",
-    --Size = UDim2.new(1, -10, 0, 20),
-    --Position = UDim2.new(0, 5, 0, 5)
 })
 local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "输入 Webhook 地址",
-    --Position = UDim2.new(0, 5, 0, 30),
     OnFocusLost = function(text)
         if not text then return end
         local oldUrl = config.webhookUrl
@@ -1116,12 +1127,9 @@ debugLog("上榜踢出开关创建:", toggleLeaderboardKick.Parent and "父对�
 local intervalCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 local intervalLabel = UILibrary:CreateLabel(intervalCard, {
     Text = "通知间隔（分钟）",
-    --Size = UDim2.new(1, -10, 0, 20),
-    --Position = UDim2.new(0, 5, 0, 5)
 })
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
     PlaceholderText = "输入间隔时间",
-    --Position = UDim2.new(0, 5, 0, 30),
     OnFocusLost = function(text)
         if not text then return end
         local num = tonumber(text)
@@ -1138,13 +1146,13 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
 intervalInput.Text = tostring(config.notificationInterval)
 debugLog("通知间隔输入框创建:", intervalInput.Parent and "父对象存在" or "无父对象")
 
--- 卡片：目标金额
-local targetCurrencyCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
+-- 修改：目标赚取金额卡片
+local targetEarnedCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 
 local suppressTargetToggleCallback = false
 
-local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
-    Text = "目标金额踢出",
+local targetEarnedToggle = UILibrary:CreateToggle(targetEarnedCard, {
+    Text = "目标赚取金额踢出",
     DefaultState = config.enableTargetKick or false,
     Callback = function(state)
         print("[目标踢出] 状态改变:", state)
@@ -1155,25 +1163,26 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
         end
 
         if state and config.webhookUrl == "" then
-            targetCurrencyToggle:Set(false)
+            targetEarnedToggle:Set(false)
             UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
             return
         end
 
-        if state and (not config.targetCurrency or config.targetCurrency <= 0) then
-            targetCurrencyToggle:Set(false)
-            UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标金额（大于0）", Duration = 5 })
+        if state and (not config.targetEarnedAmount or config.targetEarnedAmount <= 0) then
+            targetEarnedToggle:Set(false)
+            UILibrary:Notify({ Title = "配置错误", Text = "请设置有效目标赚取金额（大于0）", Duration = 5 })
             return
         end
 
         local currentCurrency = fetchCurrentCurrency()
-        if state and currentCurrency and currentCurrency >= config.targetCurrency then
-            targetCurrencyToggle:Set(false)
+        local currentEarned = calculateEarnedAmount(currentCurrency)
+        if state and currentEarned >= config.targetEarnedAmount then
+            targetEarnedToggle:Set(false)
             UILibrary:Notify({
                 Title = "配置警告",
-                Text = string.format("当前金额(%s)已超过目标金额(%s)，请调整后再开启",
-                    formatNumber(currentCurrency),
-                    formatNumber(config.targetCurrency)
+                Text = string.format("当前已赚取(%s)已超过目标(%s)，请调整后再开启",
+                    formatNumber(currentEarned),
+                    formatNumber(config.targetEarnedAmount)
                 ),
                 Duration = 6
             })
@@ -1183,37 +1192,34 @@ local targetCurrencyToggle = UILibrary:CreateToggle(targetCurrencyCard, {
         config.enableTargetKick = state
         UILibrary:Notify({
             Title = "配置更新",
-            Text = "目标金额踢出: " .. (state and "开启" or "关闭"),
+            Text = "目标赚取金额踢出: " .. (state and "开启" or "关闭"),
             Duration = 5
         })
         saveConfig()
     end
 })
 
-UILibrary:CreateLabel(targetCurrencyCard, {
-    Text = "目标金额",
-    --Size = UDim2.new(1, -10, 0, 20),
-    --Position = UDim2.new(0, 5, 0, 30)
+UILibrary:CreateLabel(targetEarnedCard, {
+    Text = "目标赚取金额",
 })
 
-local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
-    PlaceholderText = "输入目标金额",
-    --Position = UDim2.new(0, 5, 0, 50),
+local targetEarnedInput = UILibrary:CreateTextBox(targetEarnedCard, {
+    PlaceholderText = "输入目标赚取金额",
     OnFocusLost = function(text)
         text = text and text:match("^%s*(.-)%s*$")
-        print("[目标金额] 输入框失焦内容:", text)
+        print("[目标赚取金额] 输入框失焦内容:", text)
 
         if not text or text == "" then
-            if config.targetCurrency > 0 then
-                targetCurrencyInput.Text = formatNumber(config.targetCurrency)
+            if config.targetEarnedAmount > 0 then
+                targetEarnedInput.Text = formatNumber(config.targetEarnedAmount)
                 return
             end
-            config.targetCurrency = 0
+            config.targetEarnedAmount = 0
             config.enableTargetKick = false
-            targetCurrencyInput.Text = ""
+            targetEarnedInput.Text = ""
             UILibrary:Notify({
-                Title = "目标金额已清除",
-                Text = "已取消目标金额踢出功能",
+                Title = "目标赚取金额已清除",
+                Text = "已取消目标赚取金额踢出功能",
                 Duration = 5
             })
             saveConfig()
@@ -1223,50 +1229,51 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
         local num = tonumber(text)
         if num and num > 0 then
             local currentCurrency = fetchCurrentCurrency()
-            if currentCurrency and currentCurrency >= num then
-                targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
+            local currentEarned = calculateEarnedAmount(currentCurrency)
+            if currentEarned >= num then
+                targetEarnedInput.Text = tostring(config.targetEarnedAmount > 0 and formatNumber(config.targetEarnedAmount) or "")
                 UILibrary:Notify({
                     Title = "设置失败",
-                    Text = "目标金额(" .. formatNumber(num) .. ")小于当前金额(" .. formatNumber(currentCurrency) .. ")，请设置更大的目标值",
+                    Text = "目标赚取金额(" .. formatNumber(num) .. ")小于当前已赚取(" .. formatNumber(currentEarned) .. ")，请设置更大的目标值",
                     Duration = 5
                 })
                 return
             end
 
-            config.targetCurrency = num
-            targetCurrencyInput.Text = formatNumber(num)
+            config.targetEarnedAmount = num
+            targetEarnedInput.Text = formatNumber(num)
 
             if not config.enableTargetKick then
                 config.enableTargetKick = true
                 suppressTargetToggleCallback = true
-                targetCurrencyToggle:Set(true)
+                targetEarnedToggle:Set(true)
                 UILibrary:Notify({
                     Title = "已启用目标踢出",
-                    Text = "已自动开启目标金额踢出功能",
+                    Text = "已自动开启目标赚取金额踢出功能",
                     Duration = 5
                 })
             end
 
             UILibrary:Notify({
                 Title = "配置更新",
-                Text = "目标金额已设为 " .. formatNumber(num),
+                Text = "目标赚取金额已设为 " .. formatNumber(num),
                 Duration = 5
             })
             saveConfig()
         else
-            targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
+            targetEarnedInput.Text = tostring(config.targetEarnedAmount > 0 and formatNumber(config.targetEarnedAmount) or "")
             UILibrary:Notify({
                 Title = "配置错误",
-                Text = "请输入有效的正整数作为目标金额",
+                Text = "请输入有效的正整数作为目标赚取金额",
                 Duration = 5
             })
 
             if config.enableTargetKick then
                 config.enableTargetKick = false
-                targetCurrencyToggle:Set(false)
+                targetEarnedToggle:Set(false)
                 UILibrary:Notify({
                     Title = "目标踢出已禁用",
-                    Text = "请设置有效目标金额后重新启用",
+                    Text = "请设置有效目标赚取金额后重新启用",
                     Duration = 5
                 })
                 saveConfig()
@@ -1275,7 +1282,7 @@ local targetCurrencyInput = UILibrary:CreateTextBox(targetCurrencyCard, {
     end
 })
 
-targetCurrencyInput.Text = tostring(config.targetCurrency > 0 and formatNumber(config.targetCurrency) or "")
+targetEarnedInput.Text = tostring(config.targetEarnedAmount > 0 and formatNumber(config.targetEarnedAmount) or "")
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
@@ -1291,8 +1298,6 @@ local authorInfo = UILibrary:CreateAuthorInfo(aboutContent, {
 -- 添加一个按钮用于复制 Discord 链接
 UILibrary:CreateButton(aboutContent, {
     Text = "复制 Discord",
-    --Position = UDim2.new(0, 10, 0, 80),
-    --Size = UDim2.new(0, 160, 0, 30),
     Callback = function()
         local link = "https://discord.gg/j20v0eWU8u"
         if setclipboard and type(link) == "string" then
@@ -1322,7 +1327,6 @@ local webhookDisabled = false
 local startTime = os.time()
 local lastSendTime = os.time()
 local lastCurrency = nil
-local initialCurrency = fetchCurrentCurrency()
 
 local checkInterval = 1
 
@@ -1360,31 +1364,38 @@ local function formatElapsedTime(seconds)
     return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
 end
 
+-- 修改：更新金额保存函数
+local function updateLastSavedCurrency(currentCurrency)
+    if currentCurrency and currentCurrency ~= config.lastSavedCurrency then
+        config.lastSavedCurrency = currentCurrency
+        saveConfig()
+    end
+end
+
 -- 主循环
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
 
-    local totalChange = 0
-    if currentCurrency and initialCurrency then
-        totalChange = currentCurrency - initialCurrency
-    end
-    earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(totalChange)
+    -- 修改：计算已赚取金额
+    local earnedAmount = calculateEarnedAmount(currentCurrency)
+    earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedAmount)
 
     local shouldShutdown = false
 
-    -- 🎯 目标金额监测
+    -- 🎯 修改：目标赚取金额监测
     if not webhookDisabled and config.enableTargetKick and currentCurrency
-       and currentCurrency >= config.targetCurrency and config.targetCurrency > 0 then
+       and config.targetEarnedAmount > 0 and earnedAmount >= config.targetEarnedAmount then
 
         local payload = {
             embeds = {{
-                title = "🎯 目标金额达成",
+                title = "🎯 目标赚取金额达成",
                 description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s",
+                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**已赚取**: %s\n**目标赚取**: %s",
                     gameName, username,
                     formatNumber(currentCurrency),
-                    formatNumber(config.targetCurrency)
+                    formatNumber(earnedAmount),
+                    formatNumber(config.targetEarnedAmount)
                 ),
                 color = PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -1394,11 +1405,13 @@ while true do
 
         UILibrary:Notify({
             Title = "目标达成",
-            Text = "已达到目标金额 " .. formatNumber(config.targetCurrency) .. "，即将退出游戏",
+            Text = "已达到目标赚取金额 " .. formatNumber(config.targetEarnedAmount) .. "，即将退出游戏",
             Duration = 5
         })
 
         if dispatchWebhook(payload) then
+            -- 更新保存的金额
+            updateLastSavedCurrency(currentCurrency)
             wait(0.5)
             game:Shutdown()
             return
@@ -1436,7 +1449,7 @@ while true do
             earnedChange = currentCurrency - lastCurrency
         end
 
-        if currentCurrency == lastCurrency and totalChange == 0 and earnedChange == 0 then
+        if currentCurrency == lastCurrency and earnedAmount == 0 and earnedChange == 0 then
             unchangedCount = unchangedCount + 1
         else
             unchangedCount = 0
@@ -1459,6 +1472,8 @@ while true do
                 webhookDisabled = true
                 lastSendTime = currentTime
                 lastCurrency = currentCurrency
+                -- 更新保存的金额
+                updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "连接异常",
                     Text = "检测到金额连续两次未变化，已停止发送 Webhook",
@@ -1489,7 +1504,7 @@ while true do
                 local elapsedTime = currentTime - startTime
                 local avgMoney = "0"
                 if elapsedTime > 0 then
-                    local rawAvg = totalChange / (elapsedTime / 3600)
+                    local rawAvg = earnedAmount / (elapsedTime / 3600)
                     avgMoney = formatNumber(math.floor(rawAvg + 0.5))
                 end
 
@@ -1501,7 +1516,7 @@ while true do
                         formatElapsedTime(elapsedTime),
                         formatNumber(currentCurrency),
                         (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
-                        (totalChange >= 0 and "+" or ""), formatNumber(totalChange),
+                        (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),
                         avgMoney
                     ),
                     inline = false
@@ -1540,6 +1555,8 @@ while true do
                 if config.notifyCash and currentCurrency then
                     lastCurrency = currentCurrency
                 end
+                -- 更新保存的金额
+                updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "定时通知",
                     Text = "Webhook 已发送，下次时间: " .. os.date("%Y-%m-%d %H:%M:%S", nextNotifyTimestamp),
@@ -1547,6 +1564,8 @@ while true do
                 })
 
                 if shouldShutdown then
+                    -- 更新保存的金额
+                    updateLastSavedCurrency(currentCurrency)
                     wait(0.5)
                     game:Shutdown()
                     return
