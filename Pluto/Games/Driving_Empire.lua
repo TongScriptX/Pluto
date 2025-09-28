@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local lastWebhookUrl = ""
 local lastSendTime = os.time()
 --调试模式
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 -- 调试打印函数
 local function debugLog(...)
@@ -1196,23 +1196,34 @@ UILibrary:CreateLabel(baseAmountCard, {
     Text = "基准金额设置",
 })
 
--- 先创建目标金额标签变量（需要在输入框之前定义）
+-- 先创建目标金额标签变量
 local targetAmountLabel
+
+-- 强制检查配置中是否有异常的64值
+debugLog("[配置检查] 当前配置中的baseAmount:", config.baseAmount)
+debugLog("[配置检查] 当前配置中的targetAmount:", config.targetAmount)
 
 local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
     PlaceholderText = "输入基准金额",
     OnFocusLost = function(text)
         text = text and text:match("^%s*(.-)%s*$")
         
+        debugLog("[输入处理] 原始输入文本:", text or "nil")
+        
         if not text or text == "" then
-            -- 清空时重置为0而不是保持原值
+            -- 清空时重置为0
             config.baseAmount = 0
             config.targetAmount = 0
             baseAmountInput.Text = ""
             if targetAmountLabel then
                 targetAmountLabel.Text = "目标金额: 未设置"
             end
+            
+            -- 立即保存并验证
             saveConfig()
+            debugLog("[清空后] baseAmount保存为:", config.baseAmount)
+            debugLog("[清空后] targetAmount保存为:", config.targetAmount)
+            
             UILibrary:Notify({
                 Title = "基准金额已清除",
                 Text = "基准金额和目标金额已重置",
@@ -1225,13 +1236,35 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
         local cleanText = text:gsub(",", "")
         local num = tonumber(cleanText)
         
+        debugLog("[数字转换] 清理后的文本:", cleanText)
+        debugLog("[数字转换] 转换后的数字:", num)
+        
         if num and num > 0 then
             local currentCurrency = fetchCurrentCurrency() or 0
-            local suggestedTarget = num + currentCurrency
+            debugLog("[金额获取] 当前游戏金额:", currentCurrency)
             
-            -- 更新配置
+            -- 修正问题3：确保目标金额大于当前金额
+            local suggestedTarget = num + currentCurrency
+            if suggestedTarget <= currentCurrency then
+                baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
+                UILibrary:Notify({
+                    Title = "配置错误",
+                    Text = string.format("基准金额(%s)太小，目标金额(%s)必须大于当前金额(%s)", 
+                        formatNumber(num), formatNumber(suggestedTarget), formatNumber(currentCurrency)),
+                    Duration = 6
+                })
+                return
+            end
+            
+            debugLog("[计算前] 即将设置baseAmount为:", num)
+            debugLog("[计算前] 即将设置targetAmount为:", suggestedTarget)
+            
+            -- 修正问题1&2：直接赋值并立即保存验证
             config.baseAmount = num
             config.targetAmount = suggestedTarget
+            
+            debugLog("[赋值后] config.baseAmount:", config.baseAmount)
+            debugLog("[赋值后] config.targetAmount:", config.targetAmount)
             
             -- 格式化显示输入框
             baseAmountInput.Text = formatNumber(num)
@@ -1239,11 +1272,33 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             -- 动态更新目标金额标签
             if targetAmountLabel then
                 targetAmountLabel.Text = "目标金额: " .. formatNumber(suggestedTarget)
+                debugLog("[标签更新] 目标金额标签已更新为:", formatNumber(suggestedTarget))
+            end
+            
+            -- 立即保存配置并验证保存结果
+            saveConfig()
+            
+            -- 验证保存是否成功
+            debugLog("[保存验证] 保存后config.baseAmount:", config.baseAmount)
+            debugLog("[保存验证] 保存后config.targetAmount:", config.targetAmount)
+            
+            -- 从文件重新读取验证
+            if isfile(configFile) then
+                local success, result = pcall(function()
+                    local fileContent = HttpService:JSONDecode(readfile(configFile))
+                    return fileContent[username]
+                end)
+                if success and result then
+                    debugLog("[文件验证] 文件中的baseAmount:", result.baseAmount)
+                    debugLog("[文件验证] 文件中的targetAmount:", result.targetAmount)
+                else
+                    debugLog("[文件验证] 读取配置文件失败")
+                end
             end
             
             UILibrary:Notify({
                 Title = "基准金额已设置",
-                Text = string.format("基准金额: %s\n目标金额已更新为: %s\n(基准金额 + 当前金额: %s)", 
+                Text = string.format("基准金额: %s\n目标金额: %s\n当前金额: %s", 
                     formatNumber(num), 
                     formatNumber(suggestedTarget),
                     formatNumber(currentCurrency)),
@@ -1258,12 +1313,6 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
                     Duration = 5
                 })
             end
-            
-            saveConfig()
-            
-            debugLog("[BaseAmount] 输入的基准金额:", formatNumber(num))
-            debugLog("[BaseAmount] 当前游戏金额:", formatNumber(currentCurrency))
-            debugLog("[BaseAmount] 计算的目标金额:", formatNumber(suggestedTarget))
         else
             baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
             UILibrary:Notify({
@@ -1275,7 +1324,14 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
     end
 })
 
-baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
+-- 显示当前实际配置值，不要有任何默认值干扰
+if config.baseAmount > 0 then
+    baseAmountInput.Text = formatNumber(config.baseAmount)
+else
+    baseAmountInput.Text = ""
+end
+
+debugLog("[初始化] 输入框初始值:", baseAmountInput.Text)
 
 -- 目标金额踢出卡片
 local targetAmountCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
@@ -1331,9 +1387,13 @@ local targetAmountToggle = UILibrary:CreateToggle(targetAmountCard, {
     end
 })
 
+-- 正确初始化目标金额标签
 targetAmountLabel = UILibrary:CreateLabel(targetAmountCard, {
     Text = "目标金额: " .. (config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
 })
+
+debugLog("[标签初始化] 目标金额标签初始文本:", targetAmountLabel.Text)
+
 
 -- 重新计算目标金额的按钮
 UILibrary:CreateButton(targetAmountCard, {
@@ -1352,41 +1412,45 @@ UILibrary:CreateButton(targetAmountCard, {
         local oldTarget = config.targetAmount
         local newTarget = config.baseAmount + currentCurrency
         
-        debugLog("[目标重算] 旧目标金额:", formatNumber(oldTarget))
-        debugLog("[目标重算] 使用基准金额:", formatNumber(config.baseAmount))
-        debugLog("[目标重算] 当前游戏金额:", formatNumber(currentCurrency))
-        debugLog("[目标重算] 计算的新目标金额:", formatNumber(newTarget))
+        debugLog("[重新计算] 使用基准金额:", config.baseAmount)
+        debugLog("[重新计算] 当前游戏金额:", currentCurrency)
+        debugLog("[重新计算] 计算的新目标:", newTarget)
+        debugLog("[重新计算] 旧目标金额:", oldTarget)
         
-        -- 修复：即使数值相同也要更新显示和保存
+        -- 检查目标金额是否合理
+        if newTarget <= currentCurrency then
+            UILibrary:Notify({
+                Title = "计算错误",
+                Text = string.format("计算后的目标金额(%s)不能小于等于当前金额(%s)，请检查基准金额设置", 
+                    formatNumber(newTarget), formatNumber(currentCurrency)),
+                Duration = 6
+            })
+            return
+        end
+        
+        -- 更新配置
         config.targetAmount = newTarget
         
-        -- 动态更新标签
+        -- 更新显示
         if targetAmountLabel then
             targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
         end
         
-        if newTarget == oldTarget then
-            UILibrary:Notify({
-                Title = "目标金额重新计算",
-                Text = string.format("重新计算完成\n基准金额: %s\n当前金额: %s\n目标金额: %s (无变化)", 
-                    formatNumber(config.baseAmount),
-                    formatNumber(currentCurrency),
-                    formatNumber(newTarget)),
-                Duration = 7
-            })
-        else
-            UILibrary:Notify({
-                Title = "目标金额已更新",
-                Text = string.format("基准金额: %s\n当前金额: %s\n旧目标: %s\n新目标: %s", 
-                    formatNumber(config.baseAmount),
-                    formatNumber(currentCurrency),
-                    formatNumber(oldTarget),
-                    formatNumber(newTarget)),
-                Duration = 7
-            })
-        end
-        
+        -- 保存配置
         saveConfig()
+        
+        -- 验证保存
+        debugLog("[重新计算保存后] config.targetAmount:", config.targetAmount)
+        
+        UILibrary:Notify({
+            Title = "目标金额已重新计算",
+            Text = string.format("基准金额: %s\n当前金额: %s\n%s: %s", 
+                formatNumber(config.baseAmount),
+                formatNumber(currentCurrency),
+                (newTarget == oldTarget and "目标金额(无变化)" or "新目标金额"),
+                formatNumber(newTarget)),
+            Duration = 7
+        })
     end
 })
 
