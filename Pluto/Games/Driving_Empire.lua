@@ -1254,7 +1254,7 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             if not config.enableTargetKick then
                 UILibrary:Notify({
                     Title = "提示",
-                    Text = "目标金额已生成，您可以开启下方的"目标金额踢出"功能",
+                    Text = "目标金额已生成",
                     Duration = 5
                 })
             end
