@@ -1189,7 +1189,7 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
 intervalInput.Text = tostring(config.notificationInterval)
 debugLog("通知间隔输入框创建:", intervalInput.Parent and "父对象存在" or "无父对象")
 
--- 修改：基准金额设置卡片
+-- 基准金额设置卡片
 local baseAmountCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 
 UILibrary:CreateLabel(baseAmountCard, {
@@ -1208,21 +1208,42 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
 
         local num = tonumber(text:gsub(",", "")) -- 移除千位分隔符
         if num and num > 0 then
-            config.baseAmount = num
-            baseAmountInput.Text = formatNumber(num)
-            
-            -- 自动生成目标金额（基准金额 + 当前金额）
             local currentCurrency = fetchCurrentCurrency() or 0
             local suggestedTarget = num + currentCurrency
+            
+            -- 更新配置
+            config.baseAmount = num
             config.targetAmount = suggestedTarget
+            
+            -- 格式化显示
+            baseAmountInput.Text = formatNumber(num)
+            
+            -- 动态更新目标金额标签
+            targetAmountLabel.Text = "目标金额: " .. formatNumber(suggestedTarget)
             
             UILibrary:Notify({
                 Title = "基准金额已设置",
-                Text = string.format("基准金额: %s，自动生成目标金额: %s", 
-                    formatNumber(num), formatNumber(suggestedTarget)),
-                Duration = 5
+                Text = string.format("基准金额: %s\n目标金额已更新为: %s\n(基准金额 + 当前金额: %s)", 
+                    formatNumber(num), 
+                    formatNumber(suggestedTarget),
+                    formatNumber(currentCurrency)),
+                Duration = 7
             })
+            
+            -- 如果目标踢出开关是关闭的，询问是否开启
+            if not config.enableTargetKick then
+                UILibrary:Notify({
+                    Title = "提示",
+                    Text = "目标金额已生成，您可以开启下方的"目标金额踢出"功能",
+                    Duration = 5
+                })
+            end
+            
             saveConfig()
+            
+            debugLog("[BaseAmount] 基准金额设置为:", formatNumber(num))
+            debugLog("[BaseAmount] 当前金额:", formatNumber(currentCurrency))
+            debugLog("[BaseAmount] 目标金额生成为:", formatNumber(suggestedTarget))
         else
             baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
             UILibrary:Notify({
@@ -1236,7 +1257,7 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
 
 baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
 
--- 修改：目标金额踢出卡片
+-- 目标金额踢出卡片
 local targetAmountCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 
 local suppressTargetToggleCallback = false
@@ -1281,15 +1302,52 @@ local targetAmountToggle = UILibrary:CreateToggle(targetAmountCard, {
         config.enableTargetKick = state
         UILibrary:Notify({
             Title = "配置更新",
-            Text = "目标金额踢出: " .. (state and "开启" or "关闭"),
+            Text = string.format("目标金额踢出: %s\n目标金额: %s", 
+                (state and "开启" or "关闭"),
+                config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
             Duration = 5
         })
         saveConfig()
     end
 })
 
-UILibrary:CreateLabel(targetAmountCard, {
+-- 创建目标金额标签
+local targetAmountLabel = UILibrary:CreateLabel(targetAmountCard, {
     Text = "目标金额: " .. (config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
+})
+
+-- 添加重新计算目标金额的按钮
+UILibrary:CreateButton(targetAmountCard, {
+    Text = "重新计算目标金额",
+    Callback = function()
+        if config.baseAmount <= 0 then
+            UILibrary:Notify({
+                Title = "配置错误",
+                Text = "请先设置基准金额",
+                Duration = 5
+            })
+            return
+        end
+        
+        local currentCurrency = fetchCurrentCurrency() or 0
+        local newTarget = config.baseAmount + currentCurrency
+        config.targetAmount = newTarget
+        
+        -- 动态更新标签
+        targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
+        
+        UILibrary:Notify({
+            Title = "目标金额已重新计算",
+            Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
+                formatNumber(config.baseAmount),
+                formatNumber(currentCurrency),
+                formatNumber(newTarget)),
+            Duration = 7
+        })
+        
+        saveConfig()
+        debugLog("[目标重算] 新目标金额:", formatNumber(newTarget))
+    end
 })
 
 -- 标签页：关于
