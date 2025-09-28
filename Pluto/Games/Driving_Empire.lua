@@ -1205,7 +1205,19 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
         text = text and text:match("^%s*(.-)%s*$")
         
         if not text or text == "" then
-            baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
+            -- 清空时重置为0而不是保持原值
+            config.baseAmount = 0
+            config.targetAmount = 0
+            baseAmountInput.Text = ""
+            if targetAmountLabel then
+                targetAmountLabel.Text = "目标金额: 未设置"
+            end
+            saveConfig()
+            UILibrary:Notify({
+                Title = "基准金额已清除",
+                Text = "基准金额和目标金额已重置",
+                Duration = 5
+            })
             return
         end
 
@@ -1242,7 +1254,7 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             if not config.enableTargetKick then
                 UILibrary:Notify({
                     Title = "提示",
-                    Text = "目标金额已生成",
+                    Text = "目标金额已生成，您可以开启下方的"目标金额踢出"功能",
                     Duration = 5
                 })
             end
@@ -1319,12 +1331,11 @@ local targetAmountToggle = UILibrary:CreateToggle(targetAmountCard, {
     end
 })
 
--- 创建目标金额标签（赋值给之前声明的变量）
 targetAmountLabel = UILibrary:CreateLabel(targetAmountCard, {
     Text = "目标金额: " .. (config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
 })
 
--- 添加重新计算目标金额的按钮
+-- 重新计算目标金额的按钮
 UILibrary:CreateButton(targetAmountCard, {
     Text = "重新计算目标金额",
     Callback = function()
@@ -1338,18 +1349,15 @@ UILibrary:CreateButton(targetAmountCard, {
         end
         
         local currentCurrency = fetchCurrentCurrency() or 0
+        local oldTarget = config.targetAmount
         local newTarget = config.baseAmount + currentCurrency
         
-        -- 检查是否真的发生了变化
-        if newTarget == config.targetAmount then
-            UILibrary:Notify({
-                Title = "无需更新",
-                Text = string.format("目标金额无变化，仍为: %s", formatNumber(newTarget)),
-                Duration = 5
-            })
-            return
-        end
+        debugLog("[目标重算] 旧目标金额:", formatNumber(oldTarget))
+        debugLog("[目标重算] 使用基准金额:", formatNumber(config.baseAmount))
+        debugLog("[目标重算] 当前游戏金额:", formatNumber(currentCurrency))
+        debugLog("[目标重算] 计算的新目标金额:", formatNumber(newTarget))
         
+        -- 修复：即使数值相同也要更新显示和保存
         config.targetAmount = newTarget
         
         -- 动态更新标签
@@ -1357,19 +1365,28 @@ UILibrary:CreateButton(targetAmountCard, {
             targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
         end
         
-        UILibrary:Notify({
-            Title = "目标金额已重新计算",
-            Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
-                formatNumber(config.baseAmount),
-                formatNumber(currentCurrency),
-                formatNumber(newTarget)),
-            Duration = 7
-        })
+        if newTarget == oldTarget then
+            UILibrary:Notify({
+                Title = "目标金额重新计算",
+                Text = string.format("重新计算完成\n基准金额: %s\n当前金额: %s\n目标金额: %s (无变化)", 
+                    formatNumber(config.baseAmount),
+                    formatNumber(currentCurrency),
+                    formatNumber(newTarget)),
+                Duration = 7
+            })
+        else
+            UILibrary:Notify({
+                Title = "目标金额已更新",
+                Text = string.format("基准金额: %s\n当前金额: %s\n旧目标: %s\n新目标: %s", 
+                    formatNumber(config.baseAmount),
+                    formatNumber(currentCurrency),
+                    formatNumber(oldTarget),
+                    formatNumber(newTarget)),
+                Duration = 7
+            })
+        end
         
         saveConfig()
-        debugLog("[目标重算] 使用基准金额:", formatNumber(config.baseAmount))
-        debugLog("[目标重算] 当前游戏金额:", formatNumber(currentCurrency))
-        debugLog("[目标重算] 重新计算的目标金额:", formatNumber(newTarget))
     end
 })
 
