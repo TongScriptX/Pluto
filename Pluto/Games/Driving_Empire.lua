@@ -1243,25 +1243,14 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             local currentCurrency = fetchCurrentCurrency() or 0
             debugLog("[金额获取] 当前游戏金额:", currentCurrency)
             
-            -- 修正问题3：确保目标金额大于当前金额
-            local suggestedTarget = num + currentCurrency
-            if suggestedTarget <= currentCurrency then
-                baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
-                UILibrary:Notify({
-                    Title = "配置错误",
-                    Text = string.format("基准金额(%s)太小，目标金额(%s)必须大于当前金额(%s)", 
-                        formatNumber(num), formatNumber(suggestedTarget), formatNumber(currentCurrency)),
-                    Duration = 6
-                })
-                return
-            end
-            
+            -- 计算新目标金额
+            local newTarget = num + currentCurrency
             debugLog("[计算前] 即将设置baseAmount为:", num)
-            debugLog("[计算前] 即将设置targetAmount为:", suggestedTarget)
+            debugLog("[计算前] 即将设置targetAmount为:", newTarget)
             
             -- 修正问题1&2：直接赋值并立即保存验证
             config.baseAmount = num
-            config.targetAmount = suggestedTarget
+            config.targetAmount = newTarget
             
             debugLog("[赋值后] config.baseAmount:", config.baseAmount)
             debugLog("[赋值后] config.targetAmount:", config.targetAmount)
@@ -1271,8 +1260,8 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             
             -- 动态更新目标金额标签
             if targetAmountLabel then
-                targetAmountLabel.Text = "目标金额: " .. formatNumber(suggestedTarget)
-                debugLog("[标签更新] 目标金额标签已更新为:", formatNumber(suggestedTarget))
+                targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
+                debugLog("[标签更新] 目标金额标签已更新为:", formatNumber(newTarget))
             end
             
             -- 立即保存配置并验证保存结果
@@ -1296,21 +1285,28 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
                 end
             end
             
+            -- 显示详细的更新通知（类似重新计算按钮的效果）
             UILibrary:Notify({
                 Title = "基准金额已设置",
-                Text = string.format("基准金额: %s\n目标金额: %s\n当前金额: %s", 
+                Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
                     formatNumber(num), 
-                    formatNumber(suggestedTarget),
-                    formatNumber(currentCurrency)),
+                    formatNumber(currentCurrency),
+                    formatNumber(newTarget)),
                 Duration = 7
             })
             
-            -- 如果目标踢出开关是关闭的，询问是否开启
-            if not config.enableTargetKick then
+            -- 如果目标踢出开关是开启的，检查是否需要关闭
+            if config.enableTargetKick and currentCurrency >= newTarget then
+                suppressTargetToggleCallback = true
+                targetAmountToggle:Set(false)
+                config.enableTargetKick = false
+                saveConfig()
                 UILibrary:Notify({
-                    Title = "提示",
-                    Text = "目标金额已生成",
-                    Duration = 5
+                    Title = "自动关闭",
+                    Text = string.format("当前金额(%s)已达到目标(%s)，目标金额踢出功能已自动关闭",
+                        formatNumber(currentCurrency),
+                        formatNumber(newTarget)),
+                    Duration = 6
                 })
             end
         else
@@ -1394,8 +1390,7 @@ targetAmountLabel = UILibrary:CreateLabel(targetAmountCard, {
 
 debugLog("[标签初始化] 目标金额标签初始文本:", targetAmountLabel.Text)
 
-
--- 重新计算目标金额的按钮
+-- 重新计算目标金额的按钮（备用功能）
 UILibrary:CreateButton(targetAmountCard, {
     Text = "重新计算目标金额",
     Callback = function()
@@ -1444,15 +1439,50 @@ UILibrary:CreateButton(targetAmountCard, {
         
         UILibrary:Notify({
             Title = "目标金额已重新计算",
-            Text = string.format("基准金额: %s\n当前金额: %s\n%s: %s", 
+            Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
                 formatNumber(config.baseAmount),
                 formatNumber(currentCurrency),
-                (newTarget == oldTarget and "目标金额(无变化)" or "新目标金额"),
                 formatNumber(newTarget)),
             Duration = 7
         })
+        
+        -- 如果目标踢出开关是开启的，检查是否需要关闭
+        if config.enableTargetKick and currentCurrency >= newTarget then
+            suppressTargetToggleCallback = true
+            targetAmountToggle:Set(false)
+            config.enableTargetKick = false
+            saveConfig()
+            UILibrary:Notify({
+                Title = "自动关闭",
+                Text = string.format("当前金额(%s)已达到目标(%s)，目标金额踢出功能已自动关闭",
+                    formatNumber(currentCurrency),
+                    formatNumber(newTarget)),
+                Duration = 6
+            })
+        end
     end
 })
+
+-- 添加一个实时更新目标金额的函数（用于外部调用）
+function updateTargetAmountDisplay()
+    if config.baseAmount > 0 then
+        local currentCurrency = fetchCurrentCurrency() or 0
+        local newTarget = config.baseAmount + currentCurrency
+        
+        -- 更新配置
+        config.targetAmount = newTarget
+        
+        -- 更新显示
+        if targetAmountLabel then
+            targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
+        end
+        
+        -- 保存配置
+        saveConfig()
+        
+        debugLog("[实时更新] 目标金额已更新为:", newTarget)
+    end
+end
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
