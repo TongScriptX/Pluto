@@ -7,7 +7,7 @@ local UserInputService = game:GetService("UserInputService")
 local lastWebhookUrl = ""
 local lastSendTime = os.time()
 --调试模式
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 
 -- 调试打印函数
 local function debugLog(...)
