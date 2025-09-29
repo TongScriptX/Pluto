@@ -1248,7 +1248,7 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             debugLog("[计算前] 即将设置baseAmount为:", num)
             debugLog("[计算前] 即将设置targetAmount为:", newTarget)
             
-            -- 修正问题1&2：直接赋值并立即保存验证
+            -- 直接赋值并立即保存验证
             config.baseAmount = num
             config.targetAmount = newTarget
             
@@ -1285,7 +1285,7 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
                 end
             end
             
-            -- 显示详细的更新通知（类似重新计算按钮的效果）
+            -- 显示详细的更新通知
             UILibrary:Notify({
                 Title = "基准金额已设置",
                 Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
@@ -1583,38 +1583,90 @@ while true do
 
     local shouldShutdown = false
 
-    -- 🎯 修改：目标金额监测
-    if not webhookDisabled and config.enableTargetKick and currentCurrency
-       and config.targetAmount > 0 and currentCurrency >= config.targetAmount then
+    -- 🎯 修复：目标金额监测 - 确保条件正确且逻辑清晰
+    if config.enableTargetKick and currentCurrency and config.targetAmount > 0 then
+        debugLog("[目标检测] 当前金额:", currentCurrency)
+        debugLog("[目标检测] 目标金额:", config.targetAmount) 
+        debugLog("[目标检测] 是否达到目标:", currentCurrency >= config.targetAmount)
+        debugLog("[目标检测] webhookDisabled状态:", webhookDisabled)
+        
+        if currentCurrency >= config.targetAmount then
+            local payload = {
+                embeds = {{
+                    title = "🎯 目标金额达成",
+                    description = string.format(
+                        "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s\n**基准金额**: %s\n**运行时长**: %s",
+                        gameName, username,
+                        formatNumber(currentCurrency),
+                        formatNumber(config.targetAmount),
+                        formatNumber(config.baseAmount),
+                        formatElapsedTime(currentTime - startTime)
+                    ),
+                    color = PRIMARY_COLOR,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "作者: tongblx · Pluto-X" }
+                }}
+            }
 
-        local payload = {
-            embeds = {{
-                title = "🎯 目标金额达成",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s\n**基准金额**: %s",
-                    gameName, username,
-                    formatNumber(currentCurrency),
-                    formatNumber(config.targetAmount),
-                    formatNumber(config.baseAmount)
-                ),
-                color = PRIMARY_COLOR,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" }
-            }}
-        }
+            UILibrary:Notify({
+                Title = "🎯 目标达成",
+                Text = string.format("已达到目标金额 %s，准备退出游戏...", formatNumber(config.targetAmount)),
+                Duration = 10
+            })
 
-        UILibrary:Notify({
-            Title = "目标达成",
-            Text = "已达到目标金额 " .. formatNumber(config.targetAmount) .. "，即将退出游戏",
-            Duration = 5
-        })
-
-        if dispatchWebhook(payload) then
+            debugLog("[目标达成] 开始发送Webhook...")
+            
+            -- 发送 Webhook（无论是否成功都要关闭游戏）
+            local webhookSent = false
+            if config.webhookUrl ~= "" and not webhookDisabled then
+                webhookSent = dispatchWebhook(payload)
+                if webhookSent then
+                    debugLog("[目标达成] Webhook发送成功")
+                    UILibrary:Notify({
+                        Title = "通知已发送",
+                        Text = "目标达成通知已发送到Webhook",
+                        Duration = 3
+                    })
+                else
+                    debugLog("[目标达成] Webhook发送失败")
+                    UILibrary:Notify({
+                        Title = "通知发送失败",
+                        Text = "Webhook发送失败，但仍将退出游戏",
+                        Duration = 3
+                    })
+                end
+            else
+                debugLog("[目标达成] 未配置Webhook或已禁用，跳过发送")
+                UILibrary:Notify({
+                    Title = "未配置通知",
+                    Text = "未配置Webhook，直接退出游戏",
+                    Duration = 3
+                })
+            end
+            
             -- 更新保存的金额
             updateLastSavedCurrency(currentCurrency)
-            wait(0.5)
-            game:Shutdown()
-            return
+            
+            -- 禁用目标踢出功能（避免重复触发）
+            config.enableTargetKick = false
+            saveConfig()
+            
+            debugLog("[目标达成] 等待3秒后关闭游戏...")
+            wait(3) -- 给用户一点时间看到通知
+            
+            debugLog("[目标达成] 正在关闭游戏...")
+            
+            -- 强制关闭游戏
+            pcall(function()
+                game:Shutdown()
+            end)
+            
+            -- 备用关闭方法
+            pcall(function()
+                player:Kick("目标金额已达成，游戏自动退出")
+            end)
+            
+            return -- 确保脚本停止执行
         end
     end
 
