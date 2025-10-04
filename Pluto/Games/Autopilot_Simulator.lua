@@ -1066,7 +1066,8 @@ while true do
             local elapsedTime = currentTime - startTime
             local avgMoney = "0"
             if elapsedTime > 0 then
-                local rawAvg = earnedAmount / (elapsedTime / 3600)
+                local actualTotalEarned = currentCurrency - initialCurrency
+                local rawAvg = actualTotalEarned / (elapsedTime / 3600)
                 avgMoney = formatNumber(math.floor(rawAvg + 0.5))
             end
 
