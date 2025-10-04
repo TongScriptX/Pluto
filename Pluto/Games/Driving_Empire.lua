@@ -1756,24 +1756,26 @@ while true do
                 local elapsedTime = currentTime - startTime
                 local avgMoney = "0"
                 if elapsedTime > 0 then
-                    local rawAvg = earnedAmount / (elapsedTime / 3600)
+                    -- 修复：使用当前金额减去初始金额来计算真实的总收益
+                    local actualTotalEarned = currentCurrency - initialCurrency
+                    local rawAvg = actualTotalEarned / (elapsedTime / 3600)
                     avgMoney = formatNumber(math.floor(rawAvg + 0.5))
-                end
+                   end
 
-                table.insert(embed.fields, {
-                    name = "💰金额通知",
-                    value = string.format(
-                        "**用户名**: %s\n**已运行时间**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
-                        username,
-                        formatElapsedTime(elapsedTime),
-                        formatNumber(currentCurrency),
-                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
-                        (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),
-                        avgMoney
-                    ),
-                    inline = false
-                })
-            end
+                   table.insert(embed.fields, {
+                       name = "💰金额通知",
+                       value = string.format(
+                           "**用户名**: %s\n**已运行时间**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
+                           username,
+                           formatElapsedTime(elapsedTime),
+                           formatNumber(currentCurrency),
+                           (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
+                           (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),
+                           avgMoney
+                       ),
+                       inline = false
+                   })
+                  end
 
             if config.notifyLeaderboard or config.leaderboardKick then
                 local currentRank, isOnLeaderboard = fetchPlayerRank()
