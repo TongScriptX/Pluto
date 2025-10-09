@@ -758,7 +758,92 @@ end
 -- 在线时长奖励领取
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
-local player = game.Players.LocalPlayer
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- 工具：根据多种策略寻找 rewardsRoot（SmallRewards）
+local function findRewardsRoot()
+    -- 1. 尝试显式路径：PlayerGui.DailyQuests.DailyChallenges.holder.PlaytimeRewards.RewardsList.SmallRewards
+    local ok, gui = pcall(function()
+        return player:WaitForChild("PlayerGui", 2)
+    end)
+    if not ok or not gui then
+        return nil
+    end
+
+    do
+        local success, result = pcall(function()
+            local dailyQuests = gui:FindFirstChild("DailyQuests")
+            if dailyQuests then
+                local dailyChallenges = dailyQuests:FindFirstChild("DailyChallenges")
+                if dailyChallenges and dailyChallenges:FindFirstChild("holder") and dailyChallenges.holder:FindFirstChild("PlaytimeRewards") then
+                    local pr = dailyChallenges.holder.PlaytimeRewards
+                    if pr and pr:FindFirstChild("RewardsList") and pr.RewardsList:FindFirstChild("SmallRewards") then
+                        return pr.RewardsList.SmallRewards
+                    end
+                end
+            end
+            return nil
+        end)
+        if success and result then
+            return result
+        end
+    end
+
+    -- 2. 尝试查找名叫 PlaytimeRewardsFrame 或带 Tag 的界面（参考你给出的模块 Tag = "PlaytimeRewardsFrame"）
+    do
+        for _, child in ipairs(gui:GetChildren()) do
+            if child:IsA("ScreenGui") or child:IsA("Frame") then
+                -- 先依据 Name
+                if child.Name == "PlaytimeRewardsFrame" or child.Name:find("PlaytimeRewards") then
+                    local rl = child:FindFirstChild("RewardsList")
+                    if rl and rl:FindFirstChild("SmallRewards") then
+                        return rl.SmallRewards
+                    end
+                end
+                -- 再依据子树查找 RewardsList.SmallRewards
+                local rl2 = child:FindFirstChild("RewardsList", true)
+                if rl2 and rl2:FindFirstChild("SmallRewards") then
+                    return rl2.SmallRewards
+                end
+            end
+        end
+    end
+
+    -- 3. 尝试旧路径：PlayerGui.MainHUD.DailyChallenges.holder.PlaytimeRewards.RewardsList.SmallRewards
+    do
+        local success, result = pcall(function()
+            local mainHUD = gui:FindFirstChild("MainHUD")
+            if mainHUD then
+                local dailyChallenges = mainHUD:FindFirstChild("DailyChallenges")
+                if dailyChallenges and dailyChallenges:FindFirstChild("holder") and dailyChallenges.holder:FindFirstChild("PlaytimeRewards") then
+                    local pr = dailyChallenges.holder.PlaytimeRewards
+                    if pr and pr:FindFirstChild("RewardsList") and pr.RewardsList:FindFirstChild("SmallRewards") then
+                        return pr.RewardsList.SmallRewards
+                    end
+                end
+            end
+            return nil
+        end)
+        if success and result then
+            return result
+        end
+    end
+
+    -- 4. 广搜（最后手段）：在 PlayerGui 中查找任意名为 "SmallRewards" 的 Frame（仅限第一层或少量深度，避免性能问题）
+    do
+        for _, child in ipairs(gui:GetDescendants()) do
+            if child:IsA("Frame") and child.Name == "SmallRewards" then
+                -- 确认父链有 RewardsList
+                if child.Parent and child.Parent.Name == "RewardsList" then
+                    return child
+                end
+            end
+        end
+    end
+
+    return nil
+end
 
 -- 在线时长奖励领取函数
 local function claimPlaytimeRewards()
@@ -775,22 +860,26 @@ local function claimPlaytimeRewards()
                 game.Loaded:Wait()
             end
 
-            local gui = player:WaitForChild("PlayerGui", 5)
-            local mainHUD = gui and gui:WaitForChild("MainHUD", 5)
-            local challenges = mainHUD and mainHUD:WaitForChild("DailyChallenges", 5)
-            local rewardsRoot = challenges and challenges.holder.PlaytimeRewards.RewardsList.SmallRewards
+            -- 查找 PlayerGui（短超时）
+            local gui = player:FindFirstChild("PlayerGui")
+            if not gui then
+                gui = player:WaitForChild("PlayerGui", 5)
+            end
+
+            local rewardsRoot = findRewardsRoot()
 
             if not rewardsRoot then
                 UILibrary:Notify({
                     Title = "领取失败",
-                    Text = "无法找到奖励界面",
+                    Text = "无法找到奖励界面（尝试多种查找策略失败）",
                     Duration = 5
                 })
-                warn("[PlaytimeRewards] 未找到奖励界面")
+                warn("[PlaytimeRewards] 未找到奖励界面（findRewardsRoot 返回 nil）")
                 task.wait(rewardCheckInterval)
                 continue
             end
 
+            -- 查找 Stats GUI（保持原逻辑）
             local statsGui
             for _, v in ipairs(gui:GetChildren()) do
                 if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
@@ -813,10 +902,10 @@ local function claimPlaytimeRewards()
             local claimedList = {}
             local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
             if claimedRaw and claimedRaw:IsA("StringValue") then
-                local success, parsed = pcall(function()
+                local ok, parsed = pcall(function()
                     return HttpService:JSONDecode(claimedRaw.Value)
                 end)
-                if success and typeof(parsed) == "table" then
+                if ok and typeof(parsed) == "table" then
                     for k, v in pairs(parsed) do
                         claimedList[tonumber(k)] = v
                     end
@@ -868,10 +957,10 @@ local function claimPlaytimeRewards()
                 continue
             end
 
-            local success, rewardsConfig = pcall(function()
+            local ok2, rewardsConfig = pcall(function()
                 return remotes:WaitForChild("GetRemoteConfigPath"):InvokeServer("driving-empire", "PlaytimeRewards")
             end)
-            if not success or type(rewardsConfig) ~= "table" then
+            if not ok2 or type(rewardsConfig) ~= "table" then
                 warn("[PlaytimeRewards] 获取奖励配置失败")
                 rewardsConfig = {}
             end
@@ -922,7 +1011,6 @@ local function claimPlaytimeRewards()
                         amountText = tostring(cfg.Amount or cfg.Name or "未知")
                     end
 
-                    -- 默认奖励7可领取处理逻辑
                     if not alreadyClaimed and i == 7 then
                         canClaim = true
                         stateText = "尝试领取（缺少 GUI）"
@@ -935,7 +1023,7 @@ local function claimPlaytimeRewards()
                 debugLog("[PlaytimeRewards] 奖励 " .. i .. " 状态：" .. stateText)
 
                 if canClaim then
-                    local success, err = pcall(function()
+                    local okClaim, err = pcall(function()
                         uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
                         task.wait(0.2)
                         playRewards:FireServer(i, false)
@@ -946,7 +1034,7 @@ local function claimPlaytimeRewards()
                         })
                         debugLog("[PlaytimeRewards] ✅ 已尝试领取奖励 ID:", i)
                     end)
-                    if not success then
+                    if not okClaim then
                         UILibrary:Notify({
                             Title = "领取失败",
                             Text = "奖励 ID: " .. i .. " 领取出错: " .. tostring(err),
@@ -965,6 +1053,12 @@ local function claimPlaytimeRewards()
         debugLog("[PlaytimeRewards] 在线时长奖励功能已关闭，停止领取循环")
     end)
 end
+
+-- 导出（如果你原先是模块化的，可以把此函数返回或直接调用）
+return {
+    claimPlaytimeRewards = claimPlaytimeRewards,
+    findRewardsRoot = findRewardsRoot,
+}
 
 -- 执行加载前先执行初始化
 pcall(initTargetAmount)
