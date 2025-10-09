@@ -790,7 +790,7 @@ local function findRewardsRoot()
         end
     end
 
-    -- 2. 尝试查找名叫 PlaytimeRewardsFrame 或带 Tag 的界面（参考你给出的模块 Tag = "PlaytimeRewardsFrame"）
+    -- 2. 尝试查找名叫 PlaytimeRewardsFrame 或带 Tag 的界面
     do
         for _, child in ipairs(gui:GetChildren()) do
             if child:IsA("ScreenGui") or child:IsA("Frame") then
@@ -830,7 +830,7 @@ local function findRewardsRoot()
         end
     end
 
-    -- 4. 广搜（最后手段）：在 PlayerGui 中查找任意名为 "SmallRewards" 的 Frame（仅限第一层或少量深度，避免性能问题）
+    -- 4. 广搜（最后手段）：在 PlayerGui 中查找任意名为 "SmallRewards" 的 Frame
     do
         for _, child in ipairs(gui:GetDescendants()) do
             if child:IsA("Frame") and child.Name == "SmallRewards" then
@@ -879,7 +879,7 @@ local function claimPlaytimeRewards()
                 continue
             end
 
-            -- 查找 Stats GUI（保持原逻辑）
+            -- 查找 Stats GUI
             local statsGui
             for _, v in ipairs(gui:GetChildren()) do
                 if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
@@ -1053,12 +1053,6 @@ local function claimPlaytimeRewards()
         debugLog("[PlaytimeRewards] 在线时长奖励功能已关闭，停止领取循环")
     end)
 end
-
--- 导出（如果你原先是模块化的，可以把此函数返回或直接调用）
-return {
-    claimPlaytimeRewards = claimPlaytimeRewards,
-    findRewardsRoot = findRewardsRoot,
-}
 
 -- 执行加载前先执行初始化
 pcall(initTargetAmount)
