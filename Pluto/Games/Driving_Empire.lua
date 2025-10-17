@@ -573,7 +573,7 @@ local function formatNumber(num)
     return result
 end
 
--- Webhook 发送（自动适配 Discord 和 企业微信格式）
+-- Webhook 发送
 local function dispatchWebhook(payload)
     if config.webhookUrl == "" then
         UILibrary:Notify({
@@ -597,85 +597,12 @@ local function dispatchWebhook(payload)
     end
 
     local url = config.webhookUrl
-    local bodyJson = ""
-    local isWechat = url:find("qyapi.weixin.qq.com/cgi%-bin/webhook/send")
-
-    if isWechat then
-        local e = payload.embeds and payload.embeds[1] or {}
-
-        local title = e.title or "Pluto-X 通知"
-        local description = e.description or ""
-        local fields = e.fields or {}
-        local footer = e.footer and e.footer.text or "Pluto-X"
-
-        -- 清洗 Markdown
-        local function clean(text)
-            return string.gsub(text or "", "%*%*(.-)%*%*", "%1")
-        end
-
-        -- 构造纵向排列内容：每个字段两项 key-value
-        local verticalList = {}
-        for _, field in ipairs(fields) do
-            table.insert(verticalList, {
-                keyname = clean(field.name),
-                value = ""
-            })
-            table.insert(verticalList, {
-                keyname = clean(field.value),
-                value = ""
-            })
-        end
-
-        -- 微信时间格式（不加 Z）
-        local timestampText = ""
-        if e.timestamp then
-            local pattern = "(%d+)%-(%d+)%-(%d+)T(%d+):(%d+):(%d+)Z"
-            local y, m, d, h, min, s = e.timestamp:match(pattern)
-            if y and m and d and h and min and s then
-                timestampText = string.format("%s-%s-%s %s:%s:%s", y, m, d, h, min, s)
-                table.insert(verticalList, {
-                    keyname = "通知时间",
-                    value = ""
-                })
-                table.insert(verticalList, {
-                    keyname = timestampText,
-                    value = ""
-                })
-            end
-        end
-
-        -- 构造卡片
-        local card = {
-            msgtype = "template_card",
-            template_card = {
-                card_type = "text_notice",
-                source = {
-                    icon_url = "",
-                    desc = footer,
-                    desc_color = 0
-                },
-                main_title = {
-                    title = clean(title),
-                    desc = ""
-                },
-                sub_title_text = clean(description),
-                horizontal_content_list = verticalList,
-                jump_list = {},
-                card_action = {
-                    type = 1,
-                    url = "https://example.com"
-                }
-            }
-        }
-
-        bodyJson = HttpService:JSONEncode(card)
-    else
-        -- Discord 默认
-        bodyJson = HttpService:JSONEncode({
-            content = nil,
-            embeds = payload.embeds
-        })
-    end
+    
+    -- 直接使用 Discord 格式
+    local bodyJson = HttpService:JSONEncode({
+        content = nil,
+        embeds = payload.embeds
+    })
 
     local success, res = pcall(function()
         return requestFunc({
@@ -1660,18 +1587,19 @@ local function updateLastSavedCurrency(currentCurrency)
     end
 end
 
+local lastNotifyCurrency = nil
 -- 主循环
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
 
-    -- 修改：计算已赚取金额
+    -- 计算从启动到现在的总收益
     local earnedAmount = calculateEarnedAmount(currentCurrency)
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedAmount)
 
     local shouldShutdown = false
 
-    -- 🎯 修复：目标金额监测 - 确保条件正确且逻辑清晰
+    -- 🎯 目标金额监测
     if config.enableTargetKick and currentCurrency and config.targetAmount > 0 then
         debugLog("[目标检测] 当前金额:", currentCurrency)
         debugLog("[目标检测] 目标金额:", config.targetAmount) 
@@ -1704,10 +1632,8 @@ while true do
 
             debugLog("[目标达成] 开始发送Webhook...")
             
-            -- 发送 Webhook（无论是否成功都要关闭游戏）
-            local webhookSent = false
             if config.webhookUrl ~= "" and not webhookDisabled then
-                webhookSent = dispatchWebhook(payload)
+                local webhookSent = dispatchWebhook(payload)
                 if webhookSent then
                     debugLog("[目标达成] Webhook发送成功")
                     UILibrary:Notify({
@@ -1732,29 +1658,22 @@ while true do
                 })
             end
             
-            -- 更新保存的金额
             updateLastSavedCurrency(currentCurrency)
-            
-            -- 禁用目标踢出功能（避免重复触发）
             config.enableTargetKick = false
             saveConfig()
             
             debugLog("[目标达成] 等待3秒后关闭游戏...")
-            wait(3) -- 给用户一点时间看到通知
+            wait(3)
             
             debugLog("[目标达成] 正在关闭游戏...")
-            
-            -- 强制关闭游戏
             pcall(function()
                 game:Shutdown()
             end)
-            
-            -- 备用关闭方法
             pcall(function()
                 player:Kick("目标金额已达成，游戏自动退出")
             end)
             
-            return -- 确保脚本停止执行
+            return
         end
     end
 
@@ -1784,11 +1703,18 @@ while true do
     if not webhookDisabled and (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)
        and interval >= getNotificationIntervalSeconds() then
 
-        local earnedChange = 0
-        if currentCurrency and lastCurrency then
-            earnedChange = currentCurrency - lastCurrency
+        -- 修复：正确计算本次变化和总计收益
+        local earnedChange = 0  -- 本次变化（距上次通知的变化）
+        
+        if currentCurrency and lastNotifyCurrency then
+            -- 本次变化 = 当前金额 - 上次通知时的金额
+            earnedChange = currentCurrency - lastNotifyCurrency
+        elseif currentCurrency and not lastNotifyCurrency then
+            -- 第一次通知，本次变化 = 总收益
+            earnedChange = earnedAmount
         end
 
+        -- 检测金额是否变化
         if currentCurrency == lastCurrency and earnedAmount == 0 and earnedChange == 0 then
             unchangedCount = unchangedCount + 1
         else
@@ -1812,7 +1738,7 @@ while true do
                 webhookDisabled = true
                 lastSendTime = currentTime
                 lastCurrency = currentCurrency
-                -- 更新保存的金额
+                lastNotifyCurrency = currentCurrency  -- 更新上次通知金额
                 updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "连接异常",
@@ -1844,26 +1770,26 @@ while true do
                 local elapsedTime = currentTime - startTime
                 local avgMoney = "0"
                 if elapsedTime > 0 then
-                    -- 修复：使用当前金额减去初始金额来计算真实的总收益
-                    local actualTotalEarned = currentCurrency - initialCurrency
+                    -- 使用从启动到现在的总收益计算平均速度
+                    local actualTotalEarned = earnedAmount
                     local rawAvg = actualTotalEarned / (elapsedTime / 3600)
                     avgMoney = formatNumber(math.floor(rawAvg + 0.5))
-                   end
+                end
 
-                   table.insert(embed.fields, {
-                       name = "💰金额通知",
-                       value = string.format(
-                           "**用户名**: %s\n**已运行时间**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
-                           username,
-                           formatElapsedTime(elapsedTime),
-                           formatNumber(currentCurrency),
-                           (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
-                           (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),
-                           avgMoney
-                       ),
-                       inline = false
-                   })
-                  end
+                table.insert(embed.fields, {
+                    name = "💰金额通知",
+                    value = string.format(
+                        "**用户名**: %s\n**已运行时间**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
+                        username,
+                        formatElapsedTime(elapsedTime),
+                        formatNumber(currentCurrency),
+                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),  -- 本次变化
+                        (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),  -- 总计收益
+                        avgMoney
+                    ),
+                    inline = false
+                })
+            end
 
             if config.notifyLeaderboard or config.leaderboardKick then
                 local currentRank, isOnLeaderboard = fetchPlayerRank()
@@ -1894,10 +1820,10 @@ while true do
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
                 lastSendTime = currentTime
+                lastNotifyCurrency = currentCurrency  -- 更新上次通知时的金额
                 if config.notifyCash and currentCurrency then
                     lastCurrency = currentCurrency
                 end
-                -- 更新保存的金额
                 updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "定时通知",
@@ -1906,7 +1832,6 @@ while true do
                 })
 
                 if shouldShutdown then
-                    -- 更新保存的金额
                     updateLastSavedCurrency(currentCurrency)
                     wait(0.5)
                     game:Shutdown()
