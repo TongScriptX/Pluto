@@ -53,12 +53,15 @@ local config = {
     leaderboardKick = false,
     notificationInterval = 30,
     welcomeSent = false,
-    targetAmount = 0, -- 修改：改为目标金额
+    targetAmount = 0,
     enableTargetKick = false,
-    lastSavedCurrency = 0, -- 基准金额
-    baseAmount = 0, -- 新增：输入的基准金额
+    lastSavedCurrency = 0,  -- 用于持久化保存
+    baseAmount = 0,
     onlineRewardEnabled = false,
     autoSpawnVehicleEnabled = false,
+    -- 新增：分离总收益基准和通知基准
+    totalEarningsBase = 0,  -- 总收益的基准金额（脚本启动时设置，不再改变）
+    lastNotifyCurrency = 0,  -- 上次通知时的金额（每次通知时更新）
 }
 
 -- 颜色定义
@@ -90,21 +93,36 @@ end
 -- 计算实际赚取金额的函数
 local function calculateEarnedAmount(currentCurrency)
     if not currentCurrency then return 0 end
-    if config.lastSavedCurrency > 0 then
-        -- 使用上次保存的金额作为基准
-        return currentCurrency - config.lastSavedCurrency
+    -- 使用固定的总收益基准
+    if config.totalEarningsBase > 0 then
+        return currentCurrency - config.totalEarningsBase
     else
         -- 首次运行，使用初始金额
         return currentCurrency - initialCurrency
     end
 end
 
+-- 修改：计算本次变化（距上次通知的变化）
+local function calculateChangeAmount(currentCurrency)
+    if not currentCurrency then return 0 end
+    if config.lastNotifyCurrency > 0 then
+        return currentCurrency - config.lastNotifyCurrency
+    else
+        -- 第一次通知，本次变化等于总收益
+        return calculateEarnedAmount(currentCurrency)
+    end
+end
+
 local success, currencyValue = pcall(fetchCurrentCurrency)
 if success and currencyValue then
     initialCurrency = currencyValue
-    -- 如果没有保存过金额，则使用当前金额作为起始点
-    if config.lastSavedCurrency == 0 then
-        config.lastSavedCurrency = currencyValue
+    -- 如果是首次运行，设置总收益基准
+    if config.totalEarningsBase == 0 then
+        config.totalEarningsBase = currencyValue
+    end
+    -- 如果没有设置过通知基准，也设置为当前金额
+    if config.lastNotifyCurrency == 0 then
+        config.lastNotifyCurrency = currencyValue
     end
     UILibrary:Notify({ Title = "初始化成功", Text = "当前金额: " .. tostring(initialCurrency), Duration = 5 })
 end
@@ -1587,13 +1605,21 @@ local function updateLastSavedCurrency(currentCurrency)
     end
 end
 
+-- 新增：更新通知基准金额的函数
+local function updateLastNotifyCurrency(currentCurrency)
+    if currentCurrency then
+        config.lastNotifyCurrency = currentCurrency
+        saveConfig()
+    end
+end
+
 local lastNotifyCurrency = nil
 -- 主循环
 while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
 
-    -- 计算从启动到现在的总收益
+    -- 计算从启动到现在的总收益（使用固定基准）
     local earnedAmount = calculateEarnedAmount(currentCurrency)
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedAmount)
 
@@ -1603,8 +1629,6 @@ while true do
     if config.enableTargetKick and currentCurrency and config.targetAmount > 0 then
         debugLog("[目标检测] 当前金额:", currentCurrency)
         debugLog("[目标检测] 目标金额:", config.targetAmount) 
-        debugLog("[目标检测] 是否达到目标:", currentCurrency >= config.targetAmount)
-        debugLog("[目标检测] webhookDisabled状态:", webhookDisabled)
         
         if currentCurrency >= config.targetAmount then
             local payload = {
@@ -1629,50 +1653,18 @@ while true do
                 Text = string.format("已达到目标金额 %s，准备退出游戏...", formatNumber(config.targetAmount)),
                 Duration = 10
             })
-
-            debugLog("[目标达成] 开始发送Webhook...")
             
             if config.webhookUrl ~= "" and not webhookDisabled then
-                local webhookSent = dispatchWebhook(payload)
-                if webhookSent then
-                    debugLog("[目标达成] Webhook发送成功")
-                    UILibrary:Notify({
-                        Title = "通知已发送",
-                        Text = "目标达成通知已发送到Webhook",
-                        Duration = 3
-                    })
-                else
-                    debugLog("[目标达成] Webhook发送失败")
-                    UILibrary:Notify({
-                        Title = "通知发送失败",
-                        Text = "Webhook发送失败，但仍将退出游戏",
-                        Duration = 3
-                    })
-                end
-            else
-                debugLog("[目标达成] 未配置Webhook或已禁用，跳过发送")
-                UILibrary:Notify({
-                    Title = "未配置通知",
-                    Text = "未配置Webhook，直接退出游戏",
-                    Duration = 3
-                })
+                dispatchWebhook(payload)
             end
             
             updateLastSavedCurrency(currentCurrency)
             config.enableTargetKick = false
             saveConfig()
             
-            debugLog("[目标达成] 等待3秒后关闭游戏...")
             wait(3)
-            
-            debugLog("[目标达成] 正在关闭游戏...")
-            pcall(function()
-                game:Shutdown()
-            end)
-            pcall(function()
-                player:Kick("目标金额已达成，游戏自动退出")
-            end)
-            
+            pcall(function() game:Shutdown() end)
+            pcall(function() player:Kick("目标金额已达成，游戏自动退出") end)
             return
         end
     end
@@ -1703,19 +1695,17 @@ while true do
     if not webhookDisabled and (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)
        and interval >= getNotificationIntervalSeconds() then
 
-        -- 修复：正确计算本次变化和总计收益
-        local earnedChange = 0  -- 本次变化（距上次通知的变化）
+        -- 计算本次变化（距上次通知的变化）
+        local earnedChange = calculateChangeAmount(currentCurrency)
         
-        if currentCurrency and lastNotifyCurrency then
-            -- 本次变化 = 当前金额 - 上次通知时的金额
-            earnedChange = currentCurrency - lastNotifyCurrency
-        elseif currentCurrency and not lastNotifyCurrency then
-            -- 第一次通知，本次变化 = 总收益
-            earnedChange = earnedAmount
-        end
+        debugLog("[金额统计] 当前金额:", currentCurrency or "nil")
+        debugLog("[金额统计] 总收益基准:", config.totalEarningsBase)
+        debugLog("[金额统计] 上次通知金额:", config.lastNotifyCurrency)
+        debugLog("[金额统计] 本次变化:", earnedChange)
+        debugLog("[金额统计] 总计收益:", earnedAmount)
 
         -- 检测金额是否变化
-        if currentCurrency == lastCurrency and earnedAmount == 0 and earnedChange == 0 then
+        if currentCurrency == lastCurrency and earnedChange == 0 then
             unchangedCount = unchangedCount + 1
         else
             unchangedCount = 0
@@ -1738,17 +1728,11 @@ while true do
                 webhookDisabled = true
                 lastSendTime = currentTime
                 lastCurrency = currentCurrency
-                lastNotifyCurrency = currentCurrency  -- 更新上次通知金额
+                updateLastNotifyCurrency(currentCurrency)  -- 更新通知基准
                 updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "连接异常",
                     Text = "检测到金额连续两次未变化，已停止发送 Webhook",
-                    Duration = 5
-                })
-            else
-                UILibrary:Notify({
-                    Title = "Webhook 发送失败",
-                    Text = "连接异常未能发送，请检查设置",
                     Duration = 5
                 })
             end
@@ -1770,9 +1754,8 @@ while true do
                 local elapsedTime = currentTime - startTime
                 local avgMoney = "0"
                 if elapsedTime > 0 then
-                    -- 使用从启动到现在的总收益计算平均速度
-                    local actualTotalEarned = earnedAmount
-                    local rawAvg = actualTotalEarned / (elapsedTime / 3600)
+                    -- 使用总收益计算平均速度
+                    local rawAvg = earnedAmount / (elapsedTime / 3600)
                     avgMoney = formatNumber(math.floor(rawAvg + 0.5))
                 end
 
@@ -1820,10 +1803,8 @@ while true do
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
                 lastSendTime = currentTime
-                lastNotifyCurrency = currentCurrency  -- 更新上次通知时的金额
-                if config.notifyCash and currentCurrency then
-                    lastCurrency = currentCurrency
-                end
+                lastCurrency = currentCurrency
+                updateLastNotifyCurrency(currentCurrency)  -- 关键：更新通知基准金额
                 updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "定时通知",
