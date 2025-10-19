@@ -41,10 +41,12 @@ local config = {
     notifyCash = false,
     notificationInterval = 30,
     welcomeSent = false,
-    targetAmount = 0,          -- 修改：改为目标金额
+    targetAmount = 0,          -- 改为目标金额
     enableTargetKick = false,
-    lastSavedCurrency = 0,     -- 新增：基准金额
-    baseAmount = 0             -- 新增：用户输入的基准金额
+    lastSavedCurrency = 0,     -- 基准金额
+    baseAmount = 0             -- 用户输入的基准金额
+    totalEarningsBase = 0,     -- 总收益的基准金额
+    lastNotifyCurrency = 0,    -- 上次通知时的金额
 }
 
 -- 颜色定义
@@ -94,21 +96,38 @@ end
 -- 计算实际赚取金额的函数
 local function calculateEarnedAmount(currentCurrency)
     if not currentCurrency then return 0 end
-    if config.lastSavedCurrency > 0 then
-        return currentCurrency - config.lastSavedCurrency
+    -- 使用固定的总收益基准
+    if config.totalEarningsBase > 0 then
+        return currentCurrency - config.totalEarningsBase
     else
+        -- 首次运行，使用初始金额
         return currentCurrency - initialCurrency
+    end
+end
+
+-- 计算本次变化（距上次通知的变化）
+local function calculateChangeAmount(currentCurrency)
+    if not currentCurrency then return 0 end
+    if config.lastNotifyCurrency > 0 then
+        return currentCurrency - config.lastNotifyCurrency
+    else
+        -- 第一次通知，本次变化等于总收益
+        return calculateEarnedAmount(currentCurrency)
     end
 end
 
 local success, currencyValue = pcall(fetchCurrentCurrency)
 if success and currencyValue then
     initialCurrency = currencyValue
-    if config.lastSavedCurrency == 0 then
-        config.lastSavedCurrency = currencyValue
+    -- 如果是首次运行，设置总收益基准
+    if config.totalEarningsBase == 0 then
+        config.totalEarningsBase = currencyValue
     end
-    local formattedCurrency = formatWithCommas(currencyValue)
-    UILibrary:Notify({ Title = "初始化成功", Text = "当前金额: " .. formattedCurrency, Duration = 5 })
+    -- 如果没有设置过通知基准，也设置为当前金额
+    if config.lastNotifyCurrency == 0 then
+        config.lastNotifyCurrency = currencyValue
+    end
+    UILibrary:Notify({ Title = "初始化成功", Text = "当前金额: " .. tostring(initialCurrency), Duration = 5 })
 end
 
 -- 反挂机
@@ -364,10 +383,18 @@ local function initTargetAmount()
     end
 end
 
--- 修改：更新金额保存函数
+-- 更新金额保存函数
 local function updateLastSavedCurrency(currentCurrency)
     if currentCurrency and currentCurrency ~= config.lastSavedCurrency then
         config.lastSavedCurrency = currentCurrency
+        saveConfig()
+    end
+end
+
+-- 更新通知基准金额的函数
+local function updateLastNotifyCurrency(currentCurrency)
+    if currentCurrency then
+        config.lastNotifyCurrency = currentCurrency
         saveConfig()
     end
 end
@@ -913,13 +940,13 @@ while true do
     local currentTime = os.time()
     local currentCurrency = fetchCurrentCurrency()
 
-    -- 修改：计算已赚取金额
+    -- 计算从启动到现在的总收益（使用固定基准）
     local earnedAmount = calculateEarnedAmount(currentCurrency)
     earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedAmount)
 
     local shouldShutdown = false
 
-    -- 🎯 修复：目标金额监测
+    -- 🎯 目标金额监测
     if config.enableTargetKick and currentCurrency and config.targetAmount > 0 then
         if currentCurrency >= config.targetAmount then
             local payload = {
@@ -945,48 +972,17 @@ while true do
                 Duration = 10
             })
 
-            -- 发送 Webhook（无论是否成功都要关闭游戏）
             if config.webhookUrl ~= "" and not webhookDisabled then
-                local webhookSent = dispatchWebhook(payload)
-                if webhookSent then
-                    UILibrary:Notify({
-                        Title = "通知已发送",
-                        Text = "目标达成通知已发送到Webhook",
-                        Duration = 3
-                    })
-                else
-                    UILibrary:Notify({
-                        Title = "通知发送失败",
-                        Text = "Webhook发送失败，但仍将退出游戏",
-                        Duration = 3
-                    })
-                end
-            else
-                UILibrary:Notify({
-                    Title = "未配置通知",
-                    Text = "未配置Webhook，直接退出游戏",
-                    Duration = 3
-                })
+                dispatchWebhook(payload)
             end
             
-            -- 更新保存的金额
             updateLastSavedCurrency(currentCurrency)
-            
-            -- 禁用目标踢出功能
             config.enableTargetKick = false
             saveConfig()
             
             wait(3)
-            
-            -- 强制关闭游戏
-            pcall(function()
-                game:Shutdown()
-            end)
-            
-            pcall(function()
-                player:Kick("目标金额已达成，游戏自动退出")
-            end)
-            
+            pcall(function() game:Shutdown() end)
+            pcall(function() player:Kick("目标金额已达成，游戏自动退出") end)
             return
         end
     end
@@ -1017,12 +1013,11 @@ while true do
     if not webhookDisabled and config.notifyCash
        and interval >= getNotificationIntervalSeconds() then
 
-        local earnedChange = 0
-        if currentCurrency and lastCurrency then
-            earnedChange = currentCurrency - lastCurrency
-        end
+        -- 计算本次变化（距上次通知的变化）
+        local earnedChange = calculateChangeAmount(currentCurrency)
 
-        if currentCurrency == lastCurrency and earnedAmount == 0 and earnedChange == 0 then
+        -- 检测金额是否变化
+        if currentCurrency == lastCurrency and earnedChange == 0 then
             unchangedCount = unchangedCount + 1
         else
             unchangedCount = 0
@@ -1045,6 +1040,7 @@ while true do
                 webhookDisabled = true
                 lastSendTime = currentTime
                 lastCurrency = currentCurrency
+                updateLastNotifyCurrency(currentCurrency)  -- 更新通知基准
                 updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "连接异常",
@@ -1066,8 +1062,8 @@ while true do
             local elapsedTime = currentTime - startTime
             local avgMoney = "0"
             if elapsedTime > 0 then
-                local actualTotalEarned = currentCurrency - initialCurrency
-                local rawAvg = actualTotalEarned / (elapsedTime / 3600)
+                -- 使用总收益计算平均速度
+                local rawAvg = earnedAmount / (elapsedTime / 3600)
                 avgMoney = formatNumber(math.floor(rawAvg + 0.5))
             end
 
@@ -1082,8 +1078,8 @@ while true do
                             username,
                             formatElapsedTime(elapsedTime),
                             formatNumber(currentCurrency),
-                            (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
-                            (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),
+                            (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),  -- 本次变化
+                            (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),  -- 总计收益
                             avgMoney
                         ),
                         inline = false
@@ -1102,9 +1098,8 @@ while true do
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
             if webhookSuccess then
                 lastSendTime = currentTime
-                if currentCurrency then
-                    lastCurrency = currentCurrency
-                end
+                lastCurrency = currentCurrency
+                updateLastNotifyCurrency(currentCurrency)  -- 关键：更新通知基准金额
                 updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "定时通知",
