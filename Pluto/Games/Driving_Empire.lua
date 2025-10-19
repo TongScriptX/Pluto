@@ -430,9 +430,15 @@ local function loadConfig()
     end
     
     -- 检查 webhookUrl 是否需要触发欢迎消息
-    if config.webhookUrl ~= "" and config.webhookUrl ~= lastWebhookUrl then
-        config.welcomeSent = false
-        sendWelcomeMessage()
+    if config.webhookUrl ~= "" then
+        -- 只有当 URL 改变或从未发送过时才发送
+        if config.webhookUrl ~= lastWebhookUrl or not config.welcomeSent then
+            config.welcomeSent = false
+            spawn(function()
+                wait(2)  -- 延迟发送，确保所有初始化完成
+                sendWelcomeMessage()
+            end)
+        end
         lastWebhookUrl = config.webhookUrl
     end
 
@@ -633,29 +639,43 @@ local function dispatchWebhook(payload)
         })
     end)
 
-    if success and res then
-        if res.StatusCode == 204 or res.StatusCode == 200 then
-            UILibrary:Notify({
-                Title = "Webhook",
-                Text = "Webhook 发送成功",
-                Duration = 5
-            })
-            print("[Webhook] 发送成功")
-            return true
-        else
-            warn("[Webhook 错误] 状态码: " .. tostring(res.StatusCode or "未知") .. ", 返回: " .. (res.Body or "无"))
-            UILibrary:Notify({
-                Title = "Webhook 错误",
-                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),
-                Duration = 5
-            })
-            return false
-        end
-    else
-        warn("[Webhook 请求失败] 错误信息: " .. tostring(res))
+    -- 改进：更详细的返回值检查
+    if not success then
+        warn("[Webhook 请求失败] pcall 错误: " .. tostring(res))
         UILibrary:Notify({
             Title = "Webhook 错误",
-            Text = "请求失败: " .. tostring(res),
+            Text = "请求执行失败: " .. tostring(res),
+            Duration = 5
+        })
+        return false
+    end
+
+    -- 检查 res 是否为 nil
+    if not res then
+        warn("[Webhook 错误] 返回值为 nil，可能是执行器不支持或网络问题")
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "返回值为空，请检查执行器支持或网络连接",
+            Duration = 5
+        })
+        return false
+    end
+
+    -- 检查状态码
+    local statusCode = res.StatusCode or res.statusCode or 0
+    if statusCode == 204 or statusCode == 200 then
+        print("[Webhook] 发送成功，状态码: " .. statusCode)
+        UILibrary:Notify({
+            Title = "Webhook",
+            Text = "Webhook 发送成功",
+            Duration = 5
+        })
+        return true
+    else
+        warn("[Webhook 错误] 状态码: " .. tostring(statusCode) .. ", 返回体: " .. tostring(res.Body or res.body or "无"))
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "状态码: " .. tostring(statusCode) .. "\n" .. tostring(res.Body or res.body or "无响应体"),
             Duration = 5
         })
         return false
@@ -665,21 +685,36 @@ end
 -- 欢迎消息
 local function sendWelcomeMessage()
     if config.webhookUrl == "" then
-        UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-        return
+        warn("[Webhook] 欢迎消息: Webhook 地址未设置")
+        return false
     end
+    
+    -- 检查是否已发送过欢迎消息
+    if config.welcomeSent then
+        debugLog("[Webhook] 欢迎消息已发送过，跳过")
+        return true
+    end
+    
     local payload = {
         embeds = {{
             title = "欢迎使用Pluto-X",
             description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
-            color = PRIMARY_COLOR,
+            color = _G.PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "作者: tongblx · Pluto-X" }
         }}
     }
-    if dispatchWebhook(payload) then
+    
+    local success = dispatchWebhook(payload)
+    if success then
         config.welcomeSent = true
+        lastWebhookUrl = config.webhookUrl
         saveConfig()
+        debugLog("[Webhook] 欢迎消息发送成功")
+        return true
+    else
+        warn("[Webhook] 欢迎消息发送失败")
+        return false
     end
 end
 
@@ -1133,10 +1168,21 @@ local webhookInput = UILibrary:CreateTextBox(webhookCard, {
         if not text then return end
         local oldUrl = config.webhookUrl
         config.webhookUrl = text
+        
+        -- 只在 URL 实际改变时才发送欢迎消息
         if config.webhookUrl ~= "" and config.webhookUrl ~= oldUrl then
-            sendWelcomeMessage()
+            config.welcomeSent = false
+            spawn(function()
+                wait(1)  -- 延迟1秒发送
+                sendWelcomeMessage()
+            end)
         end
-        UILibrary:Notify({ Title = "Webhook 更新", Text = "Webhook 地址已保存", Duration = 5 })
+        
+        UILibrary:Notify({ 
+            Title = "Webhook 更新", 
+            Text = "Webhook 地址已保存", 
+            Duration = 5 
+        })
         saveConfig()
     end
 })
@@ -1549,11 +1595,6 @@ UILibrary:CreateButton(aboutContent, {
         end
     end,
 })
-
--- 初始化欢迎消息
-if config.webhookUrl ~= "" then
-    sendWelcomeMessage()
-end
 
 local unchangedCount = 0
 local webhookDisabled = false
