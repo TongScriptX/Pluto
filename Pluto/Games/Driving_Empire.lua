@@ -53,14 +53,13 @@ local config = {
     notifyLeaderboard = false,
     leaderboardKick = false,
     notificationInterval = 30,
-    welcomeSent = false,
     targetAmount = 0,
     enableTargetKick = false,
     lastSavedCurrency = 0,  -- 用于持久化保存
     baseAmount = 0,
     onlineRewardEnabled = false,
     autoSpawnVehicleEnabled = false,
-    -- 新增：分离总收益基准和通知基准
+    -- 分离总收益基准和通知基准
     totalEarningsBase = 0,  -- 总收益的基准金额（脚本启动时设置，不再改变）
     lastNotifyCurrency = 0,  -- 上次通知时的金额（每次通知时更新）
 }
@@ -430,17 +429,12 @@ local function loadConfig()
         saveConfig()
     end
     
-    -- 检查 webhookUrl 是否需要触发欢迎消息
+    -- 每次运行都发送欢迎消息（如果设置了 webhook）
     if config.webhookUrl ~= "" then
-        -- 只有当 URL 改变或从未发送过时才发送
-        if config.webhookUrl ~= lastWebhookUrl or not config.welcomeSent then
-            config.welcomeSent = false
-            spawn(function()
-                wait(2)  -- 延迟发送，确保所有初始化完成
-                sendWelcomeMessage()
-            end)
-        end
-        lastWebhookUrl = config.webhookUrl
+        spawn(function()
+            wait(2)  -- 延迟2秒，确保初始化完成
+            sendWelcomeMessage()
+        end)
     end
 
     -- 自动生成车辆启动检查
@@ -450,11 +444,10 @@ local function loadConfig()
             if not game:IsLoaded() then
                 game.Loaded:Wait()
             end
-            task.wait(5) -- 增加等待时间
+            task.wait(5)
             
             debugLog("[AutoSpawnVehicle] 开始尝试生成车辆...")
             
-            -- 确保函数存在
             if performAutoSpawnVehicle and type(performAutoSpawnVehicle) == "function" then
                 local success, err = pcall(performAutoSpawnVehicle)
                 if not success then
@@ -676,18 +669,12 @@ local function dispatchWebhook(payload)
 end
 
 -- 欢迎消息
-local sendingWelcome = false  -- 添加发送锁
+local sendingWelcome = false  -- 发送锁
 
 local function sendWelcomeMessage()
     if config.webhookUrl == "" then
         warn("[Webhook] 欢迎消息: Webhook 地址未设置")
         return false
-    end
-    
-    -- 检查是否已发送过欢迎消息
-    if config.welcomeSent then
-        debugLog("[Webhook] 欢迎消息已发送过，跳过")
-        return true
     end
     
     -- 防止并发发送
@@ -701,7 +688,7 @@ local function sendWelcomeMessage()
     local payload = {
         embeds = {{
             title = "欢迎使用Pluto-X",
-            description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
+            description = "**游戏**: " .. gameName .. "\n**用户**: " .. username .. "\n**启动时间**: " .. os.date("%Y-%m-%d %H:%M:%S"),
             color = _G.PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "作者: tongblx · Pluto-X" }
@@ -709,11 +696,6 @@ local function sendWelcomeMessage()
     }
     
     local success = dispatchWebhook(payload)
-    
-    -- 无论成功与否，都标记为已发送，避免重复
-    config.welcomeSent = true
-    lastWebhookUrl = config.webhookUrl
-    saveConfig()
     
     sendingWelcome = false
     
@@ -725,7 +707,7 @@ local function sendWelcomeMessage()
             Duration = 3
         })
     else
-        warn("[Webhook] 欢迎消息可能发送失败（但已标记为已发送）")
+        warn("[Webhook] 欢迎消息发送失败")
     end
     
     return success
@@ -1179,23 +1161,30 @@ local webhookInput = UILibrary:CreateTextBox(webhookCard, {
     PlaceholderText = "输入 Webhook 地址",
     OnFocusLost = function(text)
         if not text then return end
+        
         local oldUrl = config.webhookUrl
         config.webhookUrl = text
         
-        -- 只在 URL 实际改变时才发送欢迎消息
+        -- 当输入新的 webhook 地址时，立即发送测试消息
         if config.webhookUrl ~= "" and config.webhookUrl ~= oldUrl then
-            config.welcomeSent = false
+            UILibrary:Notify({ 
+                Title = "Webhook 更新", 
+                Text = "Webhook 地址已保存，正在发送测试消息...", 
+                Duration = 5 
+            })
+            
             spawn(function()
-                wait(1)  -- 延迟1秒发送
+                wait(0.5)  -- 短暂延迟
                 sendWelcomeMessage()
             end)
+        else
+            UILibrary:Notify({ 
+                Title = "Webhook 更新", 
+                Text = "Webhook 地址已保存", 
+                Duration = 5 
+            })
         end
         
-        UILibrary:Notify({ 
-            Title = "Webhook 更新", 
-            Text = "Webhook 地址已保存", 
-            Duration = 5 
-        })
         saveConfig()
     end
 })
