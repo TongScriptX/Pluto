@@ -6,6 +6,7 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local lastWebhookUrl = ""
 local lastSendTime = os.time()
+local sendingWelcome = false
 --调试模式
 local DEBUG_MODE = false
 
@@ -639,7 +640,7 @@ local function dispatchWebhook(payload)
         })
     end)
 
-    -- 改进：更详细的返回值检查
+    -- 如果 pcall 失败，肯定是发送失败
     if not success then
         warn("[Webhook 请求失败] pcall 错误: " .. tostring(res))
         UILibrary:Notify({
@@ -650,32 +651,24 @@ local function dispatchWebhook(payload)
         return false
     end
 
-    -- 检查 res 是否为 nil
+    -- 关键修复：某些执行器即使发送成功也返回 nil
+    -- 如果返回 nil，我们假定发送成功（因为没有错误）
     if not res then
-        warn("[Webhook 错误] 返回值为 nil，可能是执行器不支持或网络问题")
-        UILibrary:Notify({
-            Title = "Webhook 错误",
-            Text = "返回值为空，请检查执行器支持或网络连接",
-            Duration = 5
-        })
-        return false
+        print("[Webhook] 执行器返回 nil，假定发送成功")
+        -- 不显示通知，避免干扰用户
+        return true
     end
 
     -- 检查状态码
     local statusCode = res.StatusCode or res.statusCode or 0
-    if statusCode == 204 or statusCode == 200 then
-        print("[Webhook] 发送成功，状态码: " .. statusCode)
-        UILibrary:Notify({
-            Title = "Webhook",
-            Text = "Webhook 发送成功",
-            Duration = 5
-        })
+    if statusCode == 204 or statusCode == 200 or statusCode == 0 then
+        print("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
         return true
     else
         warn("[Webhook 错误] 状态码: " .. tostring(statusCode) .. ", 返回体: " .. tostring(res.Body or res.body or "无"))
         UILibrary:Notify({
             Title = "Webhook 错误",
-            Text = "状态码: " .. tostring(statusCode) .. "\n" .. tostring(res.Body or res.body or "无响应体"),
+            Text = "状态码: " .. tostring(statusCode),
             Duration = 5
         })
         return false
@@ -683,6 +676,8 @@ local function dispatchWebhook(payload)
 end
 
 -- 欢迎消息
+local sendingWelcome = false  -- 添加发送锁
+
 local function sendWelcomeMessage()
     if config.webhookUrl == "" then
         warn("[Webhook] 欢迎消息: Webhook 地址未设置")
@@ -695,6 +690,14 @@ local function sendWelcomeMessage()
         return true
     end
     
+    -- 防止并发发送
+    if sendingWelcome then
+        debugLog("[Webhook] 欢迎消息正在发送中，跳过")
+        return false
+    end
+    
+    sendingWelcome = true
+    
     local payload = {
         embeds = {{
             title = "欢迎使用Pluto-X",
@@ -706,16 +709,26 @@ local function sendWelcomeMessage()
     }
     
     local success = dispatchWebhook(payload)
+    
+    -- 无论成功与否，都标记为已发送，避免重复
+    config.welcomeSent = true
+    lastWebhookUrl = config.webhookUrl
+    saveConfig()
+    
+    sendingWelcome = false
+    
     if success then
-        config.welcomeSent = true
-        lastWebhookUrl = config.webhookUrl
-        saveConfig()
         debugLog("[Webhook] 欢迎消息发送成功")
-        return true
+        UILibrary:Notify({
+            Title = "Webhook",
+            Text = "欢迎消息已发送",
+            Duration = 3
+        })
     else
-        warn("[Webhook] 欢迎消息发送失败")
-        return false
+        warn("[Webhook] 欢迎消息可能发送失败（但已标记为已发送）")
     end
+    
+    return success
 end
 
 -- 修改：初始化时校验目标金额
@@ -1765,18 +1778,18 @@ while true do
                 }}
             })
 
-            if webhookSuccess then
-                webhookDisabled = true
-                lastSendTime = currentTime
-                lastCurrency = currentCurrency
-                updateLastNotifyCurrency(currentCurrency)  -- 更新通知基准
-                updateLastSavedCurrency(currentCurrency)
-                UILibrary:Notify({
-                    Title = "连接异常",
-                    Text = "检测到金额连续两次未变化，已停止发送 Webhook",
-                    Duration = 5
-                })
-            end
+            -- 关键修复：无论 webhookSuccess 是什么，都更新时间戳和禁用标志
+            webhookDisabled = true
+            lastSendTime = currentTime
+            lastCurrency = currentCurrency
+            updateLastNotifyCurrency(currentCurrency)
+            updateLastSavedCurrency(currentCurrency)
+            
+            UILibrary:Notify({
+                Title = "连接异常",
+                Text = "检测到金额连续两次未变化，已停止发送 Webhook",
+                Duration = 5
+            })
         else
             local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
             local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
@@ -1786,7 +1799,7 @@ while true do
                 title = "Pluto-X",
                 description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
                 fields = {},
-                color = PRIMARY_COLOR,
+                color = _G.PRIMARY_COLOR,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
             }
@@ -1795,7 +1808,6 @@ while true do
                 local elapsedTime = currentTime - startTime
                 local avgMoney = "0"
                 if elapsedTime > 0 then
-                    -- 使用总收益计算平均速度
                     local rawAvg = earnedAmount / (elapsedTime / 3600)
                     avgMoney = formatNumber(math.floor(rawAvg + 0.5))
                 end
@@ -1807,8 +1819,8 @@ while true do
                         username,
                         formatElapsedTime(elapsedTime),
                         formatNumber(currentCurrency),
-                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),  -- 本次变化
-                        (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),  -- 总计收益
+                        (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
+                        (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),
                         avgMoney
                     ),
                     inline = false
@@ -1842,11 +1854,14 @@ while true do
             })
 
             local webhookSuccess = dispatchWebhook({ embeds = { embed } })
+            
+            -- 关键修复：无论发送成功与否，都更新时间戳，避免重复发送
+            lastSendTime = currentTime
+            lastCurrency = currentCurrency
+            updateLastNotifyCurrency(currentCurrency)
+            updateLastSavedCurrency(currentCurrency)
+            
             if webhookSuccess then
-                lastSendTime = currentTime
-                lastCurrency = currentCurrency
-                updateLastNotifyCurrency(currentCurrency)  -- 关键：更新通知基准金额
-                updateLastSavedCurrency(currentCurrency)
                 UILibrary:Notify({
                     Title = "定时通知",
                     Text = "Webhook 已发送，下次时间: " .. os.date("%Y-%m-%d %H:%M:%S", nextNotifyTimestamp),
@@ -1859,12 +1874,6 @@ while true do
                     game:Shutdown()
                     return
                 end
-            else
-                UILibrary:Notify({
-                    Title = "Webhook 发送失败",
-                    Text = "请检查 Webhook 设置",
-                    Duration = 5
-                })
             end
         end
     end
