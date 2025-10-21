@@ -1446,7 +1446,7 @@ spawn(function()
                     local elapsedTime = currentTime - startTime
                     local avgMoney = "0"
                     if elapsedTime > 0 then
-                        local rawAvg = earnedAmount / (elapsedTime / 3600)
+                        local rawAvg = earnedChange / (interval / 3600)
                         avgMoney = formatNumber(math.floor(rawAvg + 0.5))
                     end
 
