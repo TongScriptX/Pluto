@@ -1012,7 +1012,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         task.defer(function()
             content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + paddingY)
         end)
-    end) = true
+    end)
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
     content.Visible = isActive
     content.ZIndex = 6
