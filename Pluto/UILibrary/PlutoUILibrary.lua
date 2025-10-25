@@ -39,21 +39,24 @@ local DEFAULT_THEME = {
     Font = Enum.Font.Roboto
 }
 
--- ✨ 优化后的 UI 样式常量（统一到 4pt/8pt 网格）
+-- ✨ 优化后的 UI 样式常量（统一到 4pt/8pt 网格，参考苹果设计规范）
 local UI_STYLES = {
     CardHeightSingle   = 64,      -- 调整为 8 的倍数
     CardHeightMulti    = 96,      -- 调整为 8 的倍数
     ButtonHeight       = 32,      -- 增加至 32pt，更舒适
     LabelHeight        = 20,      -- 保持
     TabButtonHeight    = 36,      -- 增加至 36pt
-    Padding            = 12,      -- 统一内边距至 12pt
-    YPadding           = 12,      -- 统一垂直内边距
-    ElementSpacing     = 8,       -- 元素间最小间距 8pt
+    Padding            = 16,      -- ✨ 提升至 16pt（苹果标准内边距）
+    YPadding           = 16,      -- ✨ 统一垂直内边距 16pt
+    ElementSpacing     = 12,      -- ✨ 元素间间距 12pt（苹果标准）
+    CardSpacing        = 16,      -- ✨ 卡片间间距 16pt
+    SidebarPadding     = 12,      -- ✨ 侧边栏内边距 12pt
     CornerRadius       = 10,      -- ✨ 提升圆角至 10pt
     WindowWidth        = 400,
     WindowHeight       = 300,
     SidebarWidth       = 80,
     TitleBarHeight     = 40,      -- 增加至 40pt
+    ContentPadding     = 16,      -- ✨ 内容区域边距 16pt
     -- 通知相关样式
     NotificationSpacing = 8,      -- 统一至 8pt
     NotificationWidth = 220,      -- 增加宽度
@@ -416,7 +419,7 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     return tweens
 end
 
--- ✨ 优化后的卡片创建
+-- ✨ 优化后的卡片创建（对齐窗口边缘）
 function UILibrary:CreateCard(parent, options)
     if not parent then
         warn("[Card]: Creation failed: Parent is nil")
@@ -427,7 +430,7 @@ function UILibrary:CreateCard(parent, options)
     local card = Instance.new("Frame")
     card.Name = "Card"
     card.AutomaticSize = Enum.AutomaticSize.Y
-    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0)
+    card.Size = UDim2.new(1, 0, 0, 0)  -- ✨ 完全填充宽度，不留边距
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.25
     card.Parent = parent
@@ -440,14 +443,14 @@ function UILibrary:CreateCard(parent, options)
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 4)
+    layout.Padding = UDim.new(0, 8)  -- ✨ 卡片内元素间距 8pt
     layout.Parent = card
 
     local padding = Instance.new("UIPadding")
     padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
     padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingTop = UDim.new(0, UI_STYLES.ElementSpacing)
-    padding.PaddingBottom = UDim.new(0, UI_STYLES.ElementSpacing)
+    padding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
     padding.Parent = card
 
     TweenService:Create(card, self.TWEEN_INFO_UI, {
@@ -633,7 +636,7 @@ function UILibrary:CreateLabel(parent, options)
     return label
 end
 
--- ✨ 优化后的输入框模块
+-- ✨ 优化后的输入框模块（与卡片对齐）
 function UILibrary:CreateTextBox(parent, options)
     if not parent then
         warn("[TextBox]: Creation failed: Parent is nil")
@@ -641,11 +644,10 @@ function UILibrary:CreateTextBox(parent, options)
     end
 
     options = options or {}
-    local tbPad = UI_STYLES.Padding
 
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
-    textBox.Size = UDim2.new(1, -2 * tbPad, 0, UI_STYLES.ButtonHeight)
+    textBox.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)  -- ✨ 完全填充宽度
     textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     textBox.BackgroundTransparency = 0.25
     textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -681,7 +683,7 @@ function UILibrary:CreateTextBox(parent, options)
     return textBox
 end
 
--- ✨ 优化后的开关模块
+-- ✨ 优化后的开关模块（与卡片对齐）
 function UILibrary:CreateToggle(parent, options)
     if not parent then
         warn("[Toggle]: Creation failed: Parent is nil")
@@ -689,18 +691,17 @@ function UILibrary:CreateToggle(parent, options)
     end
 
     options = options or {}
-    local tgPad = UI_STYLES.Padding
 
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
-    toggleFrame.Size = UDim2.new(1, -2 * tgPad, 0, UI_STYLES.ButtonHeight)
+    toggleFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)  -- ✨ 完全填充宽度
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
     toggleFrame.ZIndex = 2
 
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "",
-        Size = UDim2.new(0.6, -tgPad, 1, 0),
+        Size = UDim2.new(1, -48, 1, 0),  -- ✨ 为开关留出固定空间
         TextSize = 12
     })
     label.ZIndex = 3
@@ -709,7 +710,7 @@ function UILibrary:CreateToggle(parent, options)
     local track = Instance.new("Frame", toggleFrame)
     track.Name = "Track"
     track.Size = UDim2.new(0, 36, 0, 20)
-    track.Position = UDim2.new(0.65, 0, 0.5, -10)
+    track.Position = UDim2.new(1, -36, 0.5, -10)  -- ✨ 右对齐
     track.BackgroundColor3 = (options.DefaultState and (THEME.Success or DEFAULT_THEME.Success)
                               or (THEME.Error or DEFAULT_THEME.Error))
     track.BackgroundTransparency = 0.2
@@ -891,8 +892,8 @@ function UILibrary:CreateUIWindow(options)
     sidebarLayout.Parent = sidebar
     
     local sidebarPadding = Instance.new("UIPadding")
-    sidebarPadding.PaddingLeft = UDim.new(0, UI_STYLES.ElementSpacing)
-    sidebarPadding.PaddingRight = UDim.new(0, UI_STYLES.ElementSpacing)
+    sidebarPadding.PaddingLeft = UDim.new(0, UI_STYLES.SidebarPadding)
+    sidebarPadding.PaddingRight = UDim.new(0, UI_STYLES.SidebarPadding)
     sidebarPadding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
     sidebarPadding.Parent = sidebar
 
@@ -968,7 +969,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
 
     local tabButton = self:CreateButton(sidebar, {
         Text = tabText,
-        Size = UDim2.new(1, -2 * UI_STYLES.ElementSpacing, 0, UI_STYLES.TabButtonHeight),
+        Size = UDim2.new(1, 0, 0, UI_STYLES.TabButtonHeight),  -- ✨ 完全填充宽度
         BackgroundColor3 = isActive and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
         BackgroundTransparency = isActive and 0 or 0.4
     })
@@ -988,6 +989,30 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.ScrollBarThickness = 4
     content.ScrollingEnabled = true
     content.ClipsDescendants = true
+    content.CanvasSize = UDim2.new(0, 0, 0, 100)
+    content.Visible = isActive
+    content.ZIndex = 6
+    content.Parent = mainPage
+
+    local listLayout = Instance.new("UIListLayout")
+    listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    listLayout.Padding = UDim.new(0, UI_STYLES.CardSpacing)  -- ✨ 卡片间距 16pt
+    listLayout.Parent = content
+
+    -- ✨ 为内容区域添加 Padding（苹果风格：16pt 边距）
+    local contentPadding = Instance.new("UIPadding")
+    contentPadding.PaddingLeft = UDim.new(0, UI_STYLES.ContentPadding)
+    contentPadding.PaddingRight = UDim.new(0, UI_STYLES.ContentPadding)
+    contentPadding.PaddingTop = UDim.new(0, UI_STYLES.ContentPadding)
+    contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.ContentPadding)
+    contentPadding.Parent = content
+
+    local paddingY = UI_STYLES.ContentPadding * 2  -- ✨ 上下边距总和
+    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        task.defer(function()
+            content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + paddingY)
+        end)
+    end) = true
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
     content.Visible = isActive
     content.ZIndex = 6
