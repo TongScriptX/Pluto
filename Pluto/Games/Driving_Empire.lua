@@ -1181,7 +1181,7 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             -- 显示详细的更新通知
             UILibrary:Notify({
                 Title = "基准金额已设置",
-                Text = string.format("基准金额: %s\n当前金额: %s\n目标金额: %s\n\n后续只在金额减少时调整目标", 
+                Text = string.format("基准金额: %s\n当前金额: %s\n目标金额: %s", 
                     formatNumber(num), 
                     formatNumber(currentCurrency),
                     formatNumber(newTarget)),
@@ -1321,7 +1321,7 @@ UILibrary:CreateButton(targetAmountCard, {
         
         UILibrary:Notify({
             Title = "目标金额已重新计算",
-            Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s\n\n后续只在金额减少时调整", 
+            Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
                 formatNumber(config.baseAmount),
                 formatNumber(currentCurrency),
                 formatNumber(newTarget)),
