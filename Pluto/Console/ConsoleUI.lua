@@ -19,10 +19,16 @@ function module.CreateUI(playerGui)
     scroll.BackgroundTransparency = 1
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
-    -- UIListLayout 自动排列日志项
     local layout = Instance.new("UIListLayout", scroll)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 2)
+
+    -- 清空按钮
+    local clearBtn = Instance.new("TextButton", frame)
+    clearBtn.Size = UDim2.new(0, 100, 0, 40)
+    clearBtn.Position = UDim2.new(1, -260, 0.85, 0)
+    clearBtn.Text = "清空"
+    clearBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
     local copyBtn = Instance.new("TextButton", frame)
     copyBtn.Size = UDim2.new(0, 140, 0, 40)
@@ -84,6 +90,7 @@ function module.CreateUI(playerGui)
         Gui = gui,
         Frame = frame,
         CopyBtn = copyBtn,
+        ClearBtn = clearBtn,
         Notice = notice,
         Scroll = scroll
     }

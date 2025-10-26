@@ -94,3 +94,14 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
         end
     end
 end)
+
+-- 点击清空按钮
+ui.ClearBtn.MouseButton1Click:Connect(function()
+    output = ""
+    for _, child in ipairs(ui.Scroll:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child:Destroy()
+        end
+    end
+    ui.Notice.Text = "🗑️ 日志已清空"
+end)
