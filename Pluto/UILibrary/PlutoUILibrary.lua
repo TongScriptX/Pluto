@@ -8,10 +8,10 @@ local UILibrary = {}
 -- 存储已创建的UI实例
 UILibrary._instances = {}
 
--- 通知队列管理 - 改进版本
+-- 通知队列管理
 UILibrary._notifications = {}
 UILibrary._notificationId = 0
-UILibrary._isProcessingQueue = false -- 防止并发处理
+UILibrary._isProcessingQueue = false
 
 local function decimalToColor3(decimal)
     local r = math.floor(decimal / 65536) % 256
@@ -24,44 +24,44 @@ local PRIMARY_COLOR = rawget(_G, "PRIMARY_COLOR")
 if type(PRIMARY_COLOR) == "number" then
     PRIMARY_COLOR = decimalToColor3(PRIMARY_COLOR)
 elseif PRIMARY_COLOR == nil then
-    PRIMARY_COLOR = Color3.fromRGB(63, 81, 181) -- 默认颜色
+    PRIMARY_COLOR = Color3.fromRGB(0, 120, 215) -- Windows 10 蓝色
 end
 
--- 默认主题  
+-- 默认主题 (Windows 10 风格)
 local DEFAULT_THEME = {  
-    Primary = Color3.fromRGB(63, 81, 181),  
-    Background = Color3.fromRGB(30, 30, 30),  
-    SecondaryBackground = Color3.fromRGB(46, 46, 46),  
-    Accent = Color3.fromRGB(92, 107, 192),  
+    Primary = Color3.fromRGB(0, 120, 215),  
+    Background = Color3.fromRGB(32, 32, 32),  
+    SecondaryBackground = Color3.fromRGB(43, 43, 43),  
+    Accent = Color3.fromRGB(0, 103, 192),  
     Text = Color3.fromRGB(255, 255, 255),  
-    Success = Color3.fromRGB(76, 175, 80),  
-    Error = Color3.fromRGB(244, 67, 54),  
-    Font = Enum.Font.Roboto  
+    Success = Color3.fromRGB(16, 124, 16),  
+    Error = Color3.fromRGB(232, 17, 35),  
+    Font = Enum.Font.Gotham  
 }  
 
--- UI 样式常量（调整为 4pt 网格）
+-- UI 样式常量 (优化间距和尺寸)
 local UI_STYLES = {
-    CardHeightSingle   = 60,
+    CardHeightSingle   = 56,
     CardHeightMulti    = 88,
-    ButtonHeight       = 28,
+    ButtonHeight       = 32,
     LabelHeight        = 20,
-    TabButtonHeight    = 32,
-    Padding            = 8,
-    YPadding           = 8,
-    CornerRadius       = 6,
-    WindowWidth        = 400,
-    WindowHeight       = 300,
-    SidebarWidth       = 80,
+    TabButtonHeight    = 40,
+    Padding            = 12,
+    YPadding           = 12,
+    CornerRadius       = 4, -- Windows 10 小圆角
+    WindowWidth        = 460,
+    WindowHeight       = 340,
+    SidebarWidth       = 48,
     TitleBarHeight     = 32,
-    -- 通知相关样式
-    NotificationSpacing = 4, -- 减少间隔
-    NotificationWidth = 200,
-    NotificationMargin = 10
+    NotificationSpacing = 8,
+    NotificationWidth = 280,
+    NotificationMargin = 16,
+    ShadowSize = 8 -- 阴影深度
 }
 
 -- 备选字体
 local function getAvailableFont()
-    local fonts = {Enum.Font.Roboto, Enum.Font.Arial, Enum.Font.SourceSans}
+    local fonts = {Enum.Font.Gotham, Enum.Font.GothamMedium, Enum.Font.SourceSans}
     for _, font in ipairs(fonts) do
         local success = pcall(function()
             local label = Instance.new("TextLabel")
@@ -96,15 +96,32 @@ for key, value in pairs(THEME) do
     end  
 end
 
--- 动画配置
-UILibrary.TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
-UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+-- Apple风格动画配置 (使用Quart缓动)
+UILibrary.TWEEN_INFO_UI = TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+UILibrary.TWEEN_INFO_SPRING = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out) -- 弹性动画
 UILibrary.THEME = THEME
 UILibrary.UI_STYLES = UI_STYLES
 
--- 销毁已存在的UI实例 - 增强版本
+-- 创建阴影效果 (模拟Windows 10阴影)
+local function createShadow(parent)
+    local shadow = Instance.new("ImageLabel")
+    shadow.Name = "Shadow"
+    shadow.Size = UDim2.new(1, UI_STYLES.ShadowSize * 2, 1, UI_STYLES.ShadowSize * 2)
+    shadow.Position = UDim2.new(0, -UI_STYLES.ShadowSize, 0, -UI_STYLES.ShadowSize)
+    shadow.BackgroundTransparency = 1
+    shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+    shadow.ImageColor3 = Color3.new(0, 0, 0)
+    shadow.ImageTransparency = 0.7
+    shadow.ScaleType = Enum.ScaleType.Slice
+    shadow.SliceCenter = Rect.new(10, 10, 10, 10)
+    shadow.ZIndex = parent.ZIndex - 1
+    shadow.Parent = parent
+    return shadow
+end
+
+-- 销毁已存在的UI实例
 function UILibrary:DestroyExistingInstances()
-    -- 销毁所有PlutoUILibrary相关的ScreenGui
     if Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui") then
         local playerGui = Players.LocalPlayer.PlayerGui
         for _, child in ipairs(playerGui:GetChildren()) do
@@ -113,11 +130,7 @@ function UILibrary:DestroyExistingInstances()
             end
         end
     end
-    
-    -- 清空实例引用
     UILibrary._instances = {}
-    
-    -- 清空通知队列
     UILibrary._notifications = {}
     UILibrary._notificationId = 0
 end
@@ -126,14 +139,13 @@ end
 local notificationContainer = nil
 local screenGui = nil
 
--- 初始化通知容器 - 改进版本（右下角定位）
+-- 初始化通知容器
 local function initNotificationContainer()
     if not Players.LocalPlayer then
         warn("[Notification]: LocalPlayer not found")
         return false
     end
 
-    -- 检查现有容器是否有效
     if UILibrary._instances.notificationContainer and 
        UILibrary._instances.notificationContainer.Parent and
        UILibrary._instances.screenGui and
@@ -143,7 +155,6 @@ local function initNotificationContainer()
         return true
     end
 
-    -- 销毁旧的通知 ScreenGui
     local playerGui = Players.LocalPlayer.PlayerGui
     for _, child in ipairs(playerGui:GetChildren()) do
         if child.Name == "PlutoUILibrary" then
@@ -151,7 +162,6 @@ local function initNotificationContainer()
         end
     end
 
-    -- 创建新的ScreenGui
     screenGui = Instance.new("ScreenGui")
     screenGui.Name = "PlutoUILibrary"
     local success, err = pcall(function()
@@ -164,9 +174,8 @@ local function initNotificationContainer()
     screenGui.ResetOnSpawn = false
     screenGui.Enabled = true
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.DisplayOrder = 15 -- 提高显示层级
+    screenGui.DisplayOrder = 15
     
-    -- 存储实例引用
     UILibrary._instances.screenGui = screenGui
 
     notificationContainer = Instance.new("Frame")
@@ -178,38 +187,34 @@ local function initNotificationContainer()
     notificationContainer.Visible = true
     notificationContainer.ZIndex = 20
     
-    -- 存储实例引用
     UILibrary._instances.notificationContainer = notificationContainer
     
     return true
 end
 
--- 计算通知应该显示的Y位置（考虑所有现有通知，包括正在动画的）
+-- 计算通知Y位置
 local function calculateNotificationYPosition()
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
     end
     
-    local totalHeight = 20 -- 底部边距
+    local totalHeight = 20
     
-    -- 计算所有现有通知（包括正在动画中的）占用的高度
     for _, notifData in ipairs(UILibrary._notifications) do
         if notifData.frame and notifData.frame.Parent then
-            -- 使用预估高度，避免等待布局计算
             local estimatedHeight = notifData.estimatedHeight or 80
             totalHeight = totalHeight + estimatedHeight + UI_STYLES.NotificationSpacing
         end
     end
     
-    -- 从屏幕底部向上计算位置
-    return screenSize.Y - totalHeight - 80 -- 80是新通知的预估高度
+    return screenSize.Y - totalHeight - 80
 end
 
--- 重新排列所有通知位置（确保动画独立且流畅）
+-- 重新排列通知
 local function rearrangeNotifications()
     if UILibrary._isProcessingQueue then
-        return -- 防止并发处理导致的位置计算错误
+        return
     end
     
     UILibrary._isProcessingQueue = true
@@ -219,9 +224,8 @@ local function rearrangeNotifications()
         screenSize = Vector2.new(720, 1280)
     end
     
-    local currentY = 20 -- 底部边距
+    local currentY = 20
     
-    -- 从最新的通知开始，从下往上重新排列
     for i = #UILibrary._notifications, 1, -1 do
         local notifData = UILibrary._notifications[i]
         if notifData.frame and notifData.frame.Parent and notifData.frame.Visible then
@@ -229,12 +233,10 @@ local function rearrangeNotifications()
             local targetY = screenSize.Y - currentY - frameHeight
             local targetPos = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, targetY)
             
-            -- 取消之前的移动动画
             if notifData.moveTween then
                 notifData.moveTween:Cancel()
             end
             
-            -- 创建新的独立移动动画
             if math.abs(notifData.frame.Position.Y.Offset - targetY) > 1 then
                 notifData.moveTween = TweenService:Create(notifData.frame, UILibrary.TWEEN_INFO_UI, {
                     Position = targetPos
@@ -246,11 +248,11 @@ local function rearrangeNotifications()
         end
     end
     
-    task.wait(0.05) -- 短暂延迟确保动画开始
+    task.wait(0.05)
     UILibrary._isProcessingQueue = false
 end
 
--- 移除通知（改进版本，确保队列管理正确）
+-- 移除通知
 local function removeNotification(notificationData)
     if not notificationData or not notificationData.frame then
         return
@@ -258,7 +260,6 @@ local function removeNotification(notificationData)
     
     local notification = notificationData.frame
     
-    -- 停止所有相关动画
     if notificationData.moveTween then
         notificationData.moveTween:Cancel()
         notificationData.moveTween = nil
@@ -268,11 +269,9 @@ local function removeNotification(notificationData)
         notificationData.slideInTween = nil
     end
     
-    -- 标记为已移除，防止自动移除任务继续执行
     notificationData.isRemoved = true
     notificationData.autoRemoveTask = nil
     
-    -- 从队列中移除
     for i, notifData in ipairs(UILibrary._notifications) do
         if notifData.id == notificationData.id then
             table.remove(UILibrary._notifications, i)
@@ -280,7 +279,6 @@ local function removeNotification(notificationData)
         end
     end
     
-    -- 独立的滑出动画
     local slideOutTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_UI, {
         Position = UDim2.new(1, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 0, notification.Position.Y.Offset),
         BackgroundTransparency = 1
@@ -291,13 +289,12 @@ local function removeNotification(notificationData)
         if notification and notification.Parent then
             notification:Destroy()
         end
-        -- 延迟重新排列，确保销毁完成
         task.wait(0.1)
         rearrangeNotifications()
     end)
 end
 
--- 通知模块 - 完全重写（支持队列管理，防止重叠）
+-- 通知模块 (优化视觉效果)
 function UILibrary:Notify(options)
     options = options or {}
     if not initNotificationContainer() then
@@ -305,20 +302,18 @@ function UILibrary:Notify(options)
         return nil
     end
 
-    -- 生成唯一ID
     UILibrary._notificationId = UILibrary._notificationId + 1
     local notificationId = UILibrary._notificationId
 
-    -- 预先计算位置（基于当前队列状态）
     local targetY = calculateNotificationYPosition()
-    local estimatedHeight = 80 -- 预估通知高度
+    local estimatedHeight = 80
 
     local notification = Instance.new("Frame")
     notification.Name = "Notification_" .. notificationId
     notification.Size = UDim2.new(0, UI_STYLES.NotificationWidth, 0, 0)
     notification.AutomaticSize = Enum.AutomaticSize.Y
     notification.AnchorPoint = Vector2.new(1, 0)
-    notification.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
+    notification.BackgroundColor3 = THEME.SecondaryBackground
     notification.BackgroundTransparency = 1
     notification.Parent = notificationContainer
     notification.Visible = true
@@ -328,8 +323,17 @@ function UILibrary:Notify(options)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = notification
 
+    -- 添加左侧色条 (Windows 10风格)
+    local accentBar = Instance.new("Frame")
+    accentBar.Name = "AccentBar"
+    accentBar.Size = UDim2.new(0, 4, 1, 0)
+    accentBar.BackgroundColor3 = THEME.Primary
+    accentBar.BorderSizePixel = 0
+    accentBar.ZIndex = 22
+    accentBar.Parent = notification
+
     local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingLeft = UDim.new(0, 16)
     padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
     padding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
     padding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
@@ -337,26 +341,26 @@ function UILibrary:Notify(options)
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, 2)
+    listLayout.Padding = UDim.new(0, 4)
     listLayout.Parent = notification
 
     local titleLabel = self:CreateLabel(notification, {
         Text = options.Title or "Notification",
         Size = UDim2.new(1, 0, 0, UI_STYLES.LabelHeight),
-        TextSize = 13
+        TextSize = 14
     })
+    titleLabel.Font = Enum.Font.GothamBold
     titleLabel.ZIndex = 22
 
     local textLabel = self:CreateLabel(notification, {
         Text = options.Text or "",
         Size = UDim2.new(1, 0, 0, 0),
         AutomaticSize = Enum.AutomaticSize.Y,
-        TextSize = 11,
+        TextSize = 12,
         TextWrapped = true
     })
     textLabel.ZIndex = 22
 
-    -- 创建通知数据并立即添加到队列
     local notificationData = {
         id = notificationId,
         frame = notification,
@@ -365,16 +369,13 @@ function UILibrary:Notify(options)
         estimatedHeight = estimatedHeight,
         slideInTween = nil,
         moveTween = nil,
-        isRemoved = false -- 标记是否已被移除
+        isRemoved = false
     }
 
-    -- 立即添加到队列，确保位置计算正确
     table.insert(UILibrary._notifications, notificationData)
 
-    -- 设置初始位置（屏幕右外侧）
     notification.Position = UDim2.new(1, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 0, targetY)
 
-    -- 等待布局计算完成，然后更新实际高度
     task.spawn(function()
         local attempts = 0
         while notification.AbsoluteSize.Y <= 1 and attempts < 50 do
@@ -386,17 +387,15 @@ function UILibrary:Notify(options)
             notificationData.estimatedHeight = notification.AbsoluteSize.Y
         end
         
-        -- 重新排列所有通知以适应实际高度
         rearrangeNotifications()
     end)
 
-    -- 独立的滑入动画（带延迟，确保动画流畅）
     task.spawn(function()
-        local delayTime = math.min(#UILibrary._notifications * 0.1, 0.5) -- 最多0.5秒延迟
+        local delayTime = math.min(#UILibrary._notifications * 0.1, 0.5)
         task.wait(delayTime)
         
-        if notification.Parent then -- 确保通知仍然存在
-            notificationData.slideInTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_UI, {
+        if notification.Parent then
+            notificationData.slideInTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_SPRING, {
                 Position = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, targetY),
                 BackgroundTransparency = 0.1
             })
@@ -404,12 +403,10 @@ function UILibrary:Notify(options)
         end
     end)
 
-    -- 自动移除通知（修复：使用标志位而不是task.cancel）
     task.spawn(function()
-        local totalWaitTime = notificationData.duration + (math.min(#UILibrary._notifications * 0.1, 0.5)) -- 考虑延迟时间
+        local totalWaitTime = notificationData.duration + (math.min(#UILibrary._notifications * 0.1, 0.5))
         task.wait(totalWaitTime)
         
-        -- 检查是否已被手动移除
         if not notificationData.isRemoved and notification.Parent and notificationData.frame then
             removeNotification(notificationData)
         end
@@ -418,11 +415,11 @@ function UILibrary:Notify(options)
     return notification
 end
 
--- 辅助函数：应用淡入/淡出动画
+-- 淡入/淡出动画
 function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     local tweens = {}
     if target:IsA("Frame") or target:IsA("ScrollingFrame") then
-        local transparency = isVisible and 0.5 or 1
+        local transparency = isVisible and 0.05 or 1 -- 更透明的背景
         if target.Name == "Sidebar" or target.Name == "TitleBar" then
             transparency = isVisible and 0 or 1
         end
@@ -432,7 +429,7 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     end
     for _, child in ipairs(target:GetDescendants()) do
         if child:IsA("Frame") or child:IsA("ScrollingFrame") then
-            local transparency = isVisible and 0.5 or 1
+            local transparency = isVisible and 0.05 or 1
             if child.Name == "Sidebar" or child.Name == "TitleBar" then
                 transparency = isVisible and 0 or 1
             end
@@ -444,7 +441,7 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     return tweens
 end
 
--- 创建卡片
+-- 创建卡片 (优化为100%宽度)
 function UILibrary:CreateCard(parent, options)
     if not parent then
         warn("[Card]: Creation failed: Parent is nil")
@@ -454,10 +451,10 @@ function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.AutomaticSize = Enum.AutomaticSize.Y -- 自动适应高度
-    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0) -- 宽度固定，高度自适应
-    card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    card.BackgroundTransparency = 0.3
+    card.AutomaticSize = Enum.AutomaticSize.Y
+    card.Size = UDim2.new(1, 0, 0, 0) -- 100%宽度
+    card.BackgroundColor3 = THEME.SecondaryBackground
+    card.BackgroundTransparency = 0.05
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
@@ -468,25 +465,24 @@ function UILibrary:CreateCard(parent, options)
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 2) -- 缩小内部元素间距
+    layout.Padding = UDim.new(0, 4)
     layout.Parent = card
 
     local padding = Instance.new("UIPadding")
     padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
     padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingTop = UDim.new(0, 2) -- 减少上下内边距
-    padding.PaddingBottom = UDim.new(0, 2)
+    padding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
     padding.Parent = card
 
-    -- 动画仅用于初始位置，不再设置固定透明度
     TweenService:Create(card, self.TWEEN_INFO_UI, {
-        BackgroundTransparency = 0.3
+        BackgroundTransparency = 0.05
     }):Play()
 
     return card
 end
 
--- 按钮模块
+-- 按钮模块 (优化悬停效果)
 function UILibrary:CreateButton(parent, options)
     if not parent then
         warn("[Button]: Creation failed: Parent is nil")
@@ -495,16 +491,17 @@ function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
-    button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
-    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
-    button.BackgroundTransparency = options.BackgroundTransparency or 0.4
+    button.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight) -- 100%宽度
+    button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary
+    button.BackgroundTransparency = options.BackgroundTransparency or 0
     button.Text = options.Text or ""
-    button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    button.TextSize = 12
+    button.TextColor3 = THEME.Text
+    button.TextSize = 13
     button.Font = THEME.Font
     button.Parent = parent
     button.Visible = true
     button.ZIndex = 3
+    button.AutoButtonColor = false
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
@@ -512,10 +509,13 @@ function UILibrary:CreateButton(parent, options)
 
     if options.Callback then
         button.MouseButton1Click:Connect(function()
-            local originalSize = button.Size
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)}):Play()
+            TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight - 2)
+            }):Play()
             task.wait(0.1)
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = originalSize}):Play()
+            TweenService:Create(button, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
+            }):Play()
             local success, err = pcall(options.Callback)
             if not success then
                 warn("[Button]: Callback failed: ", err)
@@ -524,10 +524,14 @@ function UILibrary:CreateButton(parent, options)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
+            BackgroundColor3 = THEME.Accent
+        }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary}):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
+            BackgroundColor3 = options.BackgroundColor3 or THEME.Primary
+        }):Play()
     end)
 
     return button
@@ -542,27 +546,26 @@ function UILibrary:CreateFloatingButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
     button.Name = "FloatingButton"
-    button.Size = UDim2.new(0, 30, 0, 30)
-    button.Position = UDim2.new(1, -40, 1, -80)
-    button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    button.BackgroundTransparency = 0.2
-    button.Text = options.Text or "T"
-    button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    button.TextSize = 12
+    button.Size = UDim2.new(0, 40, 0, 40)
+    button.Position = UDim2.new(1, -56, 1, -96)
+    button.BackgroundColor3 = THEME.Primary
+    button.BackgroundTransparency = 0
+    button.Text = options.Text or "≡"
+    button.TextColor3 = THEME.Text
+    button.TextSize = 18
     button.Font = THEME.Font
     button.Rotation = 0
     button.Parent = parent
     button.Visible = true
     button.ZIndex = 15
+    button.AutoButtonColor = false
+    
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 15)
+    corner.CornerRadius = UDim.new(0, 20)
     corner.Parent = button
 
-    if not button.Parent then
-        warn("[FloatingButton]: Button has no parent after creation")
-        button:Destroy()
-        return nil
-    end
+    -- 添加阴影
+    createShadow(button)
 
     local mainFrame = options.MainFrame
     local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -UI_STYLES.WindowWidth / 2, 0.5, -UI_STYLES.WindowHeight / 2)
@@ -572,7 +575,7 @@ function UILibrary:CreateFloatingButton(parent, options)
             if not button.Active then return end
             button.Active = false
             local isVisible = not mainFrame.Visible
-            button.Text = isVisible and "L" or "T"
+            button.Text = isVisible and "×" or "≡"
             mainFrame.Visible = true
             mainFrame.Position = isVisible and (lastKnownPos or firstOpenPos) or firstOpenPos
             mainFrame.ZIndex = isVisible and 5 or 1
@@ -580,8 +583,8 @@ function UILibrary:CreateFloatingButton(parent, options)
             for _, t in ipairs(tweens) do
                 t:Play()
             end
-            local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
-                BackgroundTransparency = isVisible and 0.5 or 1
+            local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_SPRING, {
+                BackgroundTransparency = isVisible and 0.05 or 1
             })
             tween:Play()
             tween.Completed:Connect(function()
@@ -591,15 +594,21 @@ function UILibrary:CreateFloatingButton(parent, options)
                 end
                 button.Active = true
             end)
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Rotation = isVisible and 45 or 0}):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Rotation = isVisible and 90 or 0}):Play()
         end)
     end
 
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
+            BackgroundColor3 = THEME.Accent,
+            Size = UDim2.new(0, 44, 0, 44)
+        }):Play()
     end)
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
+        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
+            BackgroundColor3 = THEME.Primary,
+            Size = UDim2.new(0, 40, 0, 40)
+        }):Play()
     end)
 
     self:MakeDraggable(button, button)
@@ -618,8 +627,8 @@ function UILibrary:CreateLabel(parent, options)
     label.Size = options.Size or UDim2.new(1, 0, 0, UI_STYLES.LabelHeight)
     label.BackgroundTransparency = 1
     label.Text = options.Text or ""
-    label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    label.TextSize = options.TextSize or 12
+    label.TextColor3 = THEME.Text
+    label.TextSize = options.TextSize or 13
     label.Font = THEME.Font
     label.TextWrapped = true
     label.TextTruncate = Enum.TextTruncate.AtEnd
@@ -628,7 +637,6 @@ function UILibrary:CreateLabel(parent, options)
     label.Visible = true
     label.ZIndex = 3
 
-    -- 添加自动高度支持
     if options.AutomaticSize then
         label.AutomaticSize = options.AutomaticSize
     end
@@ -643,7 +651,7 @@ function UILibrary:CreateLabel(parent, options)
     return label
 end
 
--- 输入框模块
+-- 输入框模块 (100%宽度)
 function UILibrary:CreateTextBox(parent, options)
     if not parent then
         warn("[TextBox]: Creation failed: Parent is nil")
@@ -651,36 +659,43 @@ function UILibrary:CreateTextBox(parent, options)
     end
 
     options = options or {}
-    local tbPad = UI_STYLES.Padding or 6
 
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
-    textBox.Size = UDim2.new(1, -2 * tbPad, 0, UI_STYLES.ButtonHeight)
-    textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    textBox.BackgroundTransparency = 0.3
-    textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    textBox.TextSize = options.TextSize or 12
+    textBox.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight) -- 100%宽度
+    textBox.BackgroundColor3 = THEME.Background
+    textBox.BackgroundTransparency = 0
+    textBox.TextColor3 = THEME.Text
+    textBox.TextSize = options.TextSize or 13
     textBox.Font = THEME.Font
     textBox.PlaceholderText = options.PlaceholderText or ""
     textBox.Text = options.Text or ""
     textBox.TextWrapped = true
     textBox.TextTruncate = Enum.TextTruncate.AtEnd
-    textBox.BorderSizePixel = 1
-    textBox.BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+    textBox.BorderSizePixel = 2
+    textBox.BorderColor3 = THEME.SecondaryBackground
     textBox.Parent = parent
     textBox.ZIndex = 3
+    textBox.ClearTextOnFocus = false
 
     local corner = Instance.new("UICorner", textBox)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
 
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 8)
+    padding.PaddingRight = UDim.new(0, 8)
+    padding.Parent = textBox
+
     textBox.Focused:Connect(function()
         TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {
-            BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary
+            BorderColor3 = THEME.Primary,
+            BorderSizePixel = 2
         }):Play()
     end)
     textBox.FocusLost:Connect(function()
         TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {
-            BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+            BorderColor3 = THEME.SecondaryBackground,
+            BorderSizePixel = 2
         }):Play()
         if options.OnFocusLost then pcall(options.OnFocusLost, textBox.Text) end
     end)
@@ -688,7 +703,7 @@ function UILibrary:CreateTextBox(parent, options)
     return textBox
 end
 
--- 开关模块
+-- 开关模块 (100%宽度)
 function UILibrary:CreateToggle(parent, options)
     if not parent then
         warn("[Toggle]: Creation failed: Parent is nil")
@@ -696,47 +711,50 @@ function UILibrary:CreateToggle(parent, options)
     end
 
     options = options or {}
-    local tgPad = UI_STYLES.Padding or 6
 
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
-    toggleFrame.Size = UDim2.new(1, -2 * tgPad, 0, UI_STYLES.ButtonHeight)
+    toggleFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
     toggleFrame.ZIndex = 2
 
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "",
-        Size = UDim2.new(0.6, -tgPad, 1, 0),
-        TextSize = 12
+        Size = UDim2.new(1, -60, 1, 0),
+        TextSize = 13
     })
     label.ZIndex = 3
 
+    -- Windows 10 风格开关
     local track = Instance.new("Frame", toggleFrame)
     track.Name = "Track"
-    track.Size = UDim2.new(0, 30, 0, 8)
-    track.Position = UDim2.new(0.65, 0, 0.5, -4)
-    track.BackgroundColor3 = (options.DefaultState and (THEME.Success or DEFAULT_THEME.Success)
-                              or (THEME.Error or DEFAULT_THEME.Error))
+    track.Size = UDim2.new(0, 40, 0, 20)
+    track.Position = UDim2.new(1, -40, 0.5, -10)
+    track.BackgroundColor3 = (options.DefaultState and THEME.Primary or Color3.fromRGB(100, 100, 100))
+    track.BorderSizePixel = 0
     track.ZIndex = 3
+    
     local trackCorner = Instance.new("UICorner", track)
-    trackCorner.CornerRadius = UDim.new(0, 4)
+    trackCorner.CornerRadius = UDim.new(0, 10)
 
     local thumb = Instance.new("TextButton", track)
     thumb.Name = "Thumb"
-    thumb.Size = UDim2.new(0, 15, 0, 15)
-    thumb.Position = options.DefaultState and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
-    thumb.BackgroundColor3 = Color3.new(1,1,1)
+    thumb.Size = UDim2.new(0, 12, 0, 12)
+    thumb.Position = options.DefaultState and UDim2.new(0, 24, 0.5, -6) or UDim2.new(0, 4, 0.5, -6)
+    thumb.BackgroundColor3 = Color3.new(1, 1, 1)
     thumb.Text = ""
     thumb.ZIndex = 4
+    thumb.AutoButtonColor = false
+    
     local thumbCorner = Instance.new("UICorner", thumb)
-    thumbCorner.CornerRadius = UDim.new(0, 8)
+    thumbCorner.CornerRadius = UDim.new(0, 6)
 
     local state = options.DefaultState or false
     thumb.MouseButton1Click:Connect(function()
         state = not state
-        local targetPos = state and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
-        local targetColor = state and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
+        local targetPos = state and UDim2.new(0, 24, 0.5, -6) or UDim2.new(0, 4, 0.5, -6)
+        local targetColor = state and THEME.Primary or Color3.fromRGB(100, 100, 100)
         TweenService:Create(thumb, self.TWEEN_INFO_BUTTON, {Position = targetPos}):Play()
         TweenService:Create(track, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = targetColor}):Play()
         if options.Callback then pcall(options.Callback, state) end
@@ -746,7 +764,7 @@ function UILibrary:CreateToggle(parent, options)
 end
 
 -- 拖拽模块
-local developmentMode = false -- 设置为 false 时将不输出调试信息
+local developmentMode = false
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
@@ -810,7 +828,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     end)
 end
 
--- 主窗口模块 - 增强销毁功能
+-- 主窗口模块 (优化布局和视觉效果)
 function UILibrary:CreateUIWindow(options)
     options = options or {}
     if not Players.LocalPlayer then
@@ -818,7 +836,6 @@ function UILibrary:CreateUIWindow(options)
         return nil
     end
 
-    -- 销毁已存在的主窗口实例
     if UILibrary._instances.mainWindow then
         local oldWindow = UILibrary._instances.mainWindow
         if oldWindow.ScreenGui and oldWindow.ScreenGui.Parent then
@@ -827,7 +844,6 @@ function UILibrary:CreateUIWindow(options)
         UILibrary._instances.mainWindow = nil
     end
 
-    -- 额外检查并销毁遗留的窗口GUI
     local playerGui = Players.LocalPlayer.PlayerGui
     for _, child in ipairs(playerGui:GetChildren()) do
         if child.Name == "PlutoUILibraryWindow" then
@@ -860,47 +876,54 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
     mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
-    mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = 0.5
+    mainFrame.BackgroundColor3 = THEME.Background
+    mainFrame.BackgroundTransparency = 0.05
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
     mainFrame.ClipsDescendants = true
+    
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     corner.Parent = mainFrame
 
+    -- 添加阴影
+    createShadow(mainFrame)
+
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
-    sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    sidebar.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
     sidebar.BackgroundTransparency = 0
     sidebar.Parent = mainFrame
     sidebar.Visible = true
     sidebar.ZIndex = 6
+    
     local sidebarCorner = Instance.new("UICorner")
     sidebarCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     sidebarCorner.Parent = sidebar
 
     local sidebarLayout = Instance.new("UIListLayout")
     sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    sidebarLayout.Padding = UDim.new(0, UI_STYLES.Padding)
+    sidebarLayout.Padding = UDim.new(0, 4)
     sidebarLayout.Parent = sidebar
+    
     local sidebarPadding = Instance.new("UIPadding")
-    sidebarPadding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
-    sidebarPadding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
-    sidebarPadding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
+    sidebarPadding.PaddingLeft = UDim.new(0, 4)
+    sidebarPadding.PaddingRight = UDim.new(0, 4)
+    sidebarPadding.PaddingTop = UDim.new(0, 8)
     sidebarPadding.Parent = sidebar
 
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     titleBar.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, 0)
-    titleBar.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
+    titleBar.BackgroundColor3 = THEME.SecondaryBackground
     titleBar.BackgroundTransparency = 0
     titleBar.Parent = mainFrame
     titleBar.Visible = true
     titleBar.ZIndex = 6
+    
     local titleCorner = Instance.new("UICorner")
     titleCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     titleCorner.Parent = titleBar
@@ -912,18 +935,20 @@ function UILibrary:CreateUIWindow(options)
         TextSize = 14,
         TextTransparency = 0
     })
+    titleLabel.Font = Enum.Font.GothamMedium
     titleLabel.ZIndex = 7
 
     local mainPage = Instance.new("Frame")
     mainPage.Name = "MainPage"
     mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
     mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
-    mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    mainPage.BackgroundTransparency = 0.5
+    mainPage.BackgroundColor3 = THEME.Background
+    mainPage.BackgroundTransparency = 0.05
     mainPage.Parent = mainFrame
     mainPage.Visible = true
     mainPage.ZIndex = 6
     mainPage.ClipsDescendants = true
+    
     local pageCorner = Instance.new("UICorner")
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     pageCorner.Parent = mainPage
@@ -937,7 +962,6 @@ function UILibrary:CreateUIWindow(options)
         end
     end)
 
-    -- 存储实例引用
     local windowInstance = {
         MainFrame = mainFrame,
         ScreenGui = screenGui,
@@ -950,7 +974,7 @@ function UILibrary:CreateUIWindow(options)
     return windowInstance
 end
 
--- 标签页模块
+-- 标签页模块 (优化切换动画)
 function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     if not sidebar or not mainPage or not titleLabel then
         warn("[Tab]: 创建失败 - sidebar、titleLabel 或 mainPage 为 nil")
@@ -960,43 +984,55 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     options = options or {}
     local isActive = options.Active or false
     local tabText = options.Text or "Unnamed"
+    local tabIcon = options.Icon or "■"
 
-    local tabButton = self:CreateButton(sidebar, {
-        Text = tabText,
-        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.TabButtonHeight),
-        BackgroundColor3 = isActive and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
-        BackgroundTransparency = isActive and 0 or 0.5
-    })
-
-    if not tabButton then
-        warn("[Tab]: 创建失败 - tabButton 为 nil")
-        return nil, nil
-    end
+    local tabButton = Instance.new("TextButton")
+    tabButton.Name = "TabButton_" .. tabText
+    tabButton.Size = UDim2.new(1, 0, 0, UI_STYLES.TabButtonHeight)
+    tabButton.BackgroundColor3 = isActive and THEME.Primary or Color3.fromRGB(40, 40, 40)
+    tabButton.BackgroundTransparency = isActive and 0 or 0.3
+    tabButton.Text = tabIcon
+    tabButton.TextColor3 = THEME.Text
+    tabButton.TextSize = 16
+    tabButton.Font = THEME.Font
+    tabButton.Parent = sidebar
     tabButton.ZIndex = 7
+    tabButton.AutoButtonColor = false
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    corner.Parent = tabButton
 
     local content = Instance.new("ScrollingFrame")
     content.Name = "TabContent_" .. tabText
     content.Size = UDim2.new(1, 0, 1, 0)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
-    content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    content.BackgroundTransparency = isActive and 0.5 or 1
-    content.ScrollBarThickness = 4
+    content.BackgroundColor3 = THEME.Background
+    content.BackgroundTransparency = isActive and 0.05 or 1
+    content.ScrollBarThickness = 6
     content.ScrollingEnabled = true
     content.ClipsDescendants = true
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
     content.Visible = isActive
     content.ZIndex = 6
+    content.BorderSizePixel = 0
     content.Parent = mainPage
 
     local listLayout = Instance.new("UIListLayout")
     listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    listLayout.Padding = UDim.new(0, UI_STYLES.Padding or 6)
+    listLayout.Padding = UDim.new(0, UI_STYLES.Padding)
     listLayout.Parent = content
 
-    local paddingY = UI_STYLES.YPadding or 10
+    local contentPadding = Instance.new("UIPadding")
+    contentPadding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+    contentPadding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+    contentPadding.PaddingTop = UDim.new(0, UI_STYLES.YPadding)
+    contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.YPadding)
+    contentPadding.Parent = content
+
     listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         task.defer(function()
-            content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + paddingY)
+            content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + UI_STYLES.YPadding * 2)
         end)
     end)
 
@@ -1017,16 +1053,17 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         content.Size = UDim2.new(1, 0, 1, 0)
         content.CanvasPosition = Vector2.new(0, 0)
 
-        TweenService:Create(content, self.TWEEN_INFO_UI, {
+        TweenService:Create(content, UILibrary.TWEEN_INFO_UI, {
             Position = UDim2.new(0, 0, 0, 0),
-            BackgroundTransparency = 0.5
+            BackgroundTransparency = 0.05
         }):Play()
 
         for _, btn in ipairs(sidebar:GetChildren()) do
-            if btn:IsA("TextButton") then
-                TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
-                    BackgroundColor3 = btn == tabButton and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
-                    BackgroundTransparency = btn == tabButton and 0 or 0.5
+            if btn:IsA("TextButton") and btn.Name:match("^TabButton_") then
+                local isThisButton = btn == tabButton
+                TweenService:Create(btn, UILibrary.TWEEN_INFO_BUTTON, {
+                    BackgroundColor3 = isThisButton and THEME.Primary or Color3.fromRGB(40, 40, 40),
+                    BackgroundTransparency = isThisButton and 0 or 0.3
                 }):Play()
             end
         end
@@ -1035,6 +1072,22 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     end
 
     tabButton.MouseButton1Click:Connect(switchToThisTab)
+    
+    tabButton.MouseEnter:Connect(function()
+        if tabButton.BackgroundTransparency > 0 then
+            TweenService:Create(tabButton, UILibrary.TWEEN_INFO_BUTTON, {
+                BackgroundTransparency = 0.1
+            }):Play()
+        end
+    end)
+    
+    tabButton.MouseLeave:Connect(function()
+        if tabButton.BackgroundColor3 ~= THEME.Primary then
+            TweenService:Create(tabButton, UILibrary.TWEEN_INFO_BUTTON, {
+                BackgroundTransparency = 0.3
+            }):Play()
+        end
+    end)
 
     if isActive then
         task.defer(switchToThisTab)
@@ -1051,9 +1104,10 @@ function UILibrary:CreateAuthorInfo(parent, options)
     end
     options = options or {}
     local authorFrame = self:CreateCard(parent, {IsMultiElement = true})
+    
     local authorLabel = self:CreateLabel(authorFrame, {
         Text = options.Text or "",
-        TextSize = 12
+        TextSize = 13
     })
     authorLabel.ZIndex = 3
 
@@ -1091,15 +1145,15 @@ function UILibrary:SetTheme(newTheme)
             if element.Name == "MainFrame" then
                 element.BackgroundColor3 = THEME.Background
             elseif element.Name == "Sidebar" then
-                element.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                element.BackgroundColor3 = Color3.fromRGB(32, 32, 32)
             elseif element.Name == "TitleBar" then
-                element.BackgroundColor3 = THEME.Primary
-            elseif element.Name == "MainPage" or element.Name:match("^TabContent_") then
                 element.BackgroundColor3 = THEME.SecondaryBackground
+            elseif element.Name == "MainPage" or element.Name:match("^TabContent_") then
+                element.BackgroundColor3 = THEME.Background
             elseif element.Name == "Card" or element.Name == "AuthorFrame" then
                 element.BackgroundColor3 = THEME.SecondaryBackground
-            elseif element.Name == "Notification" then
-                element.BackgroundColor3 = THEME.Background
+            elseif element.Name:match("^Notification_") then
+                element.BackgroundColor3 = THEME.SecondaryBackground
             end
         elseif element:IsA("TextButton") then
             if element.Name == "FloatingButton" then
@@ -1111,15 +1165,18 @@ function UILibrary:SetTheme(newTheme)
                 element.BackgroundColor3 = isActive and THEME.Accent or THEME.Primary
                 element.TextColor3 = THEME.Text
                 element.Font = THEME.Font
+            elseif element.Name:match("^TabButton_") then
+                element.TextColor3 = THEME.Text
+                element.Font = THEME.Font
             end
         elseif element:IsA("TextLabel") then
             element.TextColor3 = THEME.Text
             element.Font = THEME.Font
         elseif element:IsA("TextBox") then
-            element.BackgroundColor3 = THEME.SecondaryBackground
+            element.BackgroundColor3 = THEME.Background
             element.TextColor3 = THEME.Text
             element.Font = THEME.Font
-            element.BorderColor3 = THEME.Background
+            element.BorderColor3 = THEME.SecondaryBackground
         end
     end
 
