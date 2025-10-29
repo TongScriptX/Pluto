@@ -126,11 +126,11 @@ local function saveConfig()
 end
 
 -- ============================================================================
--- 金额相关函数（GV 特定：从 UI 获取金额）
+-- 金额相关函数
 -- ============================================================================
 local initialCurrency = 0
 
--- GV 特定：获取当前金额
+-- 获取当前金额
 local function fetchCurrentCurrency()
     local success, currencyObj = pcall(function()
         return player.PlayerGui:WaitForChild("UI", 5)
@@ -479,7 +479,7 @@ local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
     Text = "已赚金额: 0",
 })
 
--- GV 特定：反挂机说明卡片
+-- 反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
 UILibrary:CreateLabel(antiAfkCard, {
     Text = "安全起见，反挂机未启用",
