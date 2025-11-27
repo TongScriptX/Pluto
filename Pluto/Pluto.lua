@@ -28,7 +28,7 @@ local placeId = game.PlaceId
 
 local gameScripts = {
     [3351674303] = "Driving_Empire",
-    [891852901]  = "Greenville",
+    --[891852901]  = "Greenville",
     [11832484500] = "Autopilot_Simulator",
     [5865858426] = "Retail_Tycoon_2",
     [3398014311] = "Restaurant_Tycoon_2",
