@@ -1244,7 +1244,7 @@ spawn(function()
                 })
 
                 local embed = {
-                    title = "Pluto-X - Drive World",
+                    title = "Pluto-X",
                     description = string.format("**游戏**: %s", gameName),
                     fields = fields,
                     color = _G.PRIMARY_COLOR,
