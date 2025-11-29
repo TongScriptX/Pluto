@@ -148,14 +148,19 @@ local function fetchCurrentCurrency()
     local LocalPlayer = Players.LocalPlayer
 
     if LocalPlayer then
-        local currency = LocalPlayer.PlayerGui:WaitForChild("MainHUD", 5)
+        local currencyTextLabel = LocalPlayer.PlayerGui:WaitForChild("MainHUD", 5)
                                             :FindFirstChild("Frame", true)
                                             :FindFirstChild("TopRight", true)
                                             :FindFirstChild("CurrencyCounters", true)
                                             :FindFirstChild("CashCounter", true)
                                             :FindFirstChild("CurrencyAmount", true)
-        if currency and currency:IsA("TextLabel") then
-            return currency.Text
+        
+        if currencyTextLabel and currencyTextLabel:IsA("TextLabel") then
+            local text = currencyTextLabel.Text
+            
+            local cleanedText = string.gsub(text, "[^0-9%.]", "")
+            
+            return tonumber(cleanedText)
         end
     end
     return nil
