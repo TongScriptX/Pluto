@@ -903,8 +903,7 @@ targetAmountToggle = UILibrary:CreateToggle(targetAmountCard, {
 })
 
 targetAmountLabel = UILibrary:CreateLabel(targetAmountCard, {
-    Text = "目标金额: " .. (config.targetAmount > 0 and formatNumber(config.targetAmount) or "```lua
-未设置"),
+    Text = "目标金额: " .. (config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
 })
 
 UILibrary:CreateButton(targetAmountCard, {
