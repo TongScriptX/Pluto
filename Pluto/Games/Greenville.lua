@@ -1,4 +1,60 @@
 -- ============================================================================
+-- 反检测模块
+-- ============================================================================
+
+-- 禁用 ChildAdded 事件监听,防止游戏检测异常注入
+for _, connection in pairs(getconnections(game.ChildAdded)) do
+    if connection.Function and type(getfenv(connection.Function).script) ~= "table" then
+        connection:Disable()
+    end
+end
+
+-- 从 LogService 找到日志输出脚本句柄,供后续 hook 使用
+local logScriptHandle = nil
+for _, connection in pairs(getconnections(game:GetService("LogService").MessageOut)) do
+    if connection.Function and not string.find(tostring(getupvalues(connection.Function)[1]), "Console") then
+        logScriptHandle = getfenv(connection.Function).script
+    end
+end
+
+-- Hook task.wait,若调用来自日志脚本则挂起协程(阻止日志输出)
+local originalTaskWait = nil
+originalTaskWait = hookfunction(task.wait, function(...)
+    if not checkcaller() and getfenv(originalTaskWait).script == logScriptHandle then
+        return coroutine.yield()  -- 挂起日志脚本的 wait,防止其继续执行
+    else
+        return originalTaskWait(...)
+    end
+end)
+
+-- 清理所有与日志脚本相关的函数上值(防止其保存状态)
+task.wait(1)
+for _, gcObject in pairs(getgc(true)) do
+    if type(gcObject) == "function" and getfenv(gcObject).script == logScriptHandle then
+        for upvalueIndex, _ in pairs(getupvalues(gcObject)) do
+            setupvalue(gcObject, upvalueIndex, nil)  -- 清空 upvalue,破坏其逻辑
+        end
+        task.wait()
+    end
+end
+
+-- 篡改元表,拦截 FireServer 调用,阻止"BanMe""Bunny"事件发送
+if getrawmetatable ~= nil then
+    local gameMetatable = getrawmetatable(game)
+    setreadonly(gameMetatable, false)
+    local originalNamecall = gameMetatable.__namecall
+
+    gameMetatable.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        if method == "FireServer" and (self.Name == "BanMe" or self.Name == "Bunny") then
+            return nil  -- 阻止封号/检测事件
+        else
+            return originalNamecall(self, ...)
+        end
+    end)
+end
+
+-- ============================================================================
 -- 服务和基础变量声明
 -- ============================================================================
 local Players = game:GetService("Players")
@@ -141,7 +197,7 @@ local function fetchCurrentCurrency()
     end)
     if success and currencyObj then
         local currencyText = currencyObj.Text
-        -- 移除千位逗号，仅保留一个小数点和数字
+        -- 移除千位逗号,仅保留一个小数点和数字
         local cleanedText = currencyText:gsub(",", ""):match("[0-9%.]+")
         local currencyValue = tonumber(cleanedText)
         if currencyValue then
@@ -207,7 +263,7 @@ end
 -- Webhook 功能
 -- ============================================================================
 
--- 统一获取通知间隔（秒）
+-- 统一获取通知间隔(秒)
 local function getNotificationIntervalSeconds()
     return (config.notificationInterval or 5) * 60
 end
@@ -248,13 +304,13 @@ local function dispatchWebhook(payload)
 
     -- 某些执行器返回 nil 但实际发送成功
     if not res then
-        print("[Webhook] 执行器返回 nil，假定发送成功")
+        print("[Webhook] 执行器返回 nil,假定发送成功")
         return true
     end
 
     local statusCode = res.StatusCode or res.statusCode or 0
     if statusCode == 204 or statusCode == 200 or statusCode == 0 then
-        print("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
+        print("[Webhook] 发送成功,状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
         return true
     else
         warn("[Webhook 错误] 状态码: " .. tostring(statusCode))
@@ -306,7 +362,7 @@ end
 -- 目标金额管理
 -- ============================================================================
 
--- 修改：只在金额减少时调整目标金额
+-- 修改:只在金额减少时调整目标金额
 local function adjustTargetAmount()
     if config.baseAmount <= 0 or config.targetAmount <= 0 then
         return
@@ -327,7 +383,7 @@ local function adjustTargetAmount()
             config.targetAmount = newTargetAmount
             UILibrary:Notify({
                 Title = "目标金额已调整",
-                Text = string.format("检测到金额减少 %s，目标调整至: %s", 
+                Text = string.format("检测到金额减少 %s,目标调整至: %s", 
                     formatNumber(math.abs(currencyDifference)),
                     formatNumber(config.targetAmount)),
                 Duration = 5
@@ -339,7 +395,7 @@ local function adjustTargetAmount()
             config.baseAmount = 0
             UILibrary:Notify({
                 Title = "目标金额已重置",
-                Text = "调整后的目标金额小于当前金额，已禁用目标踢出功能",
+                Text = "调整后的目标金额小于当前金额,已禁用目标踢出功能",
                 Duration = 5
             })
             saveConfig()
@@ -357,7 +413,7 @@ local function initTargetAmount()
     if config.enableTargetKick and config.targetAmount > 0 and currentCurrency >= config.targetAmount then
         UILibrary:Notify({
             Title = "目标金额已达成",
-            Text = string.format("当前金额 %s，已超过目标 %s", 
+            Text = string.format("当前金额 %s,已超过目标 %s", 
                 formatNumber(currentCurrency), formatNumber(config.targetAmount)),
             Duration = 5
         })
@@ -435,7 +491,7 @@ end)
 
 GuiService.ErrorMessageChanged:Connect(function(msg)
     if msg and msg ~= "" and not disconnected then
-        warn("[掉线检测] 错误提示：" .. msg)
+        warn("[掉线检测] 错误提示:" .. msg)
         disconnected = true
     end
 end)
@@ -482,7 +538,7 @@ local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
 -- 反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
 UILibrary:CreateLabel(antiAfkCard, {
-    Text = "安全起见，反挂机未启用",
+    Text = "安全起见,反挂机未启用",
 })
 
 -- 通知设置标签页
@@ -548,7 +604,7 @@ UILibrary:CreateToggle(currencyNotifyCard, {
 -- 通知间隔
 local intervalCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
 UILibrary:CreateLabel(intervalCard, {
-    Text = "通知间隔（分钟）",
+    Text = "通知间隔(分钟)",
 })
 
 local intervalInput = UILibrary:CreateTextBox(intervalCard, {
@@ -637,7 +693,7 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
                 saveConfig()
                 UILibrary:Notify({
                     Title = "自动关闭",
-                    Text = "当前金额已达目标，踢出功能已关闭",
+                    Text = "当前金额已达目标,踢出功能已关闭",
                     Duration = 6
                 })
             end
@@ -760,7 +816,7 @@ UILibrary:CreateButton(targetAmountCard, {
             saveConfig()
             UILibrary:Notify({
                 Title = "自动关闭",
-                Text = "当前金额已达目标，踢出功能已关闭",
+                Text = "当前金额已达目标,踢出功能已关闭",
                 Duration = 6
             })
         end
@@ -837,10 +893,10 @@ spawn(function()
                         footer = { text = "作者: tongblx · Pluto-X" }
                     }}
                 }
-
+                
                 UILibrary:Notify({
                     Title = "🎯 目标达成",
-                    Text = "已达目标金额，准备退出...",
+                    Text = "已达目标金额,准备退出...",
                     Duration = 10
                 })
                 
@@ -924,7 +980,7 @@ spawn(function()
                 local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
 
                 local elapsedTime = currentTime - startTime
-                -- 修改：使用本次变化计算平均速度
+                -- 修改:使用本次变化计算平均速度
                 local avgMoney = "0"
                 if interval > 0 then
                     local rawAvg = earnedChange / (interval / 3600)
@@ -950,7 +1006,7 @@ spawn(function()
                         },
                         {
                             name = "⌛ 下次通知",
-                            value = string.format("%s（%s）", countdownR, countdownT),
+                            value = string.format("%s(%s)", countdownR, countdownT),
                             inline = false
                         }
                     },
