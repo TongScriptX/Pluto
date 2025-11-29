@@ -34,7 +34,8 @@ local gameScripts = {
     [3398014311] = "Restaurant_Tycoon_2",
     [4566572536] = "Vehicle_Legends",
     [4618049391] = "Tang_Country",
-    [13822562292] = "Midnight_Chasers"
+    [13822562292] = "Midnight_Chasers",
+    [10704789056] = "Drive_World"
 }
 
 local function loadRemoteScript(url)
