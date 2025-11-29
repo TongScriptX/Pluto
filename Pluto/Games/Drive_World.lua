@@ -143,16 +143,25 @@ local initialMiles = 0
 local initialLevel = 0
 
 -- 获取当前金额
-local function fetchCurrentCurrency()
-    local leaderstats = player:WaitForChild("leaderstats", 5)
-    if leaderstats then
-        local currency = leaderstats:FindFirstChild("Cash")
-        if currency then
-            return currency.Value
+local function fetchCurrentCurrencyText()
+    local Players = game:GetService("Players")
+    local LocalPlayer = Players.LocalPlayer
+
+    if LocalPlayer then
+        local currencyTextLabel = LocalPlayer.PlayerGui:WaitForChild("MainHUD", 5)
+                                                    :FindFirstChild("Frame", true)
+                                                    :FindFirstChild("TopRight", true)
+                                                    :FindFirstChild("CurrencyCounters", true)
+                                                    :FindFirstChild("CashCounter", true)
+                                                    :FindFirstChild("CurrencyAmount", true)
+        
+        if currencyTextLabel and currencyTextLabel:IsA("TextLabel") then
+            return currencyTextLabel.Text
         end
     end
     return nil
 end
+
 
 -- 获取当前胜利次数
 local function fetchCurrentWins()
