@@ -16,12 +16,12 @@
 
 # 🪐 Pluto-X
 
-[![Website](https://img.shields.io/badge/Website-pluto--x.vercel.com-blue?style=for-the-badge&logo=vercel)](https://pluto-x.vercel.com)
+[![Website](https://img.shields.io/badge/Website-pluto--x.vercel.app-blue?style=for-the-badge&logo=vercel)](https://pluto-x.vercel.app)
 [![GitHub stars](https://img.shields.io/github/stars/TongScriptX/Pluto?style=for-the-badge&logo=github&color=yellow)](https://github.com/TongScriptX/Pluto/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/TongScriptX/Pluto?style=for-the-badge&logo=github&color=blue)](https://github.com/TongScriptX/Pluto/network/members)
 [![GitHub license](https://img.shields.io/github/license/TongScriptX/Pluto?style=for-the-badge&logo=github&color=green)](https://github.com/TongScriptX/Pluto/blob/main/LICENSE)
 
-[访问网站](https://pluto-x.vercel.com) • [游戏列表](https://pluto-x.vercel.app/games.html) • [许可证](#-许可证)
+[访问网站](https://pluto-x.vercel.app) • [游戏列表](https://pluto-x.vercel.app/games.html) • [许可证](#-许可证)
 
 </div>
 
@@ -71,6 +71,6 @@ Pluto-X 是一个先进的游戏增强框架，旨在提供高性能、可扩展
 
 **[⬆ 回到顶部](#-pluto-x)**
 
-🌐 [pluto-x.vercel.com](https://pluto-x.vercel.com)
+🌐 [pluto-x.vercel.app](https://pluto-x.vercel.app)
 
 </div>
