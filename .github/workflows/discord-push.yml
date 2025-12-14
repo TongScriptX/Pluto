@@ -21,9 +21,12 @@ jobs:
           COMMIT_MESSAGE=$(git log -1 --pretty=%s)
           FILES=$(git diff --name-only HEAD^ HEAD)
           FILE_NAMES=$(echo "$FILES" | xargs -n1 basename | paste -sd ", " -)
+          
+          # 过滤掉提交信息中的URL和仓库链接
+          CLEAN_MESSAGE=$(echo "$COMMIT_MESSAGE" | sed -E 's|https?://[^ ]+||g' | sed -E 's|Merge branch [^ ]+ of https?://[^ ]+|Merge branch|g' | sed 's/[[:space:]]*$//')
 
           JSON=$(jq -n --arg title "📦 commit提交" \
-                       --arg description "$COMMIT_MESSAGE" \
+                       --arg description "$CLEAN_MESSAGE" \
                        --arg files "$FILE_NAMES" \
                        '{
                           "embeds": [
