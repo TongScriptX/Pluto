@@ -9,7 +9,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
@@ -19,27 +19,75 @@ jobs:
           WEBHOOK2: ${{ secrets.DISCORD_GITHUB_UPDATE2 }}
         run: |
           COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+          COMMIT_BODY=$(git log -1 --pretty=%b)
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
           FILES=$(git diff --name-only HEAD^ HEAD)
           FILE_NAMES=$(echo "$FILES" | xargs -n1 basename | paste -sd ", " -)
           
-          # 过滤掉提交信息中的URL和仓库链接
-          CLEAN_MESSAGE=$(echo "$COMMIT_MESSAGE" | sed -E 's|https?://[^ ]+||g' | sed -E 's|Merge branch [^ ]+ of https?://[^ ]+|Merge branch|g' | sed 's/[[:space:]]*$//')
+          # 解析提交类型和范围
+          TYPE=$(echo "$COMMIT_MESSAGE" | sed -E 's/^([a-z]+)(\(.+\))?:.*/\1/')
+          SCOPE=$(echo "$COMMIT_MESSAGE" | sed -E 's/^[a-z]+\((.+)\):.*/\1/' | grep -v "^$COMMIT_MESSAGE$" || echo "无")
+          SUBJECT=$(echo "$COMMIT_MESSAGE" | sed -E 's/^[a-z]+(\(.+\))?:\s+//')
+          
+          # 根据提交类型设置颜色和图标
+          case $TYPE in
+            "feat") COLOR="5814780"; ICON="✨" ;;
+            "fix") COLOR="15548997"; ICON="🐛" ;;
+            "docs") COLOR="2196944"; ICON="📝" ;;
+            "style") COLOR="12370112"; ICON="💎" ;;
+            "refactor") COLOR="16705372"; ICON="♻️" ;;
+            "test") COLOR="8311585"; ICON="🧪" ;;
+            "chore") COLOR="8421504"; ICON="🔧" ;;
+            "perf") COLOR="16776960"; ICON="⚡" ;;
+            "ci") COLOR="6759752"; ICON="🤖" ;;
+            "build") COLOR="10197915"; ICON="📦" ;;
+            "revert") COLOR="16711680"; ICON="↩️" ;;
+            "hotfix") COLOR="16711782"; ICON="🚨" ;;
+            "release") COLOR="65280"; ICON="🎉" ;;
+            *) COLOR="14540253"; ICON="📝" ;;
+          esac
 
-          JSON=$(jq -n --arg title "📦 commit提交" \
-                       --arg description "$CLEAN_MESSAGE" \
+          JSON=$(jq -n --arg title "$ICON $TYPE 提交" \
+                       --arg description "$SUBJECT" \
+                       --arg author "$COMMIT_AUTHOR" \
+                       --arg hash "$COMMIT_HASH" \
+                       --arg scope "$SCOPE" \
                        --arg files "$FILE_NAMES" \
+                       --arg body "$COMMIT_BODY" \
+                       --argjson color $COLOR \
                        '{
                           "embeds": [
                             {
                               "title": $title,
                               "description": $description,
+                              "color": $color,
                               "fields": [
                                 {
+                                  "name": "👤 作者",
+                                  "value": $author,
+                                  "inline": true
+                                },
+                                {
+                                  "name": "🔗 提交",
+                                  "value": "`\($hash)`",
+                                  "inline": true
+                                },
+                                {
+                                  "name": "📂 范围",
+                                  "value": ($scope // "无"),
+                                  "inline": true
+                                },
+                                {
                                   "name": "🗂️ 更新文件",
-                                  "value": ($files // "无")
+                                  "value": ($files // "无"),
+                                  "inline": false
                                 }
                               ],
-                              "color": 14540253
+                              "footer": {
+                                "text": "Pluto Repository"
+                              },
+                              "timestamp": now
                             }
                           ]
                         }')

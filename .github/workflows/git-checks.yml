@@ -1,0 +1,44 @@
+name: 🔍 Git Standards Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  git-standards-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check branch name
+        run: |
+          BRANCH=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          echo "Checking branch: $BRANCH"
+          if [[ "$BRANCH" == "main" || "$BRANCH" == "develop" ]]; then
+            echo "✅ Protected branch name is valid"
+          elif ! [[ "$BRANCH" =~ ^(feat|fix|docs|style|refactor|test|chore|hotfix|release)\/([a-z0-9.-]+)$ ]]; then
+            echo "::error::Branch name '$BRANCH' does not follow <type>/<ticket>-<desc> pattern"
+            echo "::error::Valid types: feat, fix, docs, style, refactor, test, chore, hotfix, release"
+            exit 1
+          else
+            echo "✅ Branch name follows standards"
+          fi
+
+      - name: Check commit message
+        uses: wagoid/commitlint-github-action@v5
+        with:
+          configFile: .commitlintrc.js
+
+      - name: Check for merge commits
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            MERGE_COMMITS=$(git rev-list --no-merges origin/main..HEAD | wc -l)
+            TOTAL_COMMITS=$(git rev-list origin/main..HEAD | wc -l)
+            if [ "$MERGE_COMMITS" -ne "$TOTAL_COMMITS" ]; then
+              echo "::warning::PR contains merge commits. Consider rebase to keep linear history."
+            fi
+          fi
