@@ -6,6 +6,16 @@ local UserInputService = game:GetService("UserInputService")
 local lastWebhookUrl = ""
 local lastSendTime = os.time()
 
+-- 调试模式（仅通过代码修改开启/关闭）
+local DEBUG_MODE = false
+
+-- 调试输出函数
+local function debugPrint(...)
+    if DEBUG_MODE then
+        print(...)
+    end
+end
+
 -- 加载 UI 模块
 local UILibrary
 local success, result = pcall(function()
@@ -302,8 +312,8 @@ local function dispatchWebhook(payload)
         return false
     end
 
-    print("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
-    print("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
+    debugPrint("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
+    debugPrint("[Webhook] Payload 内容:", HttpService:JSONEncode(data))
 
     local success, res = pcall(function()
         return requestFunc({
@@ -323,7 +333,7 @@ local function dispatchWebhook(payload)
                 Text = "Webhook 发送成功",
                 Duration = 5
             })
-            print("[Webhook] 发送成功")
+            debugPrint("[Webhook] 发送成功")
             return true
         else
             warn("[Webhook 错误] 状态码: " .. tostring(res.StatusCode or "未知") .. ", 返回: " .. (res.Body or "无"))
@@ -409,22 +419,22 @@ local platformFolder = nil
 local farmTask = nil
 
 local function stopAutoFarm()
-    print("[autofarm] Stop 被调用")
+    debugPrint("[autofarm] Stop 被调用")
     isFarming = false
     if farmTask then
         task.cancel(farmTask)
         farmTask = nil
-        print("[autofarm] 任务已取消")
+        debugPrint("[autofarm] 任务已取消")
     end
     if platformFolder then
         platformFolder:Destroy()
         platformFolder = nil
-        print("[autofarm] 平台已销毁")
+        debugPrint("[autofarm] 平台已销毁")
     end
 end
 
 local function startAutoFarm()
-    print("[autofarm] 尝试启动")
+    debugPrint("[autofarm] 尝试启动")
     local plr = game:GetService("Players").LocalPlayer
     if not plr then
         warn("[autofarm] LocalPlayer 不存在")
@@ -441,7 +451,7 @@ local function startAutoFarm()
         stopAutoFarm()
         return
     end
-    print("[autofarm] 找到车辆:", carModel.Name)
+    debugPrint("[autofarm] 找到车辆:", carModel.Name)
 
     local driveSeat = carModel:FindFirstChild("DriveSeat")
     if not driveSeat then
@@ -467,7 +477,7 @@ local function startAutoFarm()
         return
     end
     carModel.PrimaryPart = primaryPart
-    print("[autofarm] 设置 PrimaryPart 成功")
+    debugPrint("[autofarm] 设置 PrimaryPart 成功")
 
     platformFolder = Instance.new("Folder", workspace)
     platformFolder.Name = "AutoPlatform"
@@ -482,7 +492,7 @@ local function startAutoFarm()
         primaryPart.Position.Y + 5,
         primaryPart.Position.Z
     )
-    print("[autofarm] 平台创建成功")
+    debugPrint("[autofarm] 平台创建成功")
 
     local originPos = Vector3.new(
         primaryPart.Position.X,
@@ -496,11 +506,11 @@ local function startAutoFarm()
     local lastTpTime = tick()
 
     carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
-    print("[autofarm] 车辆已传送至起始位置")
+    debugPrint("[autofarm] 车辆已传送至起始位置")
 
     isFarming = true
     farmTask = task.spawn(function()
-        print("[autofarm] 循环任务开始")
+        debugPrint("[autofarm] 循环任务开始")
         while isFarming do
             currentPosX = currentPosX + distancePerTick
             local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
@@ -515,16 +525,16 @@ local function startAutoFarm()
                 currentPosX = originPos.X
                 carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
                 lastTpTime = tick()
-                print("[autofarm] 重置位置")
+                debugPrint("[autofarm] 重置位置")
             end
 
             task.wait(interval)
         end
-        print("[autofarm] 循环任务结束")
+        debugPrint("[autofarm] 循环任务结束")
         if platformFolder then
             platformFolder:Destroy()
             platformFolder = nil
-            print("[autofarm] 平台已销毁")
+            debugPrint("[autofarm] 平台已销毁")
         end
     end)
 end
@@ -582,7 +592,7 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
     Text = "autofarm",
     DefaultState = false,
     Callback = function(state)
-        print("[autofarm] Toggle 状态切换为:", state)
+        debugPrint("[autofarm] Toggle 状态切换为:", state)
         if state then
             UILibrary:Notify({Title = "autofarm", Text = "autofarm已启动", Duration = 5})
             startAutoFarm()
