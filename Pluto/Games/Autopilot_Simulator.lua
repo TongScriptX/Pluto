@@ -44,7 +44,7 @@ local config = {
     targetAmount = 0,          -- 改为目标金额
     enableTargetKick = false,
     lastSavedCurrency = 0,     -- 基准金额
-    baseAmount = 0             -- 用户输入的基准金额
+    baseAmount = 0,            -- 用户输入的基准金额
     totalEarningsBase = 0,     -- 总收益的基准金额
     lastNotifyCurrency = 0,    -- 上次通知时的金额
 }
