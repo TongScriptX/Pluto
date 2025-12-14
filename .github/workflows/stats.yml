@@ -1,0 +1,97 @@
+name: 📊 Repository Statistics
+
+on:
+  schedule:
+    # 每小时更新统计
+    - cron: '0 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+
+jobs:
+  update-stats:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate repository stats
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = './.github/stats.json';
+            
+            // 获取仓库信息
+            const { data: repo } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            // 获取贡献者信息
+            const { data: contributors } = await github.rest.repos.listContributors({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            // 获取最新发布信息
+            const { data: releases } = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 1
+            });
+            
+            // 获取语言信息
+            const { data: languages } = await github.rest.repos.listLanguages({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            // 统计信息
+            const stats = {
+              updated: new Date().toISOString(),
+              repository: {
+                name: repo.name,
+                description: repo.description,
+                stars: repo.stargazers_count,
+                forks: repo.forks_count,
+                watchers: repo.watchers_count,
+                open_issues: repo.open_issues_count,
+                size: repo.size,
+                language: repo.language,
+                created_at: repo.created_at,
+                updated_at: repo.updated_at,
+                pushed_at: repo.pushed_at,
+                default_branch: repo.default_branch,
+                license: repo.license ? repo.license.name : null,
+                topics: repo.topics
+              },
+              contributors: contributors.map(contributor => ({
+                login: contributor.login,
+                contributions: contributor.contributions,
+                type: contributor.type
+              })),
+              latest_release: releases.length > 0 ? {
+                tag_name: releases[0].tag_name,
+                name: releases[0].name,
+                published_at: releases[0].published_at,
+                assets: releases[0].assets.length
+              } : null,
+              languages: Object.keys(languages).map(lang => ({
+                name: lang,
+                bytes: languages[lang]
+              }))
+            };
+            
+            // 写入统计文件
+            fs.writeFileSync(path, JSON.stringify(stats, null, 2));
+            console.log('Statistics updated successfully');
+
+      - name: Commit updated stats
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .github/stats.json
+          git diff --staged --quiet || git commit -m "chore: update repository statistics"
+          git push

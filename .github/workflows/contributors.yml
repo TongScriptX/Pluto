@@ -1,0 +1,141 @@
+name: 👥 Contributors Statistics
+
+on:
+  schedule:
+    # 每小时更新
+    - cron: '0 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main, develop]
+
+jobs:
+  update-contributors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate contributors list
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // 获取贡献者信息
+            const { data: contributors } = await github.rest.repos.listContributors({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            
+            // 获取仓库信息
+            const { data: repo } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            // 生成贡献者列表
+            let contributorsMd = '## 🌟 贡献者\n\n';
+            contributorsMd += '感谢所有为 Pluto 项目做出贡献的开发者！\n\n';
+            contributorsMd += '<!-- 此文件由 GitHub Actions 自动生成，请勿手动编辑 -->\n\n';
+            
+            // 按贡献次数排序
+            contributors.sort((a, b) => b.contributions - a.contributions);
+            
+            // 贡献者统计
+            let totalContributions = 0;
+            let totalContributors = contributors.length;
+            
+            contributorsMd += '### 📊 贡献统计\n\n';
+            contributorsMd += `- 👥 总贡献者: ${totalContributors}\n`;
+            contributorsMd += `- 🎯 总提交次数: ${contributors.reduce((sum, c) => sum + c.contributions, 0)}\n`;
+            contributorsMd += `- ⭐ 项目 Stars: ${repo.stargazers_count}\n`;
+            contributorsMd += `- 🍴 项目 Forks: ${repo.forks_count}\n\n`;
+            
+            // 贡献者列表
+            contributorsMd += '### 🏆 贡献者榜单\n\n';
+            
+            // 分级显示
+            const tiers = {
+              '🥇 核心贡献者': 10,
+              '🥈 活跃贡献者': 5,
+              '🥉 贡献者': 1
+            };
+            
+            let currentTier = '';
+            contributors.forEach((contributor, index) => {
+              const contributions = contributor.contributions;
+              let tier = '';
+              
+              if (contributions >= 10) tier = '🥇 核心贡献者';
+              else if (contributions >= 5) tier = '🥈 活跃贡献者';
+              else tier = '🥉 贡献者';
+              
+              if (tier !== currentTier) {
+                if (currentTier) contributorsMd += '\n';
+                contributorsMd += `#### ${tier}\n\n`;
+                currentTier = tier;
+              }
+              
+              contributorsMd += `- [${contributor.login}](https://github.com/${contributor.login}) - ${contributions} 次贡献\n`;
+            });
+            
+            // 新贡献者欢迎
+            const recentContributors = contributors
+              .filter(c => c.type === 'User')
+              .slice(0, 5);
+            
+            if (recentContributors.length > 0) {
+              contributorsMd += '\n### 🎉 最新加入的贡献者\n\n';
+              recentContributors.forEach(contributor => {
+                contributorsMd += `- 欢迎 [@${contributor.login}](https://github.com/${contributor.login})! 🎊\n`;
+              });
+            }
+            
+            // 贡献指南
+            contributorsMd += '\n### 🤝 如何贡献\n\n';
+            contributorsMd += '想要成为贡献者吗？查看我们的 [贡献指南](CONTRIBUTING.md) 了解如何参与项目！\n\n';
+            contributorsMd += '- 🐛 报告 Bug\n';
+            contributorsMd += '- ✨ 提出新功能建议\n';
+            contributorsMd += '- 📝 改进文档\n';
+            contributorsMd += '- 🛠️ 提交代码\n';
+            contributorsMd += '- 🌍 翻译和本地化\n';
+            
+            contributorsMd += '\n---\n';
+            contributorsMd += '<div align="center">\n';
+            contributorsMd += '<sub>最后更新: ' + new Date().toLocaleString('zh-CN') + '</sub>\n';
+            contributorsMd += '</div>\n';
+            
+            // 写入文件
+            fs.writeFileSync('CONTRIBUTORS.md', contributorsMd);
+            console.log('Contributors list updated successfully');
+
+      - name: Commit updated contributors
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CONTRIBUTORS.md
+          git diff --staged --quiet || git commit -m "chore: update contributors list"
+          git push
+
+  generate-contributors-image:
+    runs-on: ubuntu-latest
+    needs: update-contributors
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Generate contributors image
+        uses: lowlighter/metrics@latest
+        with:
+          filename: assets/contributors.svg
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: ""
+          plugin_contributors: yes
+          plugin_contributors_head: master
+          plugin_contributors_tail: master
+          plugin_contributors_organizations: yes
+          plugin_contributors_details: percentage, days
+          plugin_contributors_sections: base, recent
+          config_timezone: Asia/Shanghai
+          config_output: svg
