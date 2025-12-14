@@ -5,4 +5,6 @@ return {
   "shao_ba",
   "CH_xiaochen",
   "tongblx",
+  "ljxttkx",
+  "shaoba",
 }
