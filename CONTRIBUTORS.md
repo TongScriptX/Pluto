@@ -6,8 +6,8 @@
 
 ### 📊 贡献统计
 
-- 👥 总贡献者: 2
-- 🎯 总提交次数: 484
+- 👥 总贡献者: 4
+- 🎯 总提交次数: 497
 - ⭐ 项目 Stars: 1
 - 🍴 项目 Forks: 0
 
@@ -15,16 +15,22 @@
 
 #### 🥇 核心贡献者
 
-- [TongScriptX](https://github.com/TongScriptX) - 478 次贡献
+- [TongScriptX](https://github.com/TongScriptX) - 485 次贡献
 
 #### 🥈 活跃贡献者
 
 - [Serivelle](https://github.com/Serivelle) - 6 次贡献
+- [actions-user](https://github.com/actions-user) - 5 次贡献
+
+#### 🥉 贡献者
+
+- [github-actions[bot]](https://github.com/github-actions[bot]) - 1 次贡献
 
 ### 🎉 最新加入的贡献者
 
 - 欢迎 [@TongScriptX](https://github.com/TongScriptX)! 🎊
 - 欢迎 [@Serivelle](https://github.com/Serivelle)! 🎊
+- 欢迎 [@actions-user](https://github.com/actions-user)! 🎊
 
 ### 🤝 如何贡献
 
@@ -38,5 +44,5 @@
 
 ---
 <div align="center">
-<sub>最后更新: 2025/12/15 13:04:52</sub>
+<sub>最后更新: 2025/12/15 13:32:46</sub>
 </div>
