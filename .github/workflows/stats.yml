@@ -92,10 +92,10 @@ jobs:
             console.log('Statistics updated successfully');
 
       - name: Commit updated stats
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .github/stats.json
-          git diff --staged --quiet || git commit -m "chore: update repository statistics"
-          git pull --rebase origin main
-          git push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update repository statistics"
+          file_pattern: ".github/stats.json"
+          commit_user_name: "GitHub Action"
+          commit_user_email: "action@github.com"
+          skip_dirty_check: false

@@ -115,13 +115,13 @@ jobs:
             console.log('Contributors list updated successfully');
 
       - name: Commit updated contributors
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add CONTRIBUTORS.md
-          git diff --staged --quiet || git commit -m "chore: update contributors list"
-          git pull --rebase origin main
-          git push
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update contributors list"
+          file_pattern: "CONTRIBUTORS.md"
+          commit_user_name: "GitHub Action"
+          commit_user_email: "action@github.com"
+          skip_dirty_check: false
 
   generate-contributors-image:
     runs-on: ubuntu-latest
