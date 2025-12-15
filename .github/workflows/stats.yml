@@ -97,4 +97,5 @@ jobs:
           git config --local user.name "GitHub Action"
           git add .github/stats.json
           git diff --staged --quiet || git commit -m "chore: update repository statistics"
+          git pull --rebase origin main
           git push
