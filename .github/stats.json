@@ -1,0 +1,42 @@
+{
+  "updated": "2025-12-15T12:26:25.958Z",
+  "repository": {
+    "name": "Pluto",
+    "description": "Pluto-X",
+    "stars": 1,
+    "forks": 0,
+    "watchers": 1,
+    "open_issues": 0,
+    "size": 703,
+    "language": "Lua",
+    "created_at": "2024-06-08T15:02:54Z",
+    "updated_at": "2025-12-15T12:26:22Z",
+    "pushed_at": "2025-12-15T12:26:18Z",
+    "default_branch": "main",
+    "license": "Other",
+    "topics": []
+  },
+  "contributors": [
+    {
+      "login": "TongScriptX",
+      "contributions": 478,
+      "type": "User"
+    },
+    {
+      "login": "Serivelle",
+      "contributions": 6,
+      "type": "User"
+    }
+  ],
+  "latest_release": null,
+  "languages": [
+    {
+      "name": "Lua",
+      "bytes": 478610
+    },
+    {
+      "name": "JavaScript",
+      "bytes": 1098
+    }
+  ]
+}
