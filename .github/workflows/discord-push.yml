@@ -64,21 +64,22 @@ jobs:
           echo "描述: $SUBJECT"
           
           # 根据提交类型设置颜色和图标
+          # 颜色方案：使用柔和、语义化的颜色，避免警告色
           case $TYPE in
-            "feat") COLOR="5814780"; ICON="✨" ;;
-            "fix") COLOR="15548997"; ICON="🐛" ;;
-            "docs") COLOR="2196944"; ICON="📝" ;;
-            "style") COLOR="12370112"; ICON="💎" ;;
-            "refactor") COLOR="16705372"; ICON="♻️" ;;
-            "test") COLOR="8311585"; ICON="🧪" ;;
-            "chore") COLOR="8421504"; ICON="🔧" ;;
-            "perf") COLOR="16776960"; ICON="⚡" ;;
-            "ci") COLOR="6759752"; ICON="🤖" ;;
-            "build") COLOR="10197915"; ICON="📦" ;;
-            "revert") COLOR="16711680"; ICON="↩️" ;;
-            "hotfix") COLOR="16711782"; ICON="🚨" ;;
-            "release") COLOR="65280"; ICON="🎉" ;;
-            *) COLOR="14540253"; ICON="📝" ;;
+            "feat") COLOR="5793266"; ICON="✨" ;;        # 紫色 - 新功能
+            "fix") COLOR="3447003"; ICON="🐛" ;;         # 蓝色 - 修复（非警告）
+            "docs") COLOR="3426654"; ICON="📝" ;;        # 深蓝 - 文档
+            "style") COLOR="10070709"; ICON="💎" ;;      # 灰色 - 样式
+            "refactor") COLOR="15105570"; ICON="♻️" ;;   # 橙色 - 重构
+            "test") COLOR="9442302"; ICON="🧪" ;;        # 紫红 - 测试
+            "chore") COLOR="7506394"; ICON="🔧" ;;       # 深灰 - 杂项
+            "perf") COLOR="1752220"; ICON="⚡" ;;        # 青色 - 性能
+            "ci") COLOR="5832650"; ICON="🤖" ;;          # 灰蓝 - CI
+            "build") COLOR="5763719"; ICON="📦" ;;       # 绿色 - 构建
+            "revert") COLOR="15158332"; ICON="↩️" ;;     # 深红 - 回滚
+            "hotfix") COLOR="16744272"; ICON="🚨" ;;     # 橙红 - 紧急修复
+            "release") COLOR="3066993"; ICON="🎉" ;;     # 亮绿 - 发布
+            *) COLOR="9807270"; ICON="📝" ;;             # 浅灰 - 其他
           esac
           
           echo "颜色: $COLOR"
