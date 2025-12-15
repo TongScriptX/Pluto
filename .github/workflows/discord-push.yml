@@ -18,6 +18,12 @@ jobs:
           WEBHOOK1: ${{ secrets.DISCORD_GITHUB_UPDATE }}
           WEBHOOK2: ${{ secrets.DISCORD_GITHUB_UPDATE2 }}
         run: |
+          # 检查 webhooks 是否配置
+          if [ -z "$WEBHOOK1" ] && [ -z "$WEBHOOK2" ]; then
+            echo "警告: 未配置 Discord webhooks，跳过通知"
+            exit 0
+          fi
+          
           COMMIT_MESSAGE=$(git log -1 --pretty=%s)
           COMMIT_BODY=$(git log -1 --pretty=%b)
           COMMIT_AUTHOR=$(git log -1 --pretty=%an)
@@ -92,5 +98,22 @@ jobs:
                           ]
                         }')
 
-          curl -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK1"
-          curl -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK2"
+          # 发送到第一个 webhook
+          if [ -n "$WEBHOOK1" ]; then
+            echo "发送通知到 WEBHOOK1..."
+            if curl -f -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK1"; then
+              echo "✓ WEBHOOK1 发送成功"
+            else
+              echo "✗ WEBHOOK1 发送失败"
+            fi
+          fi
+          
+          # 发送到第二个 webhook
+          if [ -n "$WEBHOOK2" ]; then
+            echo "发送通知到 WEBHOOK2..."
+            if curl -f -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK2"; then
+              echo "✓ WEBHOOK2 发送成功"
+            else
+              echo "✗ WEBHOOK2 发送失败"
+            fi
+          fi
