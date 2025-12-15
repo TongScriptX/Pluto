@@ -99,3 +99,6 @@ jobs:
           commit_user_name: "GitHub Action"
           commit_user_email: "action@github.com"
           skip_dirty_check: false
+          create_branch: false
+          push_options: '--force-with-lease'
+          skip_fetch: false
