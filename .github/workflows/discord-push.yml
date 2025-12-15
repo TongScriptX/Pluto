@@ -18,23 +18,50 @@ jobs:
           WEBHOOK1: ${{ secrets.DISCORD_GITHUB_UPDATE }}
           WEBHOOK2: ${{ secrets.DISCORD_GITHUB_UPDATE2 }}
         run: |
+          set -e  # 启用错误时退出，但我们会捕获特定错误
+          
           # 检查 webhooks 是否配置
+          echo "=== 检查 Webhook 配置 ==="
           if [ -z "$WEBHOOK1" ] && [ -z "$WEBHOOK2" ]; then
             echo "警告: 未配置 Discord webhooks，跳过通知"
             exit 0
           fi
           
+          if [ -n "$WEBHOOK1" ]; then
+            echo "✓ WEBHOOK1 已配置"
+          else
+            echo "✗ WEBHOOK1 未配置"
+          fi
+          
+          if [ -n "$WEBHOOK2" ]; then
+            echo "✓ WEBHOOK2 已配置"
+          else
+            echo "✗ WEBHOOK2 未配置"
+          fi
+          
+          echo ""
+          echo "=== 提取提交信息 ==="
           COMMIT_MESSAGE=$(git log -1 --pretty=%s)
           COMMIT_BODY=$(git log -1 --pretty=%b)
           COMMIT_AUTHOR=$(git log -1 --pretty=%an)
           COMMIT_HASH=$(git rev-parse --short HEAD)
-          FILES=$(git diff --name-only HEAD^ HEAD)
-          FILE_NAMES=$(echo "$FILES" | xargs -n1 basename | paste -sd ", " -)
+          FILES=$(git diff --name-only HEAD^ HEAD || echo "")
+          FILE_NAMES=$(echo "$FILES" | xargs -n1 basename 2>/dev/null | paste -sd ", " - || echo "无更改")
           
-          # 解析提交类型和范围
+          echo "提交消息: $COMMIT_MESSAGE"
+          echo "提交作者: $COMMIT_AUTHOR"
+          echo "提交哈希: $COMMIT_HASH"
+          echo "更改文件: $FILE_NAMES"
+          
+          echo ""
+          echo "=== 解析提交类型 ==="
           TYPE=$(echo "$COMMIT_MESSAGE" | sed -E 's/^([a-z]+)(\(.+\))?:.*/\1/')
           SCOPE=$(echo "$COMMIT_MESSAGE" | sed -E 's/^[a-z]+\((.+)\):.*/\1/' | grep -v "^$COMMIT_MESSAGE$" || echo "无")
           SUBJECT=$(echo "$COMMIT_MESSAGE" | sed -E 's/^[a-z]+(\(.+\))?:\s+//')
+          
+          echo "类型: $TYPE"
+          echo "范围: $SCOPE"
+          echo "描述: $SUBJECT"
           
           # 根据提交类型设置颜色和图标
           case $TYPE in
@@ -53,7 +80,12 @@ jobs:
             "release") COLOR="65280"; ICON="🎉" ;;
             *) COLOR="14540253"; ICON="📝" ;;
           esac
+          
+          echo "颜色: $COLOR"
+          echo "图标: $ICON"
 
+          echo ""
+          echo "=== 生成 JSON 负载 ==="
           JSON=$(jq -n --arg title "$ICON $TYPE 提交" \
                        --arg description "$SUBJECT" \
                        --arg author "$COMMIT_AUTHOR" \
@@ -97,23 +129,57 @@ jobs:
                             }
                           ]
                         }')
+          
+          if [ $? -ne 0 ]; then
+            echo "✗ JSON 生成失败"
+            exit 1
+          fi
+          
+          echo "✓ JSON 生成成功"
+          echo "JSON 长度: ${#JSON} 字符"
+          echo "JSON 预览 (前 500 字符):"
+          echo "$JSON" | head -c 500
+          echo ""
 
           # 发送到第一个 webhook
           if [ -n "$WEBHOOK1" ]; then
-            echo "发送通知到 WEBHOOK1..."
-            if curl -f -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK1"; then
+            echo ""
+            echo "=== 发送到 WEBHOOK1 ==="
+            HTTP_CODE=$(curl -w "%{http_code}" -o /tmp/response1.txt -s \
+              -H "Content-Type: application/json" \
+              -X POST -d "$JSON" "$WEBHOOK1")
+            
+            echo "HTTP 状态码: $HTTP_CODE"
+            echo "响应内容:"
+            cat /tmp/response1.txt
+            echo ""
+            
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
               echo "✓ WEBHOOK1 发送成功"
             else
-              echo "✗ WEBHOOK1 发送失败"
+              echo "✗ WEBHOOK1 发送失败 (HTTP $HTTP_CODE)"
             fi
           fi
           
           # 发送到第二个 webhook
           if [ -n "$WEBHOOK2" ]; then
-            echo "发送通知到 WEBHOOK2..."
-            if curl -f -H "Content-Type: application/json" -X POST -d "$JSON" "$WEBHOOK2"; then
+            echo ""
+            echo "=== 发送到 WEBHOOK2 ==="
+            HTTP_CODE=$(curl -w "%{http_code}" -o /tmp/response2.txt -s \
+              -H "Content-Type: application/json" \
+              -X POST -d "$JSON" "$WEBHOOK2")
+            
+            echo "HTTP 状态码: $HTTP_CODE"
+            echo "响应内容:"
+            cat /tmp/response2.txt
+            echo ""
+            
+            if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
               echo "✓ WEBHOOK2 发送成功"
             else
-              echo "✗ WEBHOOK2 发送失败"
+              echo "✗ WEBHOOK2 发送失败 (HTTP $HTTP_CODE)"
             fi
           fi
+          
+          echo ""
+          echo "=== 完成 ==="
