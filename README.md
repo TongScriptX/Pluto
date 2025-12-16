@@ -45,6 +45,10 @@ Pluto-X 是一个先进的游戏增强框架，旨在提供高性能、可扩展
 
 我们欢迎所有形式的贡献！请阅读 [贡献指南](CONTRIBUTING.md) 了解详细信息。
 
+### 🌟 贡献者
+
+查看我们的 [贡献者名单](CONTRIBUTORS.md) 了解所有为项目做出贡献的开发者！
+
 
 
 ### 代码规范
@@ -57,6 +61,8 @@ Pluto-X 是一个先进的游戏增强框架，旨在提供高性能、可扩展
 ## 📊 项目统计
 
 ![GitHub contributors](https://img.shields.io/github/contributors/TongScriptX/Pluto?style=for-the-badge)
+![GitHub issues](https://img.shields.io/github/issues/TongScriptX/Pluto?style=for-the-badge)
+![GitHub closed issues](https://img.shields.io/github/issues-closed/TongScriptX/Pluto?style=for-the-badge)
 ![GitHub last commit](https://img.shields.io/github/last-commit/TongScriptX/Pluto?style=for-the-badge)
 ![GitHub repo size](https://img.shields.io/github/repo-size/TongScriptX/Pluto?style=for-the-badge)
 ![GitHub language count](https://img.shields.io/github/languages/count/TongScriptX/Pluto?style=for-the-badge)

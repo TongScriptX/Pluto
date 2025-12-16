@@ -35,28 +35,79 @@ jobs:
               repo: context.repo.repo
             });
             
+            // 获取issue信息
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100
+            });
+            
+            // 提取issue贡献者
+            const issueContributors = new Map();
+            issues.forEach(issue => {
+              if (issue.user && issue.user.type === 'User') {
+                const username = issue.user.login;
+                if (!issueContributors.has(username)) {
+                  issueContributors.set(username, {
+                    login: username,
+                    contributions: 0,
+                    type: 'User',
+                    issue_contributions: 0
+                  });
+                }
+                issueContributors.get(username).issue_contributions++;
+              }
+            });
+            
+            // 合并代码贡献者和issue贡献者
+            const allContributors = new Map();
+            
+            // 添加代码贡献者
+            contributors.forEach(contributor => {
+              allContributors.set(contributor.login, {
+                ...contributor,
+                issue_contributions: 0
+              });
+            });
+            
+            // 添加issue贡献者
+            issueContributors.forEach((contributor, username) => {
+              if (allContributors.has(username)) {
+                allContributors.get(username).issue_contributions = contributor.issue_contributions;
+              } else {
+                allContributors.set(username, contributor);
+              }
+            });
+            
             // 生成贡献者列表
             let contributorsMd = '## 🌟 贡献者\n\n';
-            contributorsMd += '感谢所有为 Pluto 项目做出贡献的开发者！\n\n';
+            contributorsMd += '感谢所有为 Pluto 项目做出贡献的开发者！包括代码贡献和Issue反馈。\n\n';
             contributorsMd += '<!-- 此文件由 GitHub Actions 自动生成，请勿手动编辑 -->\n\n';
             
-            // 按贡献次数排序
-            contributors.sort((a, b) => b.contributions - a.contributions);
+            // 转换为数组并按总贡献次数排序
+            const sortedContributors = Array.from(allContributors.values()).sort((a, b) => {
+              const totalA = a.contributions + a.issue_contributions;
+              const totalB = b.contributions + b.issue_contributions;
+              return totalB - totalA;
+            });
             
             // 贡献者统计
-            let totalContributions = 0;
-            let totalContributors = contributors.length;
+            const totalContributors = sortedContributors.length;
+            const totalCodeContributions = sortedContributors.reduce((sum, c) => sum + c.contributions, 0);
+            const totalIssueContributions = sortedContributors.reduce((sum, c) => sum + c.issue_contributions, 0);
             
             contributorsMd += '### 📊 贡献统计\n\n';
             contributorsMd += `- 👥 总贡献者: ${totalContributors}\n`;
-            contributorsMd += `- 🎯 总提交次数: ${contributors.reduce((sum, c) => sum + c.contributions, 0)}\n`;
+            contributorsMd += `- 💻 代码提交: ${totalCodeContributions} 次\n`;
+            contributorsMd += `- 🐛 Issue反馈: ${totalIssueContributions} 个\n`;
             contributorsMd += `- ⭐ 项目 Stars: ${repo.stargazers_count}\n`;
             contributorsMd += `- 🍴 项目 Forks: ${repo.forks_count}\n\n`;
             
             // 贡献者列表
             contributorsMd += '### 🏆 贡献者榜单\n\n';
             
-            // 分级显示
+            // 分级显示（基于总贡献）
             const tiers = {
               '🥇 核心贡献者': 10,
               '🥈 活跃贡献者': 5,
@@ -64,12 +115,12 @@ jobs:
             };
             
             let currentTier = '';
-            contributors.forEach((contributor, index) => {
-              const contributions = contributor.contributions;
+            sortedContributors.forEach((contributor, index) => {
+              const totalContrib = contributor.contributions + contributor.issue_contributions;
               let tier = '';
               
-              if (contributions >= 10) tier = '🥇 核心贡献者';
-              else if (contributions >= 5) tier = '🥈 活跃贡献者';
+              if (totalContrib >= 10) tier = '🥇 核心贡献者';
+              else if (totalContrib >= 5) tier = '🥈 活跃贡献者';
               else tier = '🥉 贡献者';
               
               if (tier !== currentTier) {
@@ -78,7 +129,12 @@ jobs:
                 currentTier = tier;
               }
               
-              contributorsMd += `- [${contributor.login}](https://github.com/${contributor.login}) - ${contributions} 次贡献\n`;
+              let contributionText = `${contributor.contributions} 次代码提交`;
+              if (contributor.issue_contributions > 0) {
+                contributionText += ` + ${contributor.issue_contributions} 个Issue`;
+              }
+              
+              contributorsMd += `- [${contributor.login}](https://github.com/${contributor.login}) - ${contributionText}\n`;
             });
             
             // 新贡献者欢迎
