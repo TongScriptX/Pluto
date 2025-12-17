@@ -10,7 +10,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 -- 调试模式
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 
 -- 全局变量
 local lastSendTime = os.time()
