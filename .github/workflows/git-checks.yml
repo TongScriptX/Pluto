@@ -29,7 +29,16 @@ jobs:
           fi
 
       - name: Check commit message
-        uses: wagoid/commitlint-github-action@v5
+        uses: wagoid/commitlint-github-action@v5.5.2
+        timeout-minutes: 5
+        continue-on-error: false
+
+      - name: Fallback commitlint check
+        if: failure()
+        run: |
+          npm install -g @commitlint/cli @commitlint/config-conventional
+          echo "Running fallback commitlint check..."
+          git log --format=%s -n 1 | npx commitlint
         with:
           configFile: .commitlintrc.js
 
