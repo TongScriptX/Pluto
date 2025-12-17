@@ -94,42 +94,93 @@ feat: 这是一个非常非常非常非常非常非常非常非常非常非常�
 update: 更新代码
 ```
 
-## 🌿 分支命名规范
+## 🌿 分支管理策略
 
-分支名称必须遵循 `<类型>/<描述>` 格式：
+### 分支结构
 
-### 格式要求
+- **main** - 主分支，仅包含稳定发布的代码
+- **develop** - 开发分支，所有需要测试的代码都提交到此分支
+- **test** - 测试分支，用于测试环境部署
 
-- **格式**：`<类型>/<ticket>-<描述>`
-- **字符**：仅使用小写字母、数字、连字符和点
-- **类型**：与提交类型一致
+### 开发流程
 
-### 分支示例
+#### 🚀 新功能开发
+
+**不再需要创建功能分支！** 所有开发直接在 `develop` 分支上进行：
 
 ```bash
-# 功能分支
-feat/auto-pilot
-feat/issue-123-vehicle-system
+# 1. 切换到 develop 分支
+git checkout develop
+git pull origin develop
 
-# 修复分支
-fix/collision-detection
-fix/gh-456-memory-leak
+# 2. 进行开发
+# ... 修改代码 ...
 
-# 文档分支
-docs/update-readme
-docs/api-reference
+# 3. 暂存更改
+git add .
 
-# 其他分支
-refactor/core-engine
-chore/update-dependencies
-hotfix/server-crash
+# 4. 提交（遵循规范）
+git commit -m "feat: 添加新功能"
+
+# 5. 直接推送到 develop 分支
+git push origin develop
 ```
 
-### 保护分支
+#### 🔧 紧急修复
 
-以下分支受保护，直接推送时不检查命名规范：
-- `main` - 主分支
-- `develop` - 开发分支
+对于紧急修复，可以直接在 `develop` 分支上进行，或者临时创建 hotfix 分支：
+
+```bash
+# 直接在 develop 上修复（推荐）
+git checkout develop
+# ... 修复代码 ...
+git commit -m "fix: 修复紧急问题"
+git push origin develop
+
+# 或者临时 hotfix 分支（特殊情况）
+git checkout -b hotfix/urgent-fix
+# ... 修复代码 ...
+git commit -m "hotfix: 修复紧急问题"
+git push origin hotfix/urgent-fix
+# 合并到 develop 后删除分支
+```
+
+#### 📚 文档更新
+
+文档更新同样直接在 `develop` 分支进行：
+
+```bash
+git checkout develop
+# ... 修改文档 ...
+git commit -m "docs: 更新 API 文档"
+git push origin develop
+```
+
+### 分支保护规则
+
+以下分支受保护：
+- **main** - 仅通过 PR 从 develop 合并
+- **develop** - 直接推送，但需要通过 CI 检查
+- **test** - 自动部署分支，不可直接推送
+
+### 何时创建分支
+
+仅在以下特殊情况创建新分支：
+
+1. **hotfix** - 生产环境紧急修复
+   ```bash
+   git checkout -b hotfix/issue-number-description
+   ```
+
+2. **release** - 版本发布准备
+   ```bash
+   git checkout -b release/v1.0.0
+   ```
+
+3. **experiment** - 实验性功能（不确定是否会合并）
+   ```bash
+   git checkout -b experiment/feature-name
+   ```
 
 ## 🔍 自动检查
 
@@ -166,11 +217,12 @@ pre-commit install
 
 ## 📝 提交流程
 
-### 标准流程
+### 🚀 标准开发流程
 
 ```bash
-# 1. 创建功能分支
-git checkout -b feat/new-feature
+# 1. 切换到 develop 分支并更新
+git checkout develop
+git pull origin develop
 
 # 2. 进行开发
 # ... 修改代码 ...
@@ -181,10 +233,48 @@ git add .
 # 4. 提交（遵循规范）
 git commit -m "feat: 添加新功能"
 
-# 5. 推送到远程
-git push origin feat/new-feature
+# 5. 直接推送到 develop 分支
+git push origin develop
 
-# 6. 创建 Pull Request
+# 6. 等待 CI 检查通过
+```
+
+### 🔧 紧急修复流程
+
+```bash
+# 1. 切换到 develop 分支
+git checkout develop
+git pull origin develop
+
+# 2. 进行修复
+# ... 修复代码 ...
+
+# 3. 提交修复
+git add .
+git commit -m "fix: 修复紧急问题"
+
+# 4. 推送到 develop
+git push origin develop
+
+# 5. 如需立即发布到 main，创建 PR
+```
+
+### 📚 文档更新流程
+
+```bash
+# 1. 切换到 develop 分支
+git checkout develop
+git pull origin develop
+
+# 2. 更新文档
+# ... 修改文档 ...
+
+# 3. 提交更改
+git add .
+git commit -m "docs: 更新文档"
+
+# 4. 推送到 develop
+git push origin develop
 ```
 
 ### 修改最后一次提交
@@ -248,16 +338,18 @@ feat: 添加新功能。     # 以句号结尾
 feat: 添加新功能
 ```
 
-### 4. 分支命名错误
+### 4. 直接推送到 main 分支
 
 ```bash
 # ❌ 错误
-git checkout -b NewFeature        # 大写字母
-git checkout -b add_new_feature   # 下划线
-git checkout -b feature           # 缺少类型前缀
+git checkout main
+git commit -m "feat: 新功能"
+git push origin main  # 不应该直接推送到 main
 
 # ✅ 正确
-git checkout -b feat/new-feature
+git checkout develop
+git commit -m "feat: 新功能"
+git push origin develop  # 推送到 develop 分支
 ```
 
 ## 📚 参考资源
@@ -271,7 +363,10 @@ git checkout -b feat/new-feature
 - 提交前使用 `git log --oneline` 查看最近的提交格式
 - 使用 `git commit --amend` 修改最后一次提交
 - 大型功能建议拆分为多个小提交，每个提交保持原子性
-- 定期从 `main` 分支 rebase 以保持分支最新
+- **始终在 develop 分支进行开发**，不要创建功能分支
+- 定期从 main 分支同步到 develop 分支以保持最新
+- develop 分支的代码会自动部署到测试环境进行验证
+- 只有经过充分测试的代码才会从 develop 合并到 main
 
 ## ❓ 问题反馈
 
