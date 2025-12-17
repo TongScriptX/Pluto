@@ -924,9 +924,11 @@ local function checkAndForceDelivery()
         local success = forceDeliverRobbedAmount()
         
         if success then
+            local currentCurrency = fetchCurrentCurrency()
+            local actualEarned = currentCurrency - sessionStartCurrency
             UILibrary:Notify({
                 Title = "目标达成",
-                Text = string.format("已投放 %s，目标完成！", formatNumber(targetAmount)),
+                Text = string.format("获得 +%s，目标完成！", formatNumber(actualEarned)),
                 Duration = 5
             })
             
