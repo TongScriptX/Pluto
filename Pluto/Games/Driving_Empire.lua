@@ -759,18 +759,16 @@ local function getRobbedAmount()
         
         -- ContentText 格式: "$123,456"
         local text = textLabel.ContentText
-        debugLog("[AutoRob] 原始文本内容: '" .. text .. "'")
         
         -- 移除 $ 符号和逗号
         local cleanText = text:gsub("[$,]", "")
         local amount = tonumber(cleanText) or 0
         
-        debugLog("[AutoRob] 已抢金额: " .. formatNumber(amount) .. " (原始: '" .. text .. "')")
         return amount
     end)
     
     if success then
-        return amount
+        return amount or 0
     else
         warn("[AutoRob] 获取已抢金额失败:", amount)
         return 0
@@ -874,13 +872,18 @@ local function forceDeliverRobbedAmount()
         debugLog("[AutoRob] 检测金额是否到账...")
         local checkStart = tick()
         local checkTimeout = 5
+        local lastCheckAmount = initialRobbedAmount
         
         repeat
-            task.wait(0.3)
+            task.wait(0.5) -- 增加检查间隔
             local currentRobbedAmount = getRobbedAmount()
             
-            if currentRobbedAmount < initialRobbedAmount then
-                debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(currentRobbedAmount))
+            -- 只在金额变化时输出日志
+            if currentRobbedAmount ~= lastCheckAmount then
+                if currentRobbedAmount < initialRobbedAmount then
+                    debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(currentRobbedAmount))
+                end
+                lastCheckAmount = currentRobbedAmount
             end
             
             if currentRobbedAmount == 0 then
@@ -931,7 +934,8 @@ local function checkAndForceDelivery()
         
         if success then
             local currentCurrency = fetchCurrentCurrency()
-            local actualEarned = currentCurrency - sessionStartCurrency
+            local sessionStart = sessionStartCurrency or currentCurrency
+            local actualEarned = currentCurrency - sessionStart
             UILibrary:Notify({
                 Title = "目标达成",
                 Text = string.format("获得 +%s，目标完成！\n尝试次数: %d", formatNumber(actualEarned), attempts),
@@ -1010,7 +1014,8 @@ local function performAutoRobATMs()
                     
                     -- 交付完成后显示结果
                     local currentCurrency = fetchCurrentCurrency()
-                    local earnedThisSession = currentCurrency - sessionStartCurrency
+                    local sessionStart = sessionStartCurrency or currentCurrency
+                    local earnedThisSession = currentCurrency - sessionStart
                     
                     if deliverySuccess then
                         -- 投放成功，恢复用户原始目标金额
