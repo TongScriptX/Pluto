@@ -724,36 +724,48 @@ local function getRobbedAmount()
     local success, amount = pcall(function()
         local character = workspace:FindFirstChild(player.Name)
         if not character then
+            debugLog("[AutoRob] 警告: 无法找到角色对象")
             return 0
         end
         
         local head = character:FindFirstChild("Head")
         if not head then
+            debugLog("[AutoRob] 警告: 无法找到角色头部")
             return 0
         end
         
         local billboard = head:FindFirstChild("CharacterBillboard")
         if not billboard then
+            debugLog("[AutoRob] 警告: 无法找到角色公告牌")
             return 0
         end
         
         local children = billboard:GetChildren()
         if #children < 4 then
+            debugLog("[AutoRob] 警告: 公告牌子元素数量不足，当前数量: " .. #children)
             return 0
         end
         
         local textLabel = children[4]
-        if not textLabel or not textLabel.ContentText then
+        if not textLabel then
+            debugLog("[AutoRob] 警告: 无法找到第4个子元素")
+            return 0
+        end
+        
+        if not textLabel.ContentText then
+            debugLog("[AutoRob] 警告: 文本标签ContentText为空")
             return 0
         end
         
         -- ContentText 格式: "$123,456"
         local text = textLabel.ContentText
+        debugLog("[AutoRob] 原始文本内容: '" .. text .. "'")
+        
         -- 移除 $ 符号和逗号
         local cleanText = text:gsub("[$,]", "")
         local amount = tonumber(cleanText) or 0
         
-        debugLog("[AutoRob] 已抢金额: " .. formatNumber(amount))
+        debugLog("[AutoRob] 已抢金额: " .. formatNumber(amount) .. " (原始: '" .. text .. "')")
         return amount
     end)
     
@@ -762,6 +774,29 @@ local function getRobbedAmount()
     else
         warn("[AutoRob] 获取已抢金额失败:", amount)
         return 0
+    end
+end
+
+-- 抢劫完成后检测金额变化
+-- ============================================================================
+local function checkRobberyCompletion(previousAmount)
+    local currentAmount = getRobbedAmount()
+    local change = currentAmount - previousAmount
+    
+    debugLog("[AutoRob] 金额检测结果:")
+    debugLog("  - 之前金额: " .. formatNumber(previousAmount))
+    debugLog("  - 当前金额: " .. formatNumber(currentAmount))
+    debugLog("  - 变化量: " .. (change >= 0 and "+" or "") .. formatNumber(change))
+    
+    if change > 0 then
+        debugLog("[AutoRob] ✓ 检测到抢劫成功获得金额: +" .. formatNumber(change))
+        return true, change
+    elseif change < 0 then
+        debugLog("[AutoRob] ⚠ 检测到金额减少: " .. formatNumber(change))
+        return false, change
+    else
+        debugLog("[AutoRob] - 金额无变化")
+        return false, 0
     end
 end
 
@@ -903,9 +938,28 @@ local function performAutoRobATMs()
                         end
                         
                         if deliverySuccess then
-                            debugLog("[AutoRobATMs] 交付完成，共尝试 " .. deliveryAttempts .. " 次")
+                            debugLog("[AutoRobATMs] ✓ 交付完成，共尝试 " .. deliveryAttempts .. " 次")
+                            
+                            -- 交付完成后检测最终金额
+                            local finalCurrency = fetchCurrentCurrency()
+                            local totalEarned = finalCurrency - sessionStartCurrency
+                            debugLog("[AutoRobATMs] === 抢劫会话总结 ===")
+                            debugLog("  - 会话开始金额: " .. formatNumber(sessionStartCurrency))
+                            debugLog("  - 会话结束金额: " .. formatNumber(finalCurrency))
+                            debugLog("  - 本次会话总收入: +" .. formatNumber(totalEarned))
+                            debugLog("  - 交付尝试次数: " .. deliveryAttempts)
+                            debugLog("========================")
                         else
-                            warn("[AutoRobATMs] 达到最大尝试次数(" .. maxDeliveryAttempts .. ")，交付可能失败")
+                            warn("[AutoRobATMs] ✗ 达到最大尝试次数(" .. maxDeliveryAttempts .. ")，交付可能失败")
+                            
+                            -- 即使交付失败也检测当前状态
+                            local finalCurrency = fetchCurrentCurrency()
+                            local partialEarned = finalCurrency - sessionStartCurrency
+                            debugLog("[AutoRobATMs] === 部分交付状态 ===")
+                            debugLog("  - 会话开始金额: " .. formatNumber(sessionStartCurrency))
+                            debugLog("  - 当前金额: " .. formatNumber(finalCurrency))
+                            debugLog("  - 部分收入: +" .. formatNumber(partialEarned))
+                            debugLog("========================")
                         end
                     end
                     
@@ -914,7 +968,7 @@ local function performAutoRobATMs()
                     
                     UILibrary:Notify({
                         Title = "抢劫完成",
-                        Text = string.format("本次获得: +%s", formatNumber(earnedThisSession)),
+                        Text = string.format("本次获得: +%s\n交付尝试: %d次", formatNumber(earnedThisSession), deliveryAttempts),
                         Duration = 5
                     })
                     
@@ -961,7 +1015,12 @@ local function performAutoRobATMs()
                         
                         if not config.autoRobATMsEnabled then break end
                         
+                        -- 记录抢劫前的金额
+                        local beforeRobberyAmount = getRobbedAmount()
+                        debugLog("[AutoRob] 开始抢劫ATM，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
+                        
                         game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
+                        debugLog("[AutoRob] 已调用AttemptATMBustComplete，等待抢劫完成...")
                         
                         local cooldownStart = tick()
                         repeat
@@ -979,6 +1038,24 @@ local function performAutoRobATMs()
                                 character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                             end
                         until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
+                        
+                        -- 抢劫完成后检测金额变化
+                        task.wait(0.5) -- 等待金额更新
+                        local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
+                        
+                        if robberySuccess then
+                            debugLog("[AutoRob] ✓ ATM抢劫成功！获得金额: +" .. formatNumber(amountChange))
+                            
+                            -- 检查是否达到目标金额
+                            local currentTotal = getRobbedAmount()
+                            local targetAmount = config.robTargetAmount or 0
+                            if targetAmount > 0 then
+                                debugLog("[AutoRob] 目标进度: " .. formatNumber(currentTotal) .. "/" .. formatNumber(targetAmount) .. 
+                                         " (" .. math.floor((currentTotal/targetAmount)*100) .. "%)")
+                            end
+                        else
+                            debugLog("[AutoRob] ⚠ ATM抢劫未获得金额或失败")
+                        end
                     end
                 end
                 
@@ -1019,7 +1096,12 @@ local function performAutoRobATMs()
                         
                         if not config.autoRobATMsEnabled then break end
                         
+                        -- 记录抢劫前的金额
+                        local beforeRobberyAmount = getRobbedAmount()
+                        debugLog("[AutoRob] 开始抢劫nil ATM，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
+                        
                         game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(obj)
+                        debugLog("[AutoRob] 已调用nil ATM的AttemptATMBustComplete，等待抢劫完成...")
                         
                         local cooldownStart = tick()
                         repeat
@@ -1037,6 +1119,24 @@ local function performAutoRobATMs()
                                 character:PivotTo(obj.WorldPivot + Vector3.new(0, 5, 0))
                             end
                         until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
+                        
+                        -- 抢劫完成后检测金额变化
+                        task.wait(0.5) -- 等待金额更新
+                        local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
+                        
+                        if robberySuccess then
+                            debugLog("[AutoRob] ✓ nil ATM抢劫成功！获得金额: +" .. formatNumber(amountChange))
+                            
+                            -- 检查是否达到目标金额
+                            local currentTotal = getRobbedAmount()
+                            local targetAmount = config.robTargetAmount or 0
+                            if targetAmount > 0 then
+                                debugLog("[AutoRob] 目标进度: " .. formatNumber(currentTotal) .. "/" .. formatNumber(targetAmount) .. 
+                                         " (" .. math.floor((currentTotal/targetAmount)*100) .. "%)")
+                            end
+                        else
+                            debugLog("[AutoRob] ⚠ nil ATM抢劫未获得金额或失败")
+                        end
                     end
                 end
                 
