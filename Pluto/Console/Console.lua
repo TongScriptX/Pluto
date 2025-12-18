@@ -21,8 +21,8 @@ end
 local uiModule = loadstring(uiCode)()
 local ui = uiModule.CreateUI(playerGui)
 
--- 保存日志
-local output = ""
+-- 保存日志（按时间顺序存储）
+local logHistory = {}
 
 -- 根据类型获取颜色
 local function getColor(msgType)
@@ -37,9 +37,10 @@ local function getColor(msgType)
     end
 end
 
--- 在 Scroll 中追加一行彩色文本
+-- 在 Scroll 中插入一行彩色文本到顶部
 local function appendLog(msg, msgType)
-    output ..= ("[%s] %s\n"):format(msgType.Name, msg)
+    -- 添加到历史记录（保持时间顺序）
+    table.insert(logHistory, ("[%s] %s"):format(msgType.Name, msg))
 
     local line = Instance.new("TextLabel")
     line.Size = UDim2.new(1, -10, 0, 0) -- 高度设为0，自动调整
@@ -51,6 +52,15 @@ local function appendLog(msg, msgType)
     line.TextSize = 14
     line.Text = ("[%s] %s"):format(msgType.Name, msg)
     line.TextWrapped = true
+    line.LayoutOrder = 0 -- 设置为0，确保在最上面
+    
+    -- 更新所有现有行的LayoutOrder
+    for _, child in ipairs(ui.Scroll:GetChildren()) do
+        if child:IsA("TextLabel") then
+            child.LayoutOrder = child.LayoutOrder + 1
+        end
+    end
+    
     line.Parent = ui.Scroll
 end
 
@@ -79,6 +89,8 @@ end
 
 -- 点击复制按钮
 ui.CopyBtn.MouseButton1Click:Connect(function()
+    -- 按时间顺序拼接日志（从早到晚）
+    local output = table.concat(logHistory, "\n")
     local success = trySetClipboard(output)
     if success then
         ui.Notice.Text = "✅ 日志已复制并清空"
@@ -87,7 +99,7 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
     end
 
     -- 清空日志
-    output = ""
+    logHistory = {}
     for _, child in ipairs(ui.Scroll:GetChildren()) do
         if child:IsA("TextLabel") then
             child:Destroy()
@@ -97,7 +109,7 @@ end)
 
 -- 点击清空按钮
 ui.ClearBtn.MouseButton1Click:Connect(function()
-    output = ""
+    logHistory = {}
     for _, child in ipairs(ui.Scroll:GetChildren()) do
         if child:IsA("TextLabel") then
             child:Destroy()
