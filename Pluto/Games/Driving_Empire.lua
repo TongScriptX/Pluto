@@ -934,7 +934,7 @@ local function checkAndForceDelivery()
         
         if success then
             local currentCurrency = fetchCurrentCurrency()
-            local sessionStart = sessionStartCurrency or currentCurrency
+            local sessionStart = config.totalEarningsBase or initialCurrency
             local actualEarned = currentCurrency - sessionStart
             UILibrary:Notify({
                 Title = "目标达成",
