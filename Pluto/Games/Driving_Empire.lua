@@ -974,6 +974,12 @@ local function performAutoRobATMs()
         local sessionStartCurrency = fetchCurrentCurrency()
         local originalTargetAmount = config.robTargetAmount -- 保存用户原始目标金额
         
+        -- 添加状态跟踪变量
+        local lastSuccessfulRobbery = tick()
+        local noATMFoundCount = 0
+        local maxNoATMFoundCount = 5 -- 连续5次找不到ATM后重置
+        local lastATMCount = 0
+        
         -- 关闭时的清理逻辑
         if not config.autoRobATMsEnabled then
             task.wait(1)
@@ -1001,6 +1007,32 @@ local function performAutoRobATMs()
         while config.autoRobATMsEnabled do
             task.wait()
             local success, err = pcall(function()
+                -- 检查是否长时间没有成功抢劫（可能是卡住了）
+                local timeSinceLastRobbery = tick() - lastSuccessfulRobbery
+                if timeSinceLastRobbery > 120 then -- 2分钟没有成功抢劫
+                    warn("[AutoRobATMs] 检测到长时间未成功抢劫（" .. math.floor(timeSinceLastRobbery) .. "秒），执行重置操作")
+                    
+                    -- 重置状态
+                    noATMFoundCount = 0
+                    getfenv().atmloadercooldown = false
+                    localPlayer.ReplicationFocus = nil
+                    
+                    -- 传送到安全位置重新开始
+                    if character and character.PrimaryPart then
+                        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 10, 0))
+                    end
+                    
+                    -- 清理可能存在的金钱袋
+                    local moneyBags = collectionService:GetTagged("CriminalMoneyBagTool")
+                    for _, bag in pairs(moneyBags) do
+                        pcall(function() bag:Destroy() end)
+                    end
+                    
+                    task.wait(2)
+                    lastSuccessfulRobbery = tick() -- 重置计时器
+                    debugLog("[AutoRobATMs] 状态已重置")
+                end
+                
                 -- 检查已抢劫金额是否达到目标
                 local robbedAmount = getRobbedAmount()
                 local targetAmount = config.robTargetAmount or 0
@@ -1031,6 +1063,7 @@ local function performAutoRobATMs()
                         })
                         task.wait(2)
                         sessionStartCurrency = fetchCurrentCurrency()
+                        lastSuccessfulRobbery = tick() -- 更新最后成功时间
                     else
                         -- 投放失败，跳过本次投放，临时调整目标金额
                         warn("[AutoRobATMs] 投放失败，跳过本次投放，临时调整目标金额")
@@ -1054,6 +1087,7 @@ local function performAutoRobATMs()
                 local taggedATMs = collectionService:GetTagged("CriminalATM")
                 local atmIterator, atmArray, atmIndex = pairs(taggedATMs)
                 local targetATM = nil
+                local foundATMCount = 0
                 
                 while true do
                     local atm
@@ -1062,6 +1096,7 @@ local function performAutoRobATMs()
                         break
                     end
                     if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                        foundATMCount = foundATMCount + 1
                         local teleportStart = tick()
                         targetATM = atm
                         repeat
@@ -1119,6 +1154,8 @@ local function performAutoRobATMs()
                         
                         if robberySuccess then
                             debugLog("[AutoRob] ✓ ATM抢劫成功！获得金额: +" .. formatNumber(amountChange))
+                            lastSuccessfulRobbery = tick() -- 更新最后成功时间
+                            noATMFoundCount = 0 -- 重置计数器
                             
                             -- 检查是否达到目标金额并立即投放
                             local shouldStop = checkAndForceDelivery()
@@ -1142,6 +1179,7 @@ local function performAutoRobATMs()
                         break
                     end
                     if obj.Name == "CriminalATM" and (obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled) then
+                        foundATMCount = foundATMCount + 1
                         print(obj, obj:GetAttribute("State"))
                         local teleportStart = tick()
                         targetATM = obj
@@ -1200,6 +1238,8 @@ local function performAutoRobATMs()
                         
                         if robberySuccess then
                             debugLog("[AutoRob] ✓ nil ATM抢劫成功！获得金额: +" .. formatNumber(amountChange))
+                            lastSuccessfulRobbery = tick() -- 更新最后成功时间
+                            noATMFoundCount = 0 -- 重置计数器
                             
                             -- 检查是否达到目标金额并立即投放
                             local shouldStop = checkAndForceDelivery()
@@ -1212,6 +1252,39 @@ local function performAutoRobATMs()
                             debugLog("[AutoRob] ⚠ nil ATM抢劫未获得金额或失败")
                         end
                     end
+                end
+                
+                -- 检查是否找到ATM
+                if foundATMCount == 0 then
+                    noATMFoundCount = noATMFoundCount + 1
+                    debugLog("[AutoRobATMs] 未找到可用ATM，计数: " .. noATMFoundCount .. "/" .. maxNoATMFoundCount)
+                    
+                    if noATMFoundCount >= maxNoATMFoundCount then
+                        warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行重置操作")
+                        
+                        -- 重置状态
+                        getfenv().atmloadercooldown = false
+                        localPlayer.ReplicationFocus = nil
+                        noATMFoundCount = 0
+                        
+                        -- 强制刷新ATM
+                        local spawners = workspace.Game.Jobs.CriminalATMSpawners:GetChildren()
+                        for _, spawner in pairs(spawners) do
+                            localPlayer.ReplicationFocus = spawner
+                            task.wait(0.2)
+                        end
+                        
+                        -- 传送到中心点重新搜索
+                        if character and character.PrimaryPart then
+                            character:PivotTo(CFrame.new(0, 50, 0))
+                        end
+                        
+                        task.wait(1)
+                        localPlayer.ReplicationFocus = nil
+                        debugLog("[AutoRobATMs] ATM搜索已重置")
+                    end
+                else
+                    noATMFoundCount = 0 -- 找到ATM，重置计数器
                 end
                 
                 -- ATM加载器冷却检查
@@ -1251,6 +1324,10 @@ local function performAutoRobATMs()
             
             if not success then
                 warn("AutoRobATMs Error:", err)
+                -- 发生错误时重置状态
+                noATMFoundCount = 0
+                getfenv().atmloadercooldown = false
+                localPlayer.ReplicationFocus = nil
             end
         end
         
