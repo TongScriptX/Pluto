@@ -1086,10 +1086,10 @@ local function performAutoRobATMs()
                 end
                 
                 -- ATM抢劫通用函数
-                local function robATM(atm, atmType)
+                local function robATM(atm, atmType, foundCountRef)
                     if not config.autoRobATMsEnabled then return false end
                     
-                    foundATMCount = foundATMCount + 1
+                    foundCountRef.count = foundCountRef.count + 1
                     local teleportTime = atmType == "tagged" and 1 or 0.2
                     local atmTypeName = atmType == "tagged" and "ATM" or "nil ATM"
                     
@@ -1175,13 +1175,13 @@ local function performAutoRobATMs()
                 
                 -- 查找并抢劫ATM
                 local targetATM = nil
-                local foundATMCount = 0
+                local foundATMCount = {count = 0}
                 
                 -- 查找标记的ATM
                 local taggedATMs = collectionService:GetTagged("CriminalATM")
                 for _, atm in pairs(taggedATMs) do
                     if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
-                        if robATM(atm, "tagged") then
+                        if robATM(atm, "tagged", foundATMCount) then
                             break -- 如果需要重新开始循环，跳出当前循环
                         end
                     end
@@ -1191,14 +1191,14 @@ local function performAutoRobATMs()
                 for _, obj in pairs(getnilinstances()) do
                     if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
                         print(obj, obj:GetAttribute("State"))
-                        if robATM(obj, "nil") then
+                        if robATM(obj, "nil", foundATMCount) then
                             break -- 如果需要重新开始循环，跳出当前循环
                         end
                     end
                 end
                 
                 -- 检查是否找到ATM
-                if foundATMCount == 0 then
+                if foundATMCount.count == 0 then
                     noATMFoundCount = noATMFoundCount + 1
                     debugLog("[AutoRobATMs] 未找到可用ATM，计数: " .. noATMFoundCount .. "/" .. maxNoATMFoundCount)
                     
