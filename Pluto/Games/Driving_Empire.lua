@@ -922,9 +922,10 @@ end
 
 -- 检查是否需要强制投放
 -- ============================================================================
-local function checkAndForceDelivery()
+local function checkAndForceDelivery(tempTarget)
     local robbedAmount = getRobbedAmount()
-    local targetAmount = config.robTargetAmount or 0
+    -- 优先使用传入的临时目标金额，否则使用配置中的目标金额
+    local targetAmount = tempTarget or config.robTargetAmount or 0
     
     if targetAmount > 0 and robbedAmount >= targetAmount then
         debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
@@ -973,6 +974,7 @@ local function performAutoRobATMs()
         local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
         local sessionStartCurrency = fetchCurrentCurrency()
         local originalTargetAmount = config.robTargetAmount -- 保存用户原始目标金额
+        local tempTargetAmount = nil -- 内存中的临时目标金额，不保存到配置
         
         -- 添加状态跟踪变量
         local lastSuccessfulRobbery = tick()
@@ -1035,7 +1037,8 @@ local function performAutoRobATMs()
                 
                 -- 检查已抢劫金额是否达到目标
                 local robbedAmount = getRobbedAmount()
-                local targetAmount = config.robTargetAmount or 0
+                -- 优先使用内存中的临时目标金额，如果没有则使用配置中的目标金额
+                local targetAmount = tempTargetAmount or config.robTargetAmount or 0
                 
                 if targetAmount > 0 and robbedAmount >= targetAmount then
                     debugLog("[AutoRobATMs] 已抢金额达到目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
@@ -1050,10 +1053,10 @@ local function performAutoRobATMs()
                     local earnedThisSession = currentCurrency - sessionStart
                     
                     if deliverySuccess then
-                        -- 投放成功，恢复用户原始目标金额
-                        if config.robTargetAmount ~= originalTargetAmount then
-                            config.robTargetAmount = originalTargetAmount
-                            debugLog("[AutoRobATMs] 投放成功，恢复用户原始目标金额: " .. formatNumber(originalTargetAmount))
+                        -- 投放成功，立即销毁内存中的临时目标金额
+                        if tempTargetAmount then
+                            tempTargetAmount = nil
+                            debugLog("[AutoRobATMs] 投放成功，临时目标金额已销毁")
                         end
                         
                         UILibrary:Notify({
@@ -1065,12 +1068,11 @@ local function performAutoRobATMs()
                         sessionStartCurrency = fetchCurrentCurrency()
                         lastSuccessfulRobbery = tick() -- 更新最后成功时间
                     else
-                        -- 投放失败，跳过本次投放，临时调整目标金额
-                        warn("[AutoRobATMs] 投放失败，跳过本次投放，临时调整目标金额")
-                        -- 临时增加投放目标，但保持用户原始设置
-                        local tempTargetAmount = robbedAmount + targetAmount
-                        config.robTargetAmount = tempTargetAmount
-                        debugLog("[AutoRobATMs] 临时目标金额: " .. formatNumber(tempTargetAmount) .. " (用户原始: " .. formatNumber(originalTargetAmount) .. ")")
+                        -- 投放失败，在内存中设置临时目标金额，不保存到配置文件
+                        warn("[AutoRobATMs] 投放失败，在内存中设置临时目标金额")
+                        -- 临时增加投放目标，仅存储在内存中
+                        tempTargetAmount = robbedAmount + (config.robTargetAmount or 0)
+                        debugLog("[AutoRobATMs] 内存中的临时目标金额: " .. formatNumber(tempTargetAmount) .. " (用户原始: " .. formatNumber(originalTargetAmount) .. ")")
                         
                         UILibrary:Notify({
                             Title = "投放失败",
@@ -1079,177 +1081,118 @@ local function performAutoRobATMs()
                         })
                         
                         -- 不重置sessionStartCurrency，继续抢劫
-                        -- 下次成功投放后会恢复用户原始目标金额
+                        -- 下次成功投放后会销毁临时目标金额
                     end
                 end
                 
-                -- 查找标记的ATM
-                local taggedATMs = collectionService:GetTagged("CriminalATM")
-                local atmIterator, atmArray, atmIndex = pairs(taggedATMs)
+                -- ATM抢劫通用函数
+                local function robATM(atm, atmType)
+                    if not config.autoRobATMsEnabled then return false end
+                    
+                    foundATMCount = foundATMCount + 1
+                    local teleportTime = atmType == "tagged" and 1 or 0.2
+                    local atmTypeName = atmType == "tagged" and "ATM" or "nil ATM"
+                    
+                    debugLog("[AutoRob] 开始抢劫" .. atmTypeName)
+                    
+                    -- 传送到ATM位置
+                    local teleportStart = tick()
+                    repeat
+                        task.wait()
+                        if character and character.PrimaryPart then
+                            character.PrimaryPart.Velocity = Vector3.zero
+                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
+                        end
+                        localPlayer.ReplicationFocus = nil
+                    until tick() - teleportStart > teleportTime or not config.autoRobATMsEnabled
+                    
+                    if not config.autoRobATMsEnabled then return false end
+                    
+                    -- 开始抢劫
+                    game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
+                    
+                    -- 等待抢劫进度
+                    local progressStart = tick()
+                    repeat
+                        task.wait()
+                        if character and character.PrimaryPart then
+                            character.PrimaryPart.Velocity = Vector3.zero
+                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
+                        end
+                        localPlayer.ReplicationFocus = nil
+                    until tick() - progressStart > 2.5 or not config.autoRobATMsEnabled
+                    
+                    if not config.autoRobATMsEnabled then return false end
+                    
+                    -- 记录抢劫前的金额
+                    local beforeRobberyAmount = getRobbedAmount()
+                    debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
+                    
+                    -- 完成抢劫
+                    game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
+                    debugLog("[AutoRob] 已调用" .. atmTypeName .. "的AttemptATMBustComplete，等待抢劫完成...")
+                    
+                    -- 等待抢劫冷却
+                    local cooldownStart = tick()
+                    repeat
+                        task.wait()
+                        if character and character.PrimaryPart then
+                            character.PrimaryPart.Velocity = Vector3.zero
+                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
+                        end
+                    until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not config.autoRobATMsEnabled
+                    
+                    repeat
+                        task.wait()
+                        if character and character.PrimaryPart then
+                            character.PrimaryPart.Velocity = Vector3.zero
+                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
+                        end
+                    until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
+                    
+                    -- 检测抢劫结果
+                    task.wait(0.5) -- 等待金额更新
+                    local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
+                    
+                    if robberySuccess then
+                        debugLog("[AutoRob] ✓ " .. atmTypeName .. "抢劫成功！获得金额: +" .. formatNumber(amountChange))
+                        lastSuccessfulRobbery = tick() -- 更新最后成功时间
+                        noATMFoundCount = 0 -- 重置计数器
+                        
+                        -- 检查是否达到目标金额并立即投放
+                        local shouldStop = checkAndForceDelivery(tempTargetAmount)
+                        if shouldStop then
+                            debugLog("[AutoRob] 🔄 投放完成，重新开始抢劫循环")
+                            sessionStartCurrency = fetchCurrentCurrency()
+                            return true -- 返回true表示需要重新开始循环
+                        end
+                    else
+                        debugLog("[AutoRob] ⚠ " .. atmTypeName .. "抢劫未获得金额或失败")
+                    end
+                    
+                    return false
+                end
+                
+                -- 查找并抢劫ATM
                 local targetATM = nil
                 local foundATMCount = 0
                 
-                while true do
-                    local atm
-                    atmIndex, atm = atmIterator(atmArray, atmIndex)
-                    if atmIndex == nil then
-                        break
-                    end
+                -- 查找标记的ATM
+                local taggedATMs = collectionService:GetTagged("CriminalATM")
+                for _, atm in pairs(taggedATMs) do
                     if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
-                        foundATMCount = foundATMCount + 1
-                        local teleportStart = tick()
-                        targetATM = atm
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                            localPlayer.ReplicationFocus = nil
-                        until tick() - teleportStart > 1 or not config.autoRobATMsEnabled
-                        
-                        if not config.autoRobATMsEnabled then break end
-                        
-                        game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
-                        
-                        local progressStart = tick()
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                            localPlayer.ReplicationFocus = nil
-                        until tick() - progressStart > 2.5 or not config.autoRobATMsEnabled
-                        
-                        if not config.autoRobATMsEnabled then break end
-                        
-                        -- 记录抢劫前的金额
-                        local beforeRobberyAmount = getRobbedAmount()
-                        debugLog("[AutoRob] 开始抢劫ATM，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
-                        
-                        game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
-                        debugLog("[AutoRob] 已调用AttemptATMBustComplete，等待抢劫完成...")
-                        
-                        local cooldownStart = tick()
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                        until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not config.autoRobATMsEnabled
-                        
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                        until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
-                        
-                        -- 抢劫完成后检测金额变化
-                        task.wait(0.5) -- 等待金额更新
-                        local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
-                        
-                        if robberySuccess then
-                            debugLog("[AutoRob] ✓ ATM抢劫成功！获得金额: +" .. formatNumber(amountChange))
-                            lastSuccessfulRobbery = tick() -- 更新最后成功时间
-                            noATMFoundCount = 0 -- 重置计数器
-                            
-                            -- 检查是否达到目标金额并立即投放
-                            local shouldStop = checkAndForceDelivery()
-                            if shouldStop then
-                                debugLog("[AutoRob] 🔄 投放完成，重新开始抢劫循环")
-                                sessionStartCurrency = fetchCurrentCurrency()
-                                break -- 跳出当前ATM循环，重新开始
-                            end
-                        else
-                            debugLog("[AutoRob] ⚠ ATM抢劫未获得金额或失败")
+                        if robATM(atm, "tagged") then
+                            break -- 如果需要重新开始循环，跳出当前循环
                         end
                     end
                 end
                 
                 -- 查找nil instances中的ATM
-                local nilIterator, nilArray, nilIndex = pairs(getnilinstances())
-                while true do
-                    local obj
-                    nilIndex, obj = nilIterator(nilArray, nilIndex)
-                    if nilIndex == nil then
-                        break
-                    end
-                    if obj.Name == "CriminalATM" and (obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled) then
-                        foundATMCount = foundATMCount + 1
+                for _, obj in pairs(getnilinstances()) do
+                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
                         print(obj, obj:GetAttribute("State"))
-                        local teleportStart = tick()
-                        targetATM = obj
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(obj.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                            localPlayer.ReplicationFocus = nil
-                        until tick() - teleportStart > 0.2 or not config.autoRobATMsEnabled
-                        
-                        if not config.autoRobATMsEnabled then break end
-                        
-                        game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(obj)
-                        
-                        local progressStart = tick()
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(obj.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                            localPlayer.ReplicationFocus = nil
-                        until tick() - progressStart > 2.5 or not config.autoRobATMsEnabled
-                        
-                        if not config.autoRobATMsEnabled then break end
-                        
-                        -- 记录抢劫前的金额
-                        local beforeRobberyAmount = getRobbedAmount()
-                        debugLog("[AutoRob] 开始抢劫nil ATM，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
-                        
-                        game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(obj)
-                        debugLog("[AutoRob] 已调用nil ATM的AttemptATMBustComplete，等待抢劫完成...")
-                        
-                        local cooldownStart = tick()
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(obj.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                        until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not config.autoRobATMsEnabled
-                        
-                        repeat
-                            task.wait()
-                            if character and character.PrimaryPart then
-                                character.PrimaryPart.Velocity = Vector3.zero
-                                character:PivotTo(obj.WorldPivot + Vector3.new(0, 5, 0))
-                            end
-                        until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
-                        
-                        -- 抢劫完成后检测金额变化
-                        task.wait(0.5) -- 等待金额更新
-                        local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
-                        
-                        if robberySuccess then
-                            debugLog("[AutoRob] ✓ nil ATM抢劫成功！获得金额: +" .. formatNumber(amountChange))
-                            lastSuccessfulRobbery = tick() -- 更新最后成功时间
-                            noATMFoundCount = 0 -- 重置计数器
-                            
-                            -- 检查是否达到目标金额并立即投放
-                            local shouldStop = checkAndForceDelivery()
-                            if shouldStop then
-                                debugLog("[AutoRob] 🔄 投放完成，重新开始抢劫循环")
-                                sessionStartCurrency = fetchCurrentCurrency()
-                                break -- 跳出当前ATM循环，重新开始
-                            end
-                        else
-                            debugLog("[AutoRob] ⚠ nil ATM抢劫未获得金额或失败")
+                        if robATM(obj, "nil") then
+                            break -- 如果需要重新开始循环，跳出当前循环
                         end
                     end
                 end
