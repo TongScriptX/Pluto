@@ -923,7 +923,7 @@ end
 -- 检查是否需要强制投放
 -- ============================================================================
 local function checkAndForceDelivery(tempTarget)
-    local robbedAmount = getRobbedAmount()
+    local robbedAmount = getRobbedAmount() or 0
     -- 优先使用传入的临时目标金额，否则使用配置中的目标金额
     local targetAmount = tempTarget or config.robTargetAmount or 0
     
@@ -1036,7 +1036,7 @@ local function performAutoRobATMs()
                 end
                 
                 -- 检查已抢劫金额是否达到目标
-                local robbedAmount = getRobbedAmount()
+                local robbedAmount = getRobbedAmount() or 0
                 -- 优先使用内存中的临时目标金额，如果没有则使用配置中的目标金额
                 local targetAmount = tempTargetAmount or config.robTargetAmount or 0
                 
@@ -1071,7 +1071,7 @@ local function performAutoRobATMs()
                         -- 投放失败，在内存中设置临时目标金额，不保存到配置文件
                         warn("[AutoRobATMs] 投放失败，在内存中设置临时目标金额")
                         -- 临时增加投放目标，仅存储在内存中
-                        tempTargetAmount = robbedAmount + (config.robTargetAmount or 0)
+                        tempTargetAmount = (robbedAmount or 0) + (config.robTargetAmount or 0)
                         debugLog("[AutoRobATMs] 内存中的临时目标金额: " .. formatNumber(tempTargetAmount) .. " (用户原始: " .. formatNumber(originalTargetAmount) .. ")")
                         
                         UILibrary:Notify({
