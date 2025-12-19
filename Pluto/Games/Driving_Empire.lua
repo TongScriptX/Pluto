@@ -779,7 +779,7 @@ end
 -- ============================================================================
 local function checkRobberyCompletion(previousAmount)
     local currentAmount = getRobbedAmount()
-    local change = currentAmount - previousAmount
+    local change = currentAmount - (previousAmount or 0)
     
     debugLog("[AutoRob] 金额检测结果:")
     debugLog("  - 之前金额: " .. formatNumber(previousAmount))
@@ -822,7 +822,7 @@ local function forceDeliverRobbedAmount()
         task.wait(0.1)
     end
     
-    local robbedAmount = getRobbedAmount()
+    local robbedAmount = getRobbedAmount() or 0
     debugLog("[AutoRob] 当前已抢金额: " .. formatNumber(robbedAmount))
     
     -- 循环传送直到金额成功到账
@@ -876,7 +876,7 @@ local function forceDeliverRobbedAmount()
         
         repeat
             task.wait(0.5) -- 增加检查间隔
-            local currentRobbedAmount = getRobbedAmount()
+            local currentRobbedAmount = getRobbedAmount() or 0
             
             -- 只在金额变化时输出日志
             if currentRobbedAmount ~= lastCheckAmount then
@@ -894,7 +894,7 @@ local function forceDeliverRobbedAmount()
         until tick() - checkStart > checkTimeout
         
         if not deliverySuccess then
-            local currentRobbedAmount = getRobbedAmount()
+            local currentRobbedAmount = getRobbedAmount() or 0
             if currentRobbedAmount < initialRobbedAmount * 0.5 then
                 debugLog("[AutoRob] 金额显著减少，继续等待...")
                 task.wait(3)
@@ -1125,7 +1125,7 @@ local function performAutoRobATMs()
                     if not config.autoRobATMsEnabled then return false end
                     
                     -- 记录抢劫前的金额
-                    local beforeRobberyAmount = getRobbedAmount()
+                    local beforeRobberyAmount = getRobbedAmount() or 0
                     debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
                     
                     -- 完成抢劫
