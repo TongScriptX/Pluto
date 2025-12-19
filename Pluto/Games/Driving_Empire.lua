@@ -830,6 +830,7 @@ local function forceDeliverRobbedAmount()
     local deliveryAttempts = 0
     local maxDeliveryAttempts = 10
     local initialRobbedAmount = robbedAmount
+    local totalDeliveredAmount = 0 -- 记录总共投放的金额
     local VirtualInputManager = game:GetService("VirtualInputManager")
     
     while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts do
@@ -880,8 +881,10 @@ local function forceDeliverRobbedAmount()
             
             -- 只在金额变化时输出日志
             if currentRobbedAmount ~= lastCheckAmount then
-                if currentRobbedAmount < initialRobbedAmount then
-                    debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(currentRobbedAmount))
+                if currentRobbedAmount < lastCheckAmount then
+                    local deliveredAmount = lastCheckAmount - currentRobbedAmount
+                    totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
+                    debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
                 end
                 lastCheckAmount = currentRobbedAmount
             end
@@ -917,7 +920,8 @@ local function forceDeliverRobbedAmount()
     end
     
     debugLog("[AutoRob] === 强制投放流程结束 ===")
-    return deliverySuccess, deliveryAttempts
+    debugLog("[AutoRob] 总计投放金额: " .. formatNumber(totalDeliveredAmount))
+    return deliverySuccess, deliveryAttempts, totalDeliveredAmount
 end
 
 -- 检查是否需要强制投放
@@ -931,15 +935,12 @@ local function checkAndForceDelivery(tempTarget)
         debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
         debugLog("[AutoRob] 🚨 立即执行强制投放...")
         
-        local success, attempts = forceDeliverRobbedAmount()
+        local success, attempts, deliveredAmount = forceDeliverRobbedAmount()
         
         if success then
-            local currentCurrency = fetchCurrentCurrency()
-            local sessionStart = config.totalEarningsBase or initialCurrency
-            local actualEarned = currentCurrency - sessionStart
             UILibrary:Notify({
                 Title = "目标达成",
-                Text = string.format("获得 +%s，目标完成！\n尝试次数: %d", formatNumber(actualEarned), attempts),
+                Text = string.format("获得 +%s\n尝试次数: %d", formatNumber(deliveredAmount), attempts),
                 Duration = 5
             })
             
@@ -972,7 +973,7 @@ local function performAutoRobATMs()
         local localPlayer = game.Players.LocalPlayer
         local character = localPlayer.Character
         local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
-        local sessionStartCurrency = fetchCurrentCurrency()
+        local sessionStartCurrency = fetchCurrentCurrency() or 0
         local originalTargetAmount = config.robTargetAmount -- 保存用户原始目标金额
         local tempTargetAmount = nil -- 内存中的临时目标金额，不保存到配置
         
@@ -1045,12 +1046,7 @@ local function performAutoRobATMs()
                     debugLog("[AutoRobATMs] 调用强制投放功能...")
                     
                     -- 调用统一的强制投放函数
-                    local deliverySuccess, deliveryAttempts = forceDeliverRobbedAmount()
-                    
-                    -- 交付完成后显示结果
-                    local currentCurrency = fetchCurrentCurrency()
-                    local sessionStart = sessionStartCurrency or currentCurrency
-                    local earnedThisSession = currentCurrency - sessionStart
+                    local deliverySuccess, deliveryAttempts, deliveredAmount = forceDeliverRobbedAmount()
                     
                     if deliverySuccess then
                         -- 投放成功，立即销毁内存中的临时目标金额
@@ -1061,11 +1057,11 @@ local function performAutoRobATMs()
                         
                         UILibrary:Notify({
                             Title = "抢劫完成",
-                            Text = string.format("本次获得: +%s\n交付尝试: %d次", formatNumber(earnedThisSession), deliveryAttempts),
+                            Text = string.format("本次获得: +%s\n交付尝试: %d次", formatNumber(deliveredAmount), deliveryAttempts),
                             Duration = 5
                         })
                         task.wait(2)
-                        sessionStartCurrency = fetchCurrentCurrency()
+                        sessionStartCurrency = fetchCurrentCurrency() or 0
                         lastSuccessfulRobbery = tick() -- 更新最后成功时间
                     else
                         -- 投放失败，在内存中设置临时目标金额，不保存到配置文件
