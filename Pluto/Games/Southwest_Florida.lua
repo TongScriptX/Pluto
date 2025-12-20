@@ -749,6 +749,222 @@ local intervalInput = UILibrary:CreateTextBox(intervalCard, {
 })
 intervalInput.Text = tostring(config.notificationInterval)
 
+-- 基准金额设置
+local baseAmountCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
+UILibrary:CreateLabel(baseAmountCard, {
+    Text = "基准金额设置",
+})
+
+local targetAmountLabel
+local suppressTargetToggleCallback = false
+local targetAmountToggle
+
+local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
+    PlaceholderText = "输入基准金额",
+    OnFocusLost = function(text)
+        text = text and text:match("^%s*(.-)%s*$")
+        
+        if not text or text == "" then
+            config.baseAmount = 0
+            config.targetAmount = 0
+            config.lastSavedCurrency = 0
+            baseAmountInput.Text = ""
+            if targetAmountLabel then
+                targetAmountLabel.Text = "目标金额: 未设置"
+            end
+            
+            saveConfig()
+            
+            UILibrary:Notify({
+                Title = "基准金额已清除",
+                Text = "基准金额和目标金额已重置",
+                Duration = 5
+            })
+            return
+        end
+
+        local cleanText = text:gsub(",", "")
+        local num = tonumber(cleanText)
+        
+        if num and num > 0 then
+            local currentCurrency = fetchCurrentCurrency() or 0
+            
+            local newTarget = num + currentCurrency
+            
+            config.baseAmount = num
+            config.targetAmount = newTarget
+            config.lastSavedCurrency = currentCurrency
+            
+            baseAmountInput.Text = formatNumber(num)
+            
+            if targetAmountLabel then
+                targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
+            end
+            
+            saveConfig()
+            
+            UILibrary:Notify({
+                Title = "基准金额已设置",
+                Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
+                    formatNumber(num), 
+                    formatNumber(currentCurrency),
+                    formatNumber(newTarget)),
+                Duration = 7
+            })
+            
+            if config.enableTargetKick and currentCurrency >= newTarget then
+                suppressTargetToggleCallback = true
+                if targetAmountToggle then
+                    targetAmountToggle:Set(false)
+                end
+                config.enableTargetKick = false
+                saveConfig()
+                UILibrary:Notify({
+                    Title = "自动关闭",
+                    Text = string.format("当前金额(%s)已达到目标(%s)，目标金额踢出功能已自动关闭",
+                        formatNumber(currentCurrency),
+                        formatNumber(newTarget)),
+                    Duration = 6
+                })
+            end
+        else
+            baseAmountInput.Text = tostring(config.baseAmount > 0 and formatNumber(config.baseAmount) or "")
+            UILibrary:Notify({
+                Title = "配置错误",
+                Text = "请输入有效的正整数作为基准金额",
+                Duration = 5
+            })
+        end
+    end
+})
+
+if config.baseAmount > 0 then
+    baseAmountInput.Text = formatNumber(config.baseAmount)
+else
+    baseAmountInput.Text = ""
+end
+
+-- 目标金额踢出
+local targetAmountCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
+
+targetAmountToggle = UILibrary:CreateToggle(targetAmountCard, {
+    Text = "目标金额踢出",
+    DefaultState = config.enableTargetKick or false,
+    Callback = function(state)
+        if suppressTargetToggleCallback then
+            suppressTargetToggleCallback = false
+            return
+        end
+
+        if state and config.webhookUrl == "" then
+            targetAmountToggle:Set(false)
+            UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
+            return
+        end
+
+        if state and (not config.targetAmount or config.targetAmount <= 0) then
+            targetAmountToggle:Set(false)
+            UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准金额", Duration = 5 })
+            return
+        end
+
+        local currentCurrency = fetchCurrentCurrency()
+        if state and currentCurrency and currentCurrency >= config.targetAmount then
+            targetAmountToggle:Set(false)
+            UILibrary:Notify({
+                Title = "配置警告",
+                Text = string.format("当前金额(%s)已超过目标(%s)，请重新设置基准金额",
+                    formatNumber(currentCurrency),
+                    formatNumber(config.targetAmount)
+                ),
+                Duration = 6
+            })
+            return
+        end
+
+        config.enableTargetKick = state
+        UILibrary:Notify({
+            Title = "配置更新",
+            Text = string.format("目标金额踢出: %s\n目标金额: %s", 
+                (state and "开启" or "关闭"),
+                config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
+            Duration = 5
+        })
+        saveConfig()
+    end
+})
+
+targetAmountLabel = UILibrary:CreateLabel(targetAmountCard, {
+    Text = "目标金额: " .. (config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
+})
+
+-- 重新计算目标金额的按钮
+UILibrary:CreateButton(targetAmountCard, {
+    Text = "重新计算目标金额",
+    Callback = function()
+        if config.baseAmount <= 0 then
+            UILibrary:Notify({
+                Title = "配置错误",
+                Text = "请先设置基准金额",
+                Duration = 5
+            })
+            return
+        end
+        
+        local currentCurrency = fetchCurrentCurrency() or 0
+        
+        -- 重新计算 = 基准金额 + 当前金额
+        local newTarget = config.baseAmount + currentCurrency
+        
+        -- 检查目标金额是否合理
+        if newTarget <= currentCurrency then
+            UILibrary:Notify({
+                Title = "计算错误",
+                Text = string.format("计算后的目标金额(%s)不能小于等于当前金额(%s)", 
+                    formatNumber(newTarget), formatNumber(currentCurrency)),
+                Duration = 6
+            })
+            return
+        end
+        
+        -- 更新配置
+        config.targetAmount = newTarget
+        config.lastSavedCurrency = currentCurrency  -- 重要：更新基准点
+        
+        -- 更新显示
+        if targetAmountLabel then
+            targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
+        end
+        
+        -- 保存配置
+        saveConfig()
+        
+        UILibrary:Notify({
+            Title = "目标金额已重新计算",
+            Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
+                formatNumber(config.baseAmount),
+                formatNumber(currentCurrency),
+                formatNumber(newTarget)),
+            Duration = 8
+        })
+        
+        -- 如果目标踢出开关是开启的，检查是否需要关闭
+        if config.enableTargetKick and currentCurrency >= newTarget then
+            suppressTargetToggleCallback = true
+            targetAmountToggle:Set(false)
+            config.enableTargetKick = false
+            saveConfig()
+            UILibrary:Notify({
+                Title = "自动关闭",
+                Text = string.format("当前金额(%s)已达到目标(%s)，目标金额踢出功能已自动关闭",
+                    formatNumber(currentCurrency),
+                    formatNumber(newTarget)),
+                Duration = 6
+            })
+        end
+    end
+})
+
 -- 关于标签页
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "关于"
