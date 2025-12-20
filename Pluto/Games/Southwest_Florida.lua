@@ -1,8 +1,12 @@
 local Players = game:GetService("Players")
+local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
 local VirtualUser = game:GetService("VirtualUser")
 local UserInputService = game:GetService("UserInputService")
+local GuiService = game:GetService("GuiService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local NetworkClient = game:GetService("NetworkClient")
 local lastWebhookUrl = ""
 local lastSendTime = os.time()
 
@@ -22,14 +26,19 @@ if success and info then
     gameName = info.Name
 end
 
-local function formatWithCommas(amount)
-    local formatted = tostring(amount)
-    local k
-    while true do
-        formatted, k = formatted:gsub("^(-?%d+)(%d%d%d)", '%1,%2')
-        if k == 0 then break end
+local function formatNumber(num)
+    if not num then return "0" end
+    local formatted = tostring(num)
+    local result = ""
+    local count = 0
+    for i = #formatted, 1, -1 do
+        result = formatted:sub(i, i) .. result
+        count = count + 1
+        if count % 3 == 0 and i > 1 then
+            result = "," .. result
+        end
     end
-    return formatted
+    return result
 end
 
 -- UI库加载
@@ -59,17 +68,6 @@ local username = player.Name
 local http_request = syn and syn.request or http and http.request or http_request
 if not http_request then
     error("此执行器不支持 HTTP 请求")
-end
-
--- 获取游戏信息
-local gameName = "未知游戏"
-do
-    local success, info = pcall(function()
-        return MarketplaceService:GetProductInfo(game.PlaceId)
-    end)
-    if success and info then
-        gameName = info.Name
-    end
 end
 
 
@@ -173,6 +171,14 @@ local function fetchCurrentCurrency()
     end
 end
 
+
+-- 格式化时间显示
+local function formatElapsedTime(seconds)
+    local hours = math.floor(seconds / 3600)
+    local minutes = math.floor((seconds % 3600) / 60)
+    local secs = seconds % 60
+    return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
+end
 
 local function calculateEarnedAmount(currentCurrency)
     if not currentCurrency then return 0 end
@@ -418,6 +424,70 @@ local function updateLastNotifyCurrency(currentCurrency)
     end
 end
 
+-- 初始化时校验目标金额
+local function initTargetAmount()
+    local currentCurrency = fetchCurrentCurrency() or 0
+    
+    if config.enableTargetKick and config.targetAmount > 0 and currentCurrency >= config.targetAmount then
+        UILibrary:Notify({
+            Title = "目标金额已达成",
+            Text = string.format("当前金额 %s，已超过目标 %s，已关闭踢出功能", 
+                formatNumber(currentCurrency), formatNumber(config.targetAmount)),
+            Duration = 5
+        })
+        config.enableTargetKick = false
+        config.targetAmount = 0
+        saveConfig()
+    end
+end
+
+-- 加载配置
+local function loadConfig()
+    if isfile(configFile) then
+        local success, result = pcall(function()
+            return HttpService:JSONDecode(readfile(configFile))
+        end)
+
+        if success and type(result) == "table" then
+            local userConfig = result[username]
+            if userConfig and type(userConfig) == "table" then
+                for k, v in pairs(userConfig) do
+                    config[k] = v
+                end
+                UILibrary:Notify({
+                    Title = "配置已加载",
+                    Text = "用户配置加载成功",
+                    Duration = 5,
+                })
+                
+                -- 启动时调整目标金额
+                adjustTargetAmount()
+            else
+                UILibrary:Notify({
+                    Title = "配置提示",
+                    Text = "使用默认配置",
+                    Duration = 5,
+                })
+                saveConfig()
+            end
+        else
+            UILibrary:Notify({
+                Title = "配置错误",
+                Text = "无法解析配置文件",
+                Duration = 5,
+            })
+            saveConfig()
+        end
+    else
+        UILibrary:Notify({
+            Title = "配置提示",
+            Text = "创建新配置文件",
+            Duration = 5,
+        })
+        saveConfig()
+    end
+end
+
 -- 执行加载前先执行初始化
 pcall(initTargetAmount)
 pcall(loadConfig)
@@ -443,64 +513,52 @@ end
 
 -- 启动 Fintech Farm
 local function startFintechFarm()
-    if autoFarmRunning then
-        debugLog("[AutoFarm] 自动农场已在运行")
-        return
-    end
-    
+    if autoFarmRunning then return end
     autoFarmRunning = true
-    debugLog("[AutoFarm] 开始 Fintech 自动农场")
-    
+
     task.spawn(function()
-        while autoFarmRunning and config.autoFarmEnabled do
+        while autoFarmRunning do
             local pgui = player:WaitForChild("PlayerGui")
-            
-            -- 点击工作按钮
-            local jobButton = pgui:WaitForChild("MenuGUI", 10)
-                :WaitForChild("SideButtonsFrame", 10)
-                :WaitForChild("SideButtons", 10)
-                :WaitForChild("JobButton", 10)
-                :WaitForChild("Button", 10)
-            
+
+            local jobButton = pgui:WaitForChild("MenuGUI",10)
+                :WaitForChild("SideButtonsFrame",10)
+                :WaitForChild("SideButtons",10)
+                :WaitForChild("JobButton",10)
+                :WaitForChild("Button",10)
+
             navClick(jobButton)
             task.wait(1)
-            
-            -- 选择 Fintech Employee 工作
-            local fintechButton = pgui:WaitForChild("MenuGUI", 10)
-                :WaitForChild("OpenFrames", 10)
-                :WaitForChild("Job", 10)
-                :WaitForChild("Frame", 10)
-                :WaitForChild("Frame", 10)
-                :WaitForChild("Frame", 10)
-                :WaitForChild("Fintech Employee", 10)
-            
+
+            local fintechButton = pgui:WaitForChild("MenuGUI",10)
+                :WaitForChild("OpenFrames",10)
+                :WaitForChild("Job",10)
+                :WaitForChild("Frame",10)
+                :WaitForChild("Frame",10)
+                :WaitForChild("Frame",10)
+                :WaitForChild("Fintech Employee",10)
+
             navClick(fintechButton)
             task.wait(1)
-            
-            -- 传送到工作地点
+
             local char = player.Character
             if char and char:FindFirstChild("HumanoidRootPart") then
                 char.HumanoidRootPart.CFrame = CFrame.new(8770.2333984375, 34.342464447021484, -2727.3876953125)
             end
             task.wait(0.5)
-            
+
             if char and char:FindFirstChild("HumanoidRootPart") then
                 char.HumanoidRootPart.CFrame = CFrame.new(8795.07421875, 27.221424102783203, -2726.961669921875)
             end
             task.wait(1)
-            
-            -- 开始工作循环
+
             repeat
-                if not autoFarmRunning or not config.autoFarmEnabled then break end
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 0)
+                if not autoFarmRunning then break end
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,0)
                 task.wait(0.3)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 0)
-                task.wait(300) -- 等待5分钟
-            until not autoFarmRunning or not config.autoFarmEnabled
+                VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,0)
+                task.wait(300)
+            until not autoFarmRunning
         end
-        
-        autoFarmRunning = false
-        debugLog("[AutoFarm] Fintech 自动农场已停止")
     end)
 end
 
@@ -509,7 +567,103 @@ local function stopAutoFarm()
     autoFarmRunning = false
     config.autoFarmEnabled = false
     saveConfig()
-    debugLog("[AutoFarm] 自动农场已停止")
+end
+
+-- 统一获取通知间隔（秒）
+local function getNotificationIntervalSeconds()
+    return (config.notificationInterval or 5) * 60
+end
+
+-- 发送 Webhook
+local function dispatchWebhook(payload)
+    if config.webhookUrl == "" then
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "请先设置 Webhook 地址",
+            Duration = 5
+        })
+        warn("[Webhook] 未设置 webhookUrl")
+        return false
+    end
+
+    local data = {
+        content = nil,
+        embeds = payload.embeds
+    }
+
+    local requestFunc = syn and syn.request or http and http.request or request
+
+    if not requestFunc then
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "无法找到可用的请求函数，请使用支持 HTTP 请求的执行器",
+            Duration = 5
+        })
+        warn("[Webhook] 无可用请求函数")
+        return false
+    end
+
+    debugPrint("[Webhook] 正在发送 Webhook 到:", config.webhookUrl)
+
+    local success, res = pcall(function()
+        return requestFunc({
+            Url = config.webhookUrl,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+
+    if success and res then
+        if res.StatusCode == 204 or res.StatusCode == 200 then
+            UILibrary:Notify({
+                Title = "Webhook",
+                Text = "Webhook 发送成功",
+                Duration = 5
+            })
+            debugPrint("[Webhook] 发送成功")
+            return true
+        else
+            warn("[Webhook 错误] 状态码: " .. tostring(res.StatusCode or "未知") .. ", 返回: " .. (res.Body or "无"))
+            UILibrary:Notify({
+                Title = "Webhook 错误",
+                Text = "状态码: " .. tostring(res.StatusCode or "未知") .. "\n返回信息: " .. (res.Body or "无"),
+                Duration = 5
+            })
+            return false
+        end
+    else
+        warn("[Webhook 请求失败] 错误信息: " .. tostring(res))
+        UILibrary:Notify({
+            Title = "Webhook 错误",
+            Text = "请求失败: " .. tostring(res),
+            Duration = 5
+        })
+        return false
+    end
+end
+
+-- 欢迎消息
+local function sendWelcomeMessage()
+    if config.webhookUrl == "" then
+        UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
+        return
+    end
+    local payload = {
+        embeds = {{
+            title = "欢迎使用Pluto-X",
+            description = "**游戏**: " .. gameName .. "\n**用户**: " .. username,
+            color = _G.PRIMARY_COLOR,
+            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+            footer = { text = "作者: tongblx · Pluto-X" }
+        }}
+    }
+    if dispatchWebhook(payload) then
+        config.welcomeSent = true
+        saveConfig()
+    end
 end
 
 -- 掉线检测
@@ -995,6 +1149,23 @@ UILibrary:CreateButton(aboutContent, {
         end
     end,
 })
+
+-- 掉线检测
+local disconnected = false
+
+NetworkClient.ChildRemoved:Connect(function()
+    if not disconnected then
+        warn("[掉线检测] 网络断开")
+        disconnected = true
+    end
+end)
+
+GuiService.ErrorMessageChanged:Connect(function(msg)
+    if msg and msg ~= "" and not disconnected then
+        warn("[掉线检测] 错误提示：" .. msg)
+        disconnected = true
+    end
+end)
 
 -- ============================================================================
 -- 主循环
