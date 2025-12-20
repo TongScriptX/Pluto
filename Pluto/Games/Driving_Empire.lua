@@ -948,15 +948,71 @@ local function checkAndForceDelivery(tempTarget)
             task.wait(2)
             return true
         else
-            UILibrary:Notify({
-                Title = "投放失败",
-                Text = string.format("达到目标但投放失败，尝试次数: %d\n请手动处理", attempts),
-                Duration = 5
-            })
+            -- 投放失败，自动创建临时目标并继续
+            warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
+            
+            -- 返回失败状态，让上层逻辑处理临时目标创建
+            return false, attempts, 0
         end
     end
     
     return false
+end
+
+-- 增强的投放失败恢复机制
+-- ============================================================================
+local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tempTargetRef)
+    debugLog("[Recovery] === 启动投放失败恢复机制 ===")
+    debugLog("[Recovery] 当前已抢金额: " .. formatNumber(robbedAmount))
+    debugLog("[Recovery] 原始目标金额: " .. formatNumber(originalTarget))
+    
+    -- 清理可能存在的金钱袋，避免冲突
+    local collectionService = game:GetService("CollectionService")
+    local moneyBags = collectionService:GetTagged("CriminalMoneyBagTool")
+    for _, bag in pairs(moneyBags) do
+        pcall(function() bag:Destroy() end)
+        task.wait(0.1)
+    end
+    
+    -- 传送到安全位置重置状态
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
+    
+    if character and character.PrimaryPart then
+        character.PrimaryPart.Velocity = Vector3.zero
+        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 20, 0))
+        debugLog("[Recovery] 已传送到安全位置重置状态")
+    end
+    
+    task.wait(1)
+    
+    -- 检查当前已抢金额
+    local currentRobbedAmount = getRobbedAmount() or 0
+    debugLog("[Recovery] 重置后已抢金额: " .. formatNumber(currentRobbedAmount))
+    
+    -- 如果还有金额，尝试再次投放
+    if currentRobbedAmount > 0 then
+        debugLog("[Recovery] 发现剩余金额，尝试再次投放...")
+        local retrySuccess, retryAttempts, retryDelivered = forceDeliverRobbedAmount()
+        
+        if retrySuccess then
+            debugLog("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
+            debugLog("[Recovery] === 投放失败恢复机制结束（成功） ===")
+            return true, retryDelivered
+        else
+            debugLog("[Recovery] ✗ 重试投放仍然失败")
+        end
+    end
+    
+    -- 如果仍然失败，继续增加临时目标（按照流程要求）
+    local newTempTarget = currentRobbedAmount + originalTarget
+    tempTargetRef.value = newTempTarget
+    
+    debugLog("[Recovery] ✗ 投放失败，继续增加临时目标: " .. formatNumber(newTempTarget))
+    debugLog("[Recovery] === 投放失败恢复机制结束（失败，增加临时目标） ===")
+    
+    return false, 0
 end
 
 -- ============================================================================
@@ -1064,20 +1120,45 @@ local function performAutoRobATMs()
                         sessionStartCurrency = fetchCurrentCurrency() or 0
                         lastSuccessfulRobbery = tick() -- 更新最后成功时间
                     else
-                        -- 投放失败，在内存中设置临时目标金额，不保存到配置文件
-                        warn("[AutoRobATMs] 投放失败，在内存中设置临时目标金额")
-                        -- 临时增加投放目标，仅存储在内存中
-                        tempTargetAmount = (robbedAmount or 0) + (config.robTargetAmount or 0)
-                        debugLog("[AutoRobATMs] 内存中的临时目标金额: " .. formatNumber(tempTargetAmount) .. " (用户原始: " .. formatNumber(originalTargetAmount) .. ")")
+                        -- 投放失败，使用增强的恢复机制
+                        warn("[AutoRobATMs] 投放失败，启动增强恢复机制")
                         
-                        UILibrary:Notify({
-                            Title = "投放失败",
-                            Text = string.format("投放失败，跳过本次\n临时目标: %s", formatNumber(tempTargetAmount)),
-                            Duration = 5
-                        })
+                        local tempTargetRef = { value = tempTargetAmount }
+                        local recoverySuccess, recoveredAmount = enhancedDeliveryFailureRecovery(robbedAmount, originalTargetAmount, tempTargetRef)
                         
-                        -- 不重置sessionStartCurrency，继续抢劫
-                        -- 下次成功投放后会销毁临时目标金额
+                        if recoverySuccess then
+                            -- 恢复成功，投放成功
+                            if tempTargetAmount then
+                                tempTargetAmount = nil
+                                debugLog("[AutoRobATMs] ✓ 投放成功，临时目标已销毁，恢复原设定目标: " .. formatNumber(originalTargetAmount))
+                            end
+                            
+                            UILibrary:Notify({
+                                Title = "投放成功",
+                                Text = string.format("临时目标完成，恢复原目标\n获得: +%s\n原目标: %s", formatNumber(recoveredAmount), formatNumber(originalTargetAmount)),
+                                Duration = 5
+                            })
+                            task.wait(2)
+                            sessionStartCurrency = fetchCurrentCurrency() or 0
+                            lastSuccessfulRobbery = tick()
+                        else
+                            -- 恢复失败，继续增加临时目标
+                            local currentRobbedAmount = getRobbedAmount() or 0
+                            tempTargetAmount = currentRobbedAmount + originalTargetAmount
+                            debugLog("[AutoRobATMs] ✗ 投放失败，继续增加临时目标: " .. formatNumber(tempTargetAmount))
+                            
+                            UILibrary:Notify({
+                                Title = "临时目标增加",
+                                Text = string.format("投放失败，继续增加临时目标\n新目标: %s", formatNumber(tempTargetAmount)),
+                                Duration = 3
+                            })
+                            
+                            -- 不重置sessionStartCurrency，继续抢劫
+                            -- 下次成功投放后会销毁临时目标金额
+                            
+                            -- 立即继续抢劫循环，不等待
+                            lastSuccessfulRobbery = tick() -- 重置计时器，避免长时间无抢劫的误判
+                        end
                     end
                 end
                 
