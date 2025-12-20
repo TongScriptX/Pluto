@@ -820,6 +820,11 @@ local function forceDeliverRobbedAmount()
             bag:Destroy()
         end)
         task.wait(0.1)
+        
+        -- 每次清理后检查功能状态
+        if not checkAutoRobStatus("清理金钱袋") then
+            return false, 0, 0
+        end
     end
     
     local robbedAmount = getRobbedAmount() or 0
@@ -833,7 +838,7 @@ local function forceDeliverRobbedAmount()
     local totalDeliveredAmount = 0 -- 记录总共投放的金额
     local VirtualInputManager = game:GetService("VirtualInputManager")
     
-    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts do
+    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and checkAutoRobStatus("投放循环") do
         deliveryAttempts = deliveryAttempts + 1
         debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
         
@@ -848,6 +853,8 @@ local function forceDeliverRobbedAmount()
         debugLog("[AutoRob] 等待角色稳定...")
         task.wait(1)
         
+        if not checkAutoRobStatus("等待稳定") then break end
+        
         -- 第三步：跳跃
         debugLog("[AutoRob] 执行跳跃动作触发交付")
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
@@ -858,6 +865,8 @@ local function forceDeliverRobbedAmount()
         debugLog("[AutoRob] 等待跳跃动作完成...")
         task.wait(1.5)
         
+        if not checkAutoRobStatus("跳跃完成") then break end
+        
         -- 第五步：保持位置等待交付完成
         debugLog("[AutoRob] 保持位置等待交付处理...")
         local holdTime = tick()
@@ -867,7 +876,9 @@ local function forceDeliverRobbedAmount()
                 character.PrimaryPart.Velocity = Vector3.zero
                 character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
             end
-        until tick() - holdTime > 2
+        until tick() - holdTime > 2 or not checkAutoRobStatus("保持位置")
+        
+        if not checkAutoRobStatus("保持位置结束") then break end
         
         -- 检测金额是否到账
         debugLog("[AutoRob] 检测金额是否到账...")
@@ -924,6 +935,28 @@ local function forceDeliverRobbedAmount()
     return deliverySuccess, deliveryAttempts, totalDeliveredAmount
 end
 
+-- 检查交付点是否可用
+-- ============================================================================
+local function checkDropOffPointEnabled()
+    local dropOffPoint = workspace:FindFirstChild("Game")
+        and workspace.Game:FindFirstChild("Jobs")
+        and workspace.Game.Jobs:FindFirstChild("CriminalDropOffSpawners")
+        and workspace.Game.Jobs.CriminalDropOffSpawners:FindFirstChild("CriminalDropOffSpawnerPermanent")
+        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent:FindFirstChild("CriminalDropOffPoint")
+        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint:FindFirstChild("Zone")
+        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone:FindFirstChild("BillboardAttachment")
+        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone.BillboardAttachment:FindFirstChild("Billboard")
+    
+    if dropOffPoint then
+        local enabled = dropOffPoint.Enabled
+        debugLog("[DropOff] 交付点enabled状态: " .. tostring(enabled))
+        return enabled
+    else
+        warn("[DropOff] 无法找到交付点Billboard")
+        return false
+    end
+end
+
 -- 检查是否需要强制投放
 -- ============================================================================
 local function checkAndForceDelivery(tempTarget)
@@ -933,7 +966,17 @@ local function checkAndForceDelivery(tempTarget)
     
     if targetAmount > 0 and robbedAmount >= targetAmount then
         debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
-        debugLog("[AutoRob] 🚨 立即执行强制投放...")
+        
+        -- 检查交付点是否可用
+        local dropOffEnabled = checkDropOffPointEnabled()
+        
+        if not dropOffEnabled then
+            debugLog("[AutoRob] 交付点不可用，继续抢劫...")
+            -- 返回false表示需要继续抢劫
+            return false, 0, 0
+        end
+        
+        debugLog("[AutoRob] 交付点可用，执行强制投放...")
         
         local success, attempts, deliveredAmount = forceDeliverRobbedAmount()
         
@@ -1016,6 +1059,65 @@ local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tem
 end
 
 -- ============================================================================
+-- 全局状态变量
+-- ============================================================================
+local isAutoRobActive = false -- 跟踪自动抢劫是否处于活动状态
+local isDeliveryInProgress = false -- 跟踪是否正在进行交付操作
+local lastDropOffEnabledStatus = nil -- 记录上一次交付点enabled状态
+
+-- ============================================================================
+-- 统一状态检查函数
+-- ============================================================================
+local function checkAutoRobStatus(context)
+    if not config.autoRobATMsEnabled or not isAutoRobActive then
+        debugLog("[AutoRob] [" .. (context or "未知") .. "] 检测到功能已关闭，停止操作")
+        return false
+    end
+    return true
+end
+
+-- 监控交付点状态变化并更新目标金额
+-- ============================================================================
+local function monitorDropOffStatusAndUpdateTarget()
+    local currentStatus = checkDropOffPointEnabled()
+    
+    -- 初始化状态
+    if lastDropOffEnabledStatus == nil then
+        lastDropOffEnabledStatus = currentStatus
+        debugLog("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
+        return false
+    end
+    
+    -- 检查状态变化：从false变为true
+    if not lastDropOffEnabledStatus and currentStatus then
+        debugLog("[DropOff] 交付点从不可用变为可用！")
+        
+        -- 记录当前已抢劫金额
+        local currentRobbedAmount = getRobbedAmount() or 0
+        if currentRobbedAmount > 0 then
+            -- 更新目标金额为当前已抢劫金额
+            config.robTargetAmount = currentRobbedAmount
+            saveConfig()
+            
+            UILibrary:Notify({
+                Title = "目标金额已更新",
+                Text = string.format("交付点可用，目标金额更新为: %s", formatNumber(currentRobbedAmount)),
+                Duration = 5
+            })
+            
+            debugLog("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
+        end
+        
+        lastDropOffEnabledStatus = currentStatus
+        return true -- 返回true表示状态发生了变化
+    end
+    
+    -- 更新状态记录
+    lastDropOffEnabledStatus = currentStatus
+    return false
+end
+
+-- ============================================================================
 -- Auto Rob ATMs功能
 -- ============================================================================
 local function performAutoRobATMs()
@@ -1023,6 +1125,9 @@ local function performAutoRobATMs()
         debugLog("[AutoRobATMs] 功能未启用")
         return
     end
+    
+    isAutoRobActive = true -- 设置活动状态
+    debugLog("[AutoRobATMs] 自动抢劫已启动，活动状态: " .. tostring(isAutoRobActive))
     
     spawn(function()
         local collectionService = game:GetService("CollectionService")
@@ -1039,33 +1144,15 @@ local function performAutoRobATMs()
         local maxNoATMFoundCount = 5 -- 连续5次找不到ATM后重置
         local lastATMCount = 0
         
-        -- 关闭时的清理逻辑
-        if not config.autoRobATMsEnabled then
-            task.wait(1)
-            local moneyBags = collectionService:GetTagged("CriminalMoneyBagTool")
-            local bagIterator, bagArray, bagIndex = pairs(moneyBags)
-            while true do
-                local bag
-                bagIndex, bag = bagIterator(bagArray, bagIndex)
-                if bagIndex == nil then
-                    break
-                end
-                bag:Destroy()
-                task.wait()
-            end
-            local teleportStart = tick()
-            repeat
-                task.wait()
-                if character then
-                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame)
-                end
-            until tick() - teleportStart > 1
-        end
-        
         -- 主循环
-        while config.autoRobATMsEnabled do
+        while checkAutoRobStatus("主循环") do
             task.wait()
             local success, err = pcall(function()
+                -- 统一的状态检查已在while条件中完成
+                
+                -- 监控交付点状态变化
+                local dropOffStatusChanged = monitorDropOffStatusAndUpdateTarget()
+                
                 -- 检查是否长时间没有成功抢劫（可能是卡住了）
                 local timeSinceLastRobbery = tick() - lastSuccessfulRobbery
                 if timeSinceLastRobbery > 120 then -- 2分钟没有成功抢劫
@@ -1097,67 +1184,93 @@ local function performAutoRobATMs()
                 -- 优先使用内存中的临时目标金额，如果没有则使用配置中的目标金额
                 local targetAmount = tempTargetAmount or config.robTargetAmount or 0
                 
-                if targetAmount > 0 and robbedAmount >= targetAmount then
+                -- 检查目标金额并确认功能状态
+                if targetAmount > 0 and robbedAmount >= targetAmount and checkAutoRobStatus("目标检查") then
                     debugLog("[AutoRobATMs] 已抢金额达到目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
-                    debugLog("[AutoRobATMs] 调用强制投放功能...")
                     
-                    -- 调用统一的强制投放函数
-                    local deliverySuccess, deliveryAttempts, deliveredAmount = forceDeliverRobbedAmount()
+                    -- 检查交付点是否可用
+                    local dropOffEnabled = checkDropOffPointEnabled()
                     
-                    if deliverySuccess then
-                        -- 投放成功，立即销毁内存中的临时目标金额
-                        if tempTargetAmount then
-                            tempTargetAmount = nil
-                            debugLog("[AutoRobATMs] 投放成功，临时目标金额已销毁")
+                    if not dropOffEnabled then
+                        debugLog("[AutoRobATMs] 交付点不可用，继续抢劫...")
+                        -- 交付点不可用，继续抢劫，不执行投放
+                        -- 不重置任何状态，继续循环
+                        lastSuccessfulRobbery = tick() -- 更新最后成功时间，避免长时间无抢劫的误判
+                    else
+                        debugLog("[AutoRobATMs] 交付点可用，调用强制投放功能...")
+                        
+                        isDeliveryInProgress = true -- 设置交付进行中状态
+                        
+                        -- 调用统一的强制投放函数
+                        local deliverySuccess, deliveryAttempts, deliveredAmount = forceDeliverRobbedAmount()
+                        
+                        isDeliveryInProgress = false -- 重置交付状态
+                        
+                        -- 检查功能是否仍然启用
+                        if not checkAutoRobStatus("交付完成") then
+                            break
                         end
                         
-                        UILibrary:Notify({
-                            Title = "抢劫完成",
-                            Text = string.format("本次获得: +%s\n交付尝试: %d次", formatNumber(deliveredAmount), deliveryAttempts),
-                            Duration = 5
-                        })
-                        task.wait(2)
-                        sessionStartCurrency = fetchCurrentCurrency() or 0
-                        lastSuccessfulRobbery = tick() -- 更新最后成功时间
-                    else
-                        -- 投放失败，使用增强的恢复机制
-                        warn("[AutoRobATMs] 投放失败，启动增强恢复机制")
-                        
-                        local tempTargetRef = { value = tempTargetAmount }
-                        local recoverySuccess, recoveredAmount = enhancedDeliveryFailureRecovery(robbedAmount, originalTargetAmount, tempTargetRef)
-                        
-                        if recoverySuccess then
-                            -- 恢复成功，投放成功
+                        if deliverySuccess then
+                            -- 投放成功，立即销毁内存中的临时目标金额
                             if tempTargetAmount then
                                 tempTargetAmount = nil
-                                debugLog("[AutoRobATMs] ✓ 投放成功，临时目标已销毁，恢复原设定目标: " .. formatNumber(originalTargetAmount))
+                                debugLog("[AutoRobATMs] 投放成功，临时目标金额已销毁")
                             end
                             
                             UILibrary:Notify({
-                                Title = "投放成功",
-                                Text = string.format("临时目标完成，恢复原目标\n获得: +%s\n原目标: %s", formatNumber(recoveredAmount), formatNumber(originalTargetAmount)),
+                                Title = "抢劫完成",
+                                Text = string.format("本次获得: +%s\n交付尝试: %d次", formatNumber(deliveredAmount), deliveryAttempts),
                                 Duration = 5
                             })
                             task.wait(2)
                             sessionStartCurrency = fetchCurrentCurrency() or 0
-                            lastSuccessfulRobbery = tick()
+                            lastSuccessfulRobbery = tick() -- 更新最后成功时间
                         else
-                            -- 恢复失败，继续增加临时目标
-                            local currentRobbedAmount = getRobbedAmount() or 0
-                            tempTargetAmount = currentRobbedAmount + originalTargetAmount
-                            debugLog("[AutoRobATMs] ✗ 投放失败，继续增加临时目标: " .. formatNumber(tempTargetAmount))
+                            -- 投放失败，使用增强的恢复机制
+                            warn("[AutoRobATMs] 投放失败，启动增强恢复机制")
                             
-                            UILibrary:Notify({
-                                Title = "临时目标增加",
-                                Text = string.format("投放失败，继续增加临时目标\n新目标: %s", formatNumber(tempTargetAmount)),
-                                Duration = 3
-                            })
+                            local tempTargetRef = { value = tempTargetAmount }
+                            local recoverySuccess, recoveredAmount = enhancedDeliveryFailureRecovery(robbedAmount, originalTargetAmount, tempTargetRef)
                             
-                            -- 不重置sessionStartCurrency，继续抢劫
-                            -- 下次成功投放后会销毁临时目标金额
+                            -- 恢复完成后检查功能状态
+                            if not checkAutoRobStatus("恢复完成") then
+                                break
+                            end
                             
-                            -- 立即继续抢劫循环，不等待
-                            lastSuccessfulRobbery = tick() -- 重置计时器，避免长时间无抢劫的误判
+                            if recoverySuccess then
+                                -- 恢复成功，投放成功
+                                if tempTargetAmount then
+                                    tempTargetAmount = nil
+                                    debugLog("[AutoRobATMs] ✓ 投放成功，临时目标已销毁，恢复原设定目标: " .. formatNumber(originalTargetAmount))
+                                end
+                                
+                                UILibrary:Notify({
+                                    Title = "投放成功",
+                                    Text = string.format("临时目标完成，恢复原目标\n获得: +%s\n原目标: %s", formatNumber(recoveredAmount), formatNumber(originalTargetAmount)),
+                                    Duration = 5
+                                })
+                                task.wait(2)
+                                sessionStartCurrency = fetchCurrentCurrency() or 0
+                                lastSuccessfulRobbery = tick()
+                            else
+                                -- 恢复失败，继续增加临时目标
+                                local currentRobbedAmount = getRobbedAmount() or 0
+                                tempTargetAmount = currentRobbedAmount + originalTargetAmount
+                                debugLog("[AutoRobATMs] ✗ 投放失败，继续增加临时目标: " .. formatNumber(tempTargetAmount))
+                                
+                                UILibrary:Notify({
+                                    Title = "临时目标增加",
+                                    Text = string.format("投放失败，继续增加临时目标\n新目标: %s", formatNumber(tempTargetAmount)),
+                                    Duration = 3
+                                })
+                                
+                                -- 不重置sessionStartCurrency，继续抢劫
+                                -- 下次成功投放后会销毁临时目标金额
+                                
+                                -- 立即继续抢劫循环，不等待
+                                lastSuccessfulRobbery = tick() -- 重置计时器，避免长时间无抢劫的误判
+                            end
                         end
                     end
                 end
@@ -1235,6 +1348,9 @@ local function performAutoRobATMs()
                         debugLog("[AutoRob] ✓ " .. atmTypeName .. "抢劫成功！获得金额: +" .. formatNumber(amountChange))
                         lastSuccessfulRobbery = tick() -- 更新最后成功时间
                         noATMFoundCount = 0 -- 重置计数器
+                        
+                        -- 监控交付点状态变化
+                        monitorDropOffStatusAndUpdateTarget()
                         
                         -- 检查是否达到目标金额并立即投放
                         local shouldStop = checkAndForceDelivery(tempTargetAmount)
@@ -1675,6 +1791,14 @@ UILibrary:CreateToggle(autoRobATMsCard, {
     DefaultState = config.autoRobATMsEnabled or false,
     Callback = function(state)
         config.autoRobATMsEnabled = state
+        
+        if not state then
+            -- 关闭功能时设置状态为非活动
+            isAutoRobActive = false
+            isDeliveryInProgress = false
+            debugLog("[UI] 用户关闭自动抢劫功能，设置状态为非活动")
+        end
+        
         UILibrary:Notify({
             Title = "配置更新",
             Text = "Auto Rob ATMs: " .. (state and "开启" or "关闭"),
