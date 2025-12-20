@@ -58,13 +58,63 @@ local UILibrary
 local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     local source = game:HttpGet(url)
-    return loadstring(source)()
+    if not source then
+        error("无法获取UILibrary源代码")
+    end
+    local func = loadstring(source)
+    if not func then
+        error("无法编译UILibrary源代码")
+    end
+    return func()
 end)
 
 if success and result then
     UILibrary = result
 else
-    error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
+    warn("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
+    warn("[PlutoUILibrary] 脚本将继续运行，但UI功能将不可用")
+    -- 创建一个空的UILibrary表以防止nil调用错误
+    UILibrary = {
+        CreateUIWindow = function()
+            warn("[UI] UILibrary未加载，无法创建UI窗口")
+            return nil
+        end,
+        Notify = function()
+            warn("[UI] UILibrary未加载，无法显示通知")
+        end,
+        CreateTab = function()
+            warn("[UI] UILibrary未加载，无法创建标签页")
+            return nil, nil
+        end,
+        CreateCard = function()
+            warn("[UI] UILibrary未加载，无法创建卡片")
+            return nil
+        end,
+        CreateLabel = function()
+            warn("[UI] UILibrary未加载，无法创建标签")
+            return nil
+        end,
+        CreateToggle = function()
+            warn("[UI] UILibrary未加载，无法创建开关")
+            return nil
+        end,
+        CreateTextBox = function()
+            warn("[UI] UILibrary未加载，无法创建文本框")
+            return nil
+        end,
+        CreateButton = function()
+            warn("[UI] UILibrary未加载，无法创建按钮")
+            return nil
+        end,
+        CreateFloatingButton = function()
+            warn("[UI] UILibrary未加载，无法创建浮动按钮")
+            return nil
+        end,
+        CreateAuthorInfo = function()
+            warn("[UI] UILibrary未加载，无法创建作者信息")
+            return nil
+        end
+    }
 end
 
 -- ============================================================================
