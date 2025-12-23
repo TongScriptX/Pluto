@@ -51,6 +51,63 @@ local function formatElapsedTime(seconds)
     return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
 end
 
+-- 公共传送和位置控制函数
+local function teleportCharacterTo(targetCFrame)
+    if not player.Character or not player.Character.PrimaryPart then
+        warn("[Teleport] 角色或主要部件不存在")
+        return false
+    end
+    
+    -- 尝试车辆传送优先
+    local vehicles = workspace:FindFirstChild("Vehicles")
+    local vehicle = vehicles and vehicles:FindFirstChild(username)
+    local seat = vehicle and vehicle:FindFirstChildWhichIsA("VehicleSeat", true)
+    
+    if seat and vehicle then
+        vehicle:PivotTo(targetCFrame)
+        debugLog("[Teleport] 使用车辆传送")
+    else
+        player.Character:SetPrimaryPartCFrame(targetCFrame)
+        debugLog("[Teleport] 使用角色传送")
+    end
+    
+    return true
+end
+
+-- 安全位置设置函数（清零速度并传送）
+local function safePositionUpdate(targetCFrame)
+    local localPlayer = Players.LocalPlayer
+    local character = localPlayer and localPlayer.Character
+    if character and character.PrimaryPart then
+        character.PrimaryPart.Velocity = Vector3.zero
+        character:PivotTo(targetCFrame)
+    end
+    if localPlayer then
+        localPlayer.ReplicationFocus = nil
+    end
+end
+
+-- 等待循环的通用函数
+local function waitForCondition(conditionFunc, timeout, checkInterval)
+    timeout = timeout or 5
+    checkInterval = checkInterval or 0.1
+    local startTime = tick()
+    
+    repeat
+        task.wait(checkInterval)
+        if conditionFunc() then
+            return true
+        end
+    until tick() - startTime > timeout
+    
+    return false
+end
+
+-- 功能状态检查函数
+local function isAutoRobEnabled()
+    return config.autoRobATMsEnabled and (isAutoRobActive == true)
+end
+
 -- ============================================================================
 -- UI 库加载
 -- ============================================================================
@@ -73,48 +130,30 @@ if success and result then
 else
     warn("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
     warn("[PlutoUILibrary] 脚本将继续运行，但UI功能将不可用")
-    -- 创建一个空的UILibrary表以防止nil调用错误
-    UILibrary = {
-        CreateUIWindow = function()
-            warn("[UI] UILibrary未加载，无法创建UI窗口")
-            return nil
-        end,
-        Notify = function()
-            warn("[UI] UILibrary未加载，无法显示通知")
-        end,
-        CreateTab = function()
-            warn("[UI] UILibrary未加载，无法创建标签页")
-            return nil, nil
-        end,
-        CreateCard = function()
-            warn("[UI] UILibrary未加载，无法创建卡片")
-            return nil
-        end,
-        CreateLabel = function()
-            warn("[UI] UILibrary未加载，无法创建标签")
-            return nil
-        end,
-        CreateToggle = function()
-            warn("[UI] UILibrary未加载，无法创建开关")
-            return nil
-        end,
-        CreateTextBox = function()
-            warn("[UI] UILibrary未加载，无法创建文本框")
-            return nil
-        end,
-        CreateButton = function()
-            warn("[UI] UILibrary未加载，无法创建按钮")
-            return nil
-        end,
-        CreateFloatingButton = function()
-            warn("[UI] UILibrary未加载，无法创建浮动按钮")
-            return nil
-        end,
-        CreateAuthorInfo = function()
-            warn("[UI] UILibrary未加载，无法创建作者信息")
+    
+    -- 创建通用的空函数
+    local function createEmptyUIFunction(functionName)
+        return function()
+            warn("[UI] UILibrary未加载，无法" .. functionName)
             return nil
         end
+    end
+    
+    -- 创建空的UILibrary表以防止nil调用错误
+    local uiFunctions = {
+        "CreateUIWindow", "CreateTab", "CreateCard", "CreateLabel", 
+        "CreateToggle", "CreateTextBox", "CreateButton", 
+        "CreateFloatingButton", "CreateAuthorInfo"
     }
+    
+    UILibrary = {}
+    for _, funcName in ipairs(uiFunctions) do
+        UILibrary[funcName] = createEmptyUIFunction(funcName)
+    end
+    
+    UILibrary.Notify = function()
+        warn("[UI] UILibrary未加载，无法显示通知")
+    end
 end
 
 -- ============================================================================
@@ -150,20 +189,29 @@ end
 -- ============================================================================
 local configFile = "Pluto_X_DE_config.json"
 local config = {
+    -- Webhook配置
     webhookUrl = "",
+    
+    -- 通知配置
     notifyCash = false,
     notifyLeaderboard = false,
     leaderboardKick = false,
     notificationInterval = 30,
+    
+    -- 金额目标配置
     targetAmount = 0,
     enableTargetKick = false,
     lastSavedCurrency = 0,
     baseAmount = 0,
-    onlineRewardEnabled = false,
-    autoSpawnVehicleEnabled = false,
     totalEarningsBase = 0,
     lastNotifyCurrency = 0,
+    
+    -- 功能开关
+    onlineRewardEnabled = false,
+    autoSpawnVehicleEnabled = false,
     autoRobATMsEnabled = false,
+    
+    -- ATM抢劫配置
     robTargetAmount = 0,
 }
 
@@ -205,7 +253,7 @@ local function fetchCurrentCurrency()
             return currency.Value
         end
     end
-    UILibrary:Notify({ Title = "错误", Text = "无法找到排行榜或金额数据", Duration = 5 })
+    showErrorNotification("获取金额失败", "无法找到排行榜或金额数据")
     return nil
 end
 
@@ -229,19 +277,53 @@ local function calculateChangeAmount(currentCurrency)
     end
 end
 
+-- 统一的配置更新函数
+local function updateConfigField(fieldName, newValue, shouldNotify)
+    shouldNotify = shouldNotify ~= false -- 默认为true
+    
+    if config[fieldName] ~= newValue then
+        config[fieldName] = newValue
+        saveConfig()
+        
+        if shouldNotify then
+            debugLog("[Config] " .. fieldName .. " 已更新: " .. tostring(newValue))
+        end
+        return true
+    end
+    return false
+end
+
+-- 统一的通知函数
+local function showNotification(title, text, duration)
+    duration = duration or 5
+    UILibrary:Notify({
+        Title = title,
+        Text = text,
+        Duration = duration
+    })
+end
+
+-- 显示错误通知的便捷函数
+local function showErrorNotification(title, text)
+    showNotification("❌ " .. title, text, 5)
+end
+
+-- 显示成功通知的便捷函数
+local function showSuccessNotification(title, text)
+    showNotification("✅ " .. title, text, 3)
+end
+
 -- 更新保存的金额
 local function updateLastSavedCurrency(currentCurrency)
-    if currentCurrency and currentCurrency ~= config.lastSavedCurrency then
-        config.lastSavedCurrency = currentCurrency
-        saveConfig()
+    if currentCurrency then
+        updateConfigField("lastSavedCurrency", currentCurrency, false)
     end
 end
 
 -- 更新通知基准金额
 local function updateLastNotifyCurrency(currentCurrency)
     if currentCurrency then
-        config.lastNotifyCurrency = currentCurrency
-        saveConfig()
+        updateConfigField("lastNotifyCurrency", currentCurrency, false)
     end
 end
 
@@ -401,14 +483,7 @@ local function teleportTo(cframe)
     if not originalCFrame and player.Character and player.Character.PrimaryPart then
         originalCFrame = player.Character.PrimaryPart.CFrame
     end
-    local vehicles = workspace:FindFirstChild("Vehicles")
-    local vehicle = vehicles and vehicles:FindFirstChild(username)
-    local seat = vehicle and vehicle:FindFirstChildWhichIsA("VehicleSeat", true)
-    if seat and vehicle then
-        vehicle:PivotTo(cframe)
-    elseif player.Character and player.Character.PrimaryPart then
-        player.Character:SetPrimaryPartCFrame(cframe)
-    end
+    teleportCharacterTo(cframe)
 end
 
 local function cleanup()
@@ -417,14 +492,7 @@ local function cleanup()
         tempPlatform = nil
     end
     if originalCFrame then
-        local vehicles = workspace:FindFirstChild("Vehicles")
-        local vehicle = vehicles and vehicles:FindFirstChild(username)
-        local seat = vehicle and vehicle:FindFirstChildWhichIsA("VehicleSeat", true)
-        if seat and vehicle then
-            vehicle:PivotTo(originalCFrame)
-        elseif player.Character and player.Character.PrimaryPart then
-            player.Character:SetPrimaryPartCFrame(originalCFrame)
-        end
+        teleportCharacterTo(originalCFrame)
         originalCFrame = nil
     end
 end
@@ -1195,7 +1263,8 @@ local function performAutoRobATMs()
         local lastATMCount = 0
         
         -- 主循环
-        while checkAutoRobStatus("主循环") do
+        local shouldBreak = false
+        while checkAutoRobStatus("主循环") and not shouldBreak do
             task.wait()
             local success, err = pcall(function()
                 -- 统一的状态检查已在while条件中完成
@@ -1258,7 +1327,8 @@ local function performAutoRobATMs()
                         
                         -- 检查功能是否仍然启用
                         if not checkAutoRobStatus("交付完成") then
-                            break
+                            shouldBreak = true
+                            return
                         end
                         
                         if deliverySuccess then
@@ -1285,7 +1355,8 @@ local function performAutoRobATMs()
                             
                             -- 恢复完成后检查功能状态
                             if not checkAutoRobStatus("恢复完成") then
-                                break
+                                shouldBreak = true
+                                return
                             end
                             
                             if recoverySuccess then
@@ -1327,42 +1398,35 @@ local function performAutoRobATMs()
                 
                 -- ATM抢劫通用函数
                 local function robATM(atm, atmType, foundCountRef)
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobEnabled() then return false end
                     
                     foundCountRef.count = foundCountRef.count + 1
                     local teleportTime = atmType == "tagged" and 1 or 0.2
                     local atmTypeName = atmType == "tagged" and "ATM" or "nil ATM"
+                    local targetPosition = atm.WorldPivot + Vector3.new(0, 5, 0)
                     
                     debugLog("[AutoRob] 开始抢劫" .. atmTypeName)
                     
                     -- 传送到ATM位置
                     local teleportStart = tick()
-                    repeat
-                        task.wait()
-                        if character and character.PrimaryPart then
-                            character.PrimaryPart.Velocity = Vector3.zero
-                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                        end
-                        localPlayer.ReplicationFocus = nil
-                    until tick() - teleportStart > teleportTime or not config.autoRobATMsEnabled
+                    waitForCondition(function()
+                        safePositionUpdate(targetPosition)
+                        return tick() - teleportStart > teleportTime or not isAutoRobEnabled()
+                    end, teleportTime + 1, 0.1)
                     
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobEnabled() then return false end
                     
                     -- 开始抢劫
                     game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
                     
                     -- 等待抢劫进度
                     local progressStart = tick()
-                    repeat
-                        task.wait()
-                        if character and character.PrimaryPart then
-                            character.PrimaryPart.Velocity = Vector3.zero
-                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                        end
-                        localPlayer.ReplicationFocus = nil
-                    until tick() - progressStart > 2.5 or not config.autoRobATMsEnabled
+                    waitForCondition(function()
+                        safePositionUpdate(targetPosition)
+                        return tick() - progressStart > 2.5 or not isAutoRobEnabled()
+                    end, 3, 0.1)
                     
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobEnabled() then return false end
                     
                     -- 记录抢劫前的金额
                     local beforeRobberyAmount = getRobbedAmount() or 0
@@ -1374,21 +1438,15 @@ local function performAutoRobATMs()
                     
                     -- 等待抢劫冷却
                     local cooldownStart = tick()
-                    repeat
-                        task.wait()
-                        if character and character.PrimaryPart then
-                            character.PrimaryPart.Velocity = Vector3.zero
-                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                        end
-                    until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not config.autoRobATMsEnabled
+                    waitForCondition(function()
+                        safePositionUpdate(targetPosition)
+                        return tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not isAutoRobEnabled()
+                    end, 4, 0.1)
                     
-                    repeat
-                        task.wait()
-                        if character and character.PrimaryPart then
-                            character.PrimaryPart.Velocity = Vector3.zero
-                            character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
-                        end
-                    until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
+                    waitForCondition(function()
+                        safePositionUpdate(targetPosition)
+                        return tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and isAutoRobEnabled())
+                    end, 4, 0.1)
                     
                     -- 检测抢劫结果
                     task.wait(0.5) -- 等待金额更新
@@ -1423,7 +1481,7 @@ local function performAutoRobATMs()
                 -- 查找标记的ATM
                 local taggedATMs = collectionService:GetTagged("CriminalATM")
                 for _, atm in pairs(taggedATMs) do
-                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobEnabled() then
                         if robATM(atm, "tagged", foundATMCount) then
                             break -- 如果需要重新开始循环，跳出当前循环
                         end
@@ -1432,7 +1490,7 @@ local function performAutoRobATMs()
                 
                 -- 查找nil instances中的ATM
                 for _, obj in pairs(getnilinstances()) do
-                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobEnabled() then
                         print(obj, obj:GetAttribute("State"))
                         if robATM(obj, "nil", foundATMCount) then
                             break -- 如果需要重新开始循环，跳出当前循环
