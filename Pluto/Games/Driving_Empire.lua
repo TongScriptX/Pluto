@@ -1289,14 +1289,28 @@ local function performAutoRobATMs()
                 
                 -- ATM抢劫通用函数
                 local function robATM(atm, atmType, foundCountRef)
-                    if not isAutoRobEnabled() then return false end
+                    if not isAutoRobEnabled() then 
+                        debugLog("[AutoRob] 功能已禁用，停止抢劫")
+                        return false 
+                    end
                     
                     foundCountRef.count = foundCountRef.count + 1
                     local teleportTime = atmType == "tagged" and 1 or 0.2
                     local atmTypeName = atmType == "tagged" and "ATM" or "nil ATM"
-                    local targetPosition = atm.WorldPivot + Vector3.new(0, 5, 0)
                     
-                    debugLog("[AutoRob] 开始抢劫" .. atmTypeName)
+                    -- 验证ATM对象
+                    if not atm then
+                        warn("[AutoRob] ATM对象为nil")
+                        return false
+                    end
+                    
+                    local targetPosition = atm.WorldPivot + Vector3.new(0, 5, 0)
+                    if not targetPosition then
+                        warn("[AutoRob] 无法获取ATM位置")
+                        return false
+                    end
+                    
+                    debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，位置: " .. tostring(targetPosition))
                     
                     -- 传送到ATM位置
                     local teleportStart = tick()
@@ -1371,8 +1385,17 @@ local function performAutoRobATMs()
                 
                 -- 查找标记的ATM
                 local taggedATMs = collectionService:GetTagged("CriminalATM")
+                debugLog("[AutoRobATMs] 找到标记的ATM数量: " .. #taggedATMs)
+                
                 for _, atm in pairs(taggedATMs) do
-                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobEnabled() then
+                    local state = atm:GetAttribute("State")
+                    if state then
+                        debugLog("[AutoRobATMs] 检查ATM状态: " .. tostring(state))
+                    else
+                        debugLog("[AutoRobATMs] ATM没有State属性")
+                    end
+                    
+                    if state ~= "Busted" and isAutoRobEnabled() then
                         if robATM(atm, "tagged", foundATMCount) then
                             break -- 如果需要重新开始循环，跳出当前循环
                         end
@@ -1380,14 +1403,22 @@ local function performAutoRobATMs()
                 end
                 
                 -- 查找nil instances中的ATM
-                for _, obj in pairs(getnilinstances()) do
-                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobEnabled() then
-                        print(obj, obj:GetAttribute("State"))
-                        if robATM(obj, "nil", foundATMCount) then
-                            break -- 如果需要重新开始循环，跳出当前循环
+                local nilInstances = getnilinstances()
+                local nilATMCount = 0
+                for _, obj in pairs(nilInstances) do
+                    if obj.Name == "CriminalATM" then
+                        nilATMCount = nilATMCount + 1
+                        local state = obj:GetAttribute("State")
+                        debugLog("[AutoRobATMs] 找到nil ATM，状态: " .. tostring(state))
+                        
+                        if state ~= "Busted" and isAutoRobEnabled() then
+                            if robATM(obj, "nil", foundATMCount) then
+                                break -- 如果需要重新开始循环，跳出当前循环
+                            end
                         end
                     end
                 end
+                debugLog("[AutoRobATMs] nil instances中找到ATM数量: " .. nilATMCount)
                 
                 -- 检查是否找到ATM
                 if foundATMCount.count == 0 then
@@ -1398,25 +1429,36 @@ local function performAutoRobATMs()
                         warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行重置操作")
                         
                         -- 重置状态
+                        debugLog("[AutoRobATMs] 重置状态...")
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
                         noATMFoundCount = 0
                         
                         -- 强制刷新ATM
-                        local spawners = workspace.Game.Jobs.CriminalATMSpawners:GetChildren()
-                        for _, spawner in pairs(spawners) do
-                            localPlayer.ReplicationFocus = spawner
-                            task.wait(0.2)
+                        local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
+                        if spawnersFolder then
+                            local spawners = spawnersFolder:GetChildren()
+                            debugLog("[AutoRobATMs] 强制刷新" .. #spawners .. "个spawner")
+                            for i, spawner in pairs(spawners) do
+                                debugLog("[AutoRobATMs] 聚焦spawner " .. i .. ": " .. spawner.Name)
+                                localPlayer.ReplicationFocus = spawner
+                                task.wait(0.2)
+                            end
+                        else
+                            warn("[AutoRobATMs] 无法找到CriminalATMSpawners文件夹")
                         end
                         
                         -- 传送到中心点重新搜索
                         if character and character.PrimaryPart then
+                            debugLog("[AutoRobATMs] 传送到中心点重新搜索")
                             character:PivotTo(CFrame.new(0, 50, 0))
+                        else
+                            warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
                         end
                         
                         task.wait(1)
                         localPlayer.ReplicationFocus = nil
-                        debugLog("[AutoRobATMs] ATM搜索已重置")
+                        debugLog("[AutoRobATMs] ATM搜索已重置，准备重新开始")
                     end
                 else
                     noATMFoundCount = 0 -- 找到ATM，重置计数器
@@ -1425,19 +1467,34 @@ local function performAutoRobATMs()
                 -- ATM加载器冷却检查
                 if not (getfenv().atmloadercooldown or targetATM) then
                     getfenv().atmloadercooldown = true
+                    debugLog("[AutoRobATMs] 启动ATM加载器")
+                    
                     task.spawn(function()
                         getfenv().atmloadercooldown = true
-                        local spawnerIterator, spawnerArray, spawnerIndex = pairs(workspace.Game.Jobs.CriminalATMSpawners:GetChildren())
-                        while true do
-                            local spawner
-                            spawnerIndex, spawner = spawnerIterator(spawnerArray, spawnerIndex)
-                            if spawnerIndex == nil then
-                                break
+                        
+                        -- 检查spawners
+                        local spawners = workspace.Game.Jobs.CriminalATMSpawners
+                        if not spawners then
+                            warn("[AutoRobATMs] 无法找到CriminalATMSpawners")
+                        else
+                            local spawnerList = spawners:GetChildren()
+                            debugLog("[AutoRobATMs] 找到spawner数量: " .. #spawnerList)
+                            
+                            local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
+                            while true do
+                                local spawner
+                                spawnerIndex, spawner = spawnerIterator(spawnerArray, spawnerIndex)
+                                if spawnerIndex == nil then
+                                    break
+                                end
+                                debugLog("[AutoRobATMs] 聚焦spawner: " .. spawner.Name)
+                                localPlayer.ReplicationFocus = spawner
+                                task.wait(1)
                             end
-                            localPlayer.ReplicationFocus = spawner
-                            task.wait(1)
                         end
                         
+                        -- 检查nil instances中的spawner
+                        local nilSpawnerCount = 0
                         local nilSpawnerIterator, nilSpawnerArray, nilSpawnerIndex = pairs(getnilinstances())
                         while true do
                             local spawner
@@ -1445,14 +1502,18 @@ local function performAutoRobATMs()
                             if nilSpawnerIndex == nil then
                                 break
                             end
-                            if spawner.Name == "CriminalATMSpawner" and config.autoRobATMsEnabled then
+                            if spawner.Name == "CriminalATMSpawner" then
+                                nilSpawnerCount = nilSpawnerCount + 1
+                                debugLog("[AutoRobATMs] 找到nil spawner，聚焦: " .. spawner.Name)
                                 localPlayer.ReplicationFocus = spawner
                                 task.wait(1)
                             end
                         end
+                        debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
                         
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
+                        debugLog("[AutoRobATMs] ATM加载器完成")
                     end)
                 end
             end)
