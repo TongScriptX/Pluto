@@ -1304,7 +1304,17 @@ local function performAutoRobATMs()
                         return false
                     end
                     
-                    local targetPosition = atm.WorldPivot + Vector3.new(0, 5, 0)
+                    local targetPosition
+                    -- 尝试获取ATM位置
+                    if atm.WorldPivot then
+                        targetPosition = atm.WorldPivot + Vector3.new(0, 5, 0)
+                    elseif atm.PrimaryPart then
+                        targetPosition = atm.PrimaryPart.CFrame + Vector3.new(0, 5, 0)
+                    else
+                        warn("[AutoRob] 无法获取" .. atmTypeName .. "位置，尝试使用默认位置")
+                        targetPosition = CFrame.new(0, 10, 0)
+                    end
+                    
                     if not targetPosition then
                         warn("[AutoRob] 无法获取ATM位置")
                         return false
@@ -1313,16 +1323,36 @@ local function performAutoRobATMs()
                     debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，位置: " .. tostring(targetPosition))
                     
                     -- 传送到ATM位置
+                    debugLog("[AutoRob] 传送到" .. atmTypeName .. "位置...")
                     local teleportStart = tick()
-                    waitForCondition(function()
-                        safePositionUpdate(targetPosition)
-                        return tick() - teleportStart > teleportTime or not isAutoRobEnabled()
-                    end, teleportTime + 1, 0.1)
+                    local teleportSuccess = pcall(function()
+                        waitForCondition(function()
+                            safePositionUpdate(targetPosition)
+                            return tick() - teleportStart > teleportTime or not isAutoRobEnabled()
+                        end, teleportTime + 1, 0.1)
+                    end)
                     
-                    if not isAutoRobEnabled() then return false end
+                    if not teleportSuccess then
+                        warn("[AutoRob] 传送" .. atmTypeName .. "时出错")
+                        return false
+                    end
+                    
+                    if not isAutoRobEnabled() then 
+                        debugLog("[AutoRob] 功能已禁用，停止抢劫")
+                        return false 
+                    end
                     
                     -- 开始抢劫
-                    game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
+                    debugLog("[AutoRob] 调用AttemptATMBustStart...")
+                    local startSuccess, startResult = pcall(function()
+                        return game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
+                    end)
+                    
+                    if not startSuccess then
+                        warn("[AutoRob] 调用AttemptATMBustStart失败:", startResult)
+                        return false
+                    end
+                    debugLog("[AutoRob] AttemptATMBustStart调用成功")
                     
                     -- 等待抢劫进度
                     local progressStart = tick()
@@ -1331,15 +1361,26 @@ local function performAutoRobATMs()
                         return tick() - progressStart > 2.5 or not isAutoRobEnabled()
                     end, 3, 0.1)
                     
-                    if not isAutoRobEnabled() then return false end
+                    if not isAutoRobEnabled() then 
+                        debugLog("[AutoRob] 功能已禁用，停止抢劫")
+                        return false 
+                    end
                     
                     -- 记录抢劫前的金额
                     local beforeRobberyAmount = getRobbedAmount() or 0
                     debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
                     
                     -- 完成抢劫
-                    game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
-                    debugLog("[AutoRob] 已调用" .. atmTypeName .. "的AttemptATMBustComplete，等待抢劫完成...")
+                    debugLog("[AutoRob] 调用AttemptATMBustComplete...")
+                    local completeSuccess, completeResult = pcall(function()
+                        return game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
+                    end)
+                    
+                    if not completeSuccess then
+                        warn("[AutoRob] 调用AttemptATMBustComplete失败:", completeResult)
+                        return false
+                    end
+                    debugLog("[AutoRob] AttemptATMBustComplete调用成功，等待抢劫完成...")
                     
                     -- 等待抢劫冷却
                     local cooldownStart = tick()
@@ -1411,9 +1452,17 @@ local function performAutoRobATMs()
                         local state = obj:GetAttribute("State")
                         debugLog("[AutoRobATMs] 找到nil ATM，状态: " .. tostring(state))
                         
-                        if state ~= "Busted" and isAutoRobEnabled() then
+                        if state == "Busted" then
+                            debugLog("[AutoRobATMs] 跳过已损坏的ATM")
+                        elseif not isAutoRobEnabled() then
+                            debugLog("[AutoRobATMs] 功能已禁用，跳过ATM")
+                        else
+                            debugLog("[AutoRobATMs] 尝试抢劫nil ATM...")
                             if robATM(obj, "nil", foundATMCount) then
+                                debugLog("[AutoRobATMs] robATM返回true，需要重新开始循环")
                                 break -- 如果需要重新开始循环，跳出当前循环
+                            else
+                                debugLog("[AutoRobATMs] robATM返回false，继续下一个ATM")
                             end
                         end
                     end
