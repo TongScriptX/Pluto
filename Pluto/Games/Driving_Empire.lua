@@ -74,16 +74,16 @@ local function safePositionUpdate(targetCFrame)
 end
 
 local function waitForCondition(conditionFunc, timeout, checkInterval)
-    timeout = timeout or 5
-    checkInterval = checkInterval or 0.1
+    local t = timeout or 5
+    local ci = checkInterval or 0.1
     local startTime = tick()
     
     repeat
-        task.wait(checkInterval)
+        task.wait(ci)
         if conditionFunc() then
             return true
         end
-    until tick() - startTime > timeout
+    until tick() - startTime > t
     
     return false
 end
@@ -93,19 +93,16 @@ local function isAutoRobEnabled()
 end
 
 local function checkAutoRobStatus(context)
-    context = context or "未知"
+    local ctx = context or "未知"
     
-    if not config or not config.autoRobATMsEnabled then
-        debugLog("[AutoRob] [" .. context .. "] 检测到功能已关闭，停止操作")
-        isAutoRobActive = false
-        return false
+    if isDeliveryInProgress then
+        return true
     end
     
-    if not isAutoRobActive then
-        debugLog("[AutoRob] [" .. context .. "] 活动状态为false，停止操作")
+    if not config.autoRobATMsEnabled then
+        debugLog("[AutoRob] [" .. ctx .. "] 检测到功能已关闭，停止操作")
         return false
     end
-    
     return true
 end
 
@@ -244,11 +241,11 @@ local function updateConfigField(fieldName, newValue, shouldNotify)
 end
 
 local function showNotification(title, text, duration)
-    duration = duration or 5
+    local dur = duration or 5
     UILibrary:Notify({
         Title = title,
         Text = text,
-        Duration = duration
+        Duration = dur
     })
 end
 
