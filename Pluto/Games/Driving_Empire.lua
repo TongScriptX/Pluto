@@ -835,6 +835,39 @@ local function checkRobberyCompletion(previousAmount)
     end
 end
 
+local function checkDropOffPointEnabled()
+    local maxRetries = 3
+    local dropOffPoint = nil
+    
+    for attempt = 1, maxRetries do
+        dropOffPoint = workspace:FindFirstChild("Game")
+            and workspace.Game:FindFirstChild("Jobs")
+            and workspace.Game.Jobs:FindFirstChild("CriminalDropOffSpawners")
+            and workspace.Game.Jobs.CriminalDropOffSpawners:FindFirstChild("CriminalDropOffSpawnerPermanent")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent:FindFirstChild("CriminalDropOffPoint")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint:FindFirstChild("Zone")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone:FindFirstChild("BillboardAttachment")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone.BillboardAttachment:FindFirstChild("Billboard")
+        
+        if dropOffPoint then
+            break
+        end
+        
+        if attempt < maxRetries then
+            task.wait(0.1)
+        end
+    end
+    
+    if dropOffPoint then
+        local enabled = dropOffPoint.Enabled
+        debugLog("[DropOff] 交付点enabled状态: " .. tostring(enabled))
+        return enabled
+    else
+        warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
+        return false
+    end
+end
+
 local function forceDeliverRobbedAmount()
     debugLog("[AutoRob] === 开始强制投放流程 ===")
     
@@ -1033,39 +1066,6 @@ local function forceDeliverRobbedAmount()
     isDeliveryInProgress = false
     
     return deliverySuccess, deliveryAttempts, totalDeliveredAmount
-end
-
-local function checkDropOffPointEnabled()
-    local maxRetries = 3
-    local dropOffPoint = nil
-    
-    for attempt = 1, maxRetries do
-        dropOffPoint = workspace:FindFirstChild("Game")
-            and workspace.Game:FindFirstChild("Jobs")
-            and workspace.Game.Jobs:FindFirstChild("CriminalDropOffSpawners")
-            and workspace.Game.Jobs.CriminalDropOffSpawners:FindFirstChild("CriminalDropOffSpawnerPermanent")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent:FindFirstChild("CriminalDropOffPoint")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint:FindFirstChild("Zone")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone:FindFirstChild("BillboardAttachment")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone.BillboardAttachment:FindFirstChild("Billboard")
-        
-        if dropOffPoint then
-            break
-        end
-        
-        if attempt < maxRetries then
-            task.wait(0.1)
-        end
-    end
-    
-    if dropOffPoint then
-        local enabled = dropOffPoint.Enabled
-        debugLog("[DropOff] 交付点enabled状态: " .. tostring(enabled))
-        return enabled
-    else
-        warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
-        return false
-    end
 end
 
 local function checkAndForceDelivery(tempTarget)
