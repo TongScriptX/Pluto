@@ -857,11 +857,6 @@ local function forceDeliverRobbedAmount()
             bag:Destroy()
         end)
         task.wait(0.1)
-
-        if not checkAutoRobStatus("清理金钱袋") then
-            isDeliveryInProgress = false
-            return false, 0, 0
-        end
     end
 
     local robbedAmount = getRobbedAmount() or 0
@@ -874,7 +869,7 @@ local function forceDeliverRobbedAmount()
     local totalDeliveredAmount = 0
     local VirtualInputManager = game:GetService("VirtualInputManager")
 
-    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and checkAutoRobStatus("投放循环") do
+    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts do
         deliveryAttempts = deliveryAttempts + 1
         debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
         
@@ -899,8 +894,6 @@ local function forceDeliverRobbedAmount()
         debugLog("[AutoRob] 等待角色稳定...")
         task.wait(1)
 
-        if not checkAutoRobStatus("等待稳定") then break end
-
         debugLog("[AutoRob] 执行跳跃动作触发交付")
         VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
         task.wait(0.1)
@@ -908,8 +901,6 @@ local function forceDeliverRobbedAmount()
 
         debugLog("[AutoRob] 等待跳跃动作完成...")
         task.wait(1.5)
-
-        if not checkAutoRobStatus("跳跃完成") then break end
 
         debugLog("[AutoRob] 保持位置等待交付处理...")
         local holdTime = tick()
@@ -919,9 +910,7 @@ local function forceDeliverRobbedAmount()
                 character.PrimaryPart.Velocity = Vector3.zero
                 character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
             end
-        until tick() - holdTime > 2 or not checkAutoRobStatus("保持位置")
-
-        if not checkAutoRobStatus("保持位置结束") then break end
+        until tick() - holdTime > 2
 
         debugLog("[AutoRob] 检测金额是否到账...")
         local checkStart = tick()
