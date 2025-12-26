@@ -1214,6 +1214,9 @@ local function performAutoRobATMs()
         local noATMFoundCount = 0
         local maxNoATMFoundCount = 5
         local lastATMCount = 0
+        
+        local knownATMLocations = {}
+        local maxKnownLocations = 20
 
         while config.autoRobATMsEnabled do
             task.wait()
@@ -1370,6 +1373,25 @@ local function performAutoRobATMs()
 
                     if robberySuccess then
                         debugLog("[AutoRob] ✓ " .. atmTypeName .. "抢劫成功！获得金额: +" .. formatNumber(amountChange))
+                        
+                        local atmLocation = atm.WorldPivot
+                        
+                        local alreadyRecorded = false
+                        for _, loc in ipairs(knownATMLocations) do
+                            if (loc.Position - atmLocation.Position).Magnitude < 5 then
+                                alreadyRecorded = true
+                                break
+                            end
+                        end
+                        
+                        if not alreadyRecorded then
+                            table.insert(knownATMLocations, 1, atmLocation)
+                            if #knownATMLocations > maxKnownLocations then
+                                table.remove(knownATMLocations)
+                            end
+                            debugLog("[AutoRobATMs] 记录新ATM位置，当前记录数: " .. #knownATMLocations)
+                        end
+                        
                         lastSuccessfulRobbery = tick()
                         noATMFoundCount = 0
 
@@ -1431,6 +1453,41 @@ local function performAutoRobATMs()
                             end
                         else
                             warn("[AutoRobATMs] 无法找到CriminalATMSpawners文件夹")
+                        end
+
+                        if #knownATMLocations > 0 then
+                            debugLog("[AutoRobATMs] 依次访问已记录的" .. #knownATMLocations .. "个ATM位置")
+                            
+                            for i, location in ipairs(knownATMLocations) do
+                                if not config.autoRobATMsEnabled then break end
+                                
+                                if character and character.PrimaryPart then
+                                    character.PrimaryPart.Velocity = Vector3.zero
+                                    character:PivotTo(location + Vector3.new(0, 5, 0))
+                                    debugLog("[AutoRobATMs] 访问已知ATM位置 " .. i .. "/" .. #knownATMLocations)
+                                end
+                                
+                                task.wait(0.5)
+                                
+                                local foundCount = {count = 0}
+                                local taggedATMs = collectionService:GetTagged("CriminalATM")
+                                for _, atm in pairs(taggedATMs) do
+                                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                        foundCount.count = foundCount.count + 1
+                                    end
+                                end
+                                
+                                for _, obj in pairs(getnilinstances()) do
+                                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                        foundCount.count = foundCount.count + 1
+                                    end
+                                end
+                                
+                                if foundCount.count > 0 then
+                                    debugLog("[AutoRobATMs] 在已知位置找到" .. foundCount.count .. "个ATM，停止搜索")
+                                    break
+                                end
+                            end
                         end
 
                         if character and character.PrimaryPart then
