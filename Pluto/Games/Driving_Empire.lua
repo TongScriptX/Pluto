@@ -881,79 +881,144 @@ local function forceDeliverRobbedAmount()
             if not checkDropOffPointEnabled() then
                 debugLog("[AutoRob] 投放点仍然不可用，跳过本次尝试")
                 task.wait(1)
-                goto continue_loop
+            else
+                if character and character.PrimaryPart then
+                    character.PrimaryPart.Velocity = Vector3.zero
+                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                    debugLog("[AutoRob] 已传送到交付位置")
+                end
+
+                debugLog("[AutoRob] 等待角色稳定...")
+                task.wait(1)
+
+                debugLog("[AutoRob] 执行跳跃动作触发交付")
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+
+                debugLog("[AutoRob] 等待跳跃动作完成...")
+                task.wait(1.5)
+
+                debugLog("[AutoRob] 保持位置等待交付处理...")
+                local holdTime = tick()
+                repeat
+                    task.wait(0.1)
+                    if character and character.PrimaryPart then
+                        character.PrimaryPart.Velocity = Vector3.zero
+                        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                    end
+                until tick() - holdTime > 2
+
+                debugLog("[AutoRob] 检测金额是否到账...")
+                local checkStart = tick()
+                local checkTimeout = 5
+                local lastCheckAmount = initialRobbedAmount
+
+                repeat
+                    task.wait(0.5)
+                    local currentRobbedAmount = getRobbedAmount() or 0
+
+                    if currentRobbedAmount ~= lastCheckAmount then
+                        if currentRobbedAmount < lastCheckAmount then
+                            local deliveredAmount = lastCheckAmount - currentRobbedAmount
+                            totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
+                            debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
+                        end
+                        lastCheckAmount = currentRobbedAmount
+                    end
+
+                    if currentRobbedAmount == 0 then
+                        debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
+                        deliverySuccess = true
+                        break
+                    end
+                until tick() - checkStart > checkTimeout
+                
+                if not deliverySuccess then
+                    local currentRobbedAmount = getRobbedAmount() or 0
+                    if currentRobbedAmount < initialRobbedAmount * 0.5 then
+                        debugLog("[AutoRob] 金额显著减少，继续等待...")
+                        task.wait(3)
+                        currentRobbedAmount = getRobbedAmount()
+                        if currentRobbedAmount == 0 then
+                            debugLog("[AutoRob] ✓ 交付成功！")
+                            deliverySuccess = true
+                        end
+                    else
+                        debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
+                        task.wait(1)
+                    end
+                end
             end
-        end
-
-        if character and character.PrimaryPart then
-            character.PrimaryPart.Velocity = Vector3.zero
-            character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-            debugLog("[AutoRob] 已传送到交付位置")
-        end
-
-        debugLog("[AutoRob] 等待角色稳定...")
-        task.wait(1)
-
-        debugLog("[AutoRob] 执行跳跃动作触发交付")
-        VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-        task.wait(0.1)
-        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-
-        debugLog("[AutoRob] 等待跳跃动作完成...")
-        task.wait(1.5)
-
-        debugLog("[AutoRob] 保持位置等待交付处理...")
-        local holdTime = tick()
-        repeat
-            task.wait(0.1)
+        else
             if character and character.PrimaryPart then
                 character.PrimaryPart.Velocity = Vector3.zero
                 character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                debugLog("[AutoRob] 已传送到交付位置")
             end
-        until tick() - holdTime > 2
 
-        debugLog("[AutoRob] 检测金额是否到账...")
-        local checkStart = tick()
-        local checkTimeout = 5
-        local lastCheckAmount = initialRobbedAmount
+            debugLog("[AutoRob] 等待角色稳定...")
+            task.wait(1)
 
-        repeat
-            task.wait(0.5)
-            local currentRobbedAmount = getRobbedAmount() or 0
+            debugLog("[AutoRob] 执行跳跃动作触发交付")
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.1)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
 
-            if currentRobbedAmount ~= lastCheckAmount then
-                if currentRobbedAmount < lastCheckAmount then
-                    local deliveredAmount = lastCheckAmount - currentRobbedAmount
-                    totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
-                    debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
+            debugLog("[AutoRob] 等待跳跃动作完成...")
+            task.wait(1.5)
+
+            debugLog("[AutoRob] 保持位置等待交付处理...")
+            local holdTime = tick()
+            repeat
+                task.wait(0.1)
+                if character and character.PrimaryPart then
+                    character.PrimaryPart.Velocity = Vector3.zero
+                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
                 end
-                lastCheckAmount = currentRobbedAmount
-            end
+            until tick() - holdTime > 2
 
-            if currentRobbedAmount == 0 then
-                debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
-                deliverySuccess = true
-                break
-            end
-        until tick() - checkStart > checkTimeout
-        
-        if not deliverySuccess then
-            local currentRobbedAmount = getRobbedAmount() or 0
-            if currentRobbedAmount < initialRobbedAmount * 0.5 then
-                debugLog("[AutoRob] 金额显著减少，继续等待...")
-                task.wait(3)
-                currentRobbedAmount = getRobbedAmount()
+            debugLog("[AutoRob] 检测金额是否到账...")
+            local checkStart = tick()
+            local checkTimeout = 5
+            local lastCheckAmount = initialRobbedAmount
+
+            repeat
+                task.wait(0.5)
+                local currentRobbedAmount = getRobbedAmount() or 0
+
+                if currentRobbedAmount ~= lastCheckAmount then
+                    if currentRobbedAmount < lastCheckAmount then
+                        local deliveredAmount = lastCheckAmount - currentRobbedAmount
+                        totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
+                        debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
+                    end
+                    lastCheckAmount = currentRobbedAmount
+                end
+
                 if currentRobbedAmount == 0 then
-                    debugLog("[AutoRob] ✓ 交付成功！")
+                    debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
                     deliverySuccess = true
+                    break
                 end
-            else
-                debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
-                task.wait(1)
+            until tick() - checkStart > checkTimeout
+            
+            if not deliverySuccess then
+                local currentRobbedAmount = getRobbedAmount() or 0
+                if currentRobbedAmount < initialRobbedAmount * 0.5 then
+                    debugLog("[AutoRob] 金额显著减少，继续等待...")
+                    task.wait(3)
+                    currentRobbedAmount = getRobbedAmount()
+                    if currentRobbedAmount == 0 then
+                        debugLog("[AutoRob] ✓ 交付成功！")
+                        deliverySuccess = true
+                    end
+                else
+                    debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
+                    task.wait(1)
+                end
             end
         end
-        
-        ::continue_loop::
     end
     
     if deliverySuccess then
