@@ -1522,7 +1522,7 @@ local function performAutoRobATMs()
 
                             local processedCount = 0
                             local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
-                            while true do
+                            while config.autoRobATMsEnabled do
                                 local spawner
                                 spawnerIndex, spawner = spawnerIterator(spawnerArray, spawnerIndex)
                                 if spawnerIndex == nil then
@@ -1537,22 +1537,24 @@ local function performAutoRobATMs()
                             end
                         end
 
-                        local nilSpawnerCount = 0
-                        local nilSpawnerIterator, nilSpawnerArray, nilSpawnerIndex = pairs(getnilinstances())
-                        while true do
-                            local spawner
-                            nilSpawnerIndex, spawner = nilSpawnerIterator(nilSpawnerArray, nilSpawnerIndex)
-                            if nilSpawnerIndex == nil then
-                                break
+                        if config.autoRobATMsEnabled then
+                            local nilSpawnerCount = 0
+                            local nilSpawnerIterator, nilSpawnerArray, nilSpawnerIndex = pairs(getnilinstances())
+                            while config.autoRobATMsEnabled do
+                                local spawner
+                                nilSpawnerIndex, spawner = nilSpawnerIterator(nilSpawnerArray, nilSpawnerIndex)
+                                if nilSpawnerIndex == nil then
+                                    break
+                                end
+                                if spawner.Name == "CriminalATMSpawner" then
+                                    nilSpawnerCount = nilSpawnerCount + 1
+                                    localPlayer.ReplicationFocus = spawner
+                                    task.wait(1)
+                                end
                             end
-                            if spawner.Name == "CriminalATMSpawner" then
-                                nilSpawnerCount = nilSpawnerCount + 1
-                                localPlayer.ReplicationFocus = spawner
-                                task.wait(1)
+                            if nilSpawnerCount > 0 then
+                                debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
                             end
-                        end
-                        if nilSpawnerCount > 0 then
-                            debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
                         end
 
                         getfenv().atmloadercooldown = false
