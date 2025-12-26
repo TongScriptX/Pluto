@@ -1108,12 +1108,14 @@ local lastDropOffEnabledStatus = nil
 
 -- 统一状态检查函数
 local function checkAutoRobStatus(context)
+    local ctx = context or "未知"
+    
     if isDeliveryInProgress then
         return true
     end
     
     if not config.autoRobATMsEnabled then
-        debugLog("[AutoRob] [" .. (context or "未知") .. "] 检测到功能已关闭，停止操作")
+        debugLog("[AutoRob] [" .. ctx .. "] 检测到功能已关闭，停止操作")
         return false
     end
     return true
