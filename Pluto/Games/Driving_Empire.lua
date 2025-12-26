@@ -1,4 +1,3 @@
--- 服务和变量
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -13,8 +12,6 @@ local sendingWelcome = false
 _G.PRIMARY_COLOR = 5793266
 local isAutoRobActive = false
 local isDeliveryInProgress = false
-
--- 工具函数
 
 local function debugLog(...)
     if DEBUG_MODE then
@@ -134,7 +131,6 @@ else
     UILibrary = nil
 end
 
--- 玩家和游戏信息
 local player = Players.LocalPlayer
 if not player then
     error("无法获取当前玩家")
@@ -158,7 +154,6 @@ do
     end
 end
 
--- 配置管理
 local configFile = "Pluto_X_DE_config.json"
 local config = {
     webhookUrl = "",
@@ -201,7 +196,6 @@ local function saveConfig()
     end)
 end
 
--- 金额相关函数
 local initialCurrency = 0
 
 local function fetchCurrentCurrency()
@@ -292,7 +286,7 @@ do
     end
 end
 
--- Webhook 功能
+-- Webhook
 
 local function getNotificationIntervalSeconds()
     return (config.notificationInterval or 5) * 60
@@ -847,6 +841,8 @@ end
 local function forceDeliverRobbedAmount()
     debugLog("[AutoRob] === 开始强制投放流程 ===")
     
+    isDeliveryInProgress = true
+    
     local collectionService = game:GetService("CollectionService")
     local localPlayer = game.Players.LocalPlayer
     local character = localPlayer.Character
@@ -854,6 +850,7 @@ local function forceDeliverRobbedAmount()
     
     if not dropOffSpawners or not dropOffSpawners.CriminalDropOffSpawnerPermanent then
         warn("[AutoRob] 结束位置未找到!")
+        isDeliveryInProgress = false
         return false
     end
     
@@ -865,6 +862,7 @@ local function forceDeliverRobbedAmount()
         task.wait(0.1)
 
         if not checkAutoRobStatus("清理金钱袋") then
+            isDeliveryInProgress = false
             return false, 0, 0
         end
     end
@@ -882,6 +880,18 @@ local function forceDeliverRobbedAmount()
     while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and checkAutoRobStatus("投放循环") do
         deliveryAttempts = deliveryAttempts + 1
         debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
+        
+        local dropOffEnabled = checkDropOffPointEnabled()
+        if not dropOffEnabled then
+            debugLog("[AutoRob] 投放点不可用，等待2秒后重试...")
+            task.wait(2)
+            
+            if not checkDropOffPointEnabled() then
+                debugLog("[AutoRob] 投放点仍然不可用，跳过本次尝试")
+                task.wait(1)
+                goto continue_loop
+            end
+        end
 
         if character and character.PrimaryPart then
             character.PrimaryPart.Velocity = Vector3.zero
@@ -956,6 +966,8 @@ local function forceDeliverRobbedAmount()
                 task.wait(1)
             end
         end
+        
+        ::continue_loop::
     end
     
     if deliverySuccess then
@@ -966,25 +978,41 @@ local function forceDeliverRobbedAmount()
     
     debugLog("[AutoRob] === 强制投放流程结束 ===")
     debugLog("[AutoRob] 总计投放金额: " .. formatNumber(totalDeliveredAmount))
+    
+    isDeliveryInProgress = false
+    
     return deliverySuccess, deliveryAttempts, totalDeliveredAmount
 end
 
 local function checkDropOffPointEnabled()
-    local dropOffPoint = workspace:FindFirstChild("Game")
-        and workspace.Game:FindFirstChild("Jobs")
-        and workspace.Game.Jobs:FindFirstChild("CriminalDropOffSpawners")
-        and workspace.Game.Jobs.CriminalDropOffSpawners:FindFirstChild("CriminalDropOffSpawnerPermanent")
-        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent:FindFirstChild("CriminalDropOffPoint")
-        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint:FindFirstChild("Zone")
-        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone:FindFirstChild("BillboardAttachment")
-        and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone.BillboardAttachment:FindFirstChild("Billboard")
+    local maxRetries = 3
+    local dropOffPoint = nil
+    
+    for attempt = 1, maxRetries do
+        dropOffPoint = workspace:FindFirstChild("Game")
+            and workspace.Game:FindFirstChild("Jobs")
+            and workspace.Game.Jobs:FindFirstChild("CriminalDropOffSpawners")
+            and workspace.Game.Jobs.CriminalDropOffSpawners:FindFirstChild("CriminalDropOffSpawnerPermanent")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent:FindFirstChild("CriminalDropOffPoint")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint:FindFirstChild("Zone")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone:FindFirstChild("BillboardAttachment")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone.BillboardAttachment:FindFirstChild("Billboard")
+        
+        if dropOffPoint then
+            break
+        end
+        
+        if attempt < maxRetries then
+            task.wait(0.1)
+        end
+    end
     
     if dropOffPoint then
         local enabled = dropOffPoint.Enabled
         debugLog("[DropOff] 交付点enabled状态: " .. tostring(enabled))
         return enabled
     else
-        warn("[DropOff] 无法找到交付点Billboard")
+        warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
         return false
     end
 end
@@ -1080,7 +1108,11 @@ local lastDropOffEnabledStatus = nil
 
 -- 统一状态检查函数
 local function checkAutoRobStatus(context)
-    if not config.autoRobATMsEnabled or not isAutoRobActive then
+    if isDeliveryInProgress then
+        return true
+    end
+    
+    if not config.autoRobATMsEnabled then
         debugLog("[AutoRob] [" .. (context or "未知") .. "] 检测到功能已关闭，停止操作")
         return false
     end
@@ -1353,7 +1385,9 @@ local function performAutoRobATMs()
                             local spawners = spawnersFolder:GetChildren()
                             debugLog("[AutoRobATMs] 强制刷新" .. #spawners .. "个spawner")
                             for i, spawner in pairs(spawners) do
-                                debugLog("[AutoRobATMs] 聚焦spawner " .. i .. ": " .. spawner.Name)
+                                if i == 1 or i == #spawners or i % 5 == 0 then
+                                    debugLog("[AutoRobATMs] 聚焦spawner " .. i .. "/" .. #spawners)
+                                end
                                 localPlayer.ReplicationFocus = spawner
                                 task.wait(0.2)
                             end
@@ -1388,8 +1422,10 @@ local function performAutoRobATMs()
                             warn("[AutoRobATMs] 无法找到CriminalATMSpawners")
                         else
                             local spawnerList = spawners:GetChildren()
-                            debugLog("[AutoRobATMs] 找到spawner数量: " .. #spawnerList)
+                            local totalSpawners = #spawnerList
+                            debugLog("[AutoRobATMs] 找到spawner数量: " .. totalSpawners)
 
+                            local processedCount = 0
                             local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
                             while true do
                                 local spawner
@@ -1397,7 +1433,10 @@ local function performAutoRobATMs()
                                 if spawnerIndex == nil then
                                     break
                                 end
-                                debugLog("[AutoRobATMs] 聚焦spawner: " .. spawner.Name)
+                                processedCount = processedCount + 1
+                                if processedCount % 5 == 0 then
+                                    debugLog("[AutoRobATMs] 已加载 " .. processedCount .. "/" .. totalSpawners .. " 个spawner")
+                                end
                                 localPlayer.ReplicationFocus = spawner
                                 task.wait(1)
                             end
@@ -1413,12 +1452,13 @@ local function performAutoRobATMs()
                             end
                             if spawner.Name == "CriminalATMSpawner" then
                                 nilSpawnerCount = nilSpawnerCount + 1
-                                debugLog("[AutoRobATMs] 找到nil spawner，聚焦: " .. spawner.Name)
                                 localPlayer.ReplicationFocus = spawner
                                 task.wait(1)
                             end
                         end
-                        debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
+                        if nilSpawnerCount > 0 then
+                            debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
+                        end
 
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
