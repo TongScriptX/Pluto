@@ -929,18 +929,12 @@ local function forceDeliverRobbedAmount()
                 task.wait(0.1)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
 
-                debugLog("[AutoRob] 等待跳跃动作完成...")
-                task.wait(1.5)
-
-                debugLog("[AutoRob] 保持位置等待交付处理...")
-                local holdTime = tick()
-                repeat
-                    task.wait(0.1)
-                    if character and character.PrimaryPart then
-                        character.PrimaryPart.Velocity = Vector3.zero
-                        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                    end
-                until tick() - holdTime > 2
+                debugLog("[AutoRob] 跳跃后立即重置位置防止向前移动")
+                task.wait(0.2)
+                if character and character.PrimaryPart then
+                    character.PrimaryPart.Velocity = Vector3.zero
+                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                end
 
                 debugLog("[AutoRob] 检测金额是否到账...")
                 local checkStart = tick()
@@ -948,7 +942,13 @@ local function forceDeliverRobbedAmount()
                 local lastCheckAmount = initialRobbedAmount
 
                 repeat
-                    task.wait(0.5)
+                    task.wait(0.3)
+                    -- 持续保持位置，防止角色向前移动
+                    if character and character.PrimaryPart then
+                        character.PrimaryPart.Velocity = Vector3.zero
+                        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                    end
+
                     local currentRobbedAmount = getRobbedAmount() or 0
 
                     if currentRobbedAmount ~= lastCheckAmount then
@@ -1577,6 +1577,11 @@ local function performAutoRobATMs()
                 if not (getfenv().atmloadercooldown or targetATM) then
                     getfenv().atmloadercooldown = true
                     debugLog("[AutoRobATMs] 启动ATM加载器")
+                    UILibrary:Notify({
+                        Title = "加载中",
+                        Text = "正在加载ATM...",
+                        Duration = 3
+                    })
 
                     local spawners = workspace.Game.Jobs.CriminalATMSpawners
                     if not spawners then
