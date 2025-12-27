@@ -1967,7 +1967,7 @@ end
 
 UILibrary:CreateToggle(autoRobATMsCard, {
     Text = "启用自动抢劫",
-    DefaultState = config.autoRobATMsEnabled or false,
+    DefaultState = false,
     Callback = function(state)
         config.autoRobATMsEnabled = state
         
