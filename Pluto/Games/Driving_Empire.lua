@@ -902,7 +902,7 @@ local function forceDeliverRobbedAmount()
     local totalDeliveredAmount = 0
     local VirtualInputManager = game:GetService("VirtualInputManager")
 
-    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts do
+    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and config.autoRobATMsEnabled do
         deliveryAttempts = deliveryAttempts + 1
         debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
         
@@ -928,13 +928,6 @@ local function forceDeliverRobbedAmount()
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
                 task.wait(0.1)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-
-                debugLog("[AutoRob] 跳跃后立即重置位置防止向前移动")
-                task.wait(0.2)
-                if character and character.PrimaryPart then
-                    character.PrimaryPart.Velocity = Vector3.zero
-                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                end
 
                 debugLog("[AutoRob] 检测金额是否到账...")
                 local checkStart = tick()
@@ -1055,6 +1048,9 @@ local function forceDeliverRobbedAmount()
     
     if deliverySuccess then
         debugLog("[AutoRob] ✓ 强制投放完成，共尝试 " .. deliveryAttempts .. " 次")
+    elseif not config.autoRobATMsEnabled then
+        warn("[AutoRob] 功能已关闭，停止投放")
+        deliverySuccess = false
     else
         warn("[AutoRob] ✗ 强制投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
     end
@@ -1064,7 +1060,7 @@ local function forceDeliverRobbedAmount()
     
     isDeliveryInProgress = false
     
-    return deliverySuccess, deliveryAttempts, totalDeliveredAmount
+    return deliverySuccess, deliveryAttempts, initialRobbedAmount
 end
 
 local function checkAndForceDelivery(tempTarget)
@@ -1190,6 +1186,8 @@ local function monitorDropOffStatusAndUpdateTarget()
     return false
 end
 
+local originalLocationNameCall = nil
+
 -- Auto Rob ATMs功能
 local function performAutoRobATMs()
     if not config.autoRobATMsEnabled then
@@ -1199,6 +1197,28 @@ local function performAutoRobATMs()
     
     isAutoRobActive = true
     debugLog("[AutoRobATMs] 自动抢劫已启动，活动状态: " .. tostring(isAutoRobActive))
+    
+    local locationRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Location")
+    
+    local mt = getrawmetatable(game)
+    setreadonly(mt, false)
+    
+    originalLocationNameCall = mt.__namecall
+    mt.__namecall = newcclosure(function(self, ...)
+        local method = getnamecallmethod()
+        local args = {...}
+        
+        if method == "FireServer" and self.Name == "Location" then
+            if #args >= 2 and args[1] == "Enter" then
+                debugLog("[AutoRobATMs] 拦截进入区域请求:", args[2])
+                return
+            end
+        end
+        
+        return originalLocationNameCall(self, ...)
+    end)
+    
+    setreadonly(mt, true)
     
     spawn(function()
         local collectionService = game:GetService("CollectionService")
@@ -1640,6 +1660,15 @@ local function performAutoRobATMs()
         end
         
         debugLog("[AutoRobATMs] 自动抢劫已停止")
+        
+        if originalLocationNameCall then
+            local mt = getrawmetatable(game)
+            setreadonly(mt, false)
+            mt.__namecall = originalLocationNameCall
+            setreadonly(mt, true)
+            originalLocationNameCall = nil
+            debugLog("[AutoRobATMs] 已恢复 Location remote")
+        end
     end)
 end
 
@@ -1946,6 +1975,15 @@ UILibrary:CreateToggle(autoRobATMsCard, {
             isAutoRobActive = false
             isDeliveryInProgress = false
             debugLog("[UI] 用户关闭自动抢劫功能，设置状态为非活动")
+            
+            if originalLocationNameCall then
+                local mt = getrawmetatable(game)
+                setreadonly(mt, false)
+                mt.__namecall = originalLocationNameCall
+                setreadonly(mt, true)
+                originalLocationNameCall = nil
+                debugLog("[UI] 已恢复 Location remote")
+            end
         end
         
         UILibrary:Notify({
