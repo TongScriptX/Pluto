@@ -943,7 +943,6 @@ local function forceDeliverRobbedAmount()
 
                 repeat
                     task.wait(0.3)
-                    -- 持续保持位置，防止角色向前移动
                     if character and character.PrimaryPart then
                         character.PrimaryPart.Velocity = Vector3.zero
                         character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
@@ -1371,7 +1370,6 @@ local function performAutoRobATMs()
                     task.wait(0.5)
                     local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
 
-                    -- 无论抢劫成功与否都记录ATM位置
                     local atmLocation = atm.WorldPivot
                     
                     local alreadyRecorded = false
@@ -1456,10 +1454,7 @@ local function performAutoRobATMs()
                             warn("[AutoRobATMs] 无法找到CriminalATMSpawners文件夹")
                         end
 
-                        -- 搜索流程：中心点 → CriminalArea → 已知ATM位置 → 回到中心点
                         local searchSuccess = false
-
-                        -- 第一步：传送到中心点搜索
                         if character and character.PrimaryPart then
                             debugLog("[AutoRobATMs] 第1步：传送到中心点搜索")
                             character:PivotTo(CFrame.new(0, 50, 0))
@@ -1469,7 +1464,7 @@ local function performAutoRobATMs()
                         task.wait(1)
                         localPlayer.ReplicationFocus = nil
 
-                        -- 检查中心点是否找到ATM
+                        
                         local taggedATMs = collectionService:GetTagged("CriminalATM")
                         for _, atm in pairs(taggedATMs) do
                             if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
@@ -1488,7 +1483,7 @@ local function performAutoRobATMs()
                             end
                         end
 
-                        -- 第二步：传送到CriminalArea搜索
+                        
                         if not searchSuccess then
                             local criminalArea = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("CriminalArea")
                             if criminalArea then
@@ -1500,7 +1495,7 @@ local function performAutoRobATMs()
                                 task.wait(1)
                                 localPlayer.ReplicationFocus = nil
 
-                                -- 检查CriminalArea是否找到ATM
+                                
                                 taggedATMs = collectionService:GetTagged("CriminalATM")
                                 for _, atm in pairs(taggedATMs) do
                                     if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
@@ -1523,7 +1518,7 @@ local function performAutoRobATMs()
                             end
                         end
 
-                        -- 第三步：依次传送记录的ATM位置搜索
+                        
                         if not searchSuccess and #knownATMLocations > 0 then
                             debugLog("[AutoRobATMs] 第3步：依次访问" .. #knownATMLocations .. "个已知ATM位置")
                             
@@ -1559,7 +1554,7 @@ local function performAutoRobATMs()
                             end
                         end
 
-                        -- 第四步：回到中心点开始循环
+                        
                         if character and character.PrimaryPart then
                             debugLog("[AutoRobATMs] 第4步：回到中心点开始循环")
                             character:PivotTo(CFrame.new(0, 50, 0))
@@ -1576,61 +1571,63 @@ local function performAutoRobATMs()
 
                 if not (getfenv().atmloadercooldown or targetATM) then
                     getfenv().atmloadercooldown = true
-                    debugLog("[AutoRobATMs] 启动ATM加载器")
+                    debugLog("[AutoRobATMs] 启动后台ATM加载器")
                     UILibrary:Notify({
                         Title = "加载中",
-                        Text = "正在加载ATM...",
+                        Text = "正在后台加载ATM...",
                         Duration = 3
                     })
 
-                    local spawners = workspace.Game.Jobs.CriminalATMSpawners
-                    if not spawners then
-                        warn("[AutoRobATMs] 无法找到CriminalATMSpawners")
-                    else
-                        local spawnerList = spawners:GetChildren()
-                        local totalSpawners = #spawnerList
-                        debugLog("[AutoRobATMs] 找到spawner数量: " .. totalSpawners)
+                    spawn(function()
+                        local spawners = workspace.Game.Jobs.CriminalATMSpawners
+                        if not spawners then
+                            warn("[AutoRobATMs] 无法找到CriminalATMSpawners")
+                        else
+                            local spawnerList = spawners:GetChildren()
+                            local totalSpawners = #spawnerList
+                            debugLog("[AutoRobATMs] 后台加载spawner数量: " .. totalSpawners)
 
-                        local processedCount = 0
-                        local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
-                        while config.autoRobATMsEnabled do
-                            local spawner
-                            spawnerIndex, spawner = spawnerIterator(spawnerArray, spawnerIndex)
-                            if spawnerIndex == nil then
-                                break
-                            end
-                            processedCount = processedCount + 1
-                            if processedCount % 5 == 0 then
-                                debugLog("[AutoRobATMs] 已加载 " .. processedCount .. "/" .. totalSpawners .. " 个spawner")
-                            end
-                            localPlayer.ReplicationFocus = spawner
-                            task.wait(1)
-                        end
-                    end
-
-                    if config.autoRobATMsEnabled then
-                        local nilSpawnerCount = 0
-                        local nilSpawnerIterator, nilSpawnerArray, nilSpawnerIndex = pairs(getnilinstances())
-                        while config.autoRobATMsEnabled do
-                            local spawner
-                            nilSpawnerIndex, spawner = nilSpawnerIterator(nilSpawnerArray, nilSpawnerIndex)
-                            if nilSpawnerIndex == nil then
-                                break
-                            end
-                            if spawner.Name == "CriminalATMSpawner" then
-                                nilSpawnerCount = nilSpawnerCount + 1
+                            local processedCount = 0
+                            local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
+                            while config.autoRobATMsEnabled do
+                                local spawner
+                                spawnerIndex, spawner = spawnerIterator(spawnerArray, spawnerIndex)
+                                if spawnerIndex == nil then
+                                    break
+                                end
+                                processedCount = processedCount + 1
+                                if processedCount % 5 == 0 then
+                                    debugLog("[AutoRobATMs] 后台已加载 " .. processedCount .. "/" .. totalSpawners .. " 个spawner")
+                                end
                                 localPlayer.ReplicationFocus = spawner
-                                task.wait(1)
+                                task.wait(0.5)
                             end
                         end
-                        if nilSpawnerCount > 0 then
-                            debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
-                        end
-                    end
 
-                    getfenv().atmloadercooldown = false
-                    localPlayer.ReplicationFocus = nil
-                    debugLog("[AutoRobATMs] ATM加载器完成")
+                        if config.autoRobATMsEnabled then
+                            local nilSpawnerCount = 0
+                            local nilSpawnerIterator, nilSpawnerArray, nilSpawnerIndex = pairs(getnilinstances())
+                            while config.autoRobATMsEnabled do
+                                local spawner
+                                nilSpawnerIndex, spawner = nilSpawnerIterator(nilSpawnerArray, nilSpawnerIndex)
+                                if nilSpawnerIndex == nil then
+                                    break
+                                end
+                                if spawner.Name == "CriminalATMSpawner" then
+                                    nilSpawnerCount = nilSpawnerCount + 1
+                                    localPlayer.ReplicationFocus = spawner
+                                    task.wait(0.5)
+                                end
+                            end
+                            if nilSpawnerCount > 0 then
+                                debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
+                            end
+                        end
+
+                        getfenv().atmloadercooldown = false
+                        localPlayer.ReplicationFocus = nil
+                        debugLog("[AutoRobATMs] 后台ATM加载器完成")
+                    end)
                 end
             end)
             
@@ -1946,7 +1943,6 @@ UILibrary:CreateToggle(autoRobATMsCard, {
         config.autoRobATMsEnabled = state
         
         if not state then
-            -- 关闭功能时设置状态为非活动
             isAutoRobActive = false
             isDeliveryInProgress = false
             debugLog("[UI] 用户关闭自动抢劫功能，设置状态为非活动")
@@ -2139,7 +2135,6 @@ local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
             debugLog("[计算] 当前金额:", currentCurrency)
             debugLog("[计算] 目标金额:", newTarget)
             
-            -- 设置配置
             config.baseAmount = num
             config.targetAmount = newTarget
             config.lastSavedCurrency = currentCurrency
@@ -2436,7 +2431,6 @@ spawn(function()
 
             local earnedChange = calculateChangeAmount(currentCurrency)
 
-            -- 检测金额变化
             if currentCurrency == lastCurrency and earnedChange == 0 then
                 unchangedCount = unchangedCount + 1
             else
