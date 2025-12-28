@@ -31,7 +31,7 @@ end
 -- ============================================================================
 -- 加载通用金额通知模块
 -- ============================================================================
-local CommonFramework
+local PlutoX
 local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
     local source = game:HttpGet(url)
@@ -39,9 +39,9 @@ local success, result = pcall(function()
 end)
 
 if success and result then
-    CommonFramework = result
+    PlutoX = result
 else
-    error("[CommonFramework] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
+    error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
 -- ============================================================================
@@ -82,29 +82,29 @@ local defaultConfig = {
     lastNotifyCurrency = 0,
 }
 
-local configManager = CommonFramework.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
+local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
 -- ============================================================================
 -- Webhook 管理
 -- ============================================================================
-local webhookManager = CommonFramework.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
 
 -- ============================================================================
 -- 金额通知管理器
 -- ============================================================================
-local currencyNotifier = CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, username)
+local currencyNotifier = PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
 
 -- ============================================================================
 -- 掉线检测
 -- ============================================================================
-local disconnectDetector = CommonFramework.createDisconnectDetector(UILibrary, webhookManager)
+local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
 disconnectDetector:init()
 
 -- ============================================================================
 -- 反挂机
 -- ============================================================================
-CommonFramework.setupAntiAfk(player, UILibrary)
+PlutoX.setupAntiAfk(player, UILibrary)
 
 -- ============================================================================
 -- 游戏特定功能：获取当前金额
@@ -331,15 +331,15 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
 })
 
 -- 使用通用模块创建 UI 组件
-CommonFramework.createWebhookCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end, webhookManager)
-CommonFramework.createCurrencyNotifyCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
-CommonFramework.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
+PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end, webhookManager)
+PlutoX.createCurrencyNotifyCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
+PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 
-local baseAmountCard, baseAmountInput, setTargetAmountLabel, getTargetAmountToggle = CommonFramework.createBaseAmountCard(
+local baseAmountCard, baseAmountInput, setTargetAmountLabel, getTargetAmountToggle = PlutoX.createBaseAmountCard(
     notifyContent, UILibrary, config, function() configManager:saveConfig() end, fetchCurrentCurrency
 )
 
-local targetAmountCard, targetAmountLabel, setTargetAmountToggle2 = CommonFramework.createTargetAmountCard(
+local targetAmountCard, targetAmountLabel, setTargetAmountToggle2 = PlutoX.createTargetAmountCard(
     notifyContent, UILibrary, config, function() configManager:saveConfig() end, fetchCurrentCurrency
 )
 
@@ -352,7 +352,7 @@ local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage
     Text = "关于"
 })
 
-CommonFramework.createAboutPage(aboutContent, UILibrary)
+PlutoX.createAboutPage(aboutContent, UILibrary)
 
 -- ============================================================================
 -- 主循环
@@ -364,7 +364,7 @@ while true do
 
     -- 更新已赚金额显示
     local earnedAmount = currencyNotifier:calculateEarned(currentCurrency)
-    earnedCurrencyLabel.Text = "已赚金额: " .. CommonFramework.formatNumber(earnedAmount)
+    earnedCurrencyLabel.Text = "已赚金额: " .. PlutoX.formatNumber(earnedAmount)
 
     -- 检测目标金额
     if currencyNotifier:checkTargetAmount(fetchCurrentCurrency, webhookManager, function() configManager:saveConfig() end) then

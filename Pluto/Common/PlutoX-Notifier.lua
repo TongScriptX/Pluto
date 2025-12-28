@@ -6,14 +6,14 @@
 --       可被各个游戏脚本引用使用
 -- ============================================================================
 
-local CommonFramework = {}
+local PlutoX = {}
 
 -- ============================================================================
 -- 工具函数
 -- ============================================================================
 
 -- 格式化数字为千位分隔
-function CommonFramework.formatNumber(num)
+function PlutoX.formatNumber(num)
     if not num then return "0" end
     local formatted = tostring(num)
     local result = ""
@@ -29,7 +29,7 @@ function CommonFramework.formatNumber(num)
 end
 
 -- 格式化运行时长
-function CommonFramework.formatElapsedTime(seconds)
+function PlutoX.formatElapsedTime(seconds)
     local hours = math.floor(seconds / 3600)
     local minutes = math.floor((seconds % 3600) / 60)
     local secs = seconds % 60
@@ -40,7 +40,7 @@ end
 -- 配置管理
 -- ============================================================================
 
-function CommonFramework.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
+function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
     local manager = {}
     
     -- 合并默认配置
@@ -208,7 +208,7 @@ end
 -- Webhook 管理
 -- ============================================================================
 
-function CommonFramework.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
     local manager = {}
     
     manager.config = config
@@ -315,9 +315,9 @@ function CommonFramework.createWebhookManager(config, HttpService, UILibrary, ga
                 description = string.format(
                     "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**本次变化**: %s\n**总收益**: %s",
                     self.gameName, self.username,
-                    CommonFramework.formatNumber(currentCurrency),
-                    CommonFramework.formatNumber(earnedChange),
-                    CommonFramework.formatNumber(totalEarned)),
+                    PlutoX.formatNumber(currentCurrency),
+                    PlutoX.formatNumber(earnedChange),
+                    PlutoX.formatNumber(totalEarned)),
                 color = _G.PRIMARY_COLOR or 5793266,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -333,10 +333,10 @@ function CommonFramework.createWebhookManager(config, HttpService, UILibrary, ga
                 description = string.format(
                     "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s\n**基准金额**: %s\n**运行时长**: %s",
                     self.gameName, self.username,
-                    CommonFramework.formatNumber(currentCurrency),
-                    CommonFramework.formatNumber(targetAmount),
-                    CommonFramework.formatNumber(baseAmount),
-                    CommonFramework.formatElapsedTime(runTime)),
+                    PlutoX.formatNumber(currentCurrency),
+                    PlutoX.formatNumber(targetAmount),
+                    PlutoX.formatNumber(baseAmount),
+                    PlutoX.formatElapsedTime(runTime)),
                 color = _G.PRIMARY_COLOR or 5793266,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -351,7 +351,7 @@ function CommonFramework.createWebhookManager(config, HttpService, UILibrary, ga
                 title = "⚠️ 掉线检测",
                 description = string.format(
                     "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n检测到掉线",
-                    self.gameName, self.username, CommonFramework.formatNumber(currentCurrency or 0)),
+                    self.gameName, self.username, PlutoX.formatNumber(currentCurrency or 0)),
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -366,7 +366,7 @@ function CommonFramework.createWebhookManager(config, HttpService, UILibrary, ga
                 title = "⚠️ 金额未变化",
                 description = string.format(
                     "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n连续两次金额无变化",
-                    self.gameName, self.username, CommonFramework.formatNumber(currentCurrency or 0)),
+                    self.gameName, self.username, PlutoX.formatNumber(currentCurrency or 0)),
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -381,7 +381,7 @@ end
 -- 金额通知管理器
 -- ============================================================================
 
-function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, username)
+function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
     local notifier = {}
     
     notifier.config = config
@@ -497,8 +497,8 @@ function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, use
                 self.UILibrary and self.UILibrary:Notify({
                     Title = "目标金额已调整",
                     Text = string.format("检测到金额减少 %s，目标调整至: %s",
-                        CommonFramework.formatNumber(math.abs(currencyDifference)),
-                        CommonFramework.formatNumber(self.config.targetAmount)),
+                        PlutoX.formatNumber(math.abs(currencyDifference)),
+                        PlutoX.formatNumber(self.config.targetAmount)),
                     Duration = 5
                 })
                 if saveConfig then saveConfig() end
@@ -559,7 +559,7 @@ function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, use
             
             self.UILibrary and self.UILibrary:Notify({
                 Title = "🎯 目标达成",
-                Text = string.format("已达到目标金额 %s，准备退出...", CommonFramework.formatNumber(self.config.targetAmount)),
+                Text = string.format("已达到目标金额 %s，准备退出...", PlutoX.formatNumber(self.config.targetAmount)),
                 Duration = 10
             })
             
@@ -637,7 +637,7 @@ end
 -- 掉线检测
 -- ============================================================================
 
-function CommonFramework.createDisconnectDetector(UILibrary, webhookManager)
+function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
     local detector = {}
     
     detector.disconnected = false
@@ -690,7 +690,7 @@ end
 -- 反挂机
 -- ============================================================================
 
-function CommonFramework.setupAntiAfk(player, UILibrary)
+function PlutoX.setupAntiAfk(player, UILibrary)
     local VirtualUser = game:GetService("VirtualUser")
     
     player.Idled:Connect(function()
@@ -705,7 +705,7 @@ end
 -- ============================================================================
 
 -- 创建 Webhook 配置卡片
-function CommonFramework.createWebhookCard(parent, UILibrary, config, saveConfig, webhookManager)
+function PlutoX.createWebhookCard(parent, UILibrary, config, saveConfig, webhookManager)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
     UILibrary:CreateLabel(card, {
@@ -748,7 +748,7 @@ function CommonFramework.createWebhookCard(parent, UILibrary, config, saveConfig
 end
 
 -- 创建金额监测开关卡片
-function CommonFramework.createCurrencyNotifyCard(parent, UILibrary, config, saveConfig)
+function PlutoX.createCurrencyNotifyCard(parent, UILibrary, config, saveConfig)
     local card = UILibrary:CreateCard(parent)
     
     local toggle = UILibrary:CreateToggle(card, {
@@ -770,7 +770,7 @@ function CommonFramework.createCurrencyNotifyCard(parent, UILibrary, config, sav
 end
 
 -- 创建通知间隔卡片
-function CommonFramework.createIntervalCard(parent, UILibrary, config, saveConfig)
+function PlutoX.createIntervalCard(parent, UILibrary, config, saveConfig)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
     UILibrary:CreateLabel(card, {
@@ -798,8 +798,8 @@ function CommonFramework.createIntervalCard(parent, UILibrary, config, saveConfi
 end
 
 -- 创建基准金额设置卡片
-function CommonFramework.createBaseAmountCard(parent, UILibrary, config, saveConfig, fetchCurrency, formatNumber)
-    formatNumber = formatNumber or CommonFramework.formatNumber
+function PlutoX.createBaseAmountCard(parent, UILibrary, config, saveConfig, fetchCurrency, formatNumber)
+    formatNumber = formatNumber or PlutoX.formatNumber
     
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
@@ -900,8 +900,8 @@ function CommonFramework.createBaseAmountCard(parent, UILibrary, config, saveCon
 end
 
 -- 创建目标金额踢出卡片
-function CommonFramework.createTargetAmountCard(parent, UILibrary, config, saveConfig, fetchCurrency, formatNumber)
-    formatNumber = formatNumber or CommonFramework.formatNumber
+function PlutoX.createTargetAmountCard(parent, UILibrary, config, saveConfig, fetchCurrency, formatNumber)
+    formatNumber = formatNumber or PlutoX.formatNumber
     
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
@@ -1023,7 +1023,7 @@ end
 -- 关于页面辅助函数
 -- ============================================================================
 
-function CommonFramework.createAboutPage(parent, UILibrary)
+function PlutoX.createAboutPage(parent, UILibrary)
     UILibrary:CreateAuthorInfo(parent, {
         Text = "作者: tongblx",
         SocialText = "感谢使用"
@@ -1055,4 +1055,4 @@ end
 -- 导出
 -- ============================================================================
 
-return CommonFramework
+return PlutoX
