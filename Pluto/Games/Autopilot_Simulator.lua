@@ -33,7 +33,7 @@ end
 -- ============================================================================
 local CommonFramework
 local success, result = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Common/CommonCurrencyNotifier.lua"
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/CommonCurrencyNotifier.lua"
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)
