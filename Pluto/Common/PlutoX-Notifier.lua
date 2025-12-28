@@ -78,23 +78,27 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             
             allConfigs[self.username] = self.config
             writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
-            
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "配置已保存",
-                Text = "配置已保存至 " .. self.configFile,
-                Duration = 5,
-            })
+
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "配置已保存",
+                    Text = "配置已保存至 " .. self.configFile,
+                    Duration = 5,
+                })
+            end
         end)
     end
     
     -- 加载配置
     function manager:loadConfig()
         if not isfile(self.configFile) then
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "配置提示",
-                Text = "创建新配置文件",
-                Duration = 5,
-            })
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "配置提示",
+                    Text = "创建新配置文件",
+                    Duration = 5,
+                })
+            end
             self:saveConfig()
             return self.config
         end
@@ -109,25 +113,31 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                 for k, v in pairs(userConfig) do
                     self.config[k] = v
                 end
-                self.UILibrary and self.UILibrary:Notify({
-                    Title = "配置已加载",
-                    Text = "用户配置加载成功",
-                    Duration = 5,
-                })
+                if self.UILibrary then
+                    self.UILibrary:Notify({
+                        Title = "配置已加载",
+                        Text = "用户配置加载成功",
+                        Duration = 5,
+                    })
+                end
             else
-                self.UILibrary and self.UILibrary:Notify({
-                    Title = "配置提示",
-                    Text = "使用默认配置",
-                    Duration = 5,
-                })
+                if self.UILibrary then
+                    self.UILibrary:Notify({
+                        Title = "配置提示",
+                        Text = "使用默认配置",
+                        Duration = 5,
+                    })
+                end
                 self:saveConfig()
             end
         else
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "配置错误",
-                Text = "无法解析配置文件",
-                Duration = 5,
-            })
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "配置错误",
+                    Text = "无法解析配置文件",
+                    Duration = 5,
+                })
+            end
             self:saveConfig()
         end
         
@@ -183,13 +193,15 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             self.config[k] = v
         end
         self:saveConfig()
-        
-        self.UILibrary and self.UILibrary:Notify({
-            Title = "配置已重置",
-            Text = "配置已恢复默认值",
-            Duration = 5,
-        })
-        
+
+        if self.UILibrary then
+            self.UILibrary:Notify({
+                Title = "配置已重置",
+                Text = "配置已恢复默认值",
+                Duration = 5,
+            })
+        end
+
         return self.config
     end
     
@@ -293,13 +305,15 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         
         local success = self:dispatchWebhook(payload)
         self.sendingWelcome = false
-        
+
         if success then
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "Webhook",
-                Text = "欢迎消息已发送",
-                Duration = 3
-            })
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "Webhook",
+                    Text = "欢迎消息已发送",
+                    Duration = 3
+                })
+            end
         else
             warn("[Webhook] 欢迎消息发送失败")
         end
@@ -416,13 +430,15 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
             if self.config.lastNotifyCurrency == 0 then
                 self.config.lastNotifyCurrency = currencyValue
             end
-            
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "初始化成功",
-                Text = "当前金额: " .. tostring(currencyValue),
-                Duration = 5
-            })
-            
+
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "初始化成功",
+                    Text = "当前金额: " .. tostring(currencyValue),
+                    Duration = 5
+                })
+            end
+
             return currencyValue
         end
         return nil
@@ -494,23 +510,27 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
             
             if newTargetAmount > currentCurrency then
                 self.config.targetAmount = newTargetAmount
-                self.UILibrary and self.UILibrary:Notify({
-                    Title = "目标金额已调整",
-                    Text = string.format("检测到金额减少 %s，目标调整至: %s",
-                        PlutoX.formatNumber(math.abs(currencyDifference)),
-                        PlutoX.formatNumber(self.config.targetAmount)),
-                    Duration = 5
-                })
+                if self.UILibrary then
+                    self.UILibrary:Notify({
+                        Title = "目标金额已调整",
+                        Text = string.format("检测到金额减少 %s，目标调整至: %s",
+                            PlutoX.formatNumber(math.abs(currencyDifference)),
+                            PlutoX.formatNumber(self.config.targetAmount)),
+                        Duration = 5
+                    })
+                end
                 if saveConfig then saveConfig() end
             else
                 self.config.enableTargetKick = false
                 self.config.targetAmount = 0
                 self.config.baseAmount = 0
-                self.UILibrary and self.UILibrary:Notify({
-                    Title = "目标金额已重置",
-                    Text = "调整后的目标金额小于当前金额，已禁用目标踢出功能",
-                    Duration = 5
-                })
+                if self.UILibrary then
+                    self.UILibrary:Notify({
+                        Title = "目标金额已重置",
+                        Text = "调整后的目标金额小于当前金额，已禁用目标踢出功能",
+                        Duration = 5
+                    })
+                end
                 if saveConfig then saveConfig() end
             end
         end
@@ -524,12 +544,14 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
         local currentCurrency = fetchFunc() or 0
         
         if self.config.enableTargetKick and self.config.targetAmount > 0 and currentCurrency >= self.config.targetAmount then
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "目标金额已达成",
-                Text = string.format("当前金额 %s，已超过目标 %s",
-                    PlutoX.formatNumber(currentCurrency), PlutoX.formatNumber(self.config.targetAmount)),
-                Duration = 5
-            })
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "目标金额已达成",
+                    Text = string.format("当前金额 %s，已超过目标 %s",
+                        PlutoX.formatNumber(currentCurrency), PlutoX.formatNumber(self.config.targetAmount)),
+                    Duration = 5
+                })
+            end
             self.config.enableTargetKick = false
             self.config.targetAmount = 0
             if saveConfig then saveConfig() end
@@ -556,13 +578,15 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
                 self.config.baseAmount,
                 currentTime - self.startTime
             )
-            
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "🎯 目标达成",
-                Text = string.format("已达到目标金额 %s，准备退出...", PlutoX.formatNumber(self.config.targetAmount)),
-                Duration = 10
-            })
-            
+
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "🎯 目标达成",
+                    Text = string.format("已达到目标金额 %s，准备退出...", PlutoX.formatNumber(self.config.targetAmount)),
+                    Duration = 10
+                })
+            end
+
             if saveConfig then
                 self:updateLastSavedCurrency(currentCurrency)
                 saveConfig()
@@ -668,11 +692,13 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
     function detector:checkAndNotify(currentCurrency)
         if self.disconnected and self.webhookManager then
             self.webhookManager:sendDisconnect(currentCurrency)
-            self.UILibrary and self.UILibrary:Notify({
-                Title = "掉线检测",
-                Text = "检测到连接异常",
-                Duration = 5
-            })
+            if self.UILibrary then
+                self.UILibrary:Notify({
+                    Title = "掉线检测",
+                    Text = "检测到连接异常",
+                    Duration = 5
+                })
+            end
             return true
         end
         return false
@@ -696,7 +722,9 @@ function PlutoX.setupAntiAfk(player, UILibrary)
     player.Idled:Connect(function()
         VirtualUser:CaptureController()
         VirtualUser:ClickButton2(Vector2.new())
-        UILibrary and UILibrary:Notify({ Title = "反挂机", Text = "检测到闲置，已自动操作", Duration = 3 })
+        if UILibrary then
+            UILibrary:Notify({ Title = "反挂机", Text = "检测到闲置，已自动操作", Duration = 3 })
+        end
     end)
 end
 
