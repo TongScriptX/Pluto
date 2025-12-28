@@ -59,7 +59,7 @@ function CommonFramework.createConfigManager(configFile, HttpService, UILibrary,
     manager.config = {}
     manager.configFile = configFile
     manager.HttpService = HttpService
-    manager UILibrary = UILibrary
+    manager.UILibrary = UILibrary
     manager.username = username
     
     -- 保存配置
@@ -79,7 +79,7 @@ function CommonFramework.createConfigManager(configFile, HttpService, UILibrary,
             allConfigs[self.username] = self.config
             writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
             
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "配置已保存",
                 Text = "配置已保存至 " .. self.configFile,
                 Duration = 5,
@@ -90,7 +90,7 @@ function CommonFramework.createConfigManager(configFile, HttpService, UILibrary,
     -- 加载配置
     function manager:loadConfig()
         if not isfile(self.configFile) then
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "配置提示",
                 Text = "创建新配置文件",
                 Duration = 5,
@@ -109,13 +109,13 @@ function CommonFramework.createConfigManager(configFile, HttpService, UILibrary,
                 for k, v in pairs(userConfig) do
                     self.config[k] = v
                 end
-                self UILibrary and self UILibrary:Notify({
+                self.UILibrary and self.UILibrary:Notify({
                     Title = "配置已加载",
                     Text = "用户配置加载成功",
                     Duration = 5,
                 })
             else
-                self UILibrary and self UILibrary:Notify({
+                self.UILibrary and self.UILibrary:Notify({
                     Title = "配置提示",
                     Text = "使用默认配置",
                     Duration = 5,
@@ -123,7 +123,7 @@ function CommonFramework.createConfigManager(configFile, HttpService, UILibrary,
                 self:saveConfig()
             end
         else
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "配置错误",
                 Text = "无法解析配置文件",
                 Duration = 5,
@@ -184,7 +184,7 @@ function CommonFramework.createConfigManager(configFile, HttpService, UILibrary,
         end
         self:saveConfig()
         
-        self UILibrary and self UILibrary:Notify({
+        self.UILibrary and self.UILibrary:Notify({
             Title = "配置已重置",
             Text = "配置已恢复默认值",
             Duration = 5,
@@ -213,7 +213,7 @@ function CommonFramework.createWebhookManager(config, HttpService, UILibrary, ga
     
     manager.config = config
     manager.HttpService = HttpService
-    manager UILibrary = UILibrary
+    manager.UILibrary = UILibrary
     manager.gameName = gameName
     manager.username = username
     manager.sendingWelcome = false
@@ -295,7 +295,7 @@ function CommonFramework.createWebhookManager(config, HttpService, UILibrary, ga
         self.sendingWelcome = false
         
         if success then
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "Webhook",
                 Text = "欢迎消息已发送",
                 Duration = 3
@@ -385,7 +385,7 @@ function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, use
     local notifier = {}
     
     notifier.config = config
-    notifier UILibrary = UILibrary
+    notifier.UILibrary = UILibrary
     notifier.gameName = gameName
     notifier.username = username
     
@@ -417,7 +417,7 @@ function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, use
                 self.config.lastNotifyCurrency = currencyValue
             end
             
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "初始化成功",
                 Text = "当前金额: " .. tostring(currencyValue),
                 Duration = 5
@@ -494,7 +494,7 @@ function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, use
             
             if newTargetAmount > currentCurrency then
                 self.config.targetAmount = newTargetAmount
-                self UILibrary and self UILibrary:Notify({
+                self.UILibrary and self.UILibrary:Notify({
                     Title = "目标金额已调整",
                     Text = string.format("检测到金额减少 %s，目标调整至: %s",
                         CommonFramework.formatNumber(math.abs(currencyDifference)),
@@ -506,7 +506,7 @@ function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, use
                 self.config.enableTargetKick = false
                 self.config.targetAmount = 0
                 self.config.baseAmount = 0
-                self UILibrary and self UILibrary:Notify({
+                self.UILibrary and self.UILibrary:Notify({
                     Title = "目标金额已重置",
                     Text = "调整后的目标金额小于当前金额，已禁用目标踢出功能",
                     Duration = 5
@@ -557,7 +557,7 @@ function CommonFramework.createCurrencyNotifier(config, UILibrary, gameName, use
                 currentTime - self.startTime
             )
             
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "🎯 目标达成",
                 Text = string.format("已达到目标金额 %s，准备退出...", CommonFramework.formatNumber(self.config.targetAmount)),
                 Duration = 10
@@ -641,7 +641,7 @@ function CommonFramework.createDisconnectDetector(UILibrary, webhookManager)
     local detector = {}
     
     detector.disconnected = false
-    detector UILibrary = UILibrary
+    detector.UILibrary = UILibrary
     detector.webhookManager = webhookManager
     
     -- 初始化检测
@@ -668,7 +668,7 @@ function CommonFramework.createDisconnectDetector(UILibrary, webhookManager)
     function detector:checkAndNotify(currentCurrency)
         if self.disconnected and self.webhookManager then
             self.webhookManager:sendDisconnect(currentCurrency)
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "掉线检测",
                 Text = "检测到连接异常",
                 Duration = 5
