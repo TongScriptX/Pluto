@@ -415,7 +415,6 @@ local function fetchPlayerRank()
     debugLog("[排行榜] ========== 开始检测排行榜 ==========")
     debugLog("[排行榜] 玩家: " .. username .. " (ID: " .. userId .. ")")
     
-    -- 先尝试直接获取
     local contents = tryGetContents(2)
     if contents then
         debugLog("[排行榜] ✅ 直接获取成功")
@@ -424,7 +423,6 @@ local function fetchPlayerRank()
     
     debugLog("[排行榜] 直接获取失败，使用 RequestStreamAroundAsync 远程加载...")
     
-    -- 使用 RequestStreamAroundAsync 远程加载
     local success, err = pcall(function()
         player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
     end)
@@ -1505,12 +1503,12 @@ local function performAutoRobATMs()
                                 if criminalArea:IsA("Model") or criminalArea:IsA("BasePart") then
                                     criminalAreaPosition = criminalArea:GetPivot()
                                 else
-                                    -- Folder 类型，尝试使用第一个子对象的位置
+                                
                                     local firstChild = criminalArea:FindFirstChildWhichIsA("BasePart")
                                     if firstChild then
                                         criminalAreaPosition = firstChild.CFrame
                                     else
-                                        -- 使用固定位置作为后备
+                                    
                                         criminalAreaPosition = CFrame.new(0, 0, 0)
                                     end
                                 end
@@ -1979,7 +1977,18 @@ UILibrary:CreateToggle(autoRobATMsCard, {
         
         if not state then
             isAutoRobActive = false
-            isDeliveryInProgress = false
+            
+            local currentRobbedAmount = getRobbedAmount() or 0
+            if currentRobbedAmount > 0 then
+                debugLog("[UI] 关闭自动抢劫，开始投放已抢金额: " .. formatNumber(currentRobbedAmount))
+                spawn(function()
+                    forceDeliverRobbedAmount()
+                end)
+            else
+                debugLog("[UI] 关闭自动抢劫，无已抢金额需要投放")
+                isDeliveryInProgress = false
+            end
+            
             debugLog("[UI] 用户关闭自动抢劫功能，设置状态为非活动")
             
             if originalLocationNameCall then
