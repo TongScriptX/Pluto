@@ -1501,7 +1501,19 @@ local function performAutoRobATMs()
                         if not searchSuccess then
                             local criminalArea = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("CriminalArea")
                             if criminalArea then
-                                local criminalAreaPosition = criminalArea:GetPivot()
+                                local criminalAreaPosition
+                                if criminalArea:IsA("Model") or criminalArea:IsA("BasePart") then
+                                    criminalAreaPosition = criminalArea:GetPivot()
+                                else
+                                    -- Folder 类型，尝试使用第一个子对象的位置
+                                    local firstChild = criminalArea:FindFirstChildWhichIsA("BasePart")
+                                    if firstChild then
+                                        criminalAreaPosition = firstChild.CFrame
+                                    else
+                                        -- 使用固定位置作为后备
+                                        criminalAreaPosition = CFrame.new(0, 0, 0)
+                                    end
+                                end
                                 if character and character.PrimaryPart then
                                     debugLog("[AutoRobATMs] 第2步：传送到CriminalArea搜索")
                                     character:PivotTo(criminalAreaPosition + Vector3.new(0, 50, 0))
