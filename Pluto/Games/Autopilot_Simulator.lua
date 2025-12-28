@@ -23,9 +23,9 @@ local success, result = pcall(function()
 end)
 
 if success and result then
-    UILibrary = result
+    PlutoX = result
 else
-    error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
+    error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
 -- ============================================================================
