@@ -91,6 +91,11 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
     
     -- 加载配置
     function manager:loadConfig()
+        -- 先复制默认配置
+        for k, v in pairs(self.defaultConfig) do
+            self.config[k] = v
+        end
+
         if not isfile(self.configFile) then
             if self.UILibrary then
                 self.UILibrary:Notify({
@@ -102,11 +107,11 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             self:saveConfig()
             return self.config
         end
-        
+
         local success, result = pcall(function()
             return self.HttpService:JSONDecode(readfile(self.configFile))
         end)
-        
+
         if success and type(result) == "table" then
             local userConfig = result[self.username]
             if userConfig and type(userConfig) == "table" then
@@ -140,7 +145,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             end
             self:saveConfig()
         end
-        
+
         return self.config
     end
     
