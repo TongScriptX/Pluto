@@ -384,11 +384,6 @@ local leaderboardConfig = {
     streamTimeout = 10,
 }
 
--- 排行榜状态
-local leaderboardState = {
-    loaded = false,
-}
-
 local function tryGetContents(timeout)
     local ok, result = pcall(function()
         local root = workspace:WaitForChild("Game", timeout or 2)
@@ -452,27 +447,6 @@ local function fetchPlayerRank()
     debugLog("[排行榜] ========== 远程加载失败 ==========")
     return nil, false
 end
-
--- 持续检测排行榜加载状态
-spawn(function()
-    while true do
-        wait(1)
-        
-        local contents = tryGetContents(1)
-        if contents then
-            if not leaderboardState.loaded then
-                leaderboardState.loaded = true
-                debugLog("[排行榜] 排行榜已加载")
-            end
-        else
-            if leaderboardState.loaded then
-                leaderboardState.loaded = false
-                debugLog("[排行榜] 排行榜已卸载，重新请求...")
-                player:RequestStreamAroundAsync(leaderboardConfig.position, 5)
-            end
-        end
-    end
-end)
 
 -- 自动生成车辆功能
 local performAutoSpawnVehicle
