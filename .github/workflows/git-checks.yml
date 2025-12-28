@@ -39,8 +39,6 @@ jobs:
           npm install -g @commitlint/cli @commitlint/config-conventional
           echo "Running fallback commitlint check..."
           git log --format=%s -n 1 | npx commitlint
-        with:
-          configFile: .commitlintrc.js
 
       - name: Check for merge commits
         run: |
