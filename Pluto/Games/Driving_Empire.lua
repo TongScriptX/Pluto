@@ -378,8 +378,16 @@ local function sendWelcomeMessage()
     return success
 end
 
--- 排行榜功能
-local originalCFrame, tempPlatform
+-- 排行榜配置
+local leaderboardConfig = {
+    position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
+    streamTimeout = 10,
+}
+
+-- 排行榜状态
+local leaderboardState = {
+    loaded = false,
+}
 
 local function tryGetContents(timeout)
     local ok, result = pcall(function()
@@ -393,66 +401,78 @@ local function tryGetContents(timeout)
     return ok and result or nil
 end
 
-local function getSafeTeleportCFrame()
-    local board = workspace:FindFirstChild("Game")
-        and workspace.Game:FindFirstChild("Leaderboards")
-        and workspace.Game.Leaderboards:FindFirstChild("weekly_money")
-    if not board then return nil end
-    local pivot = board:GetPivot()
-    return pivot + Vector3.new(0, 30, 0)
-end
-
-local function spawnPlatform(atCFrame)
-    tempPlatform = Instance.new("Part", workspace)
-    tempPlatform.Name = "TempPlatform"
-    tempPlatform.Anchored = true
-    tempPlatform.CanCollide = true
-    tempPlatform.Transparency = 1
-    tempPlatform.Size = Vector3.new(100, 1, 100)
-    tempPlatform.CFrame = atCFrame * CFrame.new(0, -5, 0)
-end
-
-local function teleportTo(cframe)
-    if not originalCFrame and player.Character and player.Character.PrimaryPart then
-        originalCFrame = player.Character.PrimaryPart.CFrame
-    end
-    teleportCharacterTo(cframe)
-end
-
-local function cleanup()
-    if tempPlatform and tempPlatform.Parent then
-        tempPlatform:Destroy()
-        tempPlatform = nil
-    end
-    if originalCFrame then
-        teleportCharacterTo(originalCFrame)
-        originalCFrame = nil
-    end
-end
-
-local function fetchPlayerRank()
-    local contents = tryGetContents(2)
-    if not contents then
-        local cframe = getSafeTeleportCFrame()
-        if not cframe then return nil, false end
-        teleportTo(cframe)
-        spawnPlatform(cframe)
-        wait(2)
-        contents = tryGetContents(2)
-        cleanup()
-    end
-    if not contents then return nil, false end
-
+local function parseContents(contents)
     local rank = 1
     for _, child in ipairs(contents:GetChildren()) do
         if tonumber(child.Name) == userId or child.Name == username then
             local placement = child:FindFirstChild("Placement")
-            return placement and placement:IsA("IntValue") and placement.Value or rank, true
+            local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
+            debugLog("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
+            return foundRank, true
         end
         rank = rank + 1
     end
+    debugLog("[排行榜] ❌ 未在排行榜中找到玩家")
     return nil, false
 end
+
+local function fetchPlayerRank()
+    debugLog("[排行榜] ========== 开始检测排行榜 ==========")
+    debugLog("[排行榜] 玩家: " .. username .. " (ID: " .. userId .. ")")
+    
+    -- 先尝试直接获取
+    local contents = tryGetContents(2)
+    if contents then
+        debugLog("[排行榜] ✅ 直接获取成功")
+        return parseContents(contents)
+    end
+    
+    debugLog("[排行榜] 直接获取失败，使用 RequestStreamAroundAsync 远程加载...")
+    
+    -- 使用 RequestStreamAroundAsync 远程加载
+    local success, err = pcall(function()
+        player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
+    end)
+    
+    if not success then
+        warn("[排行榜] RequestStreamAroundAsync 失败: " .. tostring(err))
+        debugLog("[排行榜] ========== 远程加载失败 ==========")
+        return nil, false
+    end
+    
+    debugLog("[排行榜] 已请求流式传输，等待加载...")
+    wait(leaderboardConfig.streamTimeout)
+    
+    contents = tryGetContents(2)
+    if contents then
+        debugLog("[排行榜] ✅ 远程加载成功")
+        return parseContents(contents)
+    end
+    
+    debugLog("[排行榜] ========== 远程加载失败 ==========")
+    return nil, false
+end
+
+-- 持续检测排行榜加载状态
+spawn(function()
+    while true do
+        wait(1)
+        
+        local contents = tryGetContents(1)
+        if contents then
+            if not leaderboardState.loaded then
+                leaderboardState.loaded = true
+                debugLog("[排行榜] 排行榜已加载")
+            end
+        else
+            if leaderboardState.loaded then
+                leaderboardState.loaded = false
+                debugLog("[排行榜] 排行榜已卸载，重新请求...")
+                player:RequestStreamAroundAsync(leaderboardConfig.position, 5)
+            end
+        end
+    end
+end)
 
 -- 自动生成车辆功能
 local performAutoSpawnVehicle
