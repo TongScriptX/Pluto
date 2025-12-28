@@ -6,7 +6,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 local lastSendTime = os.time()
 local sendingWelcome = false
 _G.PRIMARY_COLOR = 5793266
