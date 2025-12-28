@@ -1,17 +1,7 @@
--- ============================================================================
--- 通用金额通知基础结构
--- ============================================================================
--- 作者: tongblx
--- 描述: 提供通用的金额检测、目标金额踢出、通知间隔管理等功能
---       可被各个游戏脚本引用使用
--- ============================================================================
-
+-- PlutoX-Notifier v2.0.0
 local PlutoX = {}
 
--- ============================================================================
 -- 工具函数
--- ============================================================================
-
 -- 格式化数字为千位分隔
 function PlutoX.formatNumber(num)
     if not num then return "0" end
@@ -36,9 +26,7 @@ function PlutoX.formatElapsedTime(seconds)
     return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
 end
 
--- ============================================================================
 -- 配置管理
--- ============================================================================
 
 function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
     local manager = {}
@@ -221,9 +209,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
     return manager
 end
 
--- ============================================================================
 -- Webhook 管理
--- ============================================================================
 
 function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
     local manager = {}
@@ -396,9 +382,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     return manager
 end
 
--- ============================================================================
 -- 金额通知管理器
--- ============================================================================
 
 function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
     local notifier = {}
@@ -662,9 +646,7 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
     return notifier
 end
 
--- ============================================================================
 -- 掉线检测
--- ============================================================================
 
 function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
     local detector = {}
@@ -717,25 +699,7 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
     return detector
 end
 
--- ============================================================================
--- 反挂机
--- ============================================================================
-
-function PlutoX.setupAntiAfk(player, UILibrary)
-    local VirtualUser = game:GetService("VirtualUser")
-    
-    player.Idled:Connect(function()
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
-        if UILibrary then
-            UILibrary:Notify({ Title = "反挂机", Text = "检测到闲置，已自动操作", Duration = 3 })
-        end
-    end)
-end
-
--- ============================================================================
 -- UI 组件创建辅助函数
--- ============================================================================
 
 -- 创建 Webhook 配置卡片
 function PlutoX.createWebhookCard(parent, UILibrary, config, saveConfig, webhookManager)
@@ -1052,9 +1016,7 @@ function PlutoX.createTargetAmountCard(parent, UILibrary, config, saveConfig, fe
     end
 end
 
--- ============================================================================
 -- 关于页面辅助函数
--- ============================================================================
 
 function PlutoX.createAboutPage(parent, UILibrary)
     UILibrary:CreateAuthorInfo(parent, {
@@ -1084,8 +1046,6 @@ function PlutoX.createAboutPage(parent, UILibrary)
     })
 end
 
--- ============================================================================
--- 导出
--- ============================================================================
 
+-- 导出
 return PlutoX

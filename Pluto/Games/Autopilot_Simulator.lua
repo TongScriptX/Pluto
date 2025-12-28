@@ -1,10 +1,3 @@
--- ============================================================================
--- Autopilot Simulator 脚本
--- ============================================================================
--- 作者: tongblx
--- 描述: Autopilot Simulator 游戏脚本，包含 autofarm 和金额通知功能
--- ============================================================================
-
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -12,9 +5,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
--- ============================================================================
 -- 加载 UI 模块
--- ============================================================================
 local UILibrary
 local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
@@ -28,9 +19,7 @@ else
     error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- ============================================================================
 -- 加载通用金额通知模块
--- ============================================================================
 local PlutoX
 local success, result = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
@@ -44,9 +33,7 @@ else
     error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- ============================================================================
 -- 获取当前玩家和游戏信息
--- ============================================================================
 local player = Players.LocalPlayer
 if not player then
     error("无法获取当前玩家")
@@ -66,9 +53,7 @@ end
 
 _G.PRIMARY_COLOR = 5793266
 
--- ============================================================================
 -- 配置管理
--- ============================================================================
 local configFile = "Pluto_X_APS_config.json"
 local defaultConfig = {
     webhookUrl = "",
@@ -85,30 +70,23 @@ local defaultConfig = {
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
--- ============================================================================
 -- Webhook 管理
--- ============================================================================
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
 
--- ============================================================================
 -- 金额通知管理器
--- ============================================================================
 local currencyNotifier = PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
 
--- ============================================================================
 -- 掉线检测
--- ============================================================================
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
 disconnectDetector:init()
 
--- ============================================================================
 -- 反挂机
--- ============================================================================
-PlutoX.setupAntiAfk(player, UILibrary)
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
 
--- ============================================================================
 -- 游戏特定功能：获取当前金额
--- ============================================================================
 local function fetchCurrentCurrency()
     local success, cashValue = pcall(function()
         local leaderstats = player:WaitForChild("leaderstats", 5)
@@ -128,9 +106,7 @@ local function fetchCurrentCurrency()
     end
 end
 
--- ============================================================================
 -- 初始化
--- ============================================================================
 pcall(function()
     currencyNotifier:initTargetAmount(fetchCurrentCurrency, function() configManager:saveConfig() end)
 end)
@@ -147,9 +123,7 @@ if config.webhookUrl ~= "" then
     end)
 end
 
--- ============================================================================
 -- autofarm 模块
--- ============================================================================
 local isFarming = false
 local platformFolder = nil
 local farmTask = nil
@@ -263,9 +237,7 @@ local function startAutoFarm()
     end)
 end
 
--- ============================================================================
 -- UI 创建
--- ============================================================================
 local window = UILibrary:CreateUIWindow()
 if not window then
     error("无法创建 UI 窗口")
@@ -295,12 +267,6 @@ UILibrary:CreateLabel(generalCard, {
 })
 local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
     Text = "已赚金额: 0",
-})
-
--- 卡片：反挂机
-local antiAfkCard = UILibrary:CreateCard(generalContent)
-UILibrary:CreateLabel(antiAfkCard, {
-    Text = "反挂机已启用",
 })
 
 -- 标签页：主要功能
@@ -354,9 +320,7 @@ local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage
 
 PlutoX.createAboutPage(aboutContent, UILibrary)
 
--- ============================================================================
 -- 主循环
--- ============================================================================
 local checkInterval = 1
 
 while true do
