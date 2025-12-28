@@ -860,7 +860,7 @@ local function checkDropOffPointEnabled()
     end
 end
 
-local function forceDeliverRobbedAmount()
+local function forceDeliverRobbedAmount(isShutdown)
     debugLog("[AutoRob] === 开始强制投放流程 ===")
     
     isDeliveryInProgress = true
@@ -894,7 +894,7 @@ local function forceDeliverRobbedAmount()
     local totalDeliveredAmount = 0
     local VirtualInputManager = game:GetService("VirtualInputManager")
 
-    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and config.autoRobATMsEnabled do
+    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and (isShutdown or config.autoRobATMsEnabled) do
         deliveryAttempts = deliveryAttempts + 1
         debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
         
@@ -1071,7 +1071,7 @@ local function checkAndForceDelivery(tempTarget)
 
         debugLog("[AutoRob] 交付点可用，执行强制投放...")
 
-        local success, attempts, deliveredAmount = forceDeliverRobbedAmount()
+        local success, attempts, deliveredAmount = forceDeliverRobbedAmount(false)
 
         if success then
             UILibrary:Notify({
@@ -1121,7 +1121,7 @@ local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tem
 
     if currentRobbedAmount > 0 then
         debugLog("[Recovery] 发现剩余金额，尝试再次投放...")
-        local retrySuccess, retryAttempts, retryDelivered = forceDeliverRobbedAmount()
+        local retrySuccess, retryAttempts, retryDelivered = forceDeliverRobbedAmount(false)
 
         if retrySuccess then
             debugLog("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
@@ -1190,7 +1190,17 @@ local function performAutoRobATMs()
     isAutoRobActive = true
     debugLog("[AutoRobATMs] 自动抢劫已启动，活动状态: " .. tostring(isAutoRobActive))
     
-    local locationRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Location")
+    local remotes = ReplicatedStorage:WaitForChild("Remotes")
+    local requestStartJobSession = remotes:WaitForChild("RequestStartJobSession")
+    
+    local args = {
+        "Criminal",
+        "jobPad"
+    }
+    requestStartJobSession:FireServer(unpack(args))
+    debugLog("[AutoRobATMs] 已启动 Criminal Job")
+    
+    local locationRemote = remotes:WaitForChild("Location")
     
     local mt = getrawmetatable(game)
     setreadonly(mt, false)
@@ -1268,7 +1278,7 @@ local function performAutoRobATMs()
                     else
                         debugLog("[AutoRobATMs] 交付点可用，调用强制投放功能...")
 
-                        local deliverySuccess, deliveryAttempts, deliveredAmount = forceDeliverRobbedAmount()
+                        local deliverySuccess, deliveryAttempts, deliveredAmount = forceDeliverRobbedAmount(false)
 
                     if deliverySuccess then
                         if tempTargetAmount then
@@ -1982,7 +1992,7 @@ UILibrary:CreateToggle(autoRobATMsCard, {
             if currentRobbedAmount > 0 then
                 debugLog("[UI] 关闭自动抢劫，开始投放已抢金额: " .. formatNumber(currentRobbedAmount))
                 spawn(function()
-                    forceDeliverRobbedAmount()
+                    forceDeliverRobbedAmount(true)
                 end)
             else
                 debugLog("[UI] 关闭自动抢劫，无已抢金额需要投放")
