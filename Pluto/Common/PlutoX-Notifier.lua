@@ -524,10 +524,10 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
         local currentCurrency = fetchFunc() or 0
         
         if self.config.enableTargetKick and self.config.targetAmount > 0 and currentCurrency >= self.config.targetAmount then
-            self UILibrary and self UILibrary:Notify({
+            self.UILibrary and self.UILibrary:Notify({
                 Title = "目标金额已达成",
                 Text = string.format("当前金额 %s，已超过目标 %s",
-                    CommonFramework.formatNumber(currentCurrency), CommonFramework.formatNumber(self.config.targetAmount)),
+                    PlutoX.formatNumber(currentCurrency), PlutoX.formatNumber(self.config.targetAmount)),
                 Duration = 5
             })
             self.config.enableTargetKick = false
