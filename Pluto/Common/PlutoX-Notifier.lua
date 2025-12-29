@@ -552,7 +552,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                     local remaining = self.config["target" .. keyUpper] - dataInfo.current
                     if remaining > 0 and avg ~= "0" then
                         -- avg 是每小时的速度，计算需要多少小时
-                        local avgNum = tonumber(avg:gsub(",", ""))
+                        local cleanedAvg = avg:gsub(",", "")
+                        local avgNum = tonumber(cleanedAvg)
                         if avgNum and avgNum > 0 then
                             local hoursNeeded = remaining / avgNum
                             if hoursNeeded > 0 then
