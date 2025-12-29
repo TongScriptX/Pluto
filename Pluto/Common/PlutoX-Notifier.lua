@@ -3,6 +3,15 @@
 
 local PlutoX = {}
 
+-- Debug 功能
+PlutoX.debugEnabled = true  -- 开启debug
+
+function PlutoX.debug(...)
+    if PlutoX.debugEnabled then
+        print("[PlutoX-DEBUG]", ...)
+    end
+end
+
 -- 工具函数
 
 -- 格式化数字为千位分隔
@@ -122,6 +131,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
     
     -- 保存配置
     function manager:saveConfig()
+        PlutoX.debug("saveConfig 被调用")
         pcall(function()
             local allConfigs = {}
             
@@ -136,6 +146,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             
             allConfigs[self.username] = self.config
             writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
+            PlutoX.debug("配置已写入文件: " .. self.configFile)
 
             if self.UILibrary then
                 self.UILibrary:Notify({
@@ -997,6 +1008,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
     local targetValueLabel
     local suppressTargetToggleCallback = false
     local targetValueToggle
+    local callCount = 0  -- Debug: 追踪调用次数
     
     -- 更新目标值标签的函数
     local function updateTargetLabel()
@@ -1012,9 +1024,14 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
     local baseValueInput = UILibrary:CreateTextBox(card, {
         PlaceholderText = "输入基准值",
         OnFocusLost = function(text)
+            callCount = callCount + 1
+            PlutoX.debug("OnFocusLost 调用 #" .. callCount .. ", keyUpper: " .. keyUpper .. ", text: " .. tostring(text))
+            PlutoX.debug("当前 config.base" .. keyUpper .. ": " .. tostring(config["base" .. keyUpper]))
+            
             text = text and text:match("^%s*(.-)%s*$")
             
             if not text or text == "" then
+                PlutoX.debug("清除基准值")
                 config["base" .. keyUpper] = 0
                 config["target" .. keyUpper] = 0
                 config["lastSaved" .. keyUpper] = 0
@@ -1032,14 +1049,20 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
             local cleanText = text:gsub(",", "")
             local num = tonumber(cleanText)
             
+            PlutoX.debug("处理输入值: " .. tostring(num))
+            
             if num and num > 0 then
                 -- 检查值是否与当前配置相同，避免重复处理
                 if num == config["base" .. keyUpper] then
+                    PlutoX.debug("值与当前配置相同，跳过处理")
                     return
                 end
                 
+                PlutoX.debug("值不同，继续处理")
                 local currentValue = fetchValue() or 0
                 local newTarget = num + currentValue
+                
+                PlutoX.debug("当前值: " .. currentValue .. ", 新目标: " .. newTarget)
                 
                 config["base" .. keyUpper] = num
                 config["target" .. keyUpper] = newTarget
@@ -1057,6 +1080,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                     config["enable" .. keyUpper .. "Kick"] = false
                 end
                 
+                PlutoX.debug("调用 saveConfig")
                 if saveConfig then saveConfig() end
                 
                 UILibrary:Notify({
@@ -1093,9 +1117,11 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
     end
     
     return card, baseValueInput, function(label) 
+        PlutoX.debug("setTargetValueLabel 被调用")
         targetValueLabel = label
         updateTargetLabel()  -- 设置标签后立即更新
     end, function() return targetValueToggle end, function(setLabel) 
+        PlutoX.debug("setLabelCallback 被调用")
         if setLabel then 
             setLabel(targetValueLabel)
             updateTargetLabel()  -- 设置回调后立即更新
