@@ -998,6 +998,17 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
     local suppressTargetToggleCallback = false
     local targetValueToggle
     
+    -- 更新目标值标签的函数
+    local function updateTargetLabel()
+        if targetValueLabel then
+            if config["target" .. keyUpper] > 0 then
+                targetValueLabel.Text = "目标值: " .. PlutoX.formatNumber(config["target" .. keyUpper])
+            else
+                targetValueLabel.Text = "目标值: 未设置"
+            end
+        end
+    end
+    
     local baseValueInput = UILibrary:CreateTextBox(card, {
         PlaceholderText = "输入基准值",
         OnFocusLost = function(text)
@@ -1008,9 +1019,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                 config["target" .. keyUpper] = 0
                 config["lastSaved" .. keyUpper] = 0
                 baseValueInput.Text = ""
-                if targetValueLabel then
-                    targetValueLabel.Text = "目标值: 未设置"
-                end
+                updateTargetLabel()
                 if saveConfig then saveConfig() end
                 UILibrary:Notify({
                     Title = "基准值已清除",
@@ -1032,9 +1041,15 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                 config["lastSaved" .. keyUpper] = currentValue
                 
                 baseValueInput.Text = PlutoX.formatNumber(num)
+                updateTargetLabel()
                 
-                if targetValueLabel then
-                    targetValueLabel.Text = "目标值: " .. PlutoX.formatNumber(newTarget)
+                -- 如果当前值已达目标，关闭踢出功能
+                if config["enable" .. keyUpper .. "Kick"] and currentValue >= newTarget then
+                    suppressTargetToggleCallback = true
+                    if targetValueToggle then
+                        targetValueToggle:Set(false)
+                    end
+                    config["enable" .. keyUpper .. "Kick"] = false
                 end
                 
                 if saveConfig then saveConfig() end
@@ -1049,12 +1064,6 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                 })
                 
                 if config["enable" .. keyUpper .. "Kick"] and currentValue >= newTarget then
-                    suppressTargetToggleCallback = true
-                    if targetValueToggle then
-                        targetValueToggle:Set(false)
-                    end
-                    config["enable" .. keyUpper .. "Kick"] = false
-                    if saveConfig then saveConfig() end
                     UILibrary:Notify({
                         Title = "自动关闭",
                         Text = "当前值已达目标，踢出功能已关闭",
@@ -1078,7 +1087,15 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
         baseValueInput.Text = ""
     end
     
-    return card, targetValueLabel, function(label) targetValueLabel = label end, function() return targetValueToggle end, function(setLabel) if setLabel then setLabel(targetValueLabel) end end
+    return card, baseValueInput, function(label) 
+        targetValueLabel = label
+        updateTargetLabel()  -- 设置标签后立即更新
+    end, function() return targetValueToggle end, function(setLabel) 
+        if setLabel then 
+            setLabel(targetValueLabel)
+            updateTargetLabel()  -- 设置回调后立即更新
+        end 
+    end
 end
 
 -- 创建目标值卡片
