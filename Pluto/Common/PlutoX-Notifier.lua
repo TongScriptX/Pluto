@@ -132,6 +132,10 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
     -- 保存配置
     function manager:saveConfig()
         PlutoX.debug("saveConfig 被调用")
+        -- 打印调用堆栈
+        local stack = debug.traceback("", 2)
+        PlutoX.debug("[DEBUG] 调用堆栈:\n" .. stack)
+        
         pcall(function()
             local allConfigs = {}
             
