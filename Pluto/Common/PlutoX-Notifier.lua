@@ -991,7 +991,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
     UILibrary:CreateLabel(card, {
-        Text = "基准值设置 (仅支持目标的数据类型)",
+        Text = "基准值设置",
     })
     
     local targetValueLabel
@@ -1191,6 +1191,126 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
     })
     
     return card, targetValueLabel, function(suppress, toggle) suppressTargetToggleCallback = suppress; targetValueToggle = toggle end, function(setLabel) if setLabel then setLabel(targetValueLabel) end end
+end
+
+-- 创建目标值卡片（简化版，不带重新计算按钮）
+function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfig, fetchValue, keyUpper)
+    local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
+    
+    local suppressTargetToggleCallback = false
+    local targetValueToggle = UILibrary:CreateToggle(card, {
+        Text = "目标值踢出",
+        DefaultState = config["enable" .. keyUpper .. "Kick"] or false,
+        Callback = function(state)
+            if suppressTargetToggleCallback then
+                suppressTargetToggleCallback = false
+                return
+            end
+            
+            if state and config.webhookUrl == "" then
+                targetValueToggle:Set(false)
+                UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
+                return
+            end
+            
+            if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
+                targetValueToggle:Set(false)
+                UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
+                return
+            end
+            
+            local currentValue = fetchValue()
+            if state and currentValue and currentValue >= config["target" .. keyUpper] then
+                targetValueToggle:Set(false)
+                UILibrary:Notify({
+                    Title = "配置警告",
+                    Text = string.format("当前值(%s)已超过目标(%s)",
+                        PlutoX.formatNumber(currentValue),
+                        PlutoX.formatNumber(config["target" .. keyUpper])),
+                    Duration = 6
+                })
+                return
+            end
+            
+            config["enable" .. keyUpper .. "Kick"] = state
+            UILibrary:Notify({
+                Title = "配置更新",
+                Text = string.format("目标踢出: %s\n目标: %s",
+                    (state and "开启" or "关闭"),
+                    config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
+                Duration = 5
+            })
+            if saveConfig then saveConfig() end
+        end
+    })
+    
+    local targetValueLabel = UILibrary:CreateLabel(card, {
+        Text = "目标值: " .. (config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
+    })
+    
+    return card, targetValueLabel, function(suppress, toggle) suppressTargetToggleCallback = suppress; targetValueToggle = toggle end
+end
+
+-- 重新计算所有数据类型的目标值
+function PlutoX.recalculateAllTargetValues(config, UILibrary, dataMonitor, dataTypes, saveConfig, getTargetValueLabels)
+    local successCount = 0
+    local failCount = 0
+    local results = {}
+    
+    for _, dataType in ipairs(dataTypes) do
+        if dataType.supportTarget then
+            local keyUpper = dataType.id:gsub("^%l", string.upper)
+            
+            if config["base" .. keyUpper] > 0 then
+                local currentValue = dataMonitor:fetchValue(dataType) or 0
+                local newTarget = config["base" .. keyUpper] + currentValue
+                
+                if newTarget > currentValue then
+                    config["target" .. keyUpper] = newTarget
+                    config["lastSaved" .. keyUpper] = currentValue
+                    
+                    -- 更新标签显示
+                    if getTargetValueLabels and getTargetValueLabels[dataType.id] then
+                        getTargetValueLabels[dataType.id].Text = "目标值: " .. PlutoX.formatNumber(newTarget)
+                    end
+                    
+                    successCount = successCount + 1
+                    table.insert(results, string.format("%s: %s", dataType.name, PlutoX.formatNumber(newTarget)))
+                    
+                    -- 如果已达到新目标，关闭踢出功能
+                    if config["enable" .. keyUpper .. "Kick"] and currentValue >= newTarget then
+                        config["enable" .. keyUpper .. "Kick"] = false
+                    end
+                else
+                    failCount = failCount + 1
+                    table.insert(results, string.format("%s: 计算失败（目标值不能小于等于当前值）", dataType.name))
+                end
+            else
+                failCount = failCount + 1
+                table.insert(results, string.format("%s: 未设置基准值", dataType.name))
+            end
+        end
+    end
+    
+    if saveConfig then saveConfig() end
+    
+    -- 显示结果通知
+    if successCount > 0 then
+        local resultText = string.format("成功: %d, 失败: %d\n\n", successCount, failCount)
+        resultText = resultText .. table.concat(results, "\n")
+        
+        UILibrary:Notify({
+            Title = "目标值已重新计算",
+            Text = resultText,
+            Duration = 10 + successCount
+        })
+    else
+        UILibrary:Notify({
+            Title = "计算失败",
+            Text = "没有成功计算任何目标值，请检查基准值设置",
+            Duration = 6
+        })
+    end
 end
 
 -- 创建关于页面

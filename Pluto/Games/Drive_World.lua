@@ -287,6 +287,8 @@ end
 PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 
 -- 目标值功能（为每个支持目标的数据类型创建独立的目标设置）
+local targetValueLabels = {}  -- 保存所有目标值标签引用
+
 for _, dataType in ipairs(dataTypes) do
     if dataType.supportTarget then
         local keyUpper = dataType.id:gsub("^%l", string.upper)
@@ -303,16 +305,32 @@ for _, dataType in ipairs(dataTypes) do
             keyUpper  -- 传递数据类型的 keyUpper
         )
         
-        local targetValueCard, targetValueLabel, setTargetValueToggle2, connectLabelCallback = PlutoX.createTargetValueCard(
+        local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
             notifyContent, UILibrary, config, function() configManager:saveConfig() end,
             function() return dataMonitor:fetchValue(dataType) end,
             keyUpper  -- 传递数据类型的 keyUpper
         )
         
         setTargetValueLabel(targetValueLabel)
-        -- 两个组件是独立的，不需要调用 setTargetValueToggle2 或 connectLabelCallback
+        targetValueLabels[dataType.id] = targetValueLabel  -- 保存标签引用
     end
 end
+
+-- 统一的重新计算所有目标值按钮
+local recalculateCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateButton(recalculateCard, {
+    Text = "重新计算所有目标值",
+    Callback = function()
+        PlutoX.recalculateAllTargetValues(
+            config,
+            UILibrary,
+            dataMonitor,
+            dataTypes,
+            function() configManager:saveConfig() end,
+            targetValueLabels
+        )
+    end
+})
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
