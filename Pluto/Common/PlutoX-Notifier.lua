@@ -1029,12 +1029,26 @@ function PlutoX.createIntervalCard(parent, UILibrary, config, saveConfig)
     return card
 end
 
+-- 创建数据类型分隔标签
+function PlutoX.createDataTypeSectionLabel(parent, UILibrary, dataType)
+    local card = UILibrary:CreateCard(parent)
+    UILibrary:CreateLabel(card, {
+        Text = string.format("%s %s目标设置", dataType.icon, dataType.name),
+    })
+    return card
+end
+
 -- 创建基准值卡片
-function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetchValue, keyUpper)
+function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetchValue, keyUpper, icon)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
+    local labelText = "基准值设置"
+    if icon then
+        labelText = icon .. " " .. labelText
+    end
+    
     UILibrary:CreateLabel(card, {
-        Text = "基准值设置",
+        Text = labelText,
     })
     
     local targetValueLabel

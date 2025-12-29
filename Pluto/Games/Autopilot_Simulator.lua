@@ -362,22 +362,20 @@ for _, dataType in ipairs(dataTypes) do
     if dataType.supportTarget then
         local keyUpper = dataType.id:gsub("^%l", string.upper)
         
-        -- 创建分隔标签
-        local separatorCard = UILibrary:CreateCard(notifyContent)
-        UILibrary:CreateLabel(separatorCard, {
-            Text = string.format("%s目标设置", dataType.name),
-        })
+        -- 创建分隔标签（使用模块函数，自动添加图标）
+        PlutoX.createDataTypeSectionLabel(notifyContent, UILibrary, dataType)
         
         local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
             notifyContent, UILibrary, config, function() configManager:saveConfig() end, 
             function() return dataMonitor:fetchValue(dataType) end,
-            keyUpper  -- 传递数据类型的 keyUpper
+            keyUpper,
+            dataType.icon  -- 传递图标
         )
         
         local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
             notifyContent, UILibrary, config, function() configManager:saveConfig() end,
             function() return dataMonitor:fetchValue(dataType) end,
-            keyUpper  -- 传递数据类型的 keyUpper
+            keyUpper
         )
         
         setTargetValueLabel(targetValueLabel)
