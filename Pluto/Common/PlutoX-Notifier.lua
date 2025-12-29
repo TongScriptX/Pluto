@@ -1033,6 +1033,11 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
             local num = tonumber(cleanText)
             
             if num and num > 0 then
+                -- 检查值是否与当前配置相同，避免重复处理
+                if num == config["base" .. keyUpper] then
+                    return
+                end
+                
                 local currentValue = fetchValue() or 0
                 local newTarget = num + currentValue
                 
