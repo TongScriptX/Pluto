@@ -336,7 +336,6 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                 if avgPerSecond > 0 then
                     local secondsRemaining = remaining / avgPerSecond
                     local estimatedTimestamp = currentTime + secondsRemaining
-                    local countdownR = string.format("<t:%d:R>", estimatedTimestamp)
                     local countdownT = string.format("<t:%d:T>", estimatedTimestamp)
                     if secondsRemaining < 60 then
                         estimatedTime = "小于一分钟 " .. countdownT
@@ -348,7 +347,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                         if days > 0 then table.insert(parts, days .. "天") end
                         if hours > 0 then table.insert(parts, hours .. "小时") end
                         if minutes > 0 then table.insert(parts, minutes .. "分钟") end
-                        estimatedTime = table.concat(parts, "") .. " " .. countdownR .. "（" .. countdownT .. "）"
+                        estimatedTime = table.concat(parts, "") .. " " .. countdownT
                     end
                 end
             end
@@ -374,7 +373,6 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
 
         -- 计算下次通知时间
         local nextNotifyTimestamp = currentTime + (notificationInterval or 30) * 60
-        local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
         local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
 
         return self:dispatchWebhook({
@@ -389,7 +387,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                     },
                     {
                         name = "⌛ 下次通知",
-                        value = string.format("%s（%s）", countdownR, countdownT),
+                        value = countdownT,
                         inline = false
                     }
                 },
