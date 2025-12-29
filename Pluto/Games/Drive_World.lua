@@ -310,10 +310,7 @@ for _, dataType in ipairs(dataTypes) do
         )
         
         setTargetValueLabel(targetValueLabel)
-        -- 不需要调用 setTargetValueToggle2，因为两个组件是独立的
-        if connectLabelCallback then
-            connectLabelCallback(setLabelCallback)
-        end
+        -- 两个组件是独立的，不需要调用 setTargetValueToggle2 或 connectLabelCallback
     end
 end
 
