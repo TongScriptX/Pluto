@@ -4,7 +4,7 @@
 local PlutoX = {}
 
 -- Debug 功能
-PlutoX.debugEnabled = true  -- 开启debug
+PlutoX.debugEnabled = true
 
 function PlutoX.debug(...)
     if PlutoX.debugEnabled then
@@ -14,7 +14,6 @@ end
 
 -- 工具函数
 
--- 格式化数字为千位分隔
 function PlutoX.formatNumber(num)
     if not num then return "0" end
     local formatted = tostring(num)
@@ -731,6 +730,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         
         local currentValue = self:fetchValue(dataType)
         if not currentValue then
+            return false
+        end
+        
+        if currentValue == self.config["lastSaved" .. keyUpper] then
             return false
         end
         
