@@ -171,17 +171,21 @@ PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() configMana
 PlutoX.createCurrencyNotifyCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 
-local baseAmountCard, baseAmountInput, setTargetAmountLabel, getTargetAmountToggle = PlutoX.createBaseAmountCard(
+local baseAmountCard, baseAmountInput, setTargetAmountLabel, getTargetAmountToggle, setLabelCallback = PlutoX.createBaseAmountCard(
     notifyContent, UILibrary, config, function() configManager:saveConfig() end, fetchCurrentCurrency
 )
 
-local targetAmountCard, targetAmountLabel, setTargetAmountToggle2 = PlutoX.createTargetAmountCard(
+local targetAmountCard, targetAmountLabel, setTargetAmountToggle2, connectLabelCallback = PlutoX.createTargetAmountCard(
     notifyContent, UILibrary, config, function() configManager:saveConfig() end, fetchCurrentCurrency
 )
 
 -- 连接两个组件的回调
 setTargetAmountLabel(targetAmountLabel)
 setTargetAmountToggle2(getTargetAmountToggle())
+-- 立即连接标签，确保设置基准金额时可以更新目标金额显示
+if connectLabelCallback then
+    connectLabelCallback(setLabelCallback)
+end
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
