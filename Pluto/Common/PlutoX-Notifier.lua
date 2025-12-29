@@ -327,7 +327,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             avgMoney = PlutoX.formatNumber(math.floor(rawAvg + 0.5))
         end
 
-        -- 计算预计完成时间（仅在设置了目标且未完成时显示）
+        -- 计算预计完成时间
         local estimatedTime = nil
         if targetAmount and targetAmount > 0 and currentCurrency and currentCurrency < targetAmount then
             local remaining = targetAmount - currentCurrency
@@ -335,8 +335,11 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                 local avgPerSecond = earnedChange / interval
                 if avgPerSecond > 0 then
                     local secondsRemaining = remaining / avgPerSecond
+                    local estimatedTimestamp = currentTime + secondsRemaining
+                    local countdownR = string.format("<t:%d:R>", estimatedTimestamp)
+                    local countdownT = string.format("<t:%d:T>", estimatedTimestamp)
                     if secondsRemaining < 60 then
-                        estimatedTime = "小于一分钟"
+                        estimatedTime = "小于一分钟 " .. countdownT
                     else
                         local days = math.floor(secondsRemaining / 86400)
                         local hours = math.floor((secondsRemaining % 86400) / 3600)
@@ -345,7 +348,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                         if days > 0 then table.insert(parts, days .. "天") end
                         if hours > 0 then table.insert(parts, hours .. "小时") end
                         if minutes > 0 then table.insert(parts, minutes .. "分钟") end
-                        estimatedTime = table.concat(parts, "")
+                        estimatedTime = table.concat(parts, "") .. " " .. countdownR .. "（" .. countdownT .. "）"
                     end
                 end
             end
@@ -499,8 +502,6 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
         if success and currencyValue then
             self.initialCurrency = currencyValue
             
-            -- 每次运行时重置 totalEarningsBase 为当前金额（本次运行启动时的金额）
-            -- 这样 calculateEarned 计算的是本次运行后赚的金额
             self.config.totalEarningsBase = currencyValue
             
             if self.config.lastNotifyCurrency == 0 then
@@ -985,6 +986,8 @@ function PlutoX.createBaseAmountCard(parent, UILibrary, config, saveConfig, fetc
         targetAmountToggle = toggle
     end, function()
         return suppressTargetToggleCallback, targetAmountToggle
+    end, function(label)
+        targetAmountLabel = label
     end
 end
 
@@ -1105,6 +1108,10 @@ function PlutoX.createTargetAmountCard(parent, UILibrary, config, saveConfig, fe
     return card, targetAmountLabel, function(suppress, toggle)
         suppressTargetToggleCallback = suppress
         targetAmountToggle = toggle
+    end, function(setLabel)
+        if setLabel then
+            setLabel(targetAmountLabel)
+        end
     end
 end
 
