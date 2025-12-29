@@ -109,7 +109,7 @@ PlutoX.registerDataType({
         return nil
     end,
     calculateAvg = false,
-    supportTarget = false
+    supportTarget = true
 })
 
 -- 注册 Miles 数据类型
@@ -129,7 +129,7 @@ PlutoX.registerDataType({
         return nil
     end,
     calculateAvg = false,
-    supportTarget = false
+    supportTarget = true
 })
 
 -- 注册 Level 数据类型
@@ -148,7 +148,7 @@ PlutoX.registerDataType({
         return nil
     end,
     calculateAvg = false,
-    supportTarget = false
+    supportTarget = true
 })
 
 -- 配置管理
@@ -164,12 +164,6 @@ local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)
 local defaultConfig = {
     webhookUrl = "",
     notificationInterval = 30,
-    targetValue = 0,
-    enableTargetKick = false,
-    lastSavedValue = 0,
-    baseValue = 0,
-    totalEarningsBase = 0,
-    lastNotifyCurrency = 0,
 }
 
 -- 合并数据类型配置
@@ -177,7 +171,7 @@ for key, value in pairs(dataTypeConfigs) do
     defaultConfig[key] = value
 end
 
-local configManager = PlutoX.createConfigManager(configFile, WebService, UILibrary, username, defaultConfig)
+local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
 -- Webhook 管理
@@ -292,23 +286,34 @@ end
 
 PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 
--- 目标值功能（仅适用于支持目标的数据类型，如 Cash）
-local cashType = PlutoX.getDataType("cash")
-if cashType and cashType.supportTarget then
-    local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
-        notifyContent, UILibrary, config, function() configManager:saveConfig() end, 
-        function() return dataMonitor:fetchValue(cashType) end
-    )
-    
-    local targetValueCard, targetValueLabel, setTargetValueToggle2, connectLabelCallback = PlutoX.createTargetValueCard(
-        notifyContent, UILibrary, config, function() configManager:saveConfig() end,
-        function() return dataMonitor:fetchValue(cashType) end
-    )
-    
-    setTargetValueLabel(targetValueLabel)
-    setTargetValueToggle2(getTargetValueToggle())
-    if connectLabelCallback then
-        connectLabelCallback(setLabelCallback)
+-- 目标值功能（为每个支持目标的数据类型创建独立的目标设置）
+for _, dataType in ipairs(dataTypes) do
+    if dataType.supportTarget then
+        local keyUpper = dataType.id:gsub("^%l", string.upper)
+        
+        -- 创建分隔标签
+        local separatorCard = UILibrary:CreateCard(notifyContent)
+        UILibrary:CreateLabel(separatorCard, {
+            Text = string.format("%s目标设置", dataType.name),
+        })
+        
+        local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
+            notifyContent, UILibrary, config, function() configManager:saveConfig() end, 
+            function() return dataMonitor:fetchValue(dataType) end,
+            keyUpper  -- 传递数据类型的 keyUpper
+        )
+        
+        local targetValueCard, targetValueLabel, setTargetValueToggle2, connectLabelCallback = PlutoX.createTargetValueCard(
+            notifyContent, UILibrary, config, function() configManager:saveConfig() end,
+            function() return dataMonitor:fetchValue(dataType) end,
+            keyUpper  -- 传递数据类型的 keyUpper
+        )
+        
+        setTargetValueLabel(targetValueLabel)
+        -- 不需要调用 setTargetValueToggle2，因为两个组件是独立的
+        if connectLabelCallback then
+            connectLabelCallback(setLabelCallback)
+        end
     end
 end
 
@@ -339,34 +344,41 @@ spawn(function()
             disconnectDetector:checkAndNotify(currentCash)
         end
         
-        -- 目标值调整（通用功能）
-        if config.baseValue > 0 and config.targetValue > 0 then
-            pcall(function() dataMonitor:adjustTargetValue(function() configManager:saveConfig() end) end)
+        -- 目标值调整（为每个支持目标的数据类型独立调整）
+        for _, dataType in ipairs(dataTypes) do
+            if dataType.supportTarget then
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                if config["base" .. keyUpper] > 0 and config["target" .. keyUpper] > 0 then
+                    pcall(function() dataMonitor:adjustTargetValue(function() configManager:saveConfig() end, dataType.id) end)
+                end
+            end
         end
         
-        -- 目标值达成检测（通用功能）
-        local targetValue = dataMonitor:checkTargetAchieved()
-        if targetValue then
+        -- 目标值达成检测（检查所有数据类型的目标）
+        local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
+        if achieved then
             webhookManager:sendTargetAchieved(
-                targetValue,
-                config.targetValue,
-                config.baseValue,
-                os.time() - dataMonitor.startTime
+                achieved.value,
+                achieved.targetValue,
+                achieved.baseValue,
+                os.time() - dataMonitor.startTime,
+                achieved.dataType.name
             )
             
             UILibrary:Notify({
                 Title = "🎯 目标达成",
-                Text = "已达目标值，准备退出...",
+                Text = string.format("%s目标已达成，准备退出...", achieved.dataType.name),
                 Duration = 10
             })
             
-            config.lastSavedValue = targetValue
-            config.enableTargetKick = false
+            local keyUpper = achieved.dataType.id:gsub("^%l", string.upper)
+            config["lastSaved" .. keyUpper] = achieved.value
+            config["enable" .. keyUpper .. "Kick"] = false
             configManager:saveConfig()
             
             wait(3)
             pcall(function() game:Shutdown() end)
-            pcall(function() player:Kick("目标值已达成") end)
+            pcall(function() player:Kick(string.format("%s目标值已达成", achieved.dataType.name)) end)
             return
         end
         

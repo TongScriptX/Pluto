@@ -88,6 +88,14 @@ function PlutoX.generateDataTypeConfigs(dataTypes)
         configs["total" .. keyUpper .. "Base"] = 0
         -- 上次通知值
         configs["lastNotify" .. keyUpper] = 0
+        
+        -- 如果支持目标检测，生成目标相关配置
+        if dataType.supportTarget then
+            configs["target" .. keyUpper] = 0
+            configs["enable" .. keyUpper .. "Kick"] = false
+            configs["base" .. keyUpper] = 0
+            configs["lastSaved" .. keyUpper] = 0
+        end
     end
     return configs
 end
@@ -297,7 +305,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     end
     
     -- 发送目标达成通知
-    function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime)
+    function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime, dataTypeName)
         return self:dispatchWebhook({
             embeds = {{
                 title = "🎯 目标达成",
@@ -306,7 +314,8 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                     {
                         name = "📊 达成信息",
                         value = string.format(
-                            "**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
+                            "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
+                            dataTypeName or "未知",
                             PlutoX.formatNumber(currentValue),
                             PlutoX.formatNumber(targetAmount),
                             PlutoX.formatNumber(baseAmount),
@@ -525,8 +534,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                 
                 -- 计算预计完成时间（如果有目标值）
                 local estimatedTimeText = ""
-                if dataType.supportTarget and self.config.targetValue and self.config.targetValue > 0 then
-                    local remaining = self.config.targetValue - dataInfo.current
+                if dataType.supportTarget and self.config["target" .. keyUpper] and self.config["target" .. keyUpper] > 0 then
+                    local remaining = self.config["target" .. keyUpper] - dataInfo.current
                     if remaining > 0 and avg ~= "0" then
                         -- avg 是每小时的速度，计算需要多少小时
                         local avgNum = tonumber(avg:gsub(",", ""))
@@ -680,57 +689,63 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         return true
     end
     
-    -- 目标值调整（通用：适用于任何支持目标检测的数据类型）
-    function monitor:adjustTargetValue(saveConfig)
-        if self.config.baseValue <= 0 or self.config.targetValue <= 0 then
-            return false
-        end
-        
-        -- 找到支持目标的数据类型
-        local targetDataType = nil
-        for _, dataType in ipairs(self.dataTypes) do
-            if dataType.supportTarget then
-                targetDataType = dataType
-                break
+-- 目标值调整（通用：适用于任何支持目标检测的数据类型）
+    function monitor:adjustTargetValue(saveConfig, dataTypeId)
+        if not dataTypeId then
+            -- 调整所有数据类型的目标值
+            for _, dataType in ipairs(self.dataTypes) do
+                if dataType.supportTarget then
+                    self:adjustTargetValue(saveConfig, dataType.id)
+                end
             end
+            return true
         end
         
-        if not targetDataType then
+        local dataType = PlutoX.getDataType(dataTypeId)
+        if not dataType or not dataType.supportTarget then
             return false
         end
         
-        local currentValue = self:fetchValue(targetDataType)
+        local keyUpper = dataType.id:gsub("^%l", string.upper)
+        local baseValue = self.config["base" .. keyUpper]
+        local targetValue = self.config["target" .. keyUpper]
+        
+        if baseValue <= 0 or targetValue <= 0 then
+            return false
+        end
+        
+        local currentValue = self:fetchValue(dataType)
         if not currentValue then
             return false
         end
         
-        local valueDifference = currentValue - self.config.lastSavedValue
+        local valueDifference = currentValue - self.config["lastSaved" .. keyUpper]
         
         -- 只在值减少时调整
         if valueDifference < 0 then
-            local newTargetValue = self.config.targetValue + valueDifference
+            local newTargetValue = targetValue + valueDifference
             
             if newTargetValue > currentValue then
-                self.config.targetValue = newTargetValue
+                self.config["target" .. keyUpper] = newTargetValue
                 if self.UILibrary then
                     self.UILibrary:Notify({
                         Title = "目标值已调整",
                         Text = string.format("检测到%s减少 %s，目标调整至: %s", 
-                            targetDataType.name,
-                            targetDataType.formatFunc(math.abs(valueDifference)),
-                            targetDataType.formatFunc(self.config.targetValue)),
+                            dataType.name,
+                            dataType.formatFunc(math.abs(valueDifference)),
+                            dataType.formatFunc(self.config["target" .. keyUpper])),
                         Duration = 5
                     })
                 end
                 if saveConfig then saveConfig() end
             else
-                self.config.enableTargetKick = false
-                self.config.targetValue = 0
-                self.config.baseValue = 0
+                self.config["enable" .. keyUpper .. "Kick"] = false
+                self.config["target" .. keyUpper] = 0
+                self.config["base" .. keyUpper] = 0
                 if self.UILibrary then
                     self.UILibrary:Notify({
                         Title = "目标值已重置",
-                        Text = "调整后的目标值小于当前值，已禁用目标踢出功能",
+                        Text = string.format("调整后的%s目标值小于当前值，已禁用目标踢出功能", dataType.name),
                         Duration = 5
                     })
                 end
@@ -738,37 +753,49 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             end
         end
         
-        self.config.lastSavedValue = currentValue
+        self.config["lastSaved" .. keyUpper] = currentValue
         if saveConfig then saveConfig() end
         return true
     end
     
     -- 检查目标是否达成（通用）
-    function monitor:checkTargetAchieved(saveConfig)
-        if not self.config.enableTargetKick then
-            return false
-        end
-        
-        -- 找到支持目标的数据类型
-        local targetDataType = nil
-        for _, dataType in ipairs(self.dataTypes) do
-            if dataType.supportTarget then
-                targetDataType = dataType
-                break
+    function monitor:checkTargetAchieved(saveConfig, dataTypeId)
+        if not dataTypeId then
+            -- 检查所有数据类型的目标
+            for _, dataType in ipairs(self.dataTypes) do
+                if dataType.supportTarget then
+                    local achieved = self:checkTargetAchieved(saveConfig, dataType.id)
+                    if achieved then
+                        return achieved
+                    end
+                end
             end
-        end
-        
-        if not targetDataType then
             return false
         end
         
-        local currentValue = self:fetchValue(targetDataType)
+        local dataType = PlutoX.getDataType(dataTypeId)
+        if not dataType or not dataType.supportTarget then
+            return false
+        end
+        
+        local keyUpper = dataType.id:gsub("^%l", string.upper)
+        
+        if not self.config["enable" .. keyUpper .. "Kick"] then
+            return false
+        end
+        
+        local currentValue = self:fetchValue(dataType)
         if not currentValue then
             return false
         end
         
-        if currentValue >= self.config.targetValue then
-            return currentValue
+        if currentValue >= self.config["target" .. keyUpper] then
+            return {
+                dataType = dataType,
+                value = currentValue,
+                targetValue = self.config["target" .. keyUpper],
+                baseValue = self.config["base" .. keyUpper]
+            }
         end
         
         return false
@@ -960,7 +987,7 @@ function PlutoX.createIntervalCard(parent, UILibrary, config, saveConfig)
 end
 
 -- 创建基准值卡片
-function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetchValue)
+function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetchValue, keyUpper)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
     UILibrary:CreateLabel(card, {
@@ -977,9 +1004,9 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
             text = text and text:match("^%s*(.-)%s*$")
             
             if not text or text == "" then
-                config.baseValue = 0
-                config.targetValue = 0
-                config.lastSavedValue = 0
+                config["base" .. keyUpper] = 0
+                config["target" .. keyUpper] = 0
+                config["lastSaved" .. keyUpper] = 0
                 baseValueInput.Text = ""
                 if targetValueLabel then
                     targetValueLabel.Text = "目标值: 未设置"
@@ -1000,9 +1027,9 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                 local currentValue = fetchValue() or 0
                 local newTarget = num + currentValue
                 
-                config.baseValue = num
-                config.targetValue = newTarget
-                config.lastSavedValue = currentValue
+                config["base" .. keyUpper] = num
+                config["target" .. keyUpper] = newTarget
+                config["lastSaved" .. keyUpper] = currentValue
                 
                 baseValueInput.Text = PlutoX.formatNumber(num)
                 
@@ -1021,12 +1048,12 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                     Duration = 8
                 })
                 
-                if config.enableTargetKick and currentValue >= newTarget then
+                if config["enable" .. keyUpper .. "Kick"] and currentValue >= newTarget then
                     suppressTargetToggleCallback = true
                     if targetValueToggle then
                         targetValueToggle:Set(false)
                     end
-                    config.enableTargetKick = false
+                    config["enable" .. keyUpper .. "Kick"] = false
                     if saveConfig then saveConfig() end
                     UILibrary:Notify({
                         Title = "自动关闭",
@@ -1035,7 +1062,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                     })
                 end
             else
-                baseValueInput.Text = config.baseValue > 0 and PlutoX.formatNumber(config.baseValue) or ""
+                baseValueInput.Text = config["base" .. keyUpper] > 0 and PlutoX.formatNumber(config["base" .. keyUpper]) or ""
                 UILibrary:Notify({
                     Title = "配置错误",
                     Text = "请输入有效的正整数",
@@ -1045,8 +1072,8 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
         end
     })
 
-    if config.baseValue > 0 then
-        baseValueInput.Text = PlutoX.formatNumber(config.baseValue)
+    if config["base" .. keyUpper] > 0 then
+        baseValueInput.Text = PlutoX.formatNumber(config["base" .. keyUpper])
     else
         baseValueInput.Text = ""
     end
@@ -1055,13 +1082,13 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
 end
 
 -- 创建目标值卡片
-function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fetchValue)
+function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fetchValue, keyUpper)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
     local suppressTargetToggleCallback = false
     local targetValueToggle = UILibrary:CreateToggle(card, {
         Text = "目标值踢出",
-        DefaultState = config.enableTargetKick or false,
+        DefaultState = config["enable" .. keyUpper .. "Kick"] or false,
         Callback = function(state)
             if suppressTargetToggleCallback then
                 suppressTargetToggleCallback = false
@@ -1074,31 +1101,31 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
                 return
             end
             
-            if state and (not config.targetValue or config.targetValue <= 0) then
+            if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
                 return
             end
             
             local currentValue = fetchValue()
-            if state and currentValue and currentValue >= config.targetValue then
+            if state and currentValue and currentValue >= config["target" .. keyUpper] then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({
                     Title = "配置警告",
                     Text = string.format("当前值(%s)已超过目标(%s)",
                         PlutoX.formatNumber(currentValue),
-                        PlutoX.formatNumber(config.targetValue)),
+                        PlutoX.formatNumber(config["target" .. keyUpper])),
                     Duration = 6
                 })
                 return
             end
             
-            config.enableTargetKick = state
+            config["enable" .. keyUpper .. "Kick"] = state
             UILibrary:Notify({
                 Title = "配置更新",
                 Text = string.format("目标踢出: %s\n目标: %s",
                     (state and "开启" or "关闭"),
-                    config.targetValue > 0 and PlutoX.formatNumber(config.targetValue) or "未设置"),
+                    config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
                 Duration = 5
             })
             if saveConfig then saveConfig() end
@@ -1106,13 +1133,13 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
     })
     
     local targetValueLabel = UILibrary:CreateLabel(card, {
-        Text = "目标值: " .. (config.targetValue > 0 and PlutoX.formatNumber(config.targetValue) or "未设置"),
+        Text = "目标值: " .. (config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
     })
     
     UILibrary:CreateButton(card, {
         Text = "重新计算目标值",
         Callback = function()
-            if config.baseValue <= 0 then
+            if config["base" .. keyUpper] <= 0 then
                 UILibrary:Notify({
                     Title = "配置错误",
                     Text = "请先设置基准值",
@@ -1122,7 +1149,7 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
             end
             
             local currentValue = fetchValue() or 0
-            local newTarget = config.baseValue + currentValue
+            local newTarget = config["base" .. keyUpper] + currentValue
             
             if newTarget <= currentValue then
                 UILibrary:Notify({
@@ -1133,8 +1160,8 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
                 return
             end
             
-            config.targetValue = newTarget
-            config.lastSavedValue = currentValue
+            config["target" .. keyUpper] = newTarget
+            config["lastSaved" .. keyUpper] = currentValue
             
             targetValueLabel.Text = "目标值: " .. PlutoX.formatNumber(newTarget)
             
@@ -1143,16 +1170,16 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
             UILibrary:Notify({
                 Title = "目标值已重新计算",
                 Text = string.format("基准: %s\n当前: %s\n新目标: %s\n\n后续只在值减少时调整",
-                    PlutoX.formatNumber(config.baseValue),
+                    PlutoX.formatNumber(config["base" .. keyUpper]),
                     PlutoX.formatNumber(currentValue),
                     PlutoX.formatNumber(newTarget)),
                 Duration = 8
             })
             
-            if config.enableTargetKick and currentValue >= newTarget then
+            if config["enable" .. keyUpper .. "Kick"] and currentValue >= newTarget then
                 suppressTargetToggleCallback = true
                 targetValueToggle:Set(false)
-                config.enableTargetKick = false
+                config["enable" .. keyUpper .. "Kick"] = false
                 if saveConfig then saveConfig() end
                 UILibrary:Notify({
                     Title = "自动关闭",
