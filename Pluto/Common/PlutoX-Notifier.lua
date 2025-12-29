@@ -276,24 +276,30 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             warn("[Webhook] 欢迎消息: Webhook 地址未设置")
             return false
         end
-        
+
         if self.sendingWelcome then
             return false
         end
-        
+
         self.sendingWelcome = true
-        
+
         local payload = {
             embeds = {{
                 title = "欢迎使用Pluto-X",
-                description = string.format("**游戏**: %s\n**用户**: %s\n**启动时间**: %s",
-                    self.gameName, self.username, os.date("%Y-%m-%d %H:%M:%S")),
+                description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                fields = {
+                    {
+                        name = "📝 启动信息",
+                        value = string.format("**启动时间**: %s", os.date("%Y-%m-%d %H:%M:%S")),
+                        inline = false
+                    }
+                },
                 color = _G.PRIMARY_COLOR or 5793266,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
             }}
         }
-        
+
         local success = self:dispatchWebhook(payload)
         self.sendingWelcome = false
 
@@ -308,21 +314,82 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         else
             warn("[Webhook] 欢迎消息发送失败")
         end
-        
+
         return success
     end
     
     -- 发送金额变化通知
-    function manager:sendCurrencyChange(currentCurrency, earnedChange, totalEarned)
+    function manager:sendCurrencyChange(currentCurrency, earnedChange, totalEarned, elapsedTime, interval, targetAmount, currentTime, notificationInterval)
+        -- 计算平均速度
+        local avgMoney = "0"
+        if interval and interval > 0 then
+            local rawAvg = earnedChange / (interval / 3600)
+            avgMoney = PlutoX.formatNumber(math.floor(rawAvg + 0.5))
+        end
+
+        -- 计算预计完成时间（仅在设置了目标且未完成时显示）
+        local estimatedTime = nil
+        if targetAmount and targetAmount > 0 and currentCurrency and currentCurrency < targetAmount then
+            local remaining = targetAmount - currentCurrency
+            if interval and interval > 0 and earnedChange and earnedChange > 0 then
+                local avgPerSecond = earnedChange / interval
+                if avgPerSecond > 0 then
+                    local secondsRemaining = remaining / avgPerSecond
+                    if secondsRemaining < 60 then
+                        estimatedTime = "小于一分钟"
+                    else
+                        local days = math.floor(secondsRemaining / 86400)
+                        local hours = math.floor((secondsRemaining % 86400) / 3600)
+                        local minutes = math.floor((secondsRemaining % 3600) / 60)
+                        local parts = {}
+                        if days > 0 then table.insert(parts, days .. "天") end
+                        if hours > 0 then table.insert(parts, hours .. "小时") end
+                        if minutes > 0 then table.insert(parts, minutes .. "分钟") end
+                        estimatedTime = table.concat(parts, "")
+                    end
+                end
+            end
+        elseif targetAmount and targetAmount > 0 and currentCurrency and currentCurrency >= targetAmount then
+            estimatedTime = "已完成"
+        end
+
+        -- 构建通知内容
+        local notificationValue = string.format(
+            "**用户名**: %s\n**运行时长**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
+            self.username,
+            PlutoX.formatElapsedTime(elapsedTime),
+            PlutoX.formatNumber(currentCurrency),
+            (earnedChange >= 0 and "+" or ""), PlutoX.formatNumber(earnedChange),
+            (totalEarned >= 0 and "+" or ""), PlutoX.formatNumber(totalEarned),
+            avgMoney
+        )
+
+        -- 如果有预计完成时间，添加到通知内容
+        if estimatedTime then
+            notificationValue = notificationValue .. "\n**预计完成**: " .. estimatedTime
+        end
+
+        -- 计算下次通知时间
+        local nextNotifyTimestamp = currentTime + (notificationInterval or 30) * 60
+        local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
+        local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
+
         return self:dispatchWebhook({
             embeds = {{
-                title = "💰 金额变化通知",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**本次变化**: %s\n**总收益**: %s",
-                    self.gameName, self.username,
-                    PlutoX.formatNumber(currentCurrency),
-                    PlutoX.formatNumber(earnedChange),
-                    PlutoX.formatNumber(totalEarned)),
+                title = "Pluto-X",
+                description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                fields = {
+                    {
+                        name = "💰 金额通知",
+                        value = notificationValue,
+                        inline = false
+                    },
+                    {
+                        name = "⌛ 下次通知",
+                        value = string.format("%s（%s）", countdownR, countdownT),
+                        inline = false
+                    }
+                },
                 color = _G.PRIMARY_COLOR or 5793266,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -335,13 +402,19 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         return self:dispatchWebhook({
             embeds = {{
                 title = "🎯 目标金额达成",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s\n**基准金额**: %s\n**运行时长**: %s",
-                    self.gameName, self.username,
-                    PlutoX.formatNumber(currentCurrency),
-                    PlutoX.formatNumber(targetAmount),
-                    PlutoX.formatNumber(baseAmount),
-                    PlutoX.formatElapsedTime(runTime)),
+                description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                fields = {
+                    {
+                        name = "📊 达成信息",
+                        value = string.format(
+                            "**当前金额**: %s\n**目标金额**: %s\n**基准金额**: %s\n**运行时长**: %s",
+                            PlutoX.formatNumber(currentCurrency),
+                            PlutoX.formatNumber(targetAmount),
+                            PlutoX.formatNumber(baseAmount),
+                            PlutoX.formatElapsedTime(runTime)),
+                        inline = false
+                    }
+                },
                 color = _G.PRIMARY_COLOR or 5793266,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -354,24 +427,38 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         return self:dispatchWebhook({
             embeds = {{
                 title = "⚠️ 掉线检测",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n检测到掉线",
-                    self.gameName, self.username, PlutoX.formatNumber(currentCurrency or 0)),
+                description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                fields = {
+                    {
+                        name = "📉 掉线信息",
+                        value = string.format(
+                            "**当前金额**: %s\n检测到掉线",
+                            PlutoX.formatNumber(currentCurrency or 0)),
+                        inline = false
+                    }
+                },
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
             }}
         })
     end
-    
+
     -- 发送金额未变化警告
     function manager:sendNoChange(currentCurrency)
         return self:dispatchWebhook({
             embeds = {{
                 title = "⚠️ 金额未变化",
-                description = string.format(
-                    "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n连续两次金额无变化",
-                    self.gameName, self.username, PlutoX.formatNumber(currentCurrency or 0)),
+                description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                fields = {
+                    {
+                        name = "📉 状态信息",
+                        value = string.format(
+                            "**当前金额**: %s\n连续两次金额无变化",
+                            PlutoX.formatNumber(currentCurrency or 0)),
+                        inline = false
+                    }
+                },
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                 footer = { text = "作者: tongblx · Pluto-X" }
@@ -412,9 +499,9 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
         if success and currencyValue then
             self.initialCurrency = currencyValue
             
-            if self.config.totalEarningsBase == 0 then
-                self.config.totalEarningsBase = currencyValue
-            end
+            -- 每次运行时重置 totalEarningsBase 为当前金额（本次运行启动时的金额）
+            -- 这样 calculateEarned 计算的是本次运行后赚的金额
+            self.config.totalEarningsBase = currencyValue
             
             if self.config.lastNotifyCurrency == 0 then
                 self.config.lastNotifyCurrency = currencyValue
@@ -632,7 +719,12 @@ function PlutoX.createCurrencyNotifier(config, UILibrary, gameName, username)
         webhookManager:sendCurrencyChange(
             currentCurrency,
             earnedChange,
-            self:calculateEarned(currentCurrency)
+            self:calculateEarned(currentCurrency),
+            currentTime - self.startTime,
+            interval,
+            self.config.targetAmount,
+            currentTime,
+            self.config.notificationInterval
         )
         
         self.lastSendTime = currentTime
