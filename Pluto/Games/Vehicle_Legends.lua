@@ -118,8 +118,6 @@ local function fetchCurrentCurrency()
             :WaitForChild("leaderstatAmounts", 5)
             :WaitForChild("Credits", 5)
             :WaitForChild("TextLabel", 5).Text
-
-        -- 提取文本中的金额，例如 "$79,000" -> 79000
         local numberString = text:match("%$([%d,]+)")
         numberString = numberString and numberString:gsub(",", "")
         return tonumber(numberString)
