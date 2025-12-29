@@ -939,6 +939,11 @@ function PlutoX.createWebhookCard(parent, UILibrary, config, saveConfig, webhook
         OnFocusLost = function(text)
             if not text then return end
             
+            -- 检查值是否与当前配置相同，避免重复处理
+            if text == config.webhookUrl then
+                return
+            end
+            
             local oldUrl = config.webhookUrl
             config.webhookUrl = text
             
@@ -982,6 +987,12 @@ function PlutoX.createIntervalCard(parent, UILibrary, config, saveConfig)
         OnFocusLost = function(text)
             if not text then return end
             local num = tonumber(text)
+            
+            -- 检查值是否与当前配置相同，避免重复处理
+            if num and num == config.notificationInterval then
+                return
+            end
+            
             if num and num > 0 then
                 config.notificationInterval = num
                 UILibrary:Notify({ Title = "配置更新", Text = "通知间隔: " .. num .. " 分钟", Duration = 5 })
@@ -1143,6 +1154,11 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
                 return
             end
             
+            -- 检查状态是否与当前配置相同，避免重复处理
+            if state == config["enable" .. keyUpper .. "Kick"] then
+                return
+            end
+            
             if state and config.webhookUrl == "" then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
@@ -1252,6 +1268,11 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
         Callback = function(state)
             if suppressTargetToggleCallback then
                 suppressTargetToggleCallback = false
+                return
+            end
+            
+            -- 检查状态是否与当前配置相同，避免重复处理
+            if state == config["enable" .. keyUpper .. "Kick"] then
                 return
             end
             
