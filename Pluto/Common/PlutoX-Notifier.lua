@@ -737,6 +737,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         local valueDifference = currentValue - self.config["lastSaved" .. keyUpper]
         local configChanged = false
         
+        PlutoX.debug("[DEBUG] adjustTargetValue: " .. dataType.id .. ", lastSaved=" .. self.config["lastSaved" .. keyUpper] .. ", current=" .. currentValue .. ", diff=" .. valueDifference)
+        
         -- 只在值减少时调整
         if valueDifference < 0 then
             local newTargetValue = targetValue + valueDifference
@@ -767,6 +769,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                 end
                 configChanged = true
             end
+        else
+            PlutoX.debug("[DEBUG] adjustTargetValue: 值未减少，不调整目标")
         end
         
         -- 更新 lastSaved 值（即使没有变化）
@@ -774,7 +778,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         
         -- 只在配置变化时保存
         if configChanged and saveConfig then
+            PlutoX.debug("[DEBUG] adjustTargetValue: 配置已变化，调用 saveConfig")
             saveConfig()
+        else
+            PlutoX.debug("[DEBUG] adjustTargetValue: 配置未变化，不保存")
         end
         return true
     end
