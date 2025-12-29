@@ -735,6 +735,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         end
         
         local valueDifference = currentValue - self.config["lastSaved" .. keyUpper]
+        local configChanged = false
         
         -- 只在值减少时调整
         if valueDifference < 0 then
@@ -752,7 +753,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                         Duration = 5
                     })
                 end
-                if saveConfig then saveConfig() end
+                configChanged = true
             else
                 self.config["enable" .. keyUpper .. "Kick"] = false
                 self.config["target" .. keyUpper] = 0
@@ -764,12 +765,17 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                         Duration = 5
                     })
                 end
-                if saveConfig then saveConfig() end
+                configChanged = true
             end
         end
         
+        -- 更新 lastSaved 值（即使没有变化）
         self.config["lastSaved" .. keyUpper] = currentValue
-        if saveConfig then saveConfig() end
+        
+        -- 只在配置变化时保存
+        if configChanged and saveConfig then
+            saveConfig()
+        end
         return true
     end
     
