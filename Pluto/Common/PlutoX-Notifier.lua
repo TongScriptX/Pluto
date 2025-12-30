@@ -12,6 +12,34 @@ function PlutoX.debug(...)
     end
 end
 
+-- 脚本实例管理（防止多个脚本同时运行）
+PlutoX.scriptInstances = {}
+
+-- 注册脚本实例
+function PlutoX.registerScriptInstance(gameName, username, webhookManager)
+    local instanceId = gameName .. ":" .. username
+    
+    -- 检查是否已存在相同游戏和用户的实例
+    if PlutoX.scriptInstances[instanceId] then
+        warn("[脚本实例] 检测到相同脚本已在运行: " .. instanceId)
+        return false
+    end
+    
+    -- 注册新实例
+    PlutoX.scriptInstances[instanceId] = {
+        gameName = gameName,
+        username = username,
+        startTime = os.time()
+    }
+    return true
+end
+
+-- 注销脚本实例
+function PlutoX.unregisterScriptInstance(gameName, username)
+    local instanceId = gameName .. ":" .. username
+    PlutoX.scriptInstances[instanceId] = nil
+end
+
 -- 工具函数
 
 function PlutoX.formatNumber(num)
@@ -223,6 +251,13 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     
     -- 发送 Webhook
     function manager:dispatchWebhook(payload)
+        -- 检查脚本实例是否仍然有效
+        local instanceId = self.gameName .. ":" .. self.username
+        if not PlutoX.scriptInstances[instanceId] then
+            warn("[Webhook] 脚本实例已失效，停止发送: " .. instanceId)
+            return false
+        end
+        
         if self.config.webhookUrl == "" then
             warn("[Webhook] 未设置 webhookUrl")
             return false
@@ -898,6 +933,7 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
     local detector = {}
     
     detector.disconnected = false
+    detector.notified = false  -- 标记是否已发送通知
     detector.UILibrary = UILibrary
     detector.webhookManager = webhookManager
     
@@ -923,7 +959,8 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
     
     -- 检测掉线并发送通知
     function detector:checkAndNotify(currentValue)
-        if self.disconnected and self.webhookManager then
+        if self.disconnected and not self.notified and self.webhookManager then
+            self.notified = true  -- 标记已发送通知
             self.webhookManager:sendDisconnect({ ["cash"] = currentValue })
             if self.UILibrary then
                 self.UILibrary:Notify({
@@ -940,6 +977,7 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
     -- 重置状态
     function detector:reset()
         self.disconnected = false
+        self.notified = false
     end
     
     return detector

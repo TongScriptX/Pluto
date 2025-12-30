@@ -63,6 +63,12 @@ do
     end
 end
 
+-- 注册脚本实例（防止多个脚本同时运行）
+local scriptRegistered = PlutoX.registerScriptInstance(gameName, username, nil)
+if not scriptRegistered then
+    warn("[PlutoX] 检测到相同脚本已在运行，当前脚本将停止发送 Webhook 通知")
+end
+
 -- 注册数据类型
 
 -- 注册 Cash 数据类型
