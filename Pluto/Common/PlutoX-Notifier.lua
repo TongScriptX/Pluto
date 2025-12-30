@@ -249,6 +249,18 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     manager.username = username
     manager.sendingWelcome = false
     
+    -- 自动注册脚本实例
+    local instanceId = gameName .. ":" .. username
+    if not PlutoX.scriptInstances[instanceId] then
+        PlutoX.scriptInstances[instanceId] = {
+            gameName = gameName,
+            username = username,
+            startTime = os.time()
+        }
+    else
+        warn("[Webhook] 检测到相同脚本已在运行: " .. instanceId)
+    end
+    
     -- 发送 Webhook
     function manager:dispatchWebhook(payload)
         -- 检查脚本实例是否仍然有效
