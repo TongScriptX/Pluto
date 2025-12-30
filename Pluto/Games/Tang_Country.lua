@@ -606,9 +606,7 @@ for _, dataType in ipairs(dataTypes) do
         
         -- 创建分隔标签
         local separatorCard = UILibrary:CreateCard(notifyContent)
-        PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, {
-            Text = string.format("%s %s目标设置", dataType.icon, dataType.name)
-        })
+        PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, dataType)
         
         local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
             notifyContent, UILibrary, config, function() configManager:saveConfig() end, 
