@@ -616,7 +616,7 @@ for _, dataType in ipairs(dataTypes) do
         )
         
         local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
-            notifyContent, UILibraryibrary, config, function() configManager:saveConfig() end,
+            notifyContent, UILibrary, config, function() configManager:saveConfig() end,
             function() return dataMonitor:fetchValue(dataType) end,
             keyUpper  -- 传递数据类型的 keyUpper
         )
