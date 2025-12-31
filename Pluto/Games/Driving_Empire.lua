@@ -726,6 +726,205 @@ local function monitorDropOffStatusAndUpdateTarget()
     return false
 end
 
+-- 初始化
+local configFile = "Pluto_X_DE_config.json"
+
+local dataTypes = PlutoX.getAllDataTypes()
+local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)
+
+local defaultConfig = {
+    webhookUrl = "",
+    notificationInterval = 30,
+    onlineRewardEnabled = false,
+    autoSpawnVehicleEnabled = false,
+    autoRobATMsEnabled = false,
+    robTargetAmount = 0,
+    notifyCash = false,
+    notifyLeaderboard = false,
+    leaderboardKick = false,
+}
+
+for key, value in pairs(dataTypeConfigs) do
+    defaultConfig[key] = value
+end
+
+local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
+local config = configManager:loadConfig()
+
+local function claimPlaytimeRewards()
+    if not config.onlineRewardEnabled then
+        debugLog("[PlaytimeRewards] 功能未启用")
+        return
+    end
+
+    spawn(function()
+        local rewardCheckInterval = 600
+
+        while config.onlineRewardEnabled do
+            if not game:IsLoaded() then
+                game.Loaded:Wait()
+            end
+
+            local gui = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui", 5)
+            local rewardsRoot = findRewardsRoot()
+
+            if not rewardsRoot then
+                warn("[PlaytimeRewards] 未找到奖励界面")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            local statsGui
+            for _, v in ipairs(gui:GetChildren()) do
+                if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
+                    statsGui = v
+                    break
+                end
+            end
+
+            if not statsGui then
+                warn("[PlaytimeRewards] 未找到玩家 Stats")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            local claimedList = {}
+            local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
+            if claimedRaw and claimedRaw:IsA("StringValue") then
+                local ok, parsed = pcall(function()
+                    return HttpService:JSONDecode(claimedRaw.Value)
+                end)
+                if ok and typeof(parsed) == "table" then
+                    for k, v in pairs(parsed) do
+                        claimedList[tonumber(k)] = v
+                    end
+                end
+            end
+
+            local allClaimed = true
+            for i = 1, 7 do
+                if not claimedList[i] then
+                    allClaimed = false
+                    break
+                end
+            end
+
+            if allClaimed then
+                debugLog("[PlaytimeRewards] 所有奖励已领取")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+            local uiInteraction = remotes and remotes:FindFirstChild("UIInteraction")
+            local playRewards = remotes and remotes:FindFirstChild("PlayRewards")
+
+            if not uiInteraction or not playRewards then
+                warn("[PlaytimeRewards] 未找到远程事件")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            for i = 1, 7 do
+                local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
+                local canClaim = false
+                local alreadyClaimed = claimedList[i] == true
+
+                if rewardItem then
+                    local holder = rewardItem:FindFirstChild("Holder")
+                    local collect = holder and holder:FindFirstChild("Collect")
+                    if collect and collect.Visible and not alreadyClaimed then
+                        canClaim = true
+                    end
+                end
+
+                if canClaim then
+                    pcall(function()
+                        uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
+                        task.wait(0.2)
+                        playRewards:FireServer(i, false)
+                        debugLog("[PlaytimeRewards] 已领取奖励 ID:", i)
+                    end)
+                    task.wait(0.4)
+                end
+            end
+
+            task.wait(rewardCheckInterval)
+        end
+    end)
+end
+
+local function performAutoSpawnVehicle()
+    if not config.autoSpawnVehicleEnabled then
+        debugLog("[AutoSpawnVehicle] 功能未启用")
+        return
+    end
+
+    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
+    local startTime = tick()
+
+    local localPlayer = Players.LocalPlayer
+    if not localPlayer or not ReplicatedStorage then
+        warn("[AutoSpawnVehicle] 无法获取必要服务")
+        return
+    end
+
+    local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+    if not remotesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
+        return
+    end
+
+    local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
+    local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
+    if not GetVehicleStats or not VehicleEvent then
+        warn("[AutoSpawnVehicle] 未找到必要的远程事件")
+        return
+    end
+
+    local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
+    if not playerGui then
+        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
+        return
+    end
+
+    local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
+    if not statsPanel then
+        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
+        return
+    end
+
+    local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
+    if not vehiclesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
+        return
+    end
+
+    local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
+    local searchTime = tick() - startTime
+    
+    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
+
+    if fastestName and fastestSpeed > 0 then
+        local success, err = pcall(function()
+            VehicleEvent:FireServer("Spawn", fastestName)
+        end)
+        
+        if success then
+            UILibrary:Notify({
+                Title = "自动生成",
+                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
+                    fastestName, tostring(fastestSpeed), searchTime),
+                Duration = 5
+            })
+        else
+            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
+        end
+    else
+        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
+    end
+end
+
 local originalLocationNameCall = nil
 
 -- Auto Rob ATMs功能
@@ -1215,204 +1414,6 @@ local function performAutoRobATMs()
     end)
 end
 
--- 初始化
-local configFile = "Pluto_X_DE_config.json"
-
-local dataTypes = PlutoX.getAllDataTypes()
-local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)
-
-local defaultConfig = {
-    webhookUrl = "",
-    notificationInterval = 30,
-    onlineRewardEnabled = false,
-    autoSpawnVehicleEnabled = false,
-    autoRobATMsEnabled = false,
-    robTargetAmount = 0,
-    notifyLeaderboard = false,
-    leaderboardKick = false,
-}
-
-for key, value in pairs(dataTypeConfigs) do
-    defaultConfig[key] = value
-end
-
-local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
-local config = configManager:loadConfig()
-
-local function claimPlaytimeRewards()
-    if not config.onlineRewardEnabled then
-        debugLog("[PlaytimeRewards] 功能未启用")
-        return
-    end
-
-    spawn(function()
-        local rewardCheckInterval = 600
-
-        while config.onlineRewardEnabled do
-            if not game:IsLoaded() then
-                game.Loaded:Wait()
-            end
-
-            local gui = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui", 5)
-            local rewardsRoot = findRewardsRoot()
-
-            if not rewardsRoot then
-                warn("[PlaytimeRewards] 未找到奖励界面")
-                task.wait(rewardCheckInterval)
-                continue
-            end
-
-            local statsGui
-            for _, v in ipairs(gui:GetChildren()) do
-                if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
-                    statsGui = v
-                    break
-                end
-            end
-
-            if not statsGui then
-                warn("[PlaytimeRewards] 未找到玩家 Stats")
-                task.wait(rewardCheckInterval)
-                continue
-            end
-
-            local claimedList = {}
-            local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
-            if claimedRaw and claimedRaw:IsA("StringValue") then
-                local ok, parsed = pcall(function()
-                    return HttpService:JSONDecode(claimedRaw.Value)
-                end)
-                if ok and typeof(parsed) == "table" then
-                    for k, v in pairs(parsed) do
-                        claimedList[tonumber(k)] = v
-                    end
-                end
-            end
-
-            local allClaimed = true
-            for i = 1, 7 do
-                if not claimedList[i] then
-                    allClaimed = false
-                    break
-                end
-            end
-
-            if allClaimed then
-                debugLog("[PlaytimeRewards] 所有奖励已领取")
-                task.wait(rewardCheckInterval)
-                continue
-            end
-
-            local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
-            local uiInteraction = remotes and remotes:FindFirstChild("UIInteraction")
-            local playRewards = remotes and remotes:FindFirstChild("PlayRewards")
-
-            if not uiInteraction or not playRewards then
-                warn("[PlaytimeRewards] 未找到远程事件")
-                task.wait(rewardCheckInterval)
-                continue
-            end
-
-            for i = 1, 7 do
-                local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
-                local canClaim = false
-                local alreadyClaimed = claimedList[i] == true
-
-                if rewardItem then
-                    local holder = rewardItem:FindFirstChild("Holder")
-                    local collect = holder and holder:FindFirstChild("Collect")
-                    if collect and collect.Visible and not alreadyClaimed then
-                        canClaim = true
-                    end
-                end
-
-                if canClaim then
-                    pcall(function()
-                        uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
-                        task.wait(0.2)
-                        playRewards:FireServer(i, false)
-                        debugLog("[PlaytimeRewards] 已领取奖励 ID:", i)
-                    end)
-                    task.wait(0.4)
-                end
-            end
-
-            task.wait(rewardCheckInterval)
-        end
-    end)
-end
-
-local function performAutoSpawnVehicle()
-    if not config.autoSpawnVehicleEnabled then
-        debugLog("[AutoSpawnVehicle] 功能未启用")
-        return
-    end
-
-    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
-    local startTime = tick()
-
-    local localPlayer = Players.LocalPlayer
-    if not localPlayer or not ReplicatedStorage then
-        warn("[AutoSpawnVehicle] 无法获取必要服务")
-        return
-    end
-
-    local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
-    if not remotesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
-        return
-    end
-
-    local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
-    local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
-    if not GetVehicleStats or not VehicleEvent then
-        warn("[AutoSpawnVehicle] 未找到必要的远程事件")
-        return
-    end
-
-    local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
-    if not playerGui then
-        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
-        return
-    end
-
-    local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
-    if not statsPanel then
-        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
-        return
-    end
-
-    local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
-    if not vehiclesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
-        return
-    end
-
-    local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
-    local searchTime = tick() - startTime
-    
-    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
-
-    if fastestName and fastestSpeed > 0 then
-        local success, err = pcall(function()
-            VehicleEvent:FireServer("Spawn", fastestName)
-        end)
-        
-        if success then
-            UILibrary:Notify({
-                Title = "自动生成",
-                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
-                    fastestName, tostring(fastestSpeed), searchTime),
-                Duration = 5
-            })
-        else
-            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
-        end
-    else
-        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
-    end
-end
-
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
 local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
@@ -1621,6 +1622,23 @@ PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() configMana
 
 -- 通知间隔
 PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
+
+-- 监测金额变化
+local currencyNotifyCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateToggle(currencyNotifyCard, {
+    Text = "监测金额变化",
+    DefaultState = config.notifyCash,
+    Callback = function(state)
+        if state and config.webhookUrl == "" then
+            UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
+            config.notifyCash = false
+            return
+        end
+        config.notifyCash = state
+        UILibrary:Notify({ Title = "配置更新", Text = "金额变化监测: " .. (state and "开启" or "关闭"), Duration = 5 })
+        configManager:saveConfig()
+    end
+})
 
 -- 排行榜检测
 local leaderboardCard = UILibrary:CreateCard(notifyContent)
