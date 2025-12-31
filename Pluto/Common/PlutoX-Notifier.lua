@@ -4,7 +4,7 @@
 local PlutoX = {}
 
 -- Debug 功能
-PlutoX.debugEnabled = true
+PlutoX.debugEnabled = false
 
 function PlutoX.debug(...)
     if PlutoX.debugEnabled then
