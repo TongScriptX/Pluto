@@ -12,6 +12,9 @@ function PlutoX.debug(...)
     end
 end
 
+-- Webhook Footer 配置
+PlutoX.footerText = "桐 · TStudioX"
+
 -- 脚本实例管理（防止多个脚本同时运行）
 PlutoX.scriptInstances = {}
 
@@ -343,7 +346,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                 },
                 color = _G.PRIMARY_COLOR or 5793266,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" }
+                footer = { text = "桐 · TStudioX" }
             }}
         }
 
@@ -386,7 +389,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                 },
                 color = _G.PRIMARY_COLOR or 5793266,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" }
+                footer = { text = "桐 · TStudioX" }
             }}
         })
     end
@@ -410,7 +413,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                     table.concat(dataText, " | ")),
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" }
+                footer = { text = "桐 · TStudioX" }
             }}
         })
     end
@@ -434,7 +437,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                     table.concat(dataText, " | ")),
                 color = 16753920,
                 timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "作者: tongblx · Pluto-X" }
+                footer = { text = "桐 · TStudioX" }
             }}
         })
     end
@@ -664,7 +667,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             fields = fields,
             color = _G.PRIMARY_COLOR,
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            footer = { text = "作者: tongblx · Pluto-X" }
+            footer = { text = "桐 · TStudioX" }
         }
         
         return self.webhookManager:dispatchWebhook({ embeds = { embed } })
