@@ -1,3 +1,4 @@
+-- 服务和变量声明
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -6,10 +7,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
+_G.PRIMARY_COLOR = 5793266
 local DEBUG_MODE = false
 local lastSendTime = os.time()
 local sendingWelcome = false
-_G.PRIMARY_COLOR = 5793266
 local isAutoRobActive = false
 local isDeliveryInProgress = false
 
@@ -40,6 +41,63 @@ local function formatElapsedTime(seconds)
     return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
 end
 
+local function safePositionUpdate(targetCFrame)
+    local localPlayer = Players.LocalPlayer
+    local character = localPlayer and localPlayer.Character
+    if character and character.PrimaryPart then
+        character.PrimaryPart.Velocity = Vector3.zero
+        character:PivotTo(targetCFrame)
+    end
+    if localPlayer then
+        localPlayer.ReplicationFocus = nil
+    end
+end
+
+-- UI 库加载
+local UILibrary
+local success, result = pcall(function()
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
+end)
+
+if success and result then
+    UILibrary = result
+else
+    error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
+end
+
+-- PlutoX 模块加载
+local success, PlutoX = pcall(function()
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
+end)
+
+if not success or not PlutoX then
+    error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
+end
+
+-- 玩家和游戏信息
+local player = Players.LocalPlayer
+if not player then
+    error("无法获取当前玩家")
+end
+
+local userId = player.UserId
+local username = player.Name
+
+local gameName = "Driving Empire"
+do
+    local success, info = pcall(function()
+        return MarketplaceService:GetProductInfo(game.PlaceId)
+    end)
+    if success and info then
+        gameName = info.Name
+    end
+end
+
+-- 游戏特定功能
 local function teleportCharacterTo(targetCFrame)
     if not player.Character or not player.Character.PrimaryPart then
         warn("[Teleport] 角色或主要部件不存在")
@@ -59,18 +117,6 @@ local function teleportCharacterTo(targetCFrame)
     end
     
     return true
-end
-
-local function safePositionUpdate(targetCFrame)
-    local localPlayer = Players.LocalPlayer
-    local character = localPlayer and localPlayer.Character
-    if character and character.PrimaryPart then
-        character.PrimaryPart.Velocity = Vector3.zero
-        character:PivotTo(targetCFrame)
-    end
-    if localPlayer then
-        localPlayer.ReplicationFocus = nil
-    end
 end
 
 local function waitForCondition(conditionFunc, timeout, checkInterval)
@@ -106,277 +152,24 @@ local function checkAutoRobStatus(context)
     return true
 end
 
-local UILibrary
-local success, result = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
-    local source = game:HttpGet(url)
-    if not source then
-        error("无法获取UILibrary源代码")
-    end
-    local func = loadstring(source)
-    if not func then
-        error("无法编译UILibrary源代码")
-    end
-    return func()
-end)
-
-if success and result then
-    UILibrary = result
-else
-    warn("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
-    warn("[PlutoUILibrary] 脚本将继续运行，但UI功能将不可用")
-    UILibrary = nil
-end
-
-local player = Players.LocalPlayer
-if not player then
-    error("无法获取当前玩家")
-end
-
-local userId = player.UserId
-local username = player.Name
-
-local http_request = syn and syn.request or http and http.request or http_request
-if not http_request then
-    error("此执行器不支持 HTTP 请求")
-end
-
-local gameName = "未知游戏"
-do
-    local success, info = pcall(function()
-        return MarketplaceService:GetProductInfo(game.PlaceId)
-    end)
-    if success and info then
-        gameName = info.Name
-    end
-end
-
-local configFile = "Pluto_X_DE_config.json"
-local config = {
-    webhookUrl = "",
-    notifyCash = false,
-    notifyLeaderboard = false,
-    leaderboardKick = false,
-    notificationInterval = 30,
-    targetAmount = 0,
-    enableTargetKick = false,
-    lastSavedCurrency = 0,
-    baseAmount = 0,
-    totalEarningsBase = 0,
-    lastNotifyCurrency = 0,
-    onlineRewardEnabled = false,
-    autoSpawnVehicleEnabled = false,
-    autoRobATMsEnabled = false,
-    robTargetAmount = 0,
-}
-
-local function saveConfig()
-    pcall(function()
-        local allConfigs = {}
-        if isfile(configFile) then
-            local ok, content = pcall(function()
-                return HttpService:JSONDecode(readfile(configFile))
-            end)
-            if ok and type(content) == "table" then
-                allConfigs = content
+-- 注册数据类型
+PlutoX.registerDataType({
+    id = "cash",
+    name = "金额",
+    icon = "💰",
+    fetchFunc = function()
+        local leaderstats = player:WaitForChild("leaderstats", 5)
+        if leaderstats then
+            local currency = leaderstats:FindFirstChild("Cash")
+            if currency then
+                return currency.Value
             end
         end
-
-        allConfigs[username] = config
-        writefile(configFile, HttpService:JSONEncode(allConfigs))
-
-        UILibrary:Notify({
-            Title = "配置已保存",
-            Text = "配置已保存至 " .. configFile,
-            Duration = 5,
-        })
-    end)
-end
-
-local initialCurrency = 0
-
-local function fetchCurrentCurrency()
-    local leaderstats = player:WaitForChild("leaderstats", 5)
-    if leaderstats then
-        local currency = leaderstats:FindFirstChild("Cash")
-        if currency then
-            return currency.Value
-        end
-    end
-    showErrorNotification("获取金额失败", "无法找到排行榜或金额数据")
-    return nil
-end
-
-local function calculateEarnedAmount(currentCurrency)
-    if not currentCurrency then return 0 end
-    if config.totalEarningsBase > 0 then
-        return currentCurrency - config.totalEarningsBase
-    else
-        return currentCurrency - initialCurrency
-    end
-end
-
-local function calculateChangeAmount(currentCurrency)
-    if not currentCurrency then return 0 end
-    if config.lastNotifyCurrency > 0 then
-        return currentCurrency - config.lastNotifyCurrency
-    else
-        return calculateEarnedAmount(currentCurrency)
-    end
-end
-
-local function updateConfigField(fieldName, newValue, shouldNotify)
-    shouldNotify = shouldNotify ~= false
-    
-    if config[fieldName] ~= newValue then
-        config[fieldName] = newValue
-        saveConfig()
-        
-        if shouldNotify then
-            debugLog("[Config] " .. fieldName .. " 已更新: " .. tostring(newValue))
-        end
-        return true
-    end
-    return false
-end
-
-local function showNotification(title, text, duration)
-    local dur = duration or 5
-    UILibrary:Notify({
-        Title = title,
-        Text = text,
-        Duration = dur
-    })
-end
-
-local function showErrorNotification(title, text)
-    showNotification("❌ " .. title, text, 5)
-end
-
-local function showSuccessNotification(title, text)
-    showNotification("✅ " .. title, text, 3)
-end
-
-local function updateLastSavedCurrency(currentCurrency)
-    if currentCurrency then
-        updateConfigField("lastSavedCurrency", currentCurrency, false)
-    end
-end
-
-local function updateLastNotifyCurrency(currentCurrency)
-    if currentCurrency then
-        updateConfigField("lastNotifyCurrency", currentCurrency, false)
-    end
-end
-
-do
-    local success, currencyValue = pcall(fetchCurrentCurrency)
-    if success and currencyValue then
-        initialCurrency = currencyValue
-        if config.totalEarningsBase == 0 then
-            config.totalEarningsBase = currencyValue
-        end
-        if config.lastNotifyCurrency == 0 then
-            config.lastNotifyCurrency = currencyValue
-        end
-        UILibrary:Notify({ Title = "初始化成功", Text = "当前金额: " .. tostring(initialCurrency), Duration = 5 })
-    end
-end
-
--- Webhook
-
-local function getNotificationIntervalSeconds()
-    return (config.notificationInterval or 5) * 60
-end
-
-local function dispatchWebhook(payload)
-    if config.webhookUrl == "" then
-        warn("[Webhook] 未设置 webhookUrl")
-        return false
-    end
-
-    local requestFunc = syn and syn.request or http and http.request or request
-    if not requestFunc then
-        warn("[Webhook] 无可用请求函数")
-        return false
-    end
-
-    local bodyJson = HttpService:JSONEncode({
-        content = nil,
-        embeds = payload.embeds
-    })
-
-    local success, res = pcall(function()
-        return requestFunc({
-            Url = config.webhookUrl,
-            Method = "POST",
-            Headers = {
-                ["Content-Type"] = "application/json"
-            },
-            Body = bodyJson
-        })
-    end)
-
-    if not success then
-        warn("[Webhook 请求失败] pcall 错误: " .. tostring(res))
-        return false
-    end
-
-    if not res then
-        print("[Webhook] 执行器返回 nil，假定发送成功")
-        return true
-    end
-
-    local statusCode = res.StatusCode or res.statusCode or 0
-    if statusCode == 204 or statusCode == 200 or statusCode == 0 then
-        print("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
-        return true
-    else
-        warn("[Webhook 错误] 状态码: " .. tostring(statusCode))
-        return false
-    end
-end
-
-local function sendWelcomeMessage()
-    if config.webhookUrl == "" then
-        warn("[Webhook] 欢迎消息: Webhook 地址未设置")
-        return false
-    end
-    
-    if sendingWelcome then
-        debugLog("[Webhook] 欢迎消息正在发送中，跳过")
-        return false
-    end
-    
-    sendingWelcome = true
-    
-    local payload = {
-        embeds = {{
-            title = "欢迎使用Pluto-X",
-            description = string.format("**游戏**: %s\n**用户**: %s\n**启动时间**: %s", 
-                gameName, username, os.date("%Y-%m-%d %H:%M:%S")),
-            color = _G.PRIMARY_COLOR,
-            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-            footer = { text = "作者: tongblx · Pluto-X" }
-        }}
-    }
-    
-    local success = dispatchWebhook(payload)
-    sendingWelcome = false
-    
-    if success then
-        debugLog("[Webhook] 欢迎消息发送成功")
-        UILibrary:Notify({
-            Title = "Webhook",
-            Text = "欢迎消息已发送",
-            Duration = 3
-        })
-    else
-        warn("[Webhook] 欢迎消息发送失败")
-    end
-    
-    return success
-end
+        return nil
+    end,
+    calculateAvg = true,
+    supportTarget = true
+})
 
 -- 排行榜配置
 local leaderboardConfig = {
@@ -447,8 +240,6 @@ local function fetchPlayerRank()
 end
 
 -- 自动生成车辆功能
-local performAutoSpawnVehicle
-
 local function fetchVehicleStatsConcurrent(vehicleNames, GetVehicleStats)
     local results = {}
     local threads = {}
@@ -524,76 +315,6 @@ local function findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
     return fastestName, fastestSpeed, vehicleCount
 end
 
-performAutoSpawnVehicle = function()
-    if not config.autoSpawnVehicleEnabled then
-        debugLog("[AutoSpawnVehicle] 功能未启用")
-        return
-    end
-
-    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
-    local startTime = tick()
-
-    local localPlayer = Players.LocalPlayer
-    if not localPlayer or not ReplicatedStorage then
-        warn("[AutoSpawnVehicle] 无法获取必要服务")
-        return
-    end
-
-    local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
-    if not remotesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
-        return
-    end
-
-    local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
-    local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
-    if not GetVehicleStats or not VehicleEvent then
-        warn("[AutoSpawnVehicle] 未找到必要的远程事件")
-        return
-    end
-
-    local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
-    if not playerGui then
-        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
-        return
-    end
-
-    local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
-    if not statsPanel then
-        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
-        return
-    end
-
-    local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
-    if not vehiclesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
-        return
-    end
-
-    local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
-    local searchTime = tick() - startTime
-    
-    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
-
-    if fastestName and fastestSpeed > 0 then
-        local success, err = pcall(function()
-            VehicleEvent:FireServer("Spawn", fastestName)
-        end)
-        
-        if success then
-            UILibrary:Notify({
-                Title = "自动生成",
-                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
-                    fastestName, tostring(fastestSpeed), searchTime),
-                Duration = 5
-            })
-        else
-            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
-        end
-    else
-        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
-    end
-end
 
 -- 在线时长奖励功能
 local function findRewardsRoot()
@@ -648,6 +369,463 @@ local function findRewardsRoot()
     end
 
     return nil
+end
+
+-- ATM 自动抢劫功能
+local function getRobbedAmount()
+    local success, amount = pcall(function()
+        local character = workspace:FindFirstChild(player.Name)
+        if not character then
+            debugLog("[AutoRob] 警告: 无法找到角色对象")
+            return 0
+        end
+        
+        local head = character:FindFirstChild("Head")
+        if not head then
+            debugLog("[AutoRob] 警告: 无法找到角色头部")
+            return 0
+        end
+        
+        local billboard = head:FindFirstChild("CharacterBillboard")
+        if not billboard then
+            debugLog("[AutoRob] 警告: 无法找到角色公告牌")
+            return 0
+        end
+        
+        local children = billboard:GetChildren()
+        if #children < 4 then
+            debugLog("[AutoRob] 警告: 公告牌子元素数量不足，当前数量: " .. #children)
+            return 0
+        end
+        
+        local textLabel = children[4]
+        if not textLabel then
+            debugLog("[AutoRob] 警告: 无法找到第4个子元素")
+            return 0
+        end
+        
+        if not textLabel.ContentText then
+            debugLog("[AutoRob] 警告: 文本标签ContentText为空")
+            return 0
+        end
+        
+        local text = textLabel.ContentText
+        local cleanText = text:gsub("[$,]", "")
+        local amount = tonumber(cleanText) or 0
+        
+        return amount
+    end)
+    
+    if success then
+        return amount or 0
+    else
+        warn("[AutoRob] 获取已抢金额失败:", amount)
+        return 0
+    end
+end
+
+local function checkDropOffPointEnabled()
+    local maxRetries = 3
+    local dropOffPoint = nil
+    
+    for attempt = 1, maxRetries do
+        dropOffPoint = workspace:FindFirstChild("Game")
+            and workspace.Game:FindFirstChild("Jobs")
+            and workspace.Game.Jobs:FindFirstChild("CriminalDropOffSpawners")
+            and workspace.Game.Jobs.CriminalDropOffSpawners:FindFirstChild("CriminalDropOffSpawnerPermanent")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent:FindFirstChild("CriminalDropOffPoint")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint:FindFirstChild("Zone")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone:FindFirstChild("BillboardAttachment")
+            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone.BillboardAttachment:FindFirstChild("Billboard")
+        
+        if dropOffPoint then
+            break
+        end
+        
+        if attempt < maxRetries then
+            task.wait(0.1)
+        end
+    end
+    
+    if dropOffPoint then
+        local enabled = dropOffPoint.Enabled
+        debugLog("[DropOff] 交付点enabled状态: " .. tostring(enabled))
+        return enabled
+    else
+        warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
+        return false
+    end
+end
+
+
+
+local function checkRobberyCompletion(previousAmount)
+    local currentAmount = getRobbedAmount()
+    local change = currentAmount - (previousAmount or 0)
+    
+    debugLog("[AutoRob] 金额检测结果:")
+    debugLog("  - 之前金额: " .. formatNumber(previousAmount))
+    debugLog("  - 当前金额: " .. formatNumber(currentAmount))
+    debugLog("  - 变化量: " .. (change >= 0 and "+" or "") .. formatNumber(change))
+    
+    if change > 0 then
+        debugLog("[AutoRob] ✓ 检测到抢劫成功获得金额: +" .. formatNumber(change))
+        return true, change
+    elseif change < 0 then
+        debugLog("[AutoRob] ⚠ 检测到金额减少: " .. formatNumber(change))
+        return false, change
+    else
+        debugLog("[AutoRob] - 金额无变化")
+        return false, 0
+    end
+end
+
+local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tempTargetRef)
+    debugLog("[Recovery] === 启动投放失败恢复机制 ===")
+    debugLog("[Recovery] 当前已抢金额: " .. formatNumber(robbedAmount))
+    debugLog("[Recovery] 原始目标金额: " .. formatNumber(originalTarget))
+
+    local collectionService = game:GetService("CollectionService")
+    local moneyBags = collectionService:GetTagged("CriminalMoneyBagTool")
+    for _, bag in pairs(moneyBags) do
+        pcall(function() bag:Destroy() end)
+        task.wait(0.1)
+    end
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
+
+    if character and character.PrimaryPart then
+        character.PrimaryPart.Velocity = Vector3.zero
+        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 20, 0))
+        debugLog("[Recovery] 已传送到安全位置重置状态")
+    end
+
+    task.wait(1)
+
+    local currentRobbedAmount = getRobbedAmount() or 0
+    debugLog("[Recovery] 重置后已抢金额: " .. formatNumber(currentRobbedAmount))
+
+    if currentRobbedAmount > 0 then
+        debugLog("[Recovery] 发现剩余金额，尝试再次投放...")
+        local retrySuccess, retryAttempts, retryDelivered = forceDeliverRobbedAmount(false)
+
+        if retrySuccess then
+            debugLog("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
+            debugLog("[Recovery] === 投放失败恢复机制结束（成功） ===")
+            return true, retryDelivered
+        else
+            debugLog("[Recovery] ✗ 重试投放仍然失败")
+        end
+    end
+
+    local newTempTarget = currentRobbedAmount + originalTarget
+    tempTargetRef.value = newTempTarget
+
+    debugLog("[Recovery] ✗ 投放失败，继续增加临时目标: " .. formatNumber(newTempTarget))
+    debugLog("[Recovery] === 投放失败恢复机制结束（失败，增加临时目标） ===")
+
+    return false, 0
+end
+
+-- 初始化
+local configFile = "Pluto_X_DE_config.json"
+
+local dataTypes = PlutoX.getAllDataTypes()
+local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)
+
+local defaultConfig = {
+    webhookUrl = "",
+    notificationInterval = 30,
+    onlineRewardEnabled = false,
+    autoSpawnVehicleEnabled = false,
+    robTargetAmount = 0,
+    notifyCash = false,
+    notifyLeaderboard = false,
+    leaderboardKick = false,
+}
+
+for key, value in pairs(dataTypeConfigs) do
+    defaultConfig[key] = value
+end
+
+local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
+local config = configManager:loadConfig()
+
+-- 重新定义 forceDeliverRobbedAmount 函数（确保在 config 初始化之后）
+local function forceDeliverRobbedAmount(isShutdown)
+    debugLog("[AutoRob] === 开始强制投放流程 ===")
+    
+    isDeliveryInProgress = true
+    
+    local collectionService = game:GetService("CollectionService")
+    local localPlayer = game.Players.LocalPlayer
+    local character = localPlayer.Character
+    local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
+    
+    if not dropOffSpawners or not dropOffSpawners.CriminalDropOffSpawnerPermanent then
+        warn("[AutoRob] 结束位置未找到!")
+        isDeliveryInProgress = false
+        return false
+    end
+    
+    local robbedAmount = getRobbedAmount() or 0
+    debugLog("[AutoRob] 当前已抢金额: " .. formatNumber(robbedAmount))
+    
+    if robbedAmount > 0 then
+        debugLog("[AutoRob] 清理背包中的金钱袋...")
+        for _, bag in pairs(collectionService:GetTagged("CriminalMoneyBagTool")) do
+            pcall(function()
+                bag:Destroy()
+            end)
+            task.wait(0.1)
+        end
+    end
+
+    local deliverySuccess = false
+    local deliveryAttempts = 0
+    local maxDeliveryAttempts = 10
+    local initialRobbedAmount = robbedAmount
+    local totalDeliveredAmount = 0
+    local VirtualInputManager = game:GetService("VirtualInputManager")
+
+    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts do
+        deliveryAttempts = deliveryAttempts + 1
+        debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
+        
+        local dropOffEnabled = checkDropOffPointEnabled()
+        if not dropOffEnabled then
+            debugLog("[AutoRob] 投放点不可用，等待2秒后重试...")
+            task.wait(2)
+            
+            if not checkDropOffPointEnabled() then
+                debugLog("[AutoRob] 投放点仍然不可用，跳过本次尝试")
+                task.wait(1)
+            else
+                if character and character.PrimaryPart then
+                    character.PrimaryPart.Velocity = Vector3.zero
+                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                    debugLog("[AutoRob] 已传送到交付位置")
+                end
+
+                debugLog("[AutoRob] 等待角色稳定...")
+                task.wait(1)
+
+                debugLog("[AutoRob] 执行跳跃动作触发交付")
+                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+                task.wait(0.1)
+                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+
+                debugLog("[AutoRob] 检测金额是否到账...")
+                local checkStart = tick()
+                local checkTimeout = 5
+                local lastCheckAmount = initialRobbedAmount
+
+                repeat
+                    task.wait(0.3)
+                    if character and character.PrimaryPart then
+                        character.PrimaryPart.Velocity = Vector3.zero
+                        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                    end
+
+                    local currentRobbedAmount = getRobbedAmount() or 0
+
+                    if currentRobbedAmount ~= lastCheckAmount then
+                        if currentRobbedAmount < lastCheckAmount then
+                            local deliveredAmount = lastCheckAmount - currentRobbedAmount
+                            totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
+                            debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
+                        end
+                        lastCheckAmount = currentRobbedAmount
+                    end
+
+                    if currentRobbedAmount == 0 then
+                        debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
+                        deliverySuccess = true
+                        break
+                    end
+                until tick() - checkStart > checkTimeout
+                
+                if not deliverySuccess then
+                    local currentRobbedAmount = getRobbedAmount() or 0
+                    if currentRobbedAmount < initialRobbedAmount * 0.5 then
+                        debugLog("[AutoRob] 金额显著减少，继续等待...")
+                        task.wait(3)
+                        currentRobbedAmount = getRobbedAmount()
+                        if currentRobbedAmount == 0 then
+                            debugLog("[AutoRob] ✓ 交付成功！")
+                            deliverySuccess = true
+                        end
+                    else
+                        debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
+                        task.wait(1)
+                    end
+                end
+            end
+        else
+            if character and character.PrimaryPart then
+                character.PrimaryPart.Velocity = Vector3.zero
+                character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                debugLog("[AutoRob] 已传送到交付位置")
+            end
+
+            debugLog("[AutoRob] 等待角色稳定...")
+            task.wait(1)
+
+            debugLog("[AutoRob] 执行跳跃动作触发交付")
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
+            task.wait(0.1)
+            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
+
+            debugLog("[AutoRob] 等待跳跃动作完成...")
+            task.wait(1.5)
+
+            debugLog("[AutoRob] 保持位置等待交付处理...")
+            local holdTime = tick()
+            repeat
+                task.wait(0.1)
+                if character and character.PrimaryPart then
+                    character.PrimaryPart.Velocity = Vector3.zero
+                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                end
+            until tick() - holdTime > 2
+
+            debugLog("[AutoRob] 检测金额是否到账...")
+            local checkStart = tick()
+            local checkTimeout = 5
+
+            repeat
+                task.wait(0.3)
+                if character and character.PrimaryPart then
+                    character.PrimaryPart.Velocity = Vector3.zero
+                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
+                end
+
+                local currentRobbedAmount = getRobbedAmount() or 0
+
+                if currentRobbedAmount ~= lastCheckAmount then
+                    if currentRobbedAmount < lastCheckAmount then
+                        local deliveredAmount = lastCheckAmount - currentRobbedAmount
+                        totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
+                        debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
+                    end
+                    lastCheckAmount = currentRobbedAmount
+                end
+
+                if currentRobbedAmount == 0 then
+                    debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
+                    deliverySuccess = true
+                    break
+                end
+            until tick() - checkStart > checkTimeout
+            
+            if not deliverySuccess then
+                local currentRobbedAmount = getRobbedAmount() or 0
+                if currentRobbedAmount < initialRobbedAmount * 0.5 then
+                    debugLog("[AutoRob] 金额显著减少，继续等待...")
+                    task.wait(3)
+                    currentRobbedAmount = getRobbedAmount()
+                    if currentRobbedAmount == 0 then
+                        debugLog("[AutoRob] ✓ 交付成功！")
+                        deliverySuccess = true
+                    end
+                else
+                    debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
+                    task.wait(1)
+                end
+            end
+        end
+    end
+    
+    if deliverySuccess then
+        debugLog("[AutoRob] ✓ 强制投放完成，共尝试 " .. deliveryAttempts .. " 次")
+    elseif isShutdown then
+        warn("[AutoRob] ✗ 关闭时投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
+    else
+        warn("[AutoRob] ✗ 强制投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
+    end
+    
+    debugLog("[AutoRob] === 强制投放流程结束 ===")
+    debugLog("[AutoRob] 总计投放金额: " .. formatNumber(totalDeliveredAmount))
+    
+    isDeliveryInProgress = false
+    
+    return deliverySuccess, deliveryAttempts, initialRobbedAmount
+end
+
+-- 重新定义 checkAndForceDelivery 函数（确保在 config 初始化之后）
+local function checkAndForceDelivery(tempTarget)
+    local robbedAmount = getRobbedAmount() or 0
+    local targetAmount = tempTarget or config.robTargetAmount or 0
+
+    if targetAmount > 0 and robbedAmount >= targetAmount then
+        debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
+
+        local dropOffEnabled = checkDropOffPointEnabled()
+
+        if not dropOffEnabled then
+            debugLog("[AutoRob] 交付点不可用，继续抢劫...")
+            return false, 0, 0
+        end
+
+        debugLog("[AutoRob] 交付点可用，执行强制投放...")
+
+        local success, attempts, deliveredAmount = forceDeliverRobbedAmount(false)
+
+        if success then
+            UILibrary:Notify({
+                Title = "目标达成",
+                Text = string.format("获得 +%s\n尝试次数: %d", formatNumber(deliveredAmount), attempts),
+                Duration = 5
+            })
+
+            task.wait(2)
+            return true
+        else
+            warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
+            return false, attempts, 0
+        end
+    end
+
+    return false
+end
+
+-- 重新定义 monitorDropOffStatusAndUpdateTarget 函数（确保在 config 初始化之后）
+local lastDropOffEnabledStatus = nil
+
+local function monitorDropOffStatusAndUpdateTarget()
+    local currentStatus = checkDropOffPointEnabled()
+    
+    if lastDropOffEnabledStatus == nil then
+        lastDropOffEnabledStatus = currentStatus
+        debugLog("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
+        return false
+    end
+    
+    if not lastDropOffEnabledStatus and currentStatus then
+        debugLog("[DropOff] 交付点从不可用变为可用！")
+        
+        local currentRobbedAmount = getRobbedAmount() or 0
+        if currentRobbedAmount > 0 then
+            config.robTargetAmount = currentRobbedAmount
+            configManager:saveConfig()
+            
+            UILibrary:Notify({
+                Title = "目标金额已更新",
+                Text = string.format("交付点可用，目标金额更新为: %s", formatNumber(currentRobbedAmount)),
+                Duration = 5
+            })
+            
+            debugLog("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
+        end
+        
+        lastDropOffEnabledStatus = currentStatus
+        return true
+    end
+    
+    lastDropOffEnabledStatus = currentStatus
+    return false
 end
 
 local function claimPlaytimeRewards()
@@ -753,440 +931,81 @@ local function claimPlaytimeRewards()
     end)
 end
 
--- 获取已抢劫金额
-local function getRobbedAmount()
-    local success, amount = pcall(function()
-        local character = workspace:FindFirstChild(player.Name)
-        if not character then
-            debugLog("[AutoRob] 警告: 无法找到角色对象")
-            return 0
-        end
-        
-        local head = character:FindFirstChild("Head")
-        if not head then
-            debugLog("[AutoRob] 警告: 无法找到角色头部")
-            return 0
-        end
-        
-        local billboard = head:FindFirstChild("CharacterBillboard")
-        if not billboard then
-            debugLog("[AutoRob] 警告: 无法找到角色公告牌")
-            return 0
-        end
-        
-        local children = billboard:GetChildren()
-        if #children < 4 then
-            debugLog("[AutoRob] 警告: 公告牌子元素数量不足，当前数量: " .. #children)
-            return 0
-        end
-        
-        local textLabel = children[4]
-        if not textLabel then
-            debugLog("[AutoRob] 警告: 无法找到第4个子元素")
-            return 0
-        end
-        
-        if not textLabel.ContentText then
-            debugLog("[AutoRob] 警告: 文本标签ContentText为空")
-            return 0
-        end
-        
-        local text = textLabel.ContentText
-        local cleanText = text:gsub("[$,]", "")
-        local amount = tonumber(cleanText) or 0
-        
-        return amount
-    end)
-    
-    if success then
-        return amount or 0
-    else
-        warn("[AutoRob] 获取已抢金额失败:", amount)
-        return 0
+local function performAutoSpawnVehicle()
+    if not config.autoSpawnVehicleEnabled then
+        debugLog("[AutoSpawnVehicle] 功能未启用")
+        return
     end
-end
 
-local function checkRobberyCompletion(previousAmount)
-    local currentAmount = getRobbedAmount()
-    local change = currentAmount - (previousAmount or 0)
-    
-    debugLog("[AutoRob] 金额检测结果:")
-    debugLog("  - 之前金额: " .. formatNumber(previousAmount))
-    debugLog("  - 当前金额: " .. formatNumber(currentAmount))
-    debugLog("  - 变化量: " .. (change >= 0 and "+" or "") .. formatNumber(change))
-    
-    if change > 0 then
-        debugLog("[AutoRob] ✓ 检测到抢劫成功获得金额: +" .. formatNumber(change))
-        return true, change
-    elseif change < 0 then
-        debugLog("[AutoRob] ⚠ 检测到金额减少: " .. formatNumber(change))
-        return false, change
-    else
-        debugLog("[AutoRob] - 金额无变化")
-        return false, 0
-    end
-end
+    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
+    local startTime = tick()
 
-local function checkDropOffPointEnabled()
-    local maxRetries = 3
-    local dropOffPoint = nil
-    
-    for attempt = 1, maxRetries do
-        dropOffPoint = workspace:FindFirstChild("Game")
-            and workspace.Game:FindFirstChild("Jobs")
-            and workspace.Game.Jobs:FindFirstChild("CriminalDropOffSpawners")
-            and workspace.Game.Jobs.CriminalDropOffSpawners:FindFirstChild("CriminalDropOffSpawnerPermanent")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent:FindFirstChild("CriminalDropOffPoint")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint:FindFirstChild("Zone")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone:FindFirstChild("BillboardAttachment")
-            and workspace.Game.Jobs.CriminalDropOffSpawners.CriminalDropOffSpawnerPermanent.CriminalDropOffPoint.Zone.BillboardAttachment:FindFirstChild("Billboard")
-        
-        if dropOffPoint then
-            break
-        end
-        
-        if attempt < maxRetries then
-            task.wait(0.1)
-        end
+    local localPlayer = Players.LocalPlayer
+    if not localPlayer or not ReplicatedStorage then
+        warn("[AutoSpawnVehicle] 无法获取必要服务")
+        return
     end
-    
-    if dropOffPoint then
-        local enabled = dropOffPoint.Enabled
-        debugLog("[DropOff] 交付点enabled状态: " .. tostring(enabled))
-        return enabled
-    else
-        warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
-        return false
-    end
-end
 
-local function forceDeliverRobbedAmount(isShutdown)
-    debugLog("[AutoRob] === 开始强制投放流程 ===")
-    
-    isDeliveryInProgress = true
-    
-    local collectionService = game:GetService("CollectionService")
-    local localPlayer = game.Players.LocalPlayer
-    local character = localPlayer.Character
-    local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
-    
-    if not dropOffSpawners or not dropOffSpawners.CriminalDropOffSpawnerPermanent then
-        warn("[AutoRob] 结束位置未找到!")
-        isDeliveryInProgress = false
-        return false
+    local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+    if not remotesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
+        return
     end
+
+    local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
+    local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
+    if not GetVehicleStats or not VehicleEvent then
+        warn("[AutoSpawnVehicle] 未找到必要的远程事件")
+        return
+    end
+
+    local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
+    if not playerGui then
+        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
+        return
+    end
+
+    local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
+    if not statsPanel then
+        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
+        return
+    end
+
+    local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
+    if not vehiclesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
+        return
+    end
+
+    local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
+    local searchTime = tick() - startTime
     
-    debugLog("[AutoRob] 清理背包中的金钱袋...")
-    for _, bag in pairs(collectionService:GetTagged("CriminalMoneyBagTool")) do
-        pcall(function()
-            bag:Destroy()
+    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
+
+    if fastestName and fastestSpeed > 0 then
+        local success, err = pcall(function()
+            VehicleEvent:FireServer("Spawn", fastestName)
         end)
-        task.wait(0.1)
-    end
-
-    local robbedAmount = getRobbedAmount() or 0
-    debugLog("[AutoRob] 当前已抢金额: " .. formatNumber(robbedAmount))
-
-    local deliverySuccess = false
-    local deliveryAttempts = 0
-    local maxDeliveryAttempts = 10
-    local initialRobbedAmount = robbedAmount
-    local totalDeliveredAmount = 0
-    local VirtualInputManager = game:GetService("VirtualInputManager")
-
-    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and (isShutdown or config.autoRobATMsEnabled) do
-        deliveryAttempts = deliveryAttempts + 1
-        debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
         
-        local dropOffEnabled = checkDropOffPointEnabled()
-        if not dropOffEnabled then
-            debugLog("[AutoRob] 投放点不可用，等待2秒后重试...")
-            task.wait(2)
-            
-            if not checkDropOffPointEnabled() then
-                debugLog("[AutoRob] 投放点仍然不可用，跳过本次尝试")
-                task.wait(1)
-            else
-                if character and character.PrimaryPart then
-                    character.PrimaryPart.Velocity = Vector3.zero
-                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                    debugLog("[AutoRob] 已传送到交付位置")
-                end
-
-                debugLog("[AutoRob] 等待角色稳定...")
-                task.wait(1)
-
-                debugLog("[AutoRob] 执行跳跃动作触发交付")
-                VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-                task.wait(0.1)
-                VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-
-                debugLog("[AutoRob] 检测金额是否到账...")
-                local checkStart = tick()
-                local checkTimeout = 5
-                local lastCheckAmount = initialRobbedAmount
-
-                repeat
-                    task.wait(0.3)
-                    if character and character.PrimaryPart then
-                        character.PrimaryPart.Velocity = Vector3.zero
-                        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                    end
-
-                    local currentRobbedAmount = getRobbedAmount() or 0
-
-                    if currentRobbedAmount ~= lastCheckAmount then
-                        if currentRobbedAmount < lastCheckAmount then
-                            local deliveredAmount = lastCheckAmount - currentRobbedAmount
-                            totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
-                            debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
-                        end
-                        lastCheckAmount = currentRobbedAmount
-                    end
-
-                    if currentRobbedAmount == 0 then
-                        debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
-                        deliverySuccess = true
-                        break
-                    end
-                until tick() - checkStart > checkTimeout
-                
-                if not deliverySuccess then
-                    local currentRobbedAmount = getRobbedAmount() or 0
-                    if currentRobbedAmount < initialRobbedAmount * 0.5 then
-                        debugLog("[AutoRob] 金额显著减少，继续等待...")
-                        task.wait(3)
-                        currentRobbedAmount = getRobbedAmount()
-                        if currentRobbedAmount == 0 then
-                            debugLog("[AutoRob] ✓ 交付成功！")
-                            deliverySuccess = true
-                        end
-                    else
-                        debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
-                        task.wait(1)
-                    end
-                end
-            end
-        else
-            if character and character.PrimaryPart then
-                character.PrimaryPart.Velocity = Vector3.zero
-                character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                debugLog("[AutoRob] 已传送到交付位置")
-            end
-
-            debugLog("[AutoRob] 等待角色稳定...")
-            task.wait(1)
-
-            debugLog("[AutoRob] 执行跳跃动作触发交付")
-            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
-            task.wait(0.1)
-            VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
-
-            debugLog("[AutoRob] 等待跳跃动作完成...")
-            task.wait(1.5)
-
-            debugLog("[AutoRob] 保持位置等待交付处理...")
-            local holdTime = tick()
-            repeat
-                task.wait(0.1)
-                if character and character.PrimaryPart then
-                    character.PrimaryPart.Velocity = Vector3.zero
-                    character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                end
-            until tick() - holdTime > 2
-
-            debugLog("[AutoRob] 检测金额是否到账...")
-            local checkStart = tick()
-            local checkTimeout = 5
-            local lastCheckAmount = initialRobbedAmount
-
-            repeat
-                task.wait(0.5)
-                local currentRobbedAmount = getRobbedAmount() or 0
-
-                if currentRobbedAmount ~= lastCheckAmount then
-                    if currentRobbedAmount < lastCheckAmount then
-                        local deliveredAmount = lastCheckAmount - currentRobbedAmount
-                        totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
-                        debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
-                    end
-                    lastCheckAmount = currentRobbedAmount
-                end
-
-                if currentRobbedAmount == 0 then
-                    debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
-                    deliverySuccess = true
-                    break
-                end
-            until tick() - checkStart > checkTimeout
-            
-            if not deliverySuccess then
-                local currentRobbedAmount = getRobbedAmount() or 0
-                if currentRobbedAmount < initialRobbedAmount * 0.5 then
-                    debugLog("[AutoRob] 金额显著减少，继续等待...")
-                    task.wait(3)
-                    currentRobbedAmount = getRobbedAmount()
-                    if currentRobbedAmount == 0 then
-                        debugLog("[AutoRob] ✓ 交付成功！")
-                        deliverySuccess = true
-                    end
-                else
-                    debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
-                    task.wait(1)
-                end
-            end
-        end
-    end
-    
-    if deliverySuccess then
-        debugLog("[AutoRob] ✓ 强制投放完成，共尝试 " .. deliveryAttempts .. " 次")
-    elseif not config.autoRobATMsEnabled then
-        warn("[AutoRob] 功能已关闭，停止投放")
-        deliverySuccess = false
-    else
-        warn("[AutoRob] ✗ 强制投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
-    end
-    
-    debugLog("[AutoRob] === 强制投放流程结束 ===")
-    debugLog("[AutoRob] 总计投放金额: " .. formatNumber(totalDeliveredAmount))
-    
-    isDeliveryInProgress = false
-    
-    return deliverySuccess, deliveryAttempts, initialRobbedAmount
-end
-
-local function checkAndForceDelivery(tempTarget)
-    local robbedAmount = getRobbedAmount() or 0
-    local targetAmount = tempTarget or config.robTargetAmount or 0
-
-    if targetAmount > 0 and robbedAmount >= targetAmount then
-        debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
-
-        local dropOffEnabled = checkDropOffPointEnabled()
-
-        if not dropOffEnabled then
-            debugLog("[AutoRob] 交付点不可用，继续抢劫...")
-            return false, 0, 0
-        end
-
-        debugLog("[AutoRob] 交付点可用，执行强制投放...")
-
-        local success, attempts, deliveredAmount = forceDeliverRobbedAmount(false)
-
         if success then
             UILibrary:Notify({
-                Title = "目标达成",
-                Text = string.format("获得 +%s\n尝试次数: %d", formatNumber(deliveredAmount), attempts),
+                Title = "自动生成",
+                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
+                    fastestName, tostring(fastestSpeed), searchTime),
                 Duration = 5
             })
-
-            task.wait(2)
-            return true
         else
-            warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
-            return false, attempts, 0
+            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
         end
+    else
+        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
     end
-
-    return false
-end
-
--- 增强的投放失败恢复机制
-local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tempTargetRef)
-    debugLog("[Recovery] === 启动投放失败恢复机制 ===")
-    debugLog("[Recovery] 当前已抢金额: " .. formatNumber(robbedAmount))
-    debugLog("[Recovery] 原始目标金额: " .. formatNumber(originalTarget))
-
-    local collectionService = game:GetService("CollectionService")
-    local moneyBags = collectionService:GetTagged("CriminalMoneyBagTool")
-    for _, bag in pairs(moneyBags) do
-        pcall(function() bag:Destroy() end)
-        task.wait(0.1)
-    end
-
-    local player = game.Players.LocalPlayer
-    local character = player.Character
-    local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
-
-    if character and character.PrimaryPart then
-        character.PrimaryPart.Velocity = Vector3.zero
-        character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 20, 0))
-        debugLog("[Recovery] 已传送到安全位置重置状态")
-    end
-
-    task.wait(1)
-
-    local currentRobbedAmount = getRobbedAmount() or 0
-    debugLog("[Recovery] 重置后已抢金额: " .. formatNumber(currentRobbedAmount))
-
-    if currentRobbedAmount > 0 then
-        debugLog("[Recovery] 发现剩余金额，尝试再次投放...")
-        local retrySuccess, retryAttempts, retryDelivered = forceDeliverRobbedAmount(false)
-
-        if retrySuccess then
-            debugLog("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
-            debugLog("[Recovery] === 投放失败恢复机制结束（成功） ===")
-            return true, retryDelivered
-        else
-            debugLog("[Recovery] ✗ 重试投放仍然失败")
-        end
-    end
-
-    local newTempTarget = currentRobbedAmount + originalTarget
-    tempTargetRef.value = newTempTarget
-
-    debugLog("[Recovery] ✗ 投放失败，继续增加临时目标: " .. formatNumber(newTempTarget))
-    debugLog("[Recovery] === 投放失败恢复机制结束（失败，增加临时目标） ===")
-
-    return false, 0
-end
-
-
-local lastDropOffEnabledStatus = nil
-
-local function monitorDropOffStatusAndUpdateTarget()
-    local currentStatus = checkDropOffPointEnabled()
-    
-    if lastDropOffEnabledStatus == nil then
-        lastDropOffEnabledStatus = currentStatus
-        debugLog("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
-        return false
-    end
-    
-    if not lastDropOffEnabledStatus and currentStatus then
-        debugLog("[DropOff] 交付点从不可用变为可用！")
-        
-        local currentRobbedAmount = getRobbedAmount() or 0
-        if currentRobbedAmount > 0 then
-            config.robTargetAmount = currentRobbedAmount
-            saveConfig()
-            
-            UILibrary:Notify({
-                Title = "目标金额已更新",
-                Text = string.format("交付点可用，目标金额更新为: %s", formatNumber(currentRobbedAmount)),
-                Duration = 5
-            })
-            
-            debugLog("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
-        end
-        
-        lastDropOffEnabledStatus = currentStatus
-        return true
-    end
-    
-    lastDropOffEnabledStatus = currentStatus
-    return false
 end
 
 local originalLocationNameCall = nil
 
 -- Auto Rob ATMs功能
 local function performAutoRobATMs()
-    if not config.autoRobATMsEnabled then
-        debugLog("[AutoRobATMs] 功能未启用")
-        return
-    end
-    
     isAutoRobActive = true
     debugLog("[AutoRobATMs] 自动抢劫已启动，活动状态: " .. tostring(isAutoRobActive))
     
@@ -1227,25 +1046,21 @@ local function performAutoRobATMs()
         local localPlayer = game.Players.LocalPlayer
         local character = localPlayer.Character
         local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
-        local sessionStartCurrency = fetchCurrentCurrency() or 0
         local originalTargetAmount = config.robTargetAmount
         local tempTargetAmount = nil
 
         local lastSuccessfulRobbery = tick()
         local noATMFoundCount = 0
         local maxNoATMFoundCount = 5
-        local lastATMCount = 0
         
         local knownATMLocations = {}
         local maxKnownLocations = 20
 
-        while config.autoRobATMsEnabled do
+        while isAutoRobActive do
             task.wait()
             local success, err = pcall(function()
                 local timeSinceLastRobbery = tick() - lastSuccessfulRobbery
                 if timeSinceLastRobbery > 120 then
-                    warn("[AutoRobATMs] 检测到长时间未成功抢劫（" .. math.floor(timeSinceLastRobbery) .. "秒），执行重置操作")
-
                     noATMFoundCount = 0
                     getfenv().atmloadercooldown = false
                     localPlayer.ReplicationFocus = nil
@@ -1261,78 +1076,65 @@ local function performAutoRobATMs()
 
                     task.wait(2)
                     lastSuccessfulRobbery = tick()
-                    debugLog("[AutoRobATMs] 状态已重置")
                 end
 
                 local robbedAmount = getRobbedAmount() or 0
                 local targetAmount = tempTargetAmount or config.robTargetAmount or 0
 
                 if targetAmount > 0 and robbedAmount >= targetAmount then
-                    debugLog("[AutoRobATMs] 已抢金额达到目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
-
                     local dropOffEnabled = checkDropOffPointEnabled()
 
                     if not dropOffEnabled then
-                        debugLog("[AutoRobATMs] 交付点不可用，继续抢劫...")
                         lastSuccessfulRobbery = tick()
                     else
-                        debugLog("[AutoRobATMs] 交付点可用，调用强制投放功能...")
-
                         local deliverySuccess, deliveryAttempts, deliveredAmount = forceDeliverRobbedAmount(false)
 
-                    if deliverySuccess then
-                        if tempTargetAmount then
-                            tempTargetAmount = nil
-                            debugLog("[AutoRobATMs] 投放成功，临时目标金额已销毁")
-                        end
-
-                        UILibrary:Notify({
-                            Title = "抢劫完成",
-                            Text = string.format("本次获得: +%s\n交付尝试: %d次", formatNumber(deliveredAmount), deliveryAttempts),
-                            Duration = 5
-                        })
-                        task.wait(2)
-                        sessionStartCurrency = fetchCurrentCurrency() or 0
-                        lastSuccessfulRobbery = tick()
-                    else
-                        warn("[AutoRobATMs] 投放失败，启动增强恢复机制")
-
-                        local tempTargetRef = { value = tempTargetAmount }
-                        local recoverySuccess, recoveredAmount = enhancedDeliveryFailureRecovery(robbedAmount, originalTargetAmount, tempTargetRef)
-
-                        if recoverySuccess then
+                        if deliverySuccess then
                             if tempTargetAmount then
                                 tempTargetAmount = nil
-                                debugLog("[AutoRobATMs] ✓ 投放成功，临时目标已销毁，恢复原设定目标: " .. formatNumber(originalTargetAmount))
                             end
-                            
+
                             UILibrary:Notify({
-                                Title = "投放成功",
-                                Text = string.format("临时目标完成，恢复原目标\n获得: +%s\n原目标: %s", formatNumber(recoveredAmount), formatNumber(originalTargetAmount)),
+                                Title = "抢劫完成",
+                                Text = string.format("本次获得: +%s\n交付尝试: %d次", PlutoX.formatNumber(deliveredAmount), deliveryAttempts),
                                 Duration = 5
                             })
                             task.wait(2)
-                            sessionStartCurrency = fetchCurrentCurrency() or 0
                             lastSuccessfulRobbery = tick()
                         else
-                            local currentRobbedAmount = getRobbedAmount() or 0
-                            tempTargetAmount = currentRobbedAmount + originalTargetAmount
-                            debugLog("[AutoRobATMs] ✗ 投放失败，继续增加临时目标: " .. formatNumber(tempTargetAmount))
+                            local tempTargetRef = { value = tempTargetAmount }
+                            local recoverySuccess, recoveredAmount = enhancedDeliveryFailureRecovery(robbedAmount, originalTargetAmount, tempTargetRef)
 
-                            UILibrary:Notify({
-                                Title = "临时目标增加",
-                                Text = string.format("投放失败，继续增加临时目标\n新目标: %s", formatNumber(tempTargetAmount)),
-                                Duration = 3
-                            })
+                            if recoverySuccess then
+                                if tempTargetAmount then
+                                    tempTargetAmount = nil
+                                end
+                                
+                                UILibrary:Notify({
+                                    Title = "投放成功",
+                                    Text = string.format("临时目标完成，恢复原目标\n获得: +%s\n原目标: %s", PlutoX.formatNumber(recoveredAmount), PlutoX.formatNumber(originalTargetAmount)),
+                                    Duration = 5
+                                })
+                                task.wait(2)
+                                lastSuccessfulRobbery = tick()
+                            else
+                                local currentRobbedAmount = getRobbedAmount() or 0
+                                tempTargetAmount = currentRobbedAmount + originalTargetAmount
 
-                            lastSuccessfulRobbery = tick()
+                                UILibrary:Notify({
+                                    Title = "临时目标增加",
+                                    Text = string.format("投放失败，继续增加临时目标\n新目标: %s", PlutoX.formatNumber(tempTargetAmount)),
+                                    Duration = 3
+                                })
+
+                                lastSuccessfulRobbery = tick()
+                            end
                         end
-                    end
                     end
                 end
 
                 local function robATM(atm, atmType, foundCountRef)
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobActive then return false end
 
                     foundCountRef.count = foundCountRef.count + 1
                     local teleportTime = atmType == "tagged" and 1 or 0.2
@@ -1348,9 +1150,9 @@ local function performAutoRobATMs()
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
                         localPlayer.ReplicationFocus = nil
-                    until tick() - teleportStart > teleportTime or not config.autoRobATMsEnabled
+                    until tick() - teleportStart > teleportTime or not isAutoRobActive
 
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobActive then return false end
 
                     game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
 
@@ -1362,9 +1164,9 @@ local function performAutoRobATMs()
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
                         localPlayer.ReplicationFocus = nil
-                    until tick() - progressStart > 2.5 or not config.autoRobATMsEnabled
+                    until tick() - progressStart > 2.5 or not isAutoRobActive
 
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobActive then return false end
 
                     local beforeRobberyAmount = getRobbedAmount() or 0
                     debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
@@ -1379,7 +1181,7 @@ local function performAutoRobATMs()
                             character.PrimaryPart.Velocity = Vector3.zero
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
-                    until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not config.autoRobATMsEnabled
+                    until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not isAutoRobActive
 
                     repeat
                         task.wait()
@@ -1387,7 +1189,7 @@ local function performAutoRobATMs()
                             character.PrimaryPart.Velocity = Vector3.zero
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
-                    until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
+                    until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and isAutoRobActive)
 
                     task.wait(0.5)
                     local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
@@ -1419,7 +1221,6 @@ local function performAutoRobATMs()
                         local shouldStop = checkAndForceDelivery(tempTargetAmount)
                         if shouldStop then
                             debugLog("[AutoRob] 🔄 投放完成，重新开始抢劫循环")
-                            sessionStartCurrency = fetchCurrentCurrency()
                             return true
                         end
                     else
@@ -1429,12 +1230,11 @@ local function performAutoRobATMs()
                     return false
                 end
 
-                local targetATM = nil
                 local foundATMCount = {count = 0}
 
                 local taggedATMs = collectionService:GetTagged("CriminalATM")
                 for _, atm in pairs(taggedATMs) do
-                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                         if robATM(atm, "tagged", foundATMCount) then
                             break
                         end
@@ -1442,7 +1242,7 @@ local function performAutoRobATMs()
                 end
 
                 for _, obj in pairs(getnilinstances()) do
-                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                         if robATM(obj, "nil", foundATMCount) then
                             break
                         end
@@ -1454,14 +1254,72 @@ local function performAutoRobATMs()
                     debugLog("[AutoRobATMs] 未找到可用ATM，计数: " .. noATMFoundCount .. "/" .. maxNoATMFoundCount)
 
                     if noATMFoundCount >= maxNoATMFoundCount then
-                        warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行重置操作")
+                        warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行搜索重置")
 
                         debugLog("[AutoRobATMs] 重置状态...")
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
                         noATMFoundCount = 0
 
+                        local function searchATMs()
+                            local taggedATMs = collectionService:GetTagged("CriminalATM")
+                            for _, atm in pairs(taggedATMs) do
+                                if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
+                                    return true
+                                end
+                            end
+                            
+                            for _, obj in pairs(getnilinstances()) do
+                                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
+                                    return true
+                                end
+                            end
+                            
+                            return false
+                        end
+
                         local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
+                        if spawnersFolder then
+                            local spawners = spawnersFolder:GetChildren()
+                            debugLog("[AutoRobATMs] 新逻辑：依次传送" .. #spawners .. "个spawner搜索ATM")
+                            
+                            for i, spawner in pairs(spawners) do
+                                if not isAutoRobActive then break end
+                                
+                                if character and character.PrimaryPart then
+                                    character.PrimaryPart.Velocity = Vector3.zero
+                                    character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
+                                    debugLog("[AutoRobATMs] 传送spawner " .. i .. "/" .. #spawners)
+                                end
+                                
+                                task.wait(0.5)
+                                localPlayer.ReplicationFocus = nil
+                                
+                                if searchATMs() then
+                                    debugLog("[AutoRobATMs] spawner " .. i .. " 找到ATM")
+                                    noATMFoundCount = 0
+                                    break
+                                end
+                            end
+                            
+                            if not searchATMs() and isAutoRobActive then
+                                debugLog("[AutoRobATMs] 新逻辑：所有spawner未找到ATM，传送到中心点")
+                                if character and character.PrimaryPart then
+                                    character:PivotTo(CFrame.new(0, 50, 0))
+                                end
+                                task.wait(1)
+                                localPlayer.ReplicationFocus = nil
+                                
+                                if searchATMs() then
+                                    debugLog("[AutoRobATMs] 新逻辑：中心点找到ATM")
+                                    noATMFoundCount = 0
+                                else
+                                    debugLog("[AutoRobATMs] 新逻辑：中心点未找到ATM，重新开始spawner循环")
+                                end
+                            end
+                        end
+
+                        debugLog("[AutoRobATMs] 原逻辑：强制刷新spawner")
                         if spawnersFolder then
                             local spawners = spawnersFolder:GetChildren()
                             debugLog("[AutoRobATMs] 强制刷新" .. #spawners .. "个spawner")
@@ -1489,7 +1347,7 @@ local function performAutoRobATMs()
                         
                         local taggedATMs = collectionService:GetTagged("CriminalATM")
                         for _, atm in pairs(taggedATMs) do
-                            if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                            if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                 searchSuccess = true
                                 debugLog("[AutoRobATMs] 中心点找到ATM (tagged)")
                                 break
@@ -1497,7 +1355,7 @@ local function performAutoRobATMs()
                         end
                         if not searchSuccess then
                             for _, obj in pairs(getnilinstances()) do
-                                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                     searchSuccess = true
                                     debugLog("[AutoRobATMs] 中心点找到ATM (nil)")
                                     break
@@ -1532,7 +1390,7 @@ local function performAutoRobATMs()
                                 
                                 taggedATMs = collectionService:GetTagged("CriminalATM")
                                 for _, atm in pairs(taggedATMs) do
-                                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
                                         debugLog("[AutoRobATMs] CriminalArea找到ATM (tagged)")
                                         break
@@ -1540,7 +1398,7 @@ local function performAutoRobATMs()
                                 end
                                 if not searchSuccess then
                                     for _, obj in pairs(getnilinstances()) do
-                                        if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                        if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                             searchSuccess = true
                                             debugLog("[AutoRobATMs] CriminalArea找到ATM (nil)")
                                             break
@@ -1557,7 +1415,7 @@ local function performAutoRobATMs()
                             debugLog("[AutoRobATMs] 第3步：依次访问" .. #knownATMLocations .. "个已知ATM位置")
                             
                             for i, location in ipairs(knownATMLocations) do
-                                if not config.autoRobATMsEnabled then break end
+                                if not isAutoRobActive then break end
                                 
                                 if character and character.PrimaryPart then
                                     character.PrimaryPart.Velocity = Vector3.zero
@@ -1569,7 +1427,7 @@ local function performAutoRobATMs()
                                 
                                 taggedATMs = collectionService:GetTagged("CriminalATM")
                                 for _, atm in pairs(taggedATMs) do
-                                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
                                         debugLog("[AutoRobATMs] 已知位置找到ATM (tagged)")
                                         break
@@ -1578,7 +1436,7 @@ local function performAutoRobATMs()
                                 if searchSuccess then break end
                                 
                                 for _, obj in pairs(getnilinstances()) do
-                                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
                                         debugLog("[AutoRobATMs] 已知位置找到ATM (nil)")
                                         break
@@ -1686,166 +1544,34 @@ local function performAutoRobATMs()
     end)
 end
 
--- 目标金额管理
-local function adjustTargetAmount()
-    if config.baseAmount <= 0 or config.targetAmount <= 0 then
-        return
-    end
-    
-    local currentCurrency = fetchCurrentCurrency()
-    if not currentCurrency then
-        return
-    end
-    
-    local currencyDifference = currentCurrency - config.lastSavedCurrency
-    
-    if currencyDifference < 0 then
-        local newTargetAmount = config.targetAmount + currencyDifference
-        
-        if newTargetAmount > currentCurrency then
-            config.targetAmount = newTargetAmount
-            UILibrary:Notify({
-                Title = "目标金额已调整",
-                Text = string.format("检测到金额减少 %s，目标调整至: %s", 
-                    formatNumber(math.abs(currencyDifference)),
-                    formatNumber(config.targetAmount)),
-                Duration = 5
-            })
-            saveConfig()
-        else
-            config.enableTargetKick = false
-            config.targetAmount = 0
-            config.baseAmount = 0
-            UILibrary:Notify({
-                Title = "目标金额已重置",
-                Text = "调整后的目标金额小于当前金额，已禁用目标踢出功能",
-                Duration = 5
-            })
-            saveConfig()
-        end
-    elseif currencyDifference > 0 then
-        debugLog("[目标金额] 金额增加 " .. formatNumber(currencyDifference) .. "，保持目标金额不变: " .. formatNumber(config.targetAmount))
-    end
-    
-    config.lastSavedCurrency = currentCurrency
-    saveConfig()
-end
-
-local function initTargetAmount()
-    local currentCurrency = fetchCurrentCurrency() or 0
-    
-    if config.enableTargetKick and config.targetAmount > 0 and currentCurrency >= config.targetAmount then
-        UILibrary:Notify({
-            Title = "目标金额已达成",
-            Text = string.format("当前金额 %s，已超过目标 %s", 
-                formatNumber(currentCurrency), formatNumber(config.targetAmount)),
-            Duration = 5
-        })
-        config.enableTargetKick = false
-        config.targetAmount = 0
-        saveConfig()
-    end
-end
-
--- 配置加载
-local function loadConfig()
-    if isfile(configFile) then
-        local success, result = pcall(function()
-            return HttpService:JSONDecode(readfile(configFile))
-        end)
-        if success and type(result) == "table" then
-            local userConfig = result[username]
-            if userConfig and type(userConfig) == "table" then
-                for k, v in pairs(userConfig) do
-                    config[k] = v
-                end
-                UILibrary:Notify({
-                    Title = "配置已加载",
-                    Text = "用户配置加载成功",
-                    Duration = 5,
-                })
-                adjustTargetAmount()
-            else
-                UILibrary:Notify({
-                    Title = "配置提示",
-                    Text = "使用默认配置",
-                    Duration = 5,
-                })
-                saveConfig()
-            end
-        else
-            UILibrary:Notify({
-                Title = "配置错误",
-                Text = "无法解析配置文件",
-                Duration = 5,
-            })
-            saveConfig()
-        end
-    else
-        UILibrary:Notify({
-            Title = "配置提示",
-            Text = "创建新配置文件",
-            Duration = 5,
-        })
-        saveConfig()
-    end
-    
-    if config.webhookUrl ~= "" then
-        spawn(function()
-            wait(2)
-            sendWelcomeMessage()
-        end)
-    end
-
-    -- 自动生成车辆
-    if config.autoSpawnVehicleEnabled then
-        spawn(function()
-            if not game:IsLoaded() then
-                game.Loaded:Wait()
-            end
-            task.wait(5)
-            
-            if performAutoSpawnVehicle then
-                pcall(performAutoSpawnVehicle)
-            end
-        end)
-    end
-end
+local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
+local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
+disconnectDetector:init()
 
 -- 反挂机
 player.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
-    UILibrary:Notify({ Title = "反挂机", Text = "检测到闲置", Duration = 3 })
-end)
-
--- 掉线检测
-local disconnected = false
-
-NetworkClient.ChildRemoved:Connect(function()
-    if not disconnected then
-        warn("[掉线检测] 网络断开")
-        disconnected = true
-    end
-end)
-
-GuiService.ErrorMessageChanged:Connect(function(msg)
-    if msg and msg ~= "" and not disconnected then
-        warn("[掉线检测] 错误提示：" .. msg)
-        disconnected = true
-    end
 end)
 
 -- 初始化
-pcall(initTargetAmount)
-pcall(loadConfig)
+dataMonitor:init()
+
+-- 启动游戏特定功能
+if config.onlineRewardEnabled then
+    spawn(claimPlaytimeRewards)
+end
+
+if config.autoSpawnVehicleEnabled then
+    spawn(performAutoSpawnVehicle)
+end
 
 -- UI 创建
 local window = UILibrary:CreateUIWindow()
 if not window then
     error("无法创建 UI 窗口")
 end
-
 local mainFrame = window.MainFrame
 local screenGui = window.ScreenGui
 local sidebar = window.Sidebar
@@ -1857,6 +1583,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     Text = "菜单"
 })
 
+-- 常规标签页
 local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "常规",
     Active = true
@@ -1864,84 +1591,70 @@ local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, main
 
 local generalCard = UILibrary:CreateCard(generalContent, { IsMultiElement = true })
 UILibrary:CreateLabel(generalCard, {
-    Text = "游戏: " .. gameName,
-})
-local earnedCurrencyLabel = UILibrary:CreateLabel(generalCard, {
-    Text = "已赚金额: 0",
+    Text = "游戏: " .. webhookManager.gameName,
 })
 
+local displayLabels = {}
+local updateFunctions = {}
+
+for _, dataType in ipairs(dataTypes) do
+    local card, label, updateFunc = dataMonitor:createDisplayLabel(generalCard, dataType)
+    displayLabels[dataType.id] = label
+    updateFunctions[dataType.id] = updateFunc
+end
+
+-- 反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
 UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已启用",
 })
 
-local mainFeatureTab, mainFeatureContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "主要功能",
-    Active = false
+-- 游戏功能标签页
+local featuresTab, featuresContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "游戏功能"
 })
 
--- 在线时长奖励
-local onlineRewardCard = UILibrary:CreateCard(mainFeatureContent)
+-- 在线奖励
+local onlineRewardCard = UILibrary:CreateCard(featuresContent)
 UILibrary:CreateToggle(onlineRewardCard, {
     Text = "在线时长奖励",
-    DefaultState = config.onlineRewardEnabled,
+    DefaultState = config.onlineRewardEnabled or false,
     Callback = function(state)
         config.onlineRewardEnabled = state
-        UILibrary:Notify({
-            Title = "配置更新",
-            Text = "在线时长奖励: " .. (state and "开启" or "关闭"),
-            Duration = 5
-        })
-        saveConfig()
+        configManager:saveConfig()
         if state then
-            claimPlaytimeRewards()
+            spawn(claimPlaytimeRewards)
         end
     end
 })
-
--- 如果配置为开启，自动启动
-if config.onlineRewardEnabled then
-    claimPlaytimeRewards()
-end
 
 -- 自动生成车辆
-local autoSpawnVehicleCard = UILibrary:CreateCard(mainFeatureContent)
-UILibrary:CreateToggle(autoSpawnVehicleCard, {
+local autoSpawnCard = UILibrary:CreateCard(featuresContent)
+UILibrary:CreateToggle(autoSpawnCard, {
     Text = "自动生成车辆",
-    DefaultState = config.autoSpawnVehicleEnabled,
+    DefaultState = config.autoSpawnVehicleEnabled or false,
     Callback = function(state)
         config.autoSpawnVehicleEnabled = state
-        UILibrary:Notify({
-            Title = "配置更新",
-            Text = "自动生成车辆: " .. (state and "开启" or "关闭"),
-            Duration = 5
-        })
-        saveConfig()
-        
+        configManager:saveConfig()
         if state then
-            spawn(function()
-                task.wait(0.5)
-                if performAutoSpawnVehicle then
-                    pcall(performAutoSpawnVehicle)
-                end
-            end)
+            spawn(performAutoSpawnVehicle)
         end
     end
 })
 
--- Auto Rob ATMs
-local autoRobATMsCard = UILibrary:CreateCard(mainFeatureContent, { IsMultiElement = true })
-UILibrary:CreateLabel(autoRobATMsCard, {
+-- ATM 自动抢劫
+local autoRobCard = UILibrary:CreateCard(featuresContent, { IsMultiElement = true })
+UILibrary:CreateLabel(autoRobCard, {
     Text = "Auto Rob ATMs",
 })
 
-local robAmountInput = UILibrary:CreateTextBox(autoRobATMsCard, {
+local robAmountInput = UILibrary:CreateTextBox(autoRobCard, {
     PlaceholderText = "输入单次目标金额",
     OnFocusLost = function(text)
         if not text or text == "" then
             config.robTargetAmount = 0
             robAmountInput.Text = ""
-            saveConfig()
+            configManager:saveConfig()
             UILibrary:Notify({
                 Title = "抢劫金额已清除",
                 Text = "单次抢劫目标金额已重置",
@@ -1956,7 +1669,7 @@ local robAmountInput = UILibrary:CreateTextBox(autoRobATMsCard, {
         if num and num > 0 then
             config.robTargetAmount = num
             robAmountInput.Text = formatNumber(num)
-            saveConfig()
+            configManager:saveConfig()
             UILibrary:Notify({
                 Title = "抢劫金额已设置",
                 Text = "单次目标: " .. formatNumber(num),
@@ -1979,12 +1692,10 @@ else
     robAmountInput.Text = ""
 end
 
-UILibrary:CreateToggle(autoRobATMsCard, {
+UILibrary:CreateToggle(autoRobCard, {
     Text = "启用自动抢劫",
     DefaultState = false,
     Callback = function(state)
-        config.autoRobATMsEnabled = state
-        
         if not state then
             isAutoRobActive = false
             
@@ -2009,16 +1720,8 @@ UILibrary:CreateToggle(autoRobATMsCard, {
                 originalLocationNameCall = nil
                 debugLog("[UI] 已恢复 Location remote")
             end
-        end
-        
-        UILibrary:Notify({
-            Title = "配置更新",
-            Text = "Auto Rob ATMs: " .. (state and "开启" or "关闭"),
-            Duration = 5
-        })
-        saveConfig()
-        
-        if state then
+        else
+            debugLog("[UI] 用户开启自动抢劫功能")
             spawn(function()
                 task.wait(0.5)
                 if performAutoRobATMs then
@@ -2026,6 +1729,12 @@ UILibrary:CreateToggle(autoRobATMsCard, {
                 end
             end)
         end
+        
+        UILibrary:Notify({
+            Title = "配置更新",
+            Text = "Auto Rob ATMs: " .. (state and "开启" or "关闭"),
+            Duration = 5
+        })
     end
 })
 
@@ -2035,42 +1744,10 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
 })
 
 -- Webhook 配置
-local webhookCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
-UILibrary:CreateLabel(webhookCard, {
-    Text = "Webhook 地址",
-})
+PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end, webhookManager)
 
-local webhookInput = UILibrary:CreateTextBox(webhookCard, {
-    PlaceholderText = "输入 Webhook 地址",
-    OnFocusLost = function(text)
-        if not text then return end
-        
-        local oldUrl = config.webhookUrl
-        config.webhookUrl = text
-        
-        if config.webhookUrl ~= "" and config.webhookUrl ~= oldUrl then
-            UILibrary:Notify({ 
-                Title = "Webhook 更新", 
-                Text = "正在发送测试消息...", 
-                Duration = 5 
-            })
-            
-            spawn(function()
-                wait(0.5)
-                sendWelcomeMessage()
-            end)
-        else
-            UILibrary:Notify({ 
-                Title = "Webhook 更新", 
-                Text = "地址已保存", 
-                Duration = 5 
-            })
-        end
-        
-        saveConfig()
-    end
-})
-webhookInput.Text = config.webhookUrl
+-- 通知间隔
+PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 
 -- 监测金额变化
 local currencyNotifyCard = UILibrary:CreateCard(notifyContent)
@@ -2085,296 +1762,77 @@ UILibrary:CreateToggle(currencyNotifyCard, {
         end
         config.notifyCash = state
         UILibrary:Notify({ Title = "配置更新", Text = "金额变化监测: " .. (state and "开启" or "关闭"), Duration = 5 })
-        saveConfig()
+        configManager:saveConfig()
     end
 })
 
--- 监测排行榜状态
-local leaderboardNotifyCard = UILibrary:CreateCard(notifyContent)
-UILibrary:CreateToggle(leaderboardNotifyCard, {
-    Text = "监测排行榜状态",
+-- 排行榜检测
+local leaderboardCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateToggle(leaderboardCard, {
+    Text = "排行榜检测",
     DefaultState = config.notifyLeaderboard,
     Callback = function(state)
-        if state and config.webhookUrl == "" then
-            UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-            config.notifyLeaderboard = false
-            return
-        end
         config.notifyLeaderboard = state
-        UILibrary:Notify({ Title = "配置更新", Text = "排行榜监测: " .. (state and "开启" or "关闭"), Duration = 5 })
-        saveConfig()
+        UILibrary:Notify({ Title = "配置更新", Text = "排行榜检测: " .. (state and "开启" or "关闭"), Duration = 5 })
+        configManager:saveConfig()
     end
 })
 
--- 上榜踢出
+-- 排行榜踢出
 local leaderboardKickCard = UILibrary:CreateCard(notifyContent)
 UILibrary:CreateToggle(leaderboardKickCard, {
-    Text = "上榜自动踢出",
+    Text = "排行榜踢出",
     DefaultState = config.leaderboardKick,
     Callback = function(state)
-        if state and config.webhookUrl == "" then
-            UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-            config.leaderboardKick = false
-            return
-        end
         config.leaderboardKick = state
-        UILibrary:Notify({ Title = "配置更新", Text = "上榜踢出: " .. (state and "开启" or "关闭"), Duration = 5 })
-        saveConfig()
+        UILibrary:Notify({ Title = "配置更新", Text = "排行榜踢出: " .. (state and "开启" or "关闭"), Duration = 5 })
+        configManager:saveConfig()
     end
 })
 
--- 通知间隔
-local intervalCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
-UILibrary:CreateLabel(intervalCard, {
-    Text = "通知间隔（分钟）",
-})
+-- 数据类型设置区域
+local targetValueLabels = {}
 
-local intervalInput = UILibrary:CreateTextBox(intervalCard, {
-    PlaceholderText = "输入间隔时间",
-    OnFocusLost = function(text)
-        if not text then return end
-        local num = tonumber(text)
-        if num and num > 0 then
-            config.notificationInterval = num
-            UILibrary:Notify({ Title = "配置更新", Text = "通知间隔: " .. num .. " 分钟", Duration = 5 })
-            saveConfig()
-        else
-            intervalInput.Text = tostring(config.notificationInterval)
-            UILibrary:Notify({ Title = "配置错误", Text = "请输入有效数字", Duration = 5 })
-        end
+for _, dataType in ipairs(dataTypes) do
+    local keyUpper = string.upper(dataType.id:sub(1, 1)) .. dataType.id:sub(2)
+
+    -- 为所有数据类型创建分隔标签
+    local separatorCard = UILibrary:CreateCard(notifyContent)
+    PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, dataType)
+
+    -- 只为支持目标检测的数据类型创建基准值和目标值卡片
+    if dataType.supportTarget then
+        local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
+            notifyContent, UILibrary, config, function() configManager:saveConfig() end,
+            function() return dataMonitor:fetchValue(dataType) end,
+            keyUpper,
+            dataType.icon
+        )
+
+        local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
+            notifyContent, UILibrary, config, function() configManager:saveConfig() end,
+            function() return dataMonitor:fetchValue(dataType) end,
+            keyUpper
+        )
+
+        setTargetValueLabel(targetValueLabel)
+        targetValueLabels[dataType.id] = targetValueLabel
     end
-})
-intervalInput.Text = tostring(config.notificationInterval)
-
--- 基准金额设置
-local baseAmountCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
-UILibrary:CreateLabel(baseAmountCard, {
-    Text = "基准金额设置",
-})
-
-local targetAmountLabel
-local suppressTargetToggleCallback = false
-local targetAmountToggle
-
-local baseAmountInput = UILibrary:CreateTextBox(baseAmountCard, {
-    PlaceholderText = "输入基准金额",
-    OnFocusLost = function(text)
-        text = text and text:match("^%s*(.-)%s*$")
-        
-        debugLog("[输入处理] 原始输入文本:", text or "nil")
-        
-        if not text or text == "" then
-            config.baseAmount = 0
-            config.targetAmount = 0
-            config.lastSavedCurrency = 0
-            baseAmountInput.Text = ""
-            if targetAmountLabel then
-                targetAmountLabel.Text = "目标金额: 未设置"
-            end
-            
-            saveConfig()
-            debugLog("[清空后] 所有金额配置已重置")
-            
-            UILibrary:Notify({
-                Title = "基准金额已清除",
-                Text = "基准金额和目标金额已重置",
-                Duration = 5
-            })
-            return
-        end
-
-        local cleanText = text:gsub(",", "")
-        local num = tonumber(cleanText)
-        
-        debugLog("[数字转换] 清理后的文本:", cleanText)
-        debugLog("[数字转换] 转换后的数字:", num)
-        
-        if num and num > 0 then
-            local currentCurrency = fetchCurrentCurrency() or 0
-            debugLog("[金额获取] 当前游戏金额:", currentCurrency)
-            
-            local newTarget = num + currentCurrency
-            debugLog("[计算] 基准金额:", num)
-            debugLog("[计算] 当前金额:", currentCurrency)
-            debugLog("[计算] 目标金额:", newTarget)
-            
-            config.baseAmount = num
-            config.targetAmount = newTarget
-            config.lastSavedCurrency = currentCurrency
-            
-            debugLog("[赋值后] config.baseAmount:", config.baseAmount)
-            debugLog("[赋值后] config.targetAmount:", config.targetAmount)
-            debugLog("[赋值后] config.lastSavedCurrency:", config.lastSavedCurrency)
-            
-            baseAmountInput.Text = formatNumber(num)
-            
-            if targetAmountLabel then
-                targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
-                debugLog("[标签更新] 目标金额标签已更新为:", formatNumber(newTarget))
-            end
-            
-            saveConfig()
-            
-            debugLog("[保存验证] 保存后 config.baseAmount:", config.baseAmount)
-            debugLog("[保存验证] 保存后 config.targetAmount:", config.targetAmount)
-            debugLog("[保存验证] 保存后 config.lastSavedCurrency:", config.lastSavedCurrency)
-            
-            UILibrary:Notify({
-                Title = "基准金额已设置",
-                Text = string.format("基准金额: %s\n当前金额: %s\n目标金额: %s", 
-                    formatNumber(num), 
-                    formatNumber(currentCurrency),
-                    formatNumber(newTarget)),
-                Duration = 8
-            })
-            
-            if config.enableTargetKick and currentCurrency >= newTarget then
-                suppressTargetToggleCallback = true
-                targetAmountToggle:Set(false)
-                config.enableTargetKick = false
-                saveConfig()
-                UILibrary:Notify({
-                    Title = "自动关闭",
-                    Text = string.format("当前金额(%s)已达到目标(%s)，目标金额踢出功能已自动关闭",
-                        formatNumber(currentCurrency),
-                        formatNumber(newTarget)),
-                    Duration = 6
-                })
-            end
-        else
-            baseAmountInput.Text = config.baseAmount > 0 and formatNumber(config.baseAmount) or ""
-            UILibrary:Notify({
-                Title = "配置错误",
-                Text = "请输入有效的正整数作为基准金额",
-                Duration = 5
-            })
-        end
-    end
-})
-
-if config.baseAmount > 0 then
-    baseAmountInput.Text = formatNumber(config.baseAmount)
-else
-    baseAmountInput.Text = ""
 end
 
--- 目标金额踢出
-local targetAmountCard = UILibrary:CreateCard(notifyContent, { IsMultiElement = true })
-
-targetAmountToggle = UILibrary:CreateToggle(targetAmountCard, {
-    Text = "目标金额踢出",
-    DefaultState = config.enableTargetKick or false,
-    Callback = function(state)
-        if suppressTargetToggleCallback then
-            suppressTargetToggleCallback = false
-            return
-        end
-
-        if state and config.webhookUrl == "" then
-            targetAmountToggle:Set(false)
-            UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-            return
-        end
-
-        if state and (not config.targetAmount or config.targetAmount <= 0) then
-            targetAmountToggle:Set(false)
-            UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准金额", Duration = 5 })
-            return
-        end
-
-        local currentCurrency = fetchCurrentCurrency()
-        if state and currentCurrency and currentCurrency >= config.targetAmount then
-            targetAmountToggle:Set(false)
-            UILibrary:Notify({
-                Title = "配置警告",
-                Text = string.format("当前金额(%s)已超过目标(%s)",
-                    formatNumber(currentCurrency),
-                    formatNumber(config.targetAmount)),
-                Duration = 6
-            })
-            return
-        end
-
-        config.enableTargetKick = state
-        UILibrary:Notify({
-            Title = "配置更新",
-            Text = string.format("目标踢出: %s\n目标: %s", 
-                (state and "开启" or "关闭"),
-                config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
-            Duration = 5
-        })
-        saveConfig()
-    end
-})
-
-targetAmountLabel = UILibrary:CreateLabel(targetAmountCard, {
-    Text = "目标金额: " .. (config.targetAmount > 0 and formatNumber(config.targetAmount) or "未设置"),
-})
-
-UILibrary:CreateButton(targetAmountCard, {
-    Text = "重新计算目标金额",
+-- 统一的重新计算所有目标值按钮
+local recalculateCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateButton(recalculateCard, {
+    Text = "重新计算所有目标值",
     Callback = function()
-        if config.baseAmount <= 0 then
-            UILibrary:Notify({
-                Title = "配置错误",
-                Text = "请先设置基准金额",
-                Duration = 5
-            })
-            return
-        end
-        
-        local currentCurrency = fetchCurrentCurrency() or 0
-        
-        local newTarget = config.baseAmount + currentCurrency
-        
-        debugLog("[重新计算] 使用基准金额:", config.baseAmount)
-        debugLog("[重新计算] 当前游戏金额:", currentCurrency)
-        debugLog("[重新计算] 计算的新目标:", newTarget)
-        
-        if newTarget <= currentCurrency then
-            UILibrary:Notify({
-                Title = "计算错误",
-                Text = string.format("计算后的目标金额(%s)不能小于等于当前金额(%s)", 
-                    formatNumber(newTarget), formatNumber(currentCurrency)),
-                Duration = 6
-            })
-            return
-        end
-        
-        config.targetAmount = newTarget
-        config.lastSavedCurrency = currentCurrency
-        
-        if targetAmountLabel then
-            targetAmountLabel.Text = "目标金额: " .. formatNumber(newTarget)
-        end
-        
-        saveConfig()
-        
-        debugLog("[重新计算保存后] config.targetAmount:", config.targetAmount)
-        debugLog("[重新计算保存后] config.lastSavedCurrency:", config.lastSavedCurrency)
-        
-        UILibrary:Notify({
-            Title = "目标金额已重新计算",
-            Text = string.format("基准金额: %s\n当前金额: %s\n新目标金额: %s", 
-                formatNumber(config.baseAmount),
-                formatNumber(currentCurrency),
-                formatNumber(newTarget)),
-            Duration = 8
-        })
-        
-        if config.enableTargetKick and currentCurrency >= newTarget then
-            suppressTargetToggleCallback = true
-            targetAmountToggle:Set(false)
-            config.enableTargetKick = false
-            saveConfig()
-            UILibrary:Notify({
-                Title = "自动关闭",
-                Text = string.format("当前金额(%s)已达到目标(%s)，目标金额踢出功能已自动关闭",
-                    formatNumber(currentCurrency),
-                    formatNumber(newTarget)),
-                Duration = 6
-            })
-        end
+        PlutoX.recalculateAllTargetValues(
+            config,
+            UILibrary,
+            dataMonitor,
+            dataTypes,
+            function() configManager:saveConfig() end,
+            targetValueLabels
+        )
     end
 })
 
@@ -2383,232 +1841,97 @@ local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage
     Text = "关于"
 })
 
-UILibrary:CreateAuthorInfo(aboutContent, {
-    Text = "作者: tongblx",
-    SocialText = "感谢使用"
-})
-
-UILibrary:CreateButton(aboutContent, {
-    Text = "复制 Discord",
-    Callback = function()
-        local link = "https://discord.gg/j20v0eWU8u"
-        if setclipboard then
-            setclipboard(link)
-            UILibrary:Notify({
-                Title = "已复制",
-                Text = "Discord 链接已复制",
-                Duration = 2,
-            })
-        else
-            UILibrary:Notify({
-                Title = "复制失败",
-                Text = "无法访问剪贴板",
-                Duration = 2,
-            })
-        end
-    end,
-})
+PlutoX.createAboutPage(aboutContent, UILibrary)
 
 -- 主循环
-local unchangedCount = 0
-local webhookDisabled = false
-local startTime = os.time()
-local lastCurrency = nil
 local checkInterval = 1
+local lastRobbedAmount = 0
+local lastSendTime = os.time()
 
 spawn(function()
     while true do
         local currentTime = os.time()
-        local currentCurrency = fetchCurrentCurrency()
 
-        local earnedAmount = calculateEarnedAmount(currentCurrency)
-        earnedCurrencyLabel.Text = "已赚金额: " .. formatNumber(earnedAmount)
-
-        local shouldShutdown = false
-
-        if config.enableTargetKick and currentCurrency and config.targetAmount > 0 then
-            if currentCurrency >= config.targetAmount then
-                local payload = {
-                    embeds = {{
-                        title = "🎯 目标金额达成",
-                        description = string.format(
-                            "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n**目标金额**: %s\n**基准金额**: %s\n**运行时长**: %s",
-                            gameName, username,
-                            formatNumber(currentCurrency),
-                            formatNumber(config.targetAmount),
-                            formatNumber(config.baseAmount),
-                            formatElapsedTime(currentTime - startTime)
-                        ),
-                        color = _G.PRIMARY_COLOR,
-                        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                        footer = { text = "作者: tongblx · Pluto-X" }
-                    }}
-                }
-
-                UILibrary:Notify({
-                    Title = "🎯 目标达成",
-                    Text = "已达目标金额，准备退出...",
-                    Duration = 10
-                })
-                
-                if config.webhookUrl ~= "" and not webhookDisabled then
-                    dispatchWebhook(payload)
-                end
-                
-                updateLastSavedCurrency(currentCurrency)
-                config.enableTargetKick = false
-                saveConfig()
-                
-                wait(3)
-                pcall(function() game:Shutdown() end)
-                pcall(function() player:Kick("目标金额已达成") end)
-                return
-            end
+        -- 更新所有数据类型的显示
+        for id, updateFunc in pairs(updateFunctions) do
+            pcall(updateFunc)
         end
+
+        -- 检查并发送通知
+        dataMonitor:checkAndNotify(function() configManager:saveConfig() end)
 
         -- 掉线检测
-        if disconnected and not webhookDisabled then
-            webhookDisabled = true
-            dispatchWebhook({
-                embeds = {{
-                    title = "⚠️ 掉线检测",
-                    description = string.format(
-                        "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n检测到掉线",
-                        gameName, username, formatNumber(currentCurrency or 0)),
-                    color = 16753920,
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "作者: tongblx · Pluto-X" }
-                }}
-            })
-            UILibrary:Notify({
-                Title = "掉线检测",
-                Text = "检测到连接异常",
-                Duration = 5
-            })
+        local cashValue = dataMonitor:fetchValue(dataTypes[1])
+        disconnectDetector:checkAndNotify(cashValue)
+
+        -- 目标值调整
+        for _, dataType in ipairs(dataTypes) do
+            if dataType.supportTarget then
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                if config["base" .. keyUpper] > 0 and config["target" .. keyUpper] > 0 then
+                    pcall(function() dataMonitor:adjustTargetValue(function() configManager:saveConfig() end, dataType.id) end)
+                end
+            end
         end
 
-        -- 通知间隔检测
-        local interval = currentTime - lastSendTime
-        if not webhookDisabled and (config.notifyCash or config.notifyLeaderboard or config.leaderboardKick)
-           and interval >= getNotificationIntervalSeconds() then
+        -- 目标值达成检测
+        local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
+        if achieved then
+            webhookManager:sendTargetAchieved(
+                achieved.value,
+                achieved.targetValue,
+                achieved.baseValue,
+                os.time() - dataMonitor.startTime,
+                achieved.dataType.name
+            )
+            return
+        end
 
-            local earnedChange = calculateChangeAmount(currentCurrency)
-
-            if currentCurrency == lastCurrency and earnedChange == 0 then
-                unchangedCount = unchangedCount + 1
-            else
-                unchangedCount = 0
+        -- 排行榜检测（只在通知间隔内进行）
+        local notifyIntervalSeconds = (config.notificationInterval or 5) * 60
+        if (config.notifyLeaderboard or config.leaderboardKick) and 
+           (currentTime - lastSendTime) >= notifyIntervalSeconds then
+            
+            local currentRank, isOnLeaderboard = fetchPlayerRank()
+            local status = isOnLeaderboard and ("#" .. currentRank) or "未上榜"
+            
+            if config.notifyLeaderboard then
+                UILibrary:Notify({
+                    Title = "排行榜检测",
+                    Text = status,
+                    Duration = 5
+                })
             end
-
-            if unchangedCount >= 2 then
-                dispatchWebhook({
+            
+            if isOnLeaderboard and config.leaderboardKick then
+                webhookManager:dispatchWebhook({
                     embeds = {{
-                        title = "⚠️ 金额未变化",
+                        title = "🏆 排行榜踢出",
                         description = string.format(
-                            "**游戏**: %s\n**用户**: %s\n**当前金额**: %s\n连续两次金额无变化",
-                            gameName, username, formatNumber(currentCurrency or 0)),
+                            "**游戏**: %s\n**用户**: %s\n**当前排名**: %s\n检测到已上榜，已踢出",
+                            gameName, username, status),
                         color = 16753920,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                        footer = { text = "作者: tongblx · Pluto-X" }
+                        footer = { text = "桐 · TStudioX" }
                     }}
                 })
-
-                webhookDisabled = true
-                lastSendTime = currentTime
-                lastCurrency = currentCurrency
-                updateLastNotifyCurrency(currentCurrency)
-                updateLastSavedCurrency(currentCurrency)
                 
-                UILibrary:Notify({
-                    Title = "连接异常",
-                    Text = "金额长时间未变化",
-                    Duration = 5
-                })
-            else
-                local nextNotifyTimestamp = currentTime + getNotificationIntervalSeconds()
-                local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
-                local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
-
-                local embed = {
-                    title = "Pluto-X",
-                    description = string.format("**游戏**: %s\n**用户**: %s", gameName, username),
-                    fields = {},
-                    color = _G.PRIMARY_COLOR,
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "作者: tongblx · Pluto-X" }
-                }
-
-                if config.notifyCash and currentCurrency then
-                    local elapsedTime = currentTime - startTime
-                    local avgMoney = "0"
-                    if elapsedTime > 0 then
-                        local rawAvg = earnedChange / (interval / 3600)
-                        avgMoney = formatNumber(math.floor(rawAvg + 0.5))
-                    end
-
-                    table.insert(embed.fields, {
-                        name = "💰金额通知",
-                        value = string.format(
-                            "**用户名**: %s\n**运行时长**: %s\n**当前金额**: %s\n**本次变化**: %s%s\n**总计收益**: %s%s\n**平均速度**: %s /小时",
-                            username,
-                            formatElapsedTime(elapsedTime),
-                            formatNumber(currentCurrency),
-                            (earnedChange >= 0 and "+" or ""), formatNumber(earnedChange),
-                            (earnedAmount >= 0 and "+" or ""), formatNumber(earnedAmount),
-                            avgMoney
-                        ),
-                        inline = false
-                    })
-                end
-
-                if config.notifyLeaderboard or config.leaderboardKick then
-                    local currentRank, isOnLeaderboard = fetchPlayerRank()
-                    local status = isOnLeaderboard and ("#" .. (currentRank or "未知")) or "未上榜"
-                    table.insert(embed.fields, {
-                        name = "🏆 排行榜",
-                        value = string.format("**当前排名**: %s", status),
-                        inline = true
-                    })
-
-                    UILibrary:Notify({
-                        Title = "排行榜检测",
-                        Text = isOnLeaderboard and ("排名 " .. status) or "未上榜",
-                        Duration = 5
-                    })
-
-                    if isOnLeaderboard and config.leaderboardKick then
-                        shouldShutdown = true
-                    end
-                end
-
-                table.insert(embed.fields, {
-                    name = "⌛ 下次通知",
-                    value = string.format("%s（%s）", countdownR, countdownT),
-                    inline = false
-                })
-
-                dispatchWebhook({ embeds = { embed } })
-                
-                lastSendTime = currentTime
-                lastCurrency = currentCurrency
-                updateLastNotifyCurrency(currentCurrency)
-                updateLastSavedCurrency(currentCurrency)
-                
-                UILibrary:Notify({
-                    Title = "定时通知",
-                    Text = "下次: " .. os.date("%H:%M:%S", nextNotifyTimestamp),
-                    Duration = 5
-                })
-
-                if shouldShutdown then
-                    updateLastSavedCurrency(currentCurrency)
-                    wait(0.5)
-                    game:Shutdown()
-                    return
-                end
+                wait(0.5)
+                game:Shutdown()
+                return
             end
+            
+            lastSendTime = currentTime
         end
 
         wait(checkInterval)
     end
 end)
+
+-- 初始化欢迎消息
+if config.webhookUrl ~= "" then
+    spawn(function()
+        wait(2)
+        webhookManager:sendWelcomeMessage()
+    end)
+end
