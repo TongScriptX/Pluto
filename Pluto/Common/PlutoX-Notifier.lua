@@ -151,6 +151,85 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
     manager.UILibrary = UILibrary
     manager.username = username
     
+    -- 旧配置项到新配置项的映射（根据数据类型动态生成）
+    local function getMigrationMap()
+        local map = {}
+        local dataTypes = PlutoX.getAllDataTypes()
+        
+        for _, dataType in ipairs(dataTypes) do
+            local id = dataType.id
+            local keyUpper = id:gsub("^%l", string.upper)
+            
+            -- 旧格式可能使用的通用名称映射到具体数据类型
+            -- 例如：enableTargetKick -> enableCashKick（如果数据类型是 cash）
+            -- 或者：enableTargetKick -> enableWinsKick（如果数据类型是 wins）
+            
+            -- 对于支持目标检测的数据类型，添加通用配置项的映射
+            if dataType.supportTarget then
+                map["enableTargetKick"] = "enable" .. keyUpper .. "Kick"
+                map["targetAmount"] = "target" .. keyUpper
+                map["baseAmount"] = "base" .. keyUpper
+                map["lastNotifyCurrency"] = "lastNotify" .. keyUpper
+                map["lastSavedCurrency"] = "lastSaved" .. keyUpper
+                map["totalEarningsBase"] = "total" .. keyUpper .. "Base"
+            end
+        end
+        
+        return map
+    end
+    
+    -- 迁移旧配置项
+    local function migrateConfig(userConfig)
+        local dataTypes = PlutoX.getAllDataTypes()
+        local migrated = false
+        
+        -- 找到主要的数据类型（优先使用 cash）
+        local primaryDataType = nil
+        for _, dataType in ipairs(dataTypes) do
+            if dataType.id == "cash" then
+                primaryDataType = dataType
+                break
+            end
+        end
+        
+        -- 如果没有 cash，使用第一个支持目标检测的数据类型
+        if not primaryDataType then
+            for _, dataType in ipairs(dataTypes) do
+                if dataType.supportTarget then
+                    primaryDataType = dataType
+                    break
+                end
+            end
+        end
+        
+        -- 如果找到了主要数据类型，进行迁移
+        if primaryDataType then
+            local id = primaryDataType.id
+            local keyUpper = id:gsub("^%l", string.upper)
+            
+            -- 旧格式配置项映射
+            local oldToNewMap = {
+                ["enableTargetKick"] = "enable" .. keyUpper .. "Kick",
+                ["targetAmount"] = "target" .. keyUpper,
+                ["baseAmount"] = "base" .. keyUpper,
+                ["lastNotifyCurrency"] = "lastNotify" .. keyUpper,
+                ["lastSavedCurrency"] = "lastSaved" .. keyUpper,
+                ["totalEarningsBase"] = "total" .. keyUpper .. "Base"
+            }
+            
+            for oldKey, newKey in pairs(oldToNewMap) do
+                if userConfig[oldKey] ~= nil and userConfig[newKey] == nil then
+                    userConfig[newKey] = userConfig[oldKey]
+                    userConfig[oldKey] = nil
+                    migrated = true
+                    PlutoX.debug("[Config] 迁移配置项: " .. oldKey .. " -> " .. newKey)
+                end
+            end
+        end
+        
+        return migrated
+    end
+    
     -- 添加自定义配置项
     function manager:addDefault(key, defaultValue)
         self.defaultConfig[key] = defaultValue
@@ -217,6 +296,24 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
         if success and type(result) == "table" then
             local userConfig = result[self.username]
             if userConfig and type(userConfig) == "table" then
+                -- 迁移旧配置项
+                local migrated = migrateConfig(userConfig)
+                
+                if migrated then
+                    -- 如果有迁移，保存新格式
+                    result[self.username] = userConfig
+                    writefile(self.configFile, self.HttpService:JSONEncode(result))
+                    PlutoX.debug("[Config] 配置项已迁移并保存")
+                    
+                    if self.UILibrary then
+                        self.UILibrary:Notify({
+                            Title = "配置迁移",
+                            Text = "旧配置项已迁移到新格式",
+                            Duration = 5,
+                        })
+                    end
+                end
+                
                 for k, v in pairs(userConfig) do
                     self.config[k] = v
                 end
