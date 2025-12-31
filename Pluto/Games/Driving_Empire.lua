@@ -1677,15 +1677,6 @@ UILibrary:CreateToggle(autoRobCard, {
             Duration = 5
         })
         configManager:saveConfig()
-        
-        if state then
-            spawn(function()
-                task.wait(0.5)
-                if performAutoRobATMs then
-                    pcall(performAutoRobATMs)
-                end
-            end)
-        end
     end
 })
 
@@ -1836,11 +1827,6 @@ spawn(function()
                 achieved.dataType.name
             )
             return
-        end
-
-        -- ATM 自动抢劫
-        if config.autoRobATMsEnabled and not isAutoRobActive then
-            performAutoRobATMs()
         end
 
         -- 排行榜检测（只在通知间隔内进行）
