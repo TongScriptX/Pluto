@@ -589,7 +589,7 @@ local function forceDeliverRobbedAmount(isShutdown)
     local totalDeliveredAmount = 0
     local VirtualInputManager = game:GetService("VirtualInputManager")
 
-    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts and (isShutdown or config.autoRobATMsEnabled) do
+    while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts do
         deliveryAttempts = deliveryAttempts + 1
         debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
         
@@ -739,9 +739,8 @@ local function forceDeliverRobbedAmount(isShutdown)
     
     if deliverySuccess then
         debugLog("[AutoRob] ✓ 强制投放完成，共尝试 " .. deliveryAttempts .. " 次")
-    elseif not config.autoRobATMsEnabled then
-        warn("[AutoRob] 功能已关闭，停止投放")
-        deliverySuccess = false
+    elseif isShutdown then
+        warn("[AutoRob] ✗ 关闭时投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
     else
         warn("[AutoRob] ✗ 强制投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
     end
