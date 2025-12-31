@@ -1006,11 +1006,6 @@ local originalLocationNameCall = nil
 
 -- Auto Rob ATMs功能
 local function performAutoRobATMs()
-    if not config.autoRobATMsEnabled then
-        debugLog("[AutoRobATMs] 功能未启用")
-        return
-    end
-    
     isAutoRobActive = true
     debugLog("[AutoRobATMs] 自动抢劫已启动，活动状态: " .. tostring(isAutoRobActive))
     
@@ -1061,7 +1056,7 @@ local function performAutoRobATMs()
         local knownATMLocations = {}
         local maxKnownLocations = 20
 
-        while config.autoRobATMsEnabled do
+        while isAutoRobActive do
             task.wait()
             local success, err = pcall(function()
                 local timeSinceLastRobbery = tick() - lastSuccessfulRobbery
@@ -1139,7 +1134,7 @@ local function performAutoRobATMs()
                 end
 
                 local function robATM(atm, atmType, foundCountRef)
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobActive then return false end
 
                     foundCountRef.count = foundCountRef.count + 1
                     local teleportTime = atmType == "tagged" and 1 or 0.2
@@ -1155,9 +1150,9 @@ local function performAutoRobATMs()
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
                         localPlayer.ReplicationFocus = nil
-                    until tick() - teleportStart > teleportTime or not config.autoRobATMsEnabled
+                    until tick() - teleportStart > teleportTime or not isAutoRobActive
 
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobActive then return false end
 
                     game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
 
@@ -1169,9 +1164,9 @@ local function performAutoRobATMs()
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
                         localPlayer.ReplicationFocus = nil
-                    until tick() - progressStart > 2.5 or not config.autoRobATMsEnabled
+                    until tick() - progressStart > 2.5 or not isAutoRobActive
 
-                    if not config.autoRobATMsEnabled then return false end
+                    if not isAutoRobActive then return false end
 
                     local beforeRobberyAmount = getRobbedAmount() or 0
                     debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
@@ -1186,7 +1181,7 @@ local function performAutoRobATMs()
                             character.PrimaryPart.Velocity = Vector3.zero
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
-                    until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not config.autoRobATMsEnabled
+                    until tick() - cooldownStart > 3 or (character and character:GetAttribute("ATMBustDebounce")) or not isAutoRobActive
 
                     repeat
                         task.wait()
@@ -1194,7 +1189,7 @@ local function performAutoRobATMs()
                             character.PrimaryPart.Velocity = Vector3.zero
                             character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
                         end
-                    until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and config.autoRobATMsEnabled)
+                    until tick() - cooldownStart > 3 or not (character and character:GetAttribute("ATMBustDebounce") and isAutoRobActive)
 
                     task.wait(0.5)
                     local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
