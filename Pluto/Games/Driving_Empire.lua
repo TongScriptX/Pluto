@@ -540,7 +540,6 @@ local defaultConfig = {
     notificationInterval = 30,
     onlineRewardEnabled = false,
     autoSpawnVehicleEnabled = false,
-    autoRobATMsEnabled = false,
     robTargetAmount = 0,
     notifyCash = false,
     notifyLeaderboard = false,
@@ -571,16 +570,18 @@ local function forceDeliverRobbedAmount(isShutdown)
         return false
     end
     
-    debugLog("[AutoRob] 清理背包中的金钱袋...")
-    for _, bag in pairs(collectionService:GetTagged("CriminalMoneyBagTool")) do
-        pcall(function()
-            bag:Destroy()
-        end)
-        task.wait(0.1)
-    end
-
     local robbedAmount = getRobbedAmount() or 0
     debugLog("[AutoRob] 当前已抢金额: " .. formatNumber(robbedAmount))
+    
+    if robbedAmount > 0 then
+        debugLog("[AutoRob] 清理背包中的金钱袋...")
+        for _, bag in pairs(collectionService:GetTagged("CriminalMoneyBagTool")) do
+            pcall(function()
+                bag:Destroy()
+            end)
+            task.wait(0.1)
+        end
+    end
 
     local deliverySuccess = false
     local deliveryAttempts = 0
@@ -1640,10 +1641,8 @@ end
 
 UILibrary:CreateToggle(autoRobCard, {
     Text = "启用自动抢劫",
-    DefaultState = config.autoRobATMsEnabled or false,
+    DefaultState = false,
     Callback = function(state)
-        config.autoRobATMsEnabled = state
-        
         if not state then
             isAutoRobActive = false
             
@@ -1683,7 +1682,6 @@ UILibrary:CreateToggle(autoRobCard, {
             Text = "Auto Rob ATMs: " .. (state and "开启" or "关闭"),
             Duration = 5
         })
-        configManager:saveConfig()
     end
 })
 
