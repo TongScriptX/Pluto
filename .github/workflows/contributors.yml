@@ -2,7 +2,9 @@ name: 👥 Contributors Statistics
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, develop ]
+  issues:
+    types: [opened, closed, reopened, edited]
   workflow_dispatch:
 
 permissions:
