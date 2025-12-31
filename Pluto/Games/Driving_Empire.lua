@@ -1669,6 +1669,14 @@ UILibrary:CreateToggle(autoRobCard, {
                 originalLocationNameCall = nil
                 debugLog("[UI] 已恢复 Location remote")
             end
+        else
+            debugLog("[UI] 用户开启自动抢劫功能")
+            spawn(function()
+                task.wait(0.5)
+                if performAutoRobATMs then
+                    pcall(performAutoRobATMs)
+                end
+            end)
         end
         
         UILibrary:Notify({
