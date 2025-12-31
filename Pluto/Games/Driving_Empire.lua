@@ -315,76 +315,6 @@ local function findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
     return fastestName, fastestSpeed, vehicleCount
 end
 
-local function performAutoSpawnVehicle()
-    if not config.autoSpawnVehicleEnabled then
-        debugLog("[AutoSpawnVehicle] 功能未启用")
-        return
-    end
-
-    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
-    local startTime = tick()
-
-    local localPlayer = Players.LocalPlayer
-    if not localPlayer or not ReplicatedStorage then
-        warn("[AutoSpawnVehicle] 无法获取必要服务")
-        return
-    end
-
-    local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
-    if not remotesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
-        return
-    end
-
-    local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
-    local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
-    if not GetVehicleStats or not VehicleEvent then
-        warn("[AutoSpawnVehicle] 未找到必要的远程事件")
-        return
-    end
-
-    local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
-    if not playerGui then
-        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
-        return
-    end
-
-    local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
-    if not statsPanel then
-        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
-        return
-    end
-
-    local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
-    if not vehiclesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
-        return
-    end
-
-    local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
-    local searchTime = tick() - startTime
-    
-    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
-
-    if fastestName and fastestSpeed > 0 then
-        local success, err = pcall(function()
-            VehicleEvent:FireServer("Spawn", fastestName)
-        end)
-        
-        if success then
-            UILibrary:Notify({
-                Title = "自动生成",
-                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
-                    fastestName, tostring(fastestSpeed), searchTime),
-                Duration = 5
-            })
-        else
-            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
-        end
-    else
-        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
-    end
-end
 
 -- 在线时长奖励功能
 local function findRewardsRoot()
@@ -1410,6 +1340,77 @@ local function claimPlaytimeRewards()
             task.wait(rewardCheckInterval)
         end
     end)
+end
+
+local function performAutoSpawnVehicle()
+    if not config.autoSpawnVehicleEnabled then
+        debugLog("[AutoSpawnVehicle] 功能未启用")
+        return
+    end
+
+    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
+    local startTime = tick()
+
+    local localPlayer = Players.LocalPlayer
+    if not localPlayer or not ReplicatedStorage then
+        warn("[AutoSpawnVehicle] 无法获取必要服务")
+        return
+    end
+
+    local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+    if not remotesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
+        return
+    end
+
+    local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
+    local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
+    if not GetVehicleStats or not VehicleEvent then
+        warn("[AutoSpawnVehicle] 未找到必要的远程事件")
+        return
+    end
+
+    local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
+    if not playerGui then
+        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
+        return
+    end
+
+    local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
+    if not statsPanel then
+        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
+        return
+    end
+
+    local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
+    if not vehiclesFolder then
+        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
+        return
+    end
+
+    local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
+    local searchTime = tick() - startTime
+    
+    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
+
+    if fastestName and fastestSpeed > 0 then
+        local success, err = pcall(function()
+            VehicleEvent:FireServer("Spawn", fastestName)
+        end)
+        
+        if success then
+            UILibrary:Notify({
+                Title = "自动生成",
+                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
+                    fastestName, tostring(fastestSpeed), searchTime),
+                Duration = 5
+            })
+        else
+            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
+        end
+    else
+        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
+    end
 end
 
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
