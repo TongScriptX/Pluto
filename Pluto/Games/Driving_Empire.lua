@@ -480,42 +480,6 @@ local function checkRobberyCompletion(previousAmount)
     end
 end
 
-local function checkAndForceDelivery(tempTarget)
-    local robbedAmount = getRobbedAmount() or 0
-    local targetAmount = tempTarget or config.robTargetAmount or 0
-
-    if targetAmount > 0 and robbedAmount >= targetAmount then
-        debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
-
-        local dropOffEnabled = checkDropOffPointEnabled()
-
-        if not dropOffEnabled then
-            debugLog("[AutoRob] 交付点不可用，继续抢劫...")
-            return false, 0, 0
-        end
-
-        debugLog("[AutoRob] 交付点可用，执行强制投放...")
-
-        local success, attempts, deliveredAmount = forceDeliverRobbedAmount(false)
-
-        if success then
-            UILibrary:Notify({
-                Title = "目标达成",
-                Text = string.format("获得 +%s\n尝试次数: %d", formatNumber(deliveredAmount), attempts),
-                Duration = 5
-            })
-
-            task.wait(2)
-            return true
-        else
-            warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
-            return false, attempts, 0
-        end
-    end
-
-    return false
-end
-
 local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tempTargetRef)
     debugLog("[Recovery] === 启动投放失败恢复机制 ===")
     debugLog("[Recovery] 当前已抢金额: " .. formatNumber(robbedAmount))
@@ -563,42 +527,6 @@ local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tem
     debugLog("[Recovery] === 投放失败恢复机制结束（失败，增加临时目标） ===")
 
     return false, 0
-end
-
-local lastDropOffEnabledStatus = nil
-
-local function monitorDropOffStatusAndUpdateTarget()
-    local currentStatus = checkDropOffPointEnabled()
-    
-    if lastDropOffEnabledStatus == nil then
-        lastDropOffEnabledStatus = currentStatus
-        debugLog("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
-        return false
-    end
-    
-    if not lastDropOffEnabledStatus and currentStatus then
-        debugLog("[DropOff] 交付点从不可用变为可用！")
-        
-        local currentRobbedAmount = getRobbedAmount() or 0
-        if currentRobbedAmount > 0 then
-            config.robTargetAmount = currentRobbedAmount
-            configManager:saveConfig()
-            
-            UILibrary:Notify({
-                Title = "目标金额已更新",
-                Text = string.format("交付点可用，目标金额更新为: %s", formatNumber(currentRobbedAmount)),
-                Duration = 5
-            })
-            
-            debugLog("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
-        end
-        
-        lastDropOffEnabledStatus = currentStatus
-        return true
-    end
-    
-    lastDropOffEnabledStatus = currentStatus
-    return false
 end
 
 -- 初始化
@@ -824,6 +752,80 @@ local function forceDeliverRobbedAmount(isShutdown)
     isDeliveryInProgress = false
     
     return deliverySuccess, deliveryAttempts, initialRobbedAmount
+end
+
+-- 重新定义 checkAndForceDelivery 函数（确保在 config 初始化之后）
+local function checkAndForceDelivery(tempTarget)
+    local robbedAmount = getRobbedAmount() or 0
+    local targetAmount = tempTarget or config.robTargetAmount or 0
+
+    if targetAmount > 0 and robbedAmount >= targetAmount then
+        debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
+
+        local dropOffEnabled = checkDropOffPointEnabled()
+
+        if not dropOffEnabled then
+            debugLog("[AutoRob] 交付点不可用，继续抢劫...")
+            return false, 0, 0
+        end
+
+        debugLog("[AutoRob] 交付点可用，执行强制投放...")
+
+        local success, attempts, deliveredAmount = forceDeliverRobbedAmount(false)
+
+        if success then
+            UILibrary:Notify({
+                Title = "目标达成",
+                Text = string.format("获得 +%s\n尝试次数: %d", formatNumber(deliveredAmount), attempts),
+                Duration = 5
+            })
+
+            task.wait(2)
+            return true
+        else
+            warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
+            return false, attempts, 0
+        end
+    end
+
+    return false
+end
+
+-- 重新定义 monitorDropOffStatusAndUpdateTarget 函数（确保在 config 初始化之后）
+local lastDropOffEnabledStatus = nil
+
+local function monitorDropOffStatusAndUpdateTarget()
+    local currentStatus = checkDropOffPointEnabled()
+    
+    if lastDropOffEnabledStatus == nil then
+        lastDropOffEnabledStatus = currentStatus
+        debugLog("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
+        return false
+    end
+    
+    if not lastDropOffEnabledStatus and currentStatus then
+        debugLog("[DropOff] 交付点从不可用变为可用！")
+        
+        local currentRobbedAmount = getRobbedAmount() or 0
+        if currentRobbedAmount > 0 then
+            config.robTargetAmount = currentRobbedAmount
+            configManager:saveConfig()
+            
+            UILibrary:Notify({
+                Title = "目标金额已更新",
+                Text = string.format("交付点可用，目标金额更新为: %s", formatNumber(currentRobbedAmount)),
+                Duration = 5
+            })
+            
+            debugLog("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
+        end
+        
+        lastDropOffEnabledStatus = currentStatus
+        return true
+    end
+    
+    lastDropOffEnabledStatus = currentStatus
+    return false
 end
 
 local function claimPlaytimeRewards()
