@@ -1234,7 +1234,7 @@ local function performAutoRobATMs()
 
                 local taggedATMs = collectionService:GetTagged("CriminalATM")
                 for _, atm in pairs(taggedATMs) do
-                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                         if robATM(atm, "tagged", foundATMCount) then
                             break
                         end
@@ -1242,7 +1242,7 @@ local function performAutoRobATMs()
                 end
 
                 for _, obj in pairs(getnilinstances()) do
-                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                         if robATM(obj, "nil", foundATMCount) then
                             break
                         end
@@ -1254,14 +1254,72 @@ local function performAutoRobATMs()
                     debugLog("[AutoRobATMs] 未找到可用ATM，计数: " .. noATMFoundCount .. "/" .. maxNoATMFoundCount)
 
                     if noATMFoundCount >= maxNoATMFoundCount then
-                        warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行重置操作")
+                        warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行搜索重置")
 
                         debugLog("[AutoRobATMs] 重置状态...")
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
                         noATMFoundCount = 0
 
+                        local function searchATMs()
+                            local taggedATMs = collectionService:GetTagged("CriminalATM")
+                            for _, atm in pairs(taggedATMs) do
+                                if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
+                                    return true
+                                end
+                            end
+                            
+                            for _, obj in pairs(getnilinstances()) do
+                                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
+                                    return true
+                                end
+                            end
+                            
+                            return false
+                        end
+
                         local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
+                        if spawnersFolder then
+                            local spawners = spawnersFolder:GetChildren()
+                            debugLog("[AutoRobATMs] 新逻辑：依次传送" .. #spawners .. "个spawner搜索ATM")
+                            
+                            for i, spawner in pairs(spawners) do
+                                if not isAutoRobActive then break end
+                                
+                                if character and character.PrimaryPart then
+                                    character.PrimaryPart.Velocity = Vector3.zero
+                                    character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
+                                    debugLog("[AutoRobATMs] 传送spawner " .. i .. "/" .. #spawners)
+                                end
+                                
+                                task.wait(0.5)
+                                localPlayer.ReplicationFocus = nil
+                                
+                                if searchATMs() then
+                                    debugLog("[AutoRobATMs] spawner " .. i .. " 找到ATM")
+                                    noATMFoundCount = 0
+                                    break
+                                end
+                            end
+                            
+                            if not searchATMs() and isAutoRobActive then
+                                debugLog("[AutoRobATMs] 新逻辑：所有spawner未找到ATM，传送到中心点")
+                                if character and character.PrimaryPart then
+                                    character:PivotTo(CFrame.new(0, 50, 0))
+                                end
+                                task.wait(1)
+                                localPlayer.ReplicationFocus = nil
+                                
+                                if searchATMs() then
+                                    debugLog("[AutoRobATMs] 新逻辑：中心点找到ATM")
+                                    noATMFoundCount = 0
+                                else
+                                    debugLog("[AutoRobATMs] 新逻辑：中心点未找到ATM，重新开始spawner循环")
+                                end
+                            end
+                        end
+
+                        debugLog("[AutoRobATMs] 原逻辑：强制刷新spawner")
                         if spawnersFolder then
                             local spawners = spawnersFolder:GetChildren()
                             debugLog("[AutoRobATMs] 强制刷新" .. #spawners .. "个spawner")
@@ -1289,7 +1347,7 @@ local function performAutoRobATMs()
                         
                         local taggedATMs = collectionService:GetTagged("CriminalATM")
                         for _, atm in pairs(taggedATMs) do
-                            if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                            if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                 searchSuccess = true
                                 debugLog("[AutoRobATMs] 中心点找到ATM (tagged)")
                                 break
@@ -1297,7 +1355,7 @@ local function performAutoRobATMs()
                         end
                         if not searchSuccess then
                             for _, obj in pairs(getnilinstances()) do
-                                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                     searchSuccess = true
                                     debugLog("[AutoRobATMs] 中心点找到ATM (nil)")
                                     break
@@ -1332,7 +1390,7 @@ local function performAutoRobATMs()
                                 
                                 taggedATMs = collectionService:GetTagged("CriminalATM")
                                 for _, atm in pairs(taggedATMs) do
-                                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
                                         debugLog("[AutoRobATMs] CriminalArea找到ATM (tagged)")
                                         break
@@ -1340,7 +1398,7 @@ local function performAutoRobATMs()
                                 end
                                 if not searchSuccess then
                                     for _, obj in pairs(getnilinstances()) do
-                                        if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                        if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                             searchSuccess = true
                                             debugLog("[AutoRobATMs] CriminalArea找到ATM (nil)")
                                             break
@@ -1357,7 +1415,7 @@ local function performAutoRobATMs()
                             debugLog("[AutoRobATMs] 第3步：依次访问" .. #knownATMLocations .. "个已知ATM位置")
                             
                             for i, location in ipairs(knownATMLocations) do
-                                if not config.autoRobATMsEnabled then break end
+                                if not isAutoRobActive then break end
                                 
                                 if character and character.PrimaryPart then
                                     character.PrimaryPart.Velocity = Vector3.zero
@@ -1369,7 +1427,7 @@ local function performAutoRobATMs()
                                 
                                 taggedATMs = collectionService:GetTagged("CriminalATM")
                                 for _, atm in pairs(taggedATMs) do
-                                    if atm:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
                                         debugLog("[AutoRobATMs] 已知位置找到ATM (tagged)")
                                         break
@@ -1378,7 +1436,7 @@ local function performAutoRobATMs()
                                 if searchSuccess then break end
                                 
                                 for _, obj in pairs(getnilinstances()) do
-                                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and config.autoRobATMsEnabled then
+                                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
                                         debugLog("[AutoRobATMs] 已知位置找到ATM (nil)")
                                         break
