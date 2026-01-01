@@ -227,6 +227,22 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             end
         end
         
+        -- 删除排行榜相关的旧配置项（排行榜不支持目标检测）
+        local leaderboardOldKeys = {
+            "targetLeaderboard",
+            "baseLeaderboard",
+            "lastSavedLeaderboard",
+            "enableLeaderboardKick"
+        }
+        
+        for _, oldKey in ipairs(leaderboardOldKeys) do
+            if userConfig[oldKey] ~= nil then
+                userConfig[oldKey] = nil
+                migrated = true
+                PlutoX.debug("[Config] 删除不再需要的配置项: " .. oldKey)
+            end
+        end
+        
         return migrated
     end
     
