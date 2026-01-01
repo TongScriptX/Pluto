@@ -2062,10 +2062,6 @@ UILibrary:CreateLabel(searchCard, {
     Text = "搜索购买",
 })
 
-local searchInput = UILibrary:CreateTextBox(searchCard, {
-    PlaceholderText = "输入车辆名称关键词",
-})
-
 local searchResultsFrame = Instance.new("ScrollingFrame")
 searchResultsFrame.Name = "SearchResults"
 searchResultsFrame.Size = UDim2.new(1, -16, 0, 200)
@@ -2094,8 +2090,10 @@ local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, UILibrary.UI_STYLES.CornerRadius)
 corner.Parent = searchResultsFrame
 
-searchInput.OnFocusLost:Connect(function()
-    local searchText = searchInput.Text:lower()
+local searchInput = UILibrary:CreateTextBox(searchCard, {
+    PlaceholderText = "输入车辆名称关键词",
+    OnFocusLost = function(text)
+        local searchText = text:lower()
     
     -- 清空搜索结果
     for _, child in ipairs(searchResultsFrame:GetChildren()) do
