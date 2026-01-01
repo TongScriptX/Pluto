@@ -220,10 +220,10 @@ local function parseContents(contents)
     local rank = 1
     local leaderboardList = {}
     
-    -- 输出完整榜单（只显示玩家数据）
+    -- 输出完整榜单
     debugLog("[排行榜] ========== 完整榜单 ==========")
     for _, child in ipairs(contents:GetChildren()) do
-        -- 跳过模板元素（名称不是数字的）
+        -- 跳过模板元素
         if tonumber(child.Name) then
             local placement = child:FindFirstChild("Placement")
             local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
@@ -613,7 +613,7 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
--- 重新定义 forceDeliverRobbedAmount 函数（确保在 config 初始化之后）
+-- forceDeliverRobbedAmount 函数
 local function forceDeliverRobbedAmount(isShutdown)
     debugLog("[AutoRob] === 开始强制投放流程 ===")
     
@@ -814,7 +814,7 @@ local function forceDeliverRobbedAmount(isShutdown)
     return deliverySuccess, deliveryAttempts, initialRobbedAmount
 end
 
--- 重新定义 checkAndForceDelivery 函数（确保在 config 初始化之后）
+-- checkAndForceDelivery 函数
 local function checkAndForceDelivery(tempTarget)
     local robbedAmount = getRobbedAmount() or 0
     local targetAmount = tempTarget or config.robTargetAmount or 0
@@ -851,7 +851,7 @@ local function checkAndForceDelivery(tempTarget)
     return false
 end
 
--- 重新定义 monitorDropOffStatusAndUpdateTarget 函数（确保在 config 初始化之后）
+-- monitorDropOffStatusAndUpdateTarget 函数
 local lastDropOffEnabledStatus = nil
 
 local function monitorDropOffStatusAndUpdateTarget()
@@ -1941,7 +1941,7 @@ function purchaseFunctions.enterDealership()
     return true
 end
 
--- 获取所有车辆数据（异步处理，避免卡顿）
+-- 获取所有车辆数据
 function purchaseFunctions.getAllVehicles()
     local vehicles = {}
     
@@ -1988,22 +1988,18 @@ function purchaseFunctions.getAllVehicles()
             return vehicles
         end
         
-        -- 使用协程处理车辆遍历，避免卡顿
         local allChildren = container:GetChildren()
         local totalChildren = #allChildren
         
         for i, vehicleFrame in ipairs(allChildren) do
-            -- 每处理 10 辆车让出一次控制权
             if i % 10 == 0 then
                 task.wait()
             end
             
-            -- 车辆可能是 Frame 或 ImageButton 类型
             if vehicleFrame:IsA("Frame") or vehicleFrame:IsA("ImageButton") then
                 local vehicleName = nil
                 local price = nil
                 
-                -- 遍历所有子元素查找 VehicleName 和 Price
                 for _, child in ipairs(vehicleFrame:GetChildren()) do
                     if child.Name == "VehicleName" and child:IsA("TextLabel") then
                         vehicleName = child.Text
@@ -2019,7 +2015,7 @@ function purchaseFunctions.getAllVehicles()
                         name = vehicleName,
                         price = price,
                         frame = vehicleFrame,
-                        frameName = vehicleFrame.Name  -- 添加frame的Name属性
+                        frameName = vehicleFrame.Name
                     })
                 end
             end
@@ -2068,7 +2064,7 @@ function purchaseFunctions.buyVehicle(frameName)
         
         local args = {
             {
-                frameName, -- 传入Frame的Name属性
+                frameName,
                 mainColor, -- 主颜色（随机）
                 secondaryColor, -- 次要颜色（随机）
                 wheelColor  -- 轮毂颜色（随机）
@@ -2110,7 +2106,7 @@ end
 -- 记录一键购买的车辆
 purchaseFunctions.autoPurchasedVehicles = {}
 
--- 独立的购买车辆函数（整合版）
+-- 独立的购买车辆函数
 function purchaseFunctions.purchaseVehicle(vehicle)
     debugLog("[Purchase] ========== 开始购买车辆 ==========")
     debugLog("[Purchase] 车辆名称:", vehicle.name)
@@ -2195,7 +2191,7 @@ function purchaseFunctions.regretAllPurchases()
             debugLog("[Regret] 卖出失败:", vehicle.name)
         end
         
-        task.wait(0.8) -- 增加卖车间隔到0.8秒
+        task.wait(1)
     end
     
     debugLog("[Regret] ========== 后悔完成 ==========")
@@ -2214,7 +2210,7 @@ function purchaseFunctions.autoPurchase(options)
     local sortAscending = options.sortAscending ~= false  -- 默认按价格从低到高排序
     local maxPurchases = options.maxPurchases or math.huge  -- 最大购买数量
     local onProgress = options.onProgress or function() end  -- 进度回调
-    local shouldContinue = options.shouldContinue or function() return true end  -- 继续条件
+    local shouldContinue = options.shouldContinue or function() return true end
     
     debugLog("[AutoPurchase] ========== 开始自动购买 ==========")
     
@@ -2223,7 +2219,7 @@ function purchaseFunctions.autoPurchase(options)
         return false, "无法进入车店"
     end
     
-    task.wait(1) -- 等待车店加载
+    task.wait(1)
     
     -- 获取所有车辆
     local vehicles = purchaseFunctions.getAllVehicles()
@@ -2281,7 +2277,7 @@ function purchaseFunctions.autoPurchase(options)
                     remainingCash = currentCash
                 })
                 
-                task.wait(0.5) -- 购买间隔
+                task.wait(1)
             else
                 debugLog("[AutoPurchase] 购买失败:", vehicle.name)
             end
@@ -2376,7 +2372,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             return
         end
         
-        task.wait(1) -- 等待车店加载
+        task.wait(1)
         
         local vehicles = purchaseFunctions.getAllVehicles()
         
@@ -2389,7 +2385,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 table.insert(matchedVehicles, {
                     name = vehicle.name,
                     price = vehicle.price,
-                    frameName = vehicle.frameName,  -- 添加frameName
+                    frameName = vehicle.frameName,
                     displayText = vehicle.name .. " - $" .. formatNumber(vehicle.price)
                 })
             end
@@ -2473,7 +2469,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     local selectedDisplayText = dropdownButton.Text
-                    -- 从displayText中提取车辆名称（格式：名称 - $价格）
+                    -- 从displayText中提取车辆名
                     local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
                     
                     if not selectedVehicleName then
@@ -2486,7 +2482,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         return
                     end
                     
-                    -- 查找车辆（从matchedVehicles中查找，确保有frame）
+                    -- 查找车辆
                     local selectedVehicle = nil
                     for _, vehicle in ipairs(matchedVehicles) do
                         if vehicle.name == selectedVehicleName then
