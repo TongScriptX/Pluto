@@ -2021,7 +2021,6 @@ function purchaseFunctions.getAllVehicles()
                         frame = vehicleFrame,
                         frameName = vehicleFrame.Name  -- 添加frame的Name属性
                     })
-                    debugLog("[Purchase] 找到车辆:", vehicleName, "Frame Name:", vehicleFrame.Name)
                 end
             end
         end
@@ -2358,7 +2357,9 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         
                         -- 清空搜索框
                         debugLog("[Purchase] 清空搜索框")
-                        searchInput.Text = ""
+                        if searchInput and searchInput.Parent then
+                            searchInput.Text = ""
+                        end
                     else
                         debugLog("[Purchase] 购买失败")
                         UILibrary:Notify({
