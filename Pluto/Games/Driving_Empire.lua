@@ -171,6 +171,28 @@ PlutoX.registerDataType({
     supportTarget = true
 })
 
+-- 注册排行榜数据类型
+PlutoX.registerDataType({
+    id = "leaderboard",
+    name = "排行榜排名",
+    icon = "🏆",
+    fetchFunc = function()
+        local rank, isOnLeaderboard = fetchPlayerRank()
+        if isOnLeaderboard then
+            return rank
+        end
+        return nil
+    end,
+    calculateAvg = false,
+    supportTarget = false,
+    formatFunc = function(value)
+        if value then
+            return "#" .. tostring(value)
+        end
+        return "未上榜"
+    end
+})
+
 -- 排行榜配置
 local leaderboardConfig = {
     position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
@@ -191,14 +213,39 @@ end
 
 local function parseContents(contents)
     local rank = 1
+    local leaderboardList = {}
+    
+    -- 输出完整榜单（只显示玩家数据）
+    debugLog("[排行榜] ========== 完整榜单 ==========")
     for _, child in ipairs(contents:GetChildren()) do
-        if tonumber(child.Name) == userId or child.Name == username then
+        -- 跳过模板元素（名称不是数字的）
+        if tonumber(child.Name) then
             local placement = child:FindFirstChild("Placement")
             local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-            debugLog("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
-            return foundRank, true
+            table.insert(leaderboardList, string.format("#%d: %s", foundRank, child.Name))
+            rank = rank + 1
         end
-        rank = rank + 1
+    end
+    
+    -- 输出榜单列表
+    for _, entry in ipairs(leaderboardList) do
+        debugLog("[排行榜] " .. entry)
+    end
+    debugLog("[排行榜] ==========================")
+    
+    -- 查找玩家排名
+    rank = 1
+    for _, child in ipairs(contents:GetChildren()) do
+        -- 跳过模板元素
+        if tonumber(child.Name) then
+            if tonumber(child.Name) == userId or child.Name == username then
+                local placement = child:FindFirstChild("Placement")
+                local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
+                debugLog("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
+                return foundRank, true
+            end
+            rank = rank + 1
+        end
     end
     debugLog("[排行榜] ❌ 未在排行榜中找到玩家")
     return nil, false
@@ -226,16 +273,24 @@ local function fetchPlayerRank()
         return nil, false
     end
     
-    debugLog("[排行榜] 已请求流式传输，等待加载...")
-    wait(leaderboardConfig.streamTimeout)
+    debugLog("[排行榜] 已请求流式传输，开始轮询检测...")
     
-    contents = tryGetContents(2)
-    if contents then
-        debugLog("[排行榜] ✅ 远程加载成功")
-        return parseContents(contents)
+    -- 轮询检测排行榜是否加载完成
+    local checkStartTime = tick()
+    local maxCheckTime = leaderboardConfig.streamTimeout
+    local checkInterval = 0.5
+    
+    while (tick() - checkStartTime) < maxCheckTime do
+        wait(checkInterval)
+        contents = tryGetContents(1)
+        if contents then
+            debugLog("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
+            return parseContents(contents)
+        end
+        debugLog("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
     end
     
-    debugLog("[排行榜] ========== 远程加载失败 ==========")
+    debugLog("[排行榜] ========== 远程加载失败 (超时) ==========")
     return nil, false
 end
 
@@ -1549,6 +1604,23 @@ local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, 
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
 disconnectDetector:init()
 
+-- 设置数据监测器的发送前回调，用于添加排行榜信息
+dataMonitor.beforeSendCallback = function(embed)
+    if config.notifyLeaderboard or config.leaderboardKick then
+        local currentRank, isOnLeaderboard = fetchPlayerRank()
+        local status = isOnLeaderboard and ("#" .. currentRank) or "未上榜"
+        
+        table.insert(embed.fields, {
+            name = "🏆 排行榜",
+            value = string.format("**当前排名**: %s", status),
+            inline = true
+        })
+        
+        return embed
+    end
+    return embed
+end
+
 -- 反挂机
 player.Idled:Connect(function()
     VirtualUser:CaptureController()
@@ -1887,29 +1959,17 @@ spawn(function()
             return
         end
 
-        -- 排行榜检测（只在通知间隔内进行）
-        local notifyIntervalSeconds = (config.notificationInterval or 5) * 60
-        if (config.notifyLeaderboard or config.leaderboardKick) and 
-           (currentTime - lastSendTime) >= notifyIntervalSeconds then
-            
+        -- 排行榜踢出检测（与主通知时间同步）
+        if config.leaderboardKick and (currentTime - lastSendTime) >= notifyIntervalSeconds then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
-            local status = isOnLeaderboard and ("#" .. currentRank) or "未上榜"
             
-            if config.notifyLeaderboard then
-                UILibrary:Notify({
-                    Title = "排行榜检测",
-                    Text = status,
-                    Duration = 5
-                })
-            end
-            
-            if isOnLeaderboard and config.leaderboardKick then
+            if isOnLeaderboard then
                 webhookManager:dispatchWebhook({
                     embeds = {{
                         title = "🏆 排行榜踢出",
                         description = string.format(
-                            "**游戏**: %s\n**用户**: %s\n**当前排名**: %s\n检测到已上榜，已踢出",
-                            gameName, username, status),
+                            "**游戏**: %s\n**用户**: %s\n**当前排名**: #%s\n检测到已上榜，已踢出",
+                            gameName, username, currentRank),
                         color = 16753920,
                         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
                         footer = { text = "桐 · TStudioX" }
@@ -1920,8 +1980,6 @@ spawn(function()
                 game:Shutdown()
                 return
             end
-            
-            lastSendTime = currentTime
         end
 
         wait(checkInterval)

@@ -2,7 +2,7 @@ name: 👥 Contributors Statistics
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [ main ]
   issues:
     types: [opened, closed, reopened, edited]
   workflow_dispatch:
@@ -190,25 +190,4 @@ jobs:
           create_branch: false
           push_options: '--force-with-lease'
           skip_fetch: false
-
-  generate-contributors-image:
-    runs-on: ubuntu-latest
-    needs: update-contributors
-    if: needs.update-contributors.result == 'success'
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Generate contributors image
-        uses: lowlighter/metrics@latest
-        with:
-          filename: assets/contributors.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-          base: ""
-          plugin_contributors: yes
-          plugin_contributors_head: master
-          plugin_contributors_tail: master
-          plugin_contributors_organizations: yes
-          plugin_contributors_details: percentage, days
-          plugin_contributors_sections: base, recent
-          config_timezone: Asia/Shanghai
-          config_output: svg
+          branch: main

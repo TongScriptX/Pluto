@@ -227,6 +227,22 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             end
         end
         
+        -- 删除排行榜相关的旧配置项（排行榜不支持目标检测）
+        local leaderboardOldKeys = {
+            "targetLeaderboard",
+            "baseLeaderboard",
+            "lastSavedLeaderboard",
+            "enableLeaderboardKick"
+        }
+        
+        for _, oldKey in ipairs(leaderboardOldKeys) do
+            if userConfig[oldKey] ~= nil then
+                userConfig[oldKey] = nil
+                migrated = true
+                PlutoX.debug("[Config] 删除不再需要的配置项: " .. oldKey)
+            end
+        end
+        
         return migrated
     end
     
@@ -559,6 +575,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     monitor.webhookDisabled = false
     monitor.lastValues = {}
     monitor.checkInterval = 1
+    monitor.beforeSendCallback = nil -- 发送前的回调函数
     
     -- 初始化所有数据类型
     function monitor:init()
@@ -675,7 +692,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         -- 计算下次通知时间
         local nextNotifyTimestamp = currentTime + (self.config.notificationInterval or 30) * 60
         local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
-        local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
+        local countdownT = string.format("<t:%d:f>", nextNotifyTimestamp)
         
         -- 构建 embed fields
         local fields = {}
@@ -710,7 +727,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                                 
                                 -- 计算完成时间戳
                                 local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
-                                local countdownT = string.format("<t:%d:T>", completionTimestamp)
+                                local countdownT = string.format("<t:%d:f>", completionTimestamp)
                                 
                                 if days > 0 then
                                     estimatedTimeText = string.format("\n**预计完成**: %d天%d小时%d分钟\n**完成时间**: %s", days, hours, minutes, countdownT)
@@ -766,6 +783,14 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "桐 · TStudioX" }
         }
+        
+        -- 调用发送前回调，允许修改 embed
+        if self.beforeSendCallback then
+            local success, modifiedEmbed = pcall(self.beforeSendCallback, embed)
+            if success and modifiedEmbed then
+                embed = modifiedEmbed
+            end
+        end
         
         return self.webhookManager:dispatchWebhook({ embeds = { embed } })
     end
