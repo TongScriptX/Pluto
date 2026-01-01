@@ -2052,9 +2052,9 @@ function purchaseFunctions.randomColor()
 end
 
 -- 购买指定车辆
-function purchaseFunctions.buyVehicle(vehicleName)
+function purchaseFunctions.buyVehicle(vehicleFrame)
     debugLog("[Purchase] ========== 开始购买 ==========")
-    debugLog("[Purchase] 车辆名称:", vehicleName)
+    debugLog("[Purchase] 车辆实例:", vehicleFrame)
     
     local success, result = pcall(function()
         local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
@@ -2067,7 +2067,7 @@ function purchaseFunctions.buyVehicle(vehicleName)
         
         local args = {
             {
-                vehicleName,
+                vehicleFrame, -- 传入车辆实例而不是名称
                 mainColor, -- 主颜色（随机）
                 secondaryColor, -- 次要颜色（随机）
                 wheelColor  -- 轮毂颜色（随机）
@@ -2075,7 +2075,7 @@ function purchaseFunctions.buyVehicle(vehicleName)
         }
         
         debugLog("[Purchase] 购买参数:")
-        debugLog("[Purchase]  - 车辆:", vehicleName)
+        debugLog("[Purchase]  - 车辆实例:", vehicleFrame)
         debugLog("[Purchase]  - 主颜色:", mainColor)
         debugLog("[Purchase]  - 次要颜色:", secondaryColor)
         debugLog("[Purchase]  - 轮毂颜色:", wheelColor)
@@ -2194,6 +2194,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 table.insert(matchedVehicles, {
                     name = vehicle.name,
                     price = vehicle.price,
+                    frame = vehicle.frame, -- 存储车辆实例
                     displayText = vehicle.name .. " - $" .. formatNumber(vehicle.price)
                 })
             end
@@ -2290,9 +2291,9 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         return
                     end
                     
-                    -- 查找车辆价格
+                    -- 查找车辆（从matchedVehicles中查找，确保有frame）
                     local selectedVehicle = nil
-                    for _, vehicle in ipairs(vehicles) do
+                    for _, vehicle in ipairs(matchedVehicles) do
                         if vehicle.name == selectedVehicleName then
                             selectedVehicle = vehicle
                             break
@@ -2323,7 +2324,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     debugLog("[Purchase] 开始购买:", selectedVehicle.name)
-                    local success, result = purchaseFunctions.buyVehicle(selectedVehicle.name)
+                    local success, result = purchaseFunctions.buyVehicle(selectedVehicle.frame)
                     debugLog("[Purchase] 购买结果:", success, result)
                     
                     if success then
