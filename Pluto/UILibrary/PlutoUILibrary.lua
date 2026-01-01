@@ -796,8 +796,18 @@ function UILibrary:CreateDropdown(parent, options)
     optionsList.ScrollBarThickness = 4
     optionsList.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
     optionsList.Visible = false
-    optionsList.Parent = dropdownFrame
-    optionsList.ZIndex = 1000
+    optionsList.ZIndex = 99999
+    
+    -- 找到ScreenGui作为父级，确保显示在最上层
+    local screenGui = parent
+    while screenGui and screenGui.ClassName ~= "ScreenGui" do
+        screenGui = screenGui.Parent
+    end
+    if screenGui then
+        optionsList.Parent = screenGui
+    else
+        optionsList.Parent = dropdownFrame
+    end
 
     local optionsListCorner = Instance.new("UICorner", optionsList)
     optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
@@ -884,15 +894,22 @@ function UILibrary:CreateDropdown(parent, options)
         arrowLabel.Text = isOpen and "▲" or "▼"
 
         if isOpen then
+            -- 计算绝对位置
+            local buttonAbsolutePos = dropdownButton.AbsolutePosition
+            local buttonAbsoluteSize = dropdownButton.AbsoluteSize
+            local screenGuiPos = optionsList.Parent.AbsolutePosition
+            
+            optionsList.Position = UDim2.new(0, buttonAbsolutePos.X - screenGuiPos.X, 0, buttonAbsolutePos.Y + buttonAbsoluteSize.Y + 4)
+            
             -- 设置实际高度
             local listHeight = math.min(200, #options.Options * 28 + 8)
-            optionsList.Size = UDim2.new(0.4, -ddPad, 0, listHeight)
+            optionsList.Size = UDim2.new(0, buttonAbsoluteSize.X, 0, listHeight)
             TweenService:Create(optionsList, self.TWEEN_INFO_UI, {
                 BackgroundTransparency = 0.3
             }):Play()
         else
             -- 隐藏时重置高度为0
-            optionsList.Size = UDim2.new(0.4, -ddPad, 0, 0)
+            optionsList.Size = UDim2.new(0, 0, 0, 0)
             TweenService:Create(optionsList, self.TWEEN_INFO_UI, {
                 BackgroundTransparency = 0.3
             }):Play()
