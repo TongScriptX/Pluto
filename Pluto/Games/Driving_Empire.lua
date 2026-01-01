@@ -2070,11 +2070,11 @@ local searchResultsFrame = Instance.new("ScrollingFrame")
 searchResultsFrame.Name = "SearchResults"
 searchResultsFrame.Size = UDim2.new(1, -16, 0, 200)
 searchResultsFrame.Position = UDim2.new(0, 8, 0, 80)
-searchResultsFrame.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+searchResultsFrame.BackgroundColor3 = UILibrary.THEME.SecondaryBackground or UILibrary.DEFAULT_THEME.SecondaryBackground
 searchResultsFrame.BackgroundTransparency = 0.3
 searchResultsFrame.BorderSizePixel = 0
 searchResultsFrame.ScrollBarThickness = 6
-searchResultsFrame.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
+searchResultsFrame.ScrollBarImageColor3 = UILibrary.THEME.Primary or UILibrary.DEFAULT_THEME.Primary
 searchResultsFrame.Parent = searchCard
 searchResultsFrame.Visible = false
 
@@ -2091,7 +2091,7 @@ searchResultsPadding.PaddingBottom = UDim.new(0, 4)
 searchResultsPadding.Parent = searchResultsFrame
 
 local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+corner.CornerRadius = UDim.new(0, UILibrary.UI_STYLES.CornerRadius)
 corner.Parent = searchResultsFrame
 
 searchInput.OnFocusLost:Connect(function()
@@ -2150,7 +2150,7 @@ searchInput.OnFocusLost:Connect(function()
         local resultFrame = Instance.new("Frame")
         resultFrame.Name = "Result_" .. i
         resultFrame.Size = UDim2.new(1, 0, 0, 60)
-        resultFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
+        resultFrame.BackgroundColor3 = UILibrary.THEME.Background or UILibrary.DEFAULT_THEME.Background
         resultFrame.BackgroundTransparency = 0.5
         resultFrame.Parent = searchResultsFrame
         
@@ -2164,10 +2164,10 @@ searchInput.OnFocusLost:Connect(function()
         nameLabel.Position = UDim2.new(0, 8, 0, 4)
         nameLabel.BackgroundTransparency = 1
         nameLabel.Text = vehicle.name
-        nameLabel.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+        nameLabel.TextColor3 = UILibrary.THEME.Text or UILibrary.DEFAULT_THEME.Text
         nameLabel.TextSize = 12
         nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-        nameLabel.Font = THEME.Font
+        nameLabel.Font = UILibrary.THEME.Font
         nameLabel.Parent = resultFrame
         
         local priceLabel = Instance.new("TextLabel")
@@ -2179,19 +2179,19 @@ searchInput.OnFocusLost:Connect(function()
         priceLabel.TextColor3 = Color3.fromRGB(76, 175, 80)
         priceLabel.TextSize = 11
         priceLabel.TextXAlignment = Enum.TextXAlignment.Left
-        priceLabel.Font = THEME.Font
+        priceLabel.Font = UILibrary.THEME.Font
         priceLabel.Parent = resultFrame
         
         local buyButton = Instance.new("TextButton")
         buyButton.Name = "BuyButton"
         buyButton.Size = UDim2.new(0, 80, 0, 30)
         buyButton.Position = UDim2.new(1, -88, 0.5, -15)
-        buyButton.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
+        buyButton.BackgroundColor3 = UILibrary.THEME.Primary or UILibrary.DEFAULT_THEME.Primary
         buyButton.BackgroundTransparency = 0.3
         buyButton.Text = "购买"
-        buyButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+        buyButton.TextColor3 = UILibrary.THEME.Text or UILibrary.DEFAULT_THEME.Text
         buyButton.TextSize = 11
-        buyButton.Font = THEME.Font
+        buyButton.Font = UILibrary.THEME.Font
         buyButton.Parent = resultFrame
         
         local buyButtonCorner = Instance.new("UICorner")
