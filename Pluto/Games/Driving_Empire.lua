@@ -2216,6 +2216,9 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         local vehicleDropdown = nil
         local buyButton = nil
         
+        debugLog("[Purchase] 准备创建下拉框，选项数量:", #matchedVehicles)
+        debugLog("[Purchase] 第一个选项:", matchedVehicles[1])
+        
         pcall(function()
             vehicleDropdown = UILibrary:CreateDropdown(searchCard, {
                 Text = "选择车辆",
@@ -2238,14 +2241,20 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             return
         end
         
+        debugLog("[Purchase] 下拉框对象存在:", vehicleDropdown ~= nil)
+        debugLog("[Purchase] 下拉框父级:", vehicleDropdown.Parent ~= nil)
+        
         -- 创建购买按钮
         pcall(function()
             buyButton = UILibrary:CreateButton(searchCard, {
                 Text = "购买选中车辆",
                 Callback = function()
+                    debugLog("[Purchase] 购买按钮被点击")
+                    
                     -- 获取下拉框选中的车辆
                     local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
                     if not dropdownButton then
+                        debugLog("[Purchase] 未找到 DropdownButton")
                         UILibrary:Notify({
                             Title = "错误",
                             Text = "请先选择车辆",
@@ -2255,6 +2264,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     local selectedVehicleName = dropdownButton.Text
+                    debugLog("[Purchase] 选中的车辆:", selectedVehicleName)
                     
                     -- 查找车辆价格
                     local selectedVehicle = nil
@@ -2266,6 +2276,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     if not selectedVehicle then
+                        debugLog("[Purchase] 未找到选中的车辆数据")
                         UILibrary:Notify({
                             Title = "错误",
                             Text = "未找到选中的车辆",
@@ -2275,8 +2286,10 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     local currentCash = purchaseFunctions.getCurrentCash()
+                    debugLog("[Purchase] 当前资金:", currentCash, "车辆价格:", selectedVehicle.price)
                     
                     if currentCash < selectedVehicle.price then
+                        debugLog("[Purchase] 资金不足")
                         UILibrary:Notify({
                             Title = "资金不足",
                             Text = string.format("需要: $%s\n当前: $%s", formatNumber(selectedVehicle.price), formatNumber(currentCash)),
@@ -2285,9 +2298,12 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         return
                     end
                     
+                    debugLog("[Purchase] 开始购买:", selectedVehicle.name)
                     local success, result = purchaseFunctions.buyVehicle(selectedVehicle.name)
+                    debugLog("[Purchase] 购买结果:", success, result)
                     
                     if success then
+                        debugLog("[Purchase] 购买成功，开始清理UI")
                         UILibrary:Notify({
                             Title = "购买成功",
                             Text = string.format("已购买: %s\n价格: $%s", selectedVehicle.name, formatNumber(selectedVehicle.price)),
@@ -2297,19 +2313,23 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         -- 安全地清理UI元素
                         pcall(function()
                             if vehicleDropdown and vehicleDropdown.Parent then
+                                debugLog("[Purchase] 销毁下拉框")
                                 vehicleDropdown:Destroy()
                             end
                         end)
                         
                         pcall(function()
                             if buyButton and buyButton.Parent then
+                                debugLog("[Purchase] 销毁购买按钮")
                                 buyButton:Destroy()
                             end
                         end)
                         
                         -- 清空搜索框
+                        debugLog("[Purchase] 清空搜索框")
                         searchInput.Text = ""
                     else
+                        debugLog("[Purchase] 购买失败")
                         UILibrary:Notify({
                             Title = "购买失败",
                             Text = string.format("无法购买: %s", selectedVehicle.name),
@@ -2323,6 +2343,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         end)
         
         if not buyButton then
+            debugLog("[Purchase] 购买按钮创建失败")
             UILibrary:Notify({
                 Title = "错误",
                 Text = "无法创建购买按钮",
