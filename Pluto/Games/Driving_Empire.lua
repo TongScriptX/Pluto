@@ -2029,45 +2029,40 @@ function purchaseFunctions.getAllVehicles()
         for _, vehicleFrame in ipairs(container:GetChildren()) do
             debugLog("[Purchase] 检查子元素:", vehicleFrame.Name, "类型:", vehicleFrame.ClassName)
             
-            if vehicleFrame:IsA("Frame") then
-                debugLog("[Purchase] 找到 Frame:", vehicleFrame.Name)
-                debugLog("[Purchase] Frame 的子元素:")
+            -- 车辆可能是 Frame 或 ImageButton 类型
+            if vehicleFrame:IsA("Frame") or vehicleFrame:IsA("ImageButton") then
+                debugLog("[Purchase] 找到车辆元素:", vehicleFrame.Name)
+                
+                -- 尝试从子元素获取车辆名称和价格
+                local vehicleName = nil
+                local price = nil
+                
+                -- 遍历所有子元素查找 VehicleName 和 Price
                 for _, child in ipairs(vehicleFrame:GetChildren()) do
-                    debugLog("  -", child.Name, ":", child.ClassName)
+                    if child.Name == "VehicleName" and child:IsA("TextLabel") then
+                        vehicleName = child.Text
+                        debugLog("[Purchase] 找到 VehicleName:", vehicleName)
+                    elseif child.Name == "Price" and child:IsA("TextLabel") then
+                        local priceText = child.Text
+                        local cleanPrice = priceText:gsub("[$,]", "")
+                        price = tonumber(cleanPrice)
+                        debugLog("[Purchase] 找到 Price:", priceText, "解析后:", price)
+                    end
                 end
                 
-                local vehicleNameLabel = vehicleFrame:FindFirstChild("VehicleName")
-                local priceLabel = vehicleFrame:FindFirstChild("Price")
+                debugLog("[Purchase] 最终车辆名称:", vehicleName)
+                debugLog("[Purchase] 最终价格:", price)
                 
-                debugLog("[Purchase] VehicleName:", vehicleNameLabel ~= nil and "找到" or "未找到")
-                debugLog("[Purchase] Price:", priceLabel ~= nil and "找到" or "未找到")
-                
-                if vehicleNameLabel and priceLabel then
-                    local name = vehicleNameLabel.Text
-                    local priceText = priceLabel.Text
-                    
-                    debugLog("[Purchase] 车辆名称:", name)
-                    debugLog("[Purchase] 价格文本:", priceText)
-                    
-                    -- 解析价格（移除$和逗号）
-                    local cleanPrice = priceText:gsub("[$,]", "")
-                    local price = tonumber(cleanPrice)
-                    
-                    debugLog("[Purchase] 解析后价格:", price)
-                    
-                    if name and price then
-                        table.insert(vehicles, {
-                            name = name,
-                            price = price,
-                            frame = vehicleFrame
-                        })
-                        vehicleCount = vehicleCount + 1
-                        debugLog("[Purchase] ✓ 成功添加车辆:", name)
-                    else
-                        debugLog("[Purchase] ✗ 跳过车辆（名称或价格无效）")
-                    end
+                if vehicleName and price then
+                    table.insert(vehicles, {
+                        name = vehicleName,
+                        price = price,
+                        frame = vehicleFrame
+                    })
+                    vehicleCount = vehicleCount + 1
+                    debugLog("[Purchase] ✓ 成功添加车辆:", vehicleName, "价格:", price)
                 else
-                    debugLog("[Purchase] ✗ 跳过 Frame（缺少 VehicleName 或 Price）")
+                    debugLog("[Purchase] ✗ 跳过车辆（名称或价格无效）")
                 end
             end
         end
