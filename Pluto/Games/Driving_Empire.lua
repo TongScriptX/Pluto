@@ -2195,7 +2195,7 @@ function purchaseFunctions.regretAllPurchases()
             debugLog("[Regret] 卖出失败:", vehicle.name)
         end
         
-        task.wait(0.3) -- 卖车间隔
+        task.wait(0.8) -- 增加卖车间隔到0.8秒
     end
     
     debugLog("[Regret] ========== 后悔完成 ==========")
