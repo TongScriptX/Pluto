@@ -2018,8 +2018,10 @@ function purchaseFunctions.getAllVehicles()
                     table.insert(vehicles, {
                         name = vehicleName,
                         price = price,
-                        frame = vehicleFrame
+                        frame = vehicleFrame,
+                        frameName = vehicleFrame.Name  -- 添加frame的Name属性
                     })
+                    debugLog("[Purchase] 找到车辆:", vehicleName, "Frame Name:", vehicleFrame.Name)
                 end
             end
         end
@@ -2052,9 +2054,10 @@ function purchaseFunctions.randomColor()
 end
 
 -- 购买指定车辆
-function purchaseFunctions.buyVehicle(vehicleFrame)
+function purchaseFunctions.buyVehicle(frameName)
     debugLog("[Purchase] ========== 开始购买 ==========")
-    debugLog("[Purchase] 车辆实例:", vehicleFrame)
+    debugLog("[Purchase] 购买名称:", frameName)
+    debugLog("[Purchase] 购买名称类型:", type(frameName))
     
     local success, result = pcall(function()
         local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
@@ -2067,7 +2070,7 @@ function purchaseFunctions.buyVehicle(vehicleFrame)
         
         local args = {
             {
-                vehicleFrame, -- 传入车辆实例而不是名称
+                frameName, -- 传入Frame的Name属性
                 mainColor, -- 主颜色（随机）
                 secondaryColor, -- 次要颜色（随机）
                 wheelColor  -- 轮毂颜色（随机）
@@ -2075,7 +2078,7 @@ function purchaseFunctions.buyVehicle(vehicleFrame)
         }
         
         debugLog("[Purchase] 购买参数:")
-        debugLog("[Purchase]  - 车辆实例:", vehicleFrame)
+        debugLog("[Purchase]  - 购买名称:", frameName)
         debugLog("[Purchase]  - 主颜色:", mainColor)
         debugLog("[Purchase]  - 次要颜色:", secondaryColor)
         debugLog("[Purchase]  - 轮毂颜色:", wheelColor)
@@ -2194,7 +2197,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 table.insert(matchedVehicles, {
                     name = vehicle.name,
                     price = vehicle.price,
-                    frame = vehicle.frame, -- 存储车辆实例
+                    frameName = vehicle.frameName,  -- 添加frameName
                     displayText = vehicle.name .. " - $" .. formatNumber(vehicle.price)
                 })
             end
@@ -2324,7 +2327,8 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     debugLog("[Purchase] 开始购买:", selectedVehicle.name)
-                    local success, result = purchaseFunctions.buyVehicle(selectedVehicle.frame)
+                    debugLog("[Purchase] 使用Frame Name:", selectedVehicle.frameName)
+                    local success, result = purchaseFunctions.buyVehicle(selectedVehicle.frameName)
                     debugLog("[Purchase] 购买结果:", success, result)
                     
                     if success then
