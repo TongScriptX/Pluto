@@ -2213,83 +2213,123 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         end
         
         -- 创建车辆下拉框
-        local vehicleDropdown = UILibrary:CreateDropdown(searchCard, {
-            Text = "选择车辆",
-            DefaultOption = matchedVehicles[1],
-            Options = matchedVehicles,
-            Callback = function(selectedVehicle)
-                debugLog("[Purchase] 选择了车辆:", selectedVehicle)
-            end
-        })
+        local vehicleDropdown = nil
+        local buyButton = nil
+        
+        pcall(function()
+            vehicleDropdown = UILibrary:CreateDropdown(searchCard, {
+                Text = "选择车辆",
+                DefaultOption = matchedVehicles[1],
+                Options = matchedVehicles,
+                Callback = function(selectedVehicle)
+                    debugLog("[Purchase] 选择了车辆:", selectedVehicle)
+                end
+            })
+            
+            debugLog("[Purchase] 下拉框创建成功")
+        end)
+        
+        if not vehicleDropdown then
+            UILibrary:Notify({
+                Title = "错误",
+                Text = "无法创建下拉框",
+                Duration = 5
+            })
+            return
+        end
         
         -- 创建购买按钮
-        local buyButton = UILibrary:CreateButton(searchCard, {
-            Text = "购买选中车辆",
-            Callback = function()
-                -- 获取下拉框选中的车辆
-                local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
-                if not dropdownButton then
-                    UILibrary:Notify({
-                        Title = "错误",
-                        Text = "请先选择车辆",
-                        Duration = 3
-                    })
-                    return
-                end
-                
-                local selectedVehicleName = dropdownButton.Text
-                
-                -- 查找车辆价格
-                local selectedVehicle = nil
-                for _, vehicle in ipairs(vehicles) do
-                    if vehicle.name == selectedVehicleName then
-                        selectedVehicle = vehicle
-                        break
+        pcall(function()
+            buyButton = UILibrary:CreateButton(searchCard, {
+                Text = "购买选中车辆",
+                Callback = function()
+                    -- 获取下拉框选中的车辆
+                    local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
+                    if not dropdownButton then
+                        UILibrary:Notify({
+                            Title = "错误",
+                            Text = "请先选择车辆",
+                            Duration = 3
+                        })
+                        return
+                    end
+                    
+                    local selectedVehicleName = dropdownButton.Text
+                    
+                    -- 查找车辆价格
+                    local selectedVehicle = nil
+                    for _, vehicle in ipairs(vehicles) do
+                        if vehicle.name == selectedVehicleName then
+                            selectedVehicle = vehicle
+                            break
+                        end
+                    end
+                    
+                    if not selectedVehicle then
+                        UILibrary:Notify({
+                            Title = "错误",
+                            Text = "未找到选中的车辆",
+                            Duration = 5
+                        })
+                        return
+                    end
+                    
+                    local currentCash = purchaseFunctions.getCurrentCash()
+                    
+                    if currentCash < selectedVehicle.price then
+                        UILibrary:Notify({
+                            Title = "资金不足",
+                            Text = string.format("需要: $%s\n当前: $%s", formatNumber(selectedVehicle.price), formatNumber(currentCash)),
+                            Duration = 5
+                        })
+                        return
+                    end
+                    
+                    local success, result = purchaseFunctions.buyVehicle(selectedVehicle.name)
+                    
+                    if success then
+                        UILibrary:Notify({
+                            Title = "购买成功",
+                            Text = string.format("已购买: %s\n价格: $%s", selectedVehicle.name, formatNumber(selectedVehicle.price)),
+                            Duration = 5
+                        })
+                        
+                        -- 安全地清理UI元素
+                        pcall(function()
+                            if vehicleDropdown and vehicleDropdown.Parent then
+                                vehicleDropdown:Destroy()
+                            end
+                        end)
+                        
+                        pcall(function()
+                            if buyButton and buyButton.Parent then
+                                buyButton:Destroy()
+                            end
+                        end)
+                        
+                        -- 清空搜索框
+                        searchInput.Text = ""
+                    else
+                        UILibrary:Notify({
+                            Title = "购买失败",
+                            Text = string.format("无法购买: %s", selectedVehicle.name),
+                            Duration = 5
+                        })
                     end
                 end
-                
-                if not selectedVehicle then
-                    UILibrary:Notify({
-                        Title = "错误",
-                        Text = "未找到选中的车辆",
-                        Duration = 5
-                    })
-                    return
-                end
-                
-                local currentCash = purchaseFunctions.getCurrentCash()
-                
-                if currentCash < selectedVehicle.price then
-                    UILibrary:Notify({
-                        Title = "资金不足",
-                        Text = string.format("需要: $%s\n当前: $%s", formatNumber(selectedVehicle.price), formatNumber(currentCash)),
-                        Duration = 5
-                    })
-                    return
-                end
-                
-                local success, result = purchaseFunctions.buyVehicle(selectedVehicle.name)
-                
-                if success then
-                    UILibrary:Notify({
-                        Title = "购买成功",
-                        Text = string.format("已购买: %s\n价格: $%s", selectedVehicle.name, formatNumber(selectedVehicle.price)),
-                        Duration = 5
-                    })
-                    
-                    -- 清空搜索框
-                    searchInput.Text = ""
-                    vehicleDropdown:Destroy()
-                    buyButton:Destroy()
-                else
-                    UILibrary:Notify({
-                        Title = "购买失败",
-                        Text = string.format("无法购买: %s", selectedVehicle.name),
-                        Duration = 5
-                    })
-                end
-            end
-        })
+            })
+            
+            debugLog("[Purchase] 购买按钮创建成功")
+        end)
+        
+        if not buyButton then
+            UILibrary:Notify({
+                Title = "错误",
+                Text = "无法创建购买按钮",
+                Duration = 5
+            })
+            return
+        end
     end
 })
 
