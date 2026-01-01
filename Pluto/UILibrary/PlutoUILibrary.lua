@@ -745,14 +745,14 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownFrame.Size = UDim2.new(1, -2 * ddPad, 0, UI_STYLES.ButtonHeight)
     dropdownFrame.BackgroundTransparency = 1
     dropdownFrame.Parent = parent
-    dropdownFrame.ZIndex = 2
+    dropdownFrame.ZIndex = 10
 
     local label = self:CreateLabel(dropdownFrame, {
         Text = options.Text or "",
         Size = UDim2.new(0.6, -ddPad, 1, 0),
         TextSize = 12
     })
-    label.ZIndex = 3
+    label.ZIndex = 11
 
     local dropdownButton = Instance.new("TextButton")
     dropdownButton.Name = "DropdownButton"
@@ -768,7 +768,7 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.Font = THEME.Font
     dropdownButton.TextXAlignment = Enum.TextXAlignment.Left
     dropdownButton.Parent = dropdownFrame
-    dropdownButton.ZIndex = 3
+    dropdownButton.ZIndex = 11
 
     local buttonCorner = Instance.new("UICorner", dropdownButton)
     buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
@@ -783,7 +783,7 @@ function UILibrary:CreateDropdown(parent, options)
     arrowLabel.TextSize = 10
     arrowLabel.Font = THEME.Font
     arrowLabel.Parent = dropdownButton
-    arrowLabel.ZIndex = 4
+    arrowLabel.ZIndex = 12
 
     local optionsList = Instance.new("ScrollingFrame")
     optionsList.Name = "OptionsList"
@@ -797,7 +797,7 @@ function UILibrary:CreateDropdown(parent, options)
     optionsList.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
     optionsList.Visible = false
     optionsList.Parent = dropdownFrame
-    optionsList.ZIndex = 5
+    optionsList.ZIndex = 100
 
     local optionsListCorner = Instance.new("UICorner", optionsList)
     optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
@@ -838,7 +838,7 @@ function UILibrary:CreateDropdown(parent, options)
             optionButton.Font = THEME.Font
             optionButton.TextXAlignment = Enum.TextXAlignment.Left
             optionButton.Parent = optionsList
-            optionButton.ZIndex = 6
+            optionButton.ZIndex = 101
 
             local optionCorner = Instance.new("UICorner", optionButton)
             optionCorner.CornerRadius = UDim.new(0, 4)
