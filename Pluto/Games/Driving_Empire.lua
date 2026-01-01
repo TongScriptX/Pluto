@@ -1669,10 +1669,13 @@ UILibrary:CreateLabel(generalCard, {
 local displayLabels = {}
 local updateFunctions = {}
 
+-- 只为支持目标检测的数据类型创建显示标签
 for _, dataType in ipairs(dataTypes) do
-    local card, label, updateFunc = dataMonitor:createDisplayLabel(generalCard, dataType)
-    displayLabels[dataType.id] = label
-    updateFunctions[dataType.id] = updateFunc
+    if dataType.supportTarget then
+        local card, label, updateFunc = dataMonitor:createDisplayLabel(generalCard, dataType)
+        displayLabels[dataType.id] = label
+        updateFunctions[dataType.id] = updateFunc
+    end
 end
 
 -- 反挂机
@@ -1868,12 +1871,12 @@ local targetValueLabels = {}
 for _, dataType in ipairs(dataTypes) do
     local keyUpper = string.upper(dataType.id:sub(1, 1)) .. dataType.id:sub(2)
 
-    -- 为所有数据类型创建分隔标签
-    local separatorCard = UILibrary:CreateCard(notifyContent)
-    PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, dataType)
-
-    -- 只为支持目标检测的数据类型创建基准值和目标值卡片
+    -- 只为支持目标检测的数据类型创建分隔标签和设置卡片
     if dataType.supportTarget then
+        -- 为支持目标检测的数据类型创建分隔标签
+        local separatorCard = UILibrary:CreateCard(notifyContent)
+        PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, dataType)
+
         local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
             notifyContent, UILibrary, config, function() configManager:saveConfig() end,
             function() return dataMonitor:fetchValue(dataType) end,
