@@ -2308,6 +2308,9 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             debugLog("[Purchase] 购买按钮创建成功")
         end)
         
+        -- 存储购买按钮引用
+        previousBuyButton = buyButton
+        
         if not buyButton then
             debugLog("[Purchase] 购买按钮创建失败")
             UILibrary:Notify({
