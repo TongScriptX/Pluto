@@ -12,6 +12,7 @@
   - [标签 (CreateLabel)](#标签-createlabel)
   - [输入框 (CreateTextBox)](#输入框-createtextbox)
   - [开关 (CreateToggle)](#开关-createtoggle)
+  - [下拉框 (CreateDropdown)](#下拉框-createdropdown)
   - [悬浮按钮 (CreateFloatingButton)](#悬浮按钮-createfloatingbutton)
   - [通知 (Notify)](#通知-notify)
 - [主题系统](#主题系统)
@@ -165,6 +166,25 @@ local toggle, state = UILibrary:CreateToggle(parent, {
     DefaultState = false,                 -- 默认状态（可选）
     Callback = function(newState)         -- 状态改变回调
         print("开关状态:", newState)
+    end
+})
+```
+
+### 下拉框 (CreateDropdown)
+
+创建下拉选择框组件。
+
+```lua
+local dropdown = UILibrary:CreateDropdown(parent, {
+    Text = "选择标签",                    -- 下拉框标签文本
+    DefaultOption = "选项1",              -- 默认选中的选项
+    Options = {                          -- 选项列表
+        "选项1",
+        "选项2",
+        "选项3"
+    },
+    Callback = function(selectedOption)   -- 选中回调
+        print("选中了:", selectedOption)
     end
 })
 ```
@@ -386,6 +406,7 @@ UILibrary:SetTheme({
 | `CreateLabel(parent, options)` | `Instance, table` | `TextLabel` | 创建标签 |
 | `CreateTextBox(parent, options)` | `Instance, table` | `TextBox` | 创建输入框 |
 | `CreateToggle(parent, options)` | `Instance, table` | `Frame, boolean` | 创建开关 |
+| `CreateDropdown(parent, options)` | `Instance, table` | `Frame` | 创建下拉框 |
 | `CreateFloatingButton(parent, options)` | `Instance, table` | `TextButton` | 创建悬浮按钮 |
 | `Notify(options)` | `table` | `Frame` | 显示通知 |
 | `SetTheme(theme)` | `table` | `void` | 设置主题 |
@@ -449,6 +470,16 @@ UILibrary:SetTheme({
     Text = "开关标签",                    -- 字符串
     DefaultState = false,                 -- 布尔值
     Callback = function(state) end        -- 函数
+}
+```
+
+#### Dropdown Options
+```lua
+{
+    Text = "选择标签",                    -- 字符串
+    DefaultOption = "默认选项",            -- 字符串
+    Options = {"选项1", "选项2"},         -- 数组
+    Callback = function(option) end      -- 函数
 }
 ```
 
