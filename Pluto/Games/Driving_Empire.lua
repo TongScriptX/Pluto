@@ -56,7 +56,12 @@ end
 -- UI 库加载
 local UILibrary
 local success, result = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local url
+    if DEBUG_MODE then
+        url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
+    else
+        url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    end
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)
