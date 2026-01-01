@@ -8,7 +8,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 local lastSendTime = os.time()
 local sendingWelcome = false
 local isAutoRobActive = false
@@ -1908,6 +1908,450 @@ UILibrary:CreateButton(recalculateCard, {
             function() configManager:saveConfig() end,
             targetValueLabels
         )
+    end
+})
+
+-- 购买标签页
+local purchaseTab, purchaseContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "购买"
+})
+
+-- 车辆数据获取功能
+local purchaseFunctions = {}
+
+-- 进入车店
+function purchaseFunctions.enterDealership()
+    local success, err = pcall(function()
+        local locationRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Location")
+        locationRemote:FireServer("Enter", "Cars")
+        debugLog("[Purchase] 已进入车店")
+        return true
+    end)
+    
+    if not success then
+        warn("[Purchase] 进入车店失败:", err)
+        return false
+    end
+    
+    return true
+end
+
+-- 获取所有车辆数据
+function purchaseFunctions.getAllVehicles()
+    local vehicles = {}
+    
+    local success, err = pcall(function()
+        local playerGui = player:WaitForChild("PlayerGui", 5)
+        local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
+        
+        if not dealershipHolder then
+            warn("[Purchase] 未找到 DealershipHolder")
+            return vehicles
+        end
+        
+        local dealership = dealershipHolder:FindFirstChild("Dealership")
+        if not dealership then
+            warn("[Purchase] 未找到 Dealership")
+            return vehicles
+        end
+        
+        local selector = dealership:FindFirstChild("Selector")
+        if not selector then
+            warn("[Purchase] 未找到 Selector")
+            return vehicles
+        end
+        
+        local view = selector:FindFirstChild("View")
+        if not view then
+            warn("[Purchase] 未找到 View")
+            return vehicles
+        end
+        
+        local allView = view:FindFirstChild("All")
+        if not allView then
+            warn("[Purchase] 未找到 All")
+            return vehicles
+        end
+        
+        local container = allView:FindFirstChild("Container")
+        if not container then
+            warn("[Purchase] 未找到 Container")
+            return vehicles
+        end
+        
+        -- 遍历所有车辆
+        for _, vehicleFrame in ipairs(container:GetChildren()) do
+            if vehicleFrame:IsA("Frame") then
+                local vehicleNameLabel = vehicleFrame:FindFirstChild("VehicleName")
+                local priceLabel = vehicleFrame:FindFirstChild("Price")
+                
+                if vehicleNameLabel and priceLabel then
+                    local name = vehicleNameLabel.Text
+                    local priceText = priceLabel.Text
+                    
+                    -- 解析价格（移除$和逗号）
+                    local cleanPrice = priceText:gsub("[$,]", "")
+                    local price = tonumber(cleanPrice)
+                    
+                    if name and price then
+                        table.insert(vehicles, {
+                            name = name,
+                            price = price,
+                            frame = vehicleFrame
+                        })
+                    end
+                end
+            end
+        end
+    end)
+    
+    if not success then
+        warn("[Purchase] 获取车辆数据失败:", err)
+    end
+    
+    return vehicles
+end
+
+-- 获取当前资金
+function purchaseFunctions.getCurrentCash()
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        local cash = leaderstats:FindFirstChild("Cash")
+        if cash then
+            return cash.Value
+        end
+    end
+    return 0
+end
+
+-- 生成随机颜色
+function purchaseFunctions.randomColor()
+    return Color3.new(math.random(), math.random(), math.random())
+end
+
+-- 购买指定车辆
+function purchaseFunctions.buyVehicle(vehicleName)
+    local success, result = pcall(function()
+        local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
+        
+        -- 随机颜色配置
+        local args = {
+            {
+                vehicleName,
+                purchaseFunctions.randomColor(), -- 主颜色（随机）
+                purchaseFunctions.randomColor(), -- 次要颜色（随机）
+                purchaseFunctions.randomColor()  -- 轮毂颜色（随机）
+            }
+        }
+        
+        return purchaseRemote:InvokeServer(unpack(args))
+    end)
+    
+    if success then
+        debugLog("[Purchase] 购买成功:", vehicleName)
+        return true, result
+    else
+        warn("[Purchase] 购买失败:", result)
+        return false, result
+    end
+end
+
+-- 搜索购买UI
+local searchCard = UILibrary:CreateCard(purchaseContent, { IsMultiElement = true })
+UILibrary:CreateLabel(searchCard, {
+    Text = "搜索购买",
+})
+
+local searchInput = UILibrary:CreateTextBox(searchCard, {
+    PlaceholderText = "输入车辆名称关键词",
+})
+
+local searchResultsFrame = Instance.new("ScrollingFrame")
+searchResultsFrame.Name = "SearchResults"
+searchResultsFrame.Size = UDim2.new(1, -16, 0, 200)
+searchResultsFrame.Position = UDim2.new(0, 8, 0, 80)
+searchResultsFrame.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+searchResultsFrame.BackgroundTransparency = 0.3
+searchResultsFrame.BorderSizePixel = 0
+searchResultsFrame.ScrollBarThickness = 6
+searchResultsFrame.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
+searchResultsFrame.Parent = searchCard
+searchResultsFrame.Visible = false
+
+local searchResultsLayout = Instance.new("UIListLayout")
+searchResultsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+searchResultsLayout.Padding = UDim.new(0, 4)
+searchResultsLayout.Parent = searchResultsFrame
+
+local searchResultsPadding = Instance.new("UIPadding")
+searchResultsPadding.PaddingLeft = UDim.new(0, 4)
+searchResultsPadding.PaddingRight = UDim.new(0, 4)
+searchResultsPadding.PaddingTop = UDim.new(0, 4)
+searchResultsPadding.PaddingBottom = UDim.new(0, 4)
+searchResultsPadding.Parent = searchResultsFrame
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+corner.Parent = searchResultsFrame
+
+searchInput.OnFocusLost:Connect(function()
+    local searchText = searchInput.Text:lower()
+    
+    -- 清空搜索结果
+    for _, child in ipairs(searchResultsFrame:GetChildren()) do
+        if child:IsA("Frame") then
+            child:Destroy()
+        end
+    end
+    
+    if searchText == "" then
+        searchResultsFrame.Visible = false
+        return
+    end
+    
+    -- 进入车店并获取车辆数据
+    if not purchaseFunctions.enterDealership() then
+        UILibrary:Notify({
+            Title = "错误",
+            Text = "无法进入车店",
+            Duration = 5
+        })
+        return
+    end
+    
+    task.wait(1) -- 等待车店加载
+    
+    local vehicles = purchaseFunctions.getAllVehicles()
+    local matchedVehicles = {}
+    
+    -- 搜索匹配的车辆
+    for _, vehicle in ipairs(vehicles) do
+        if vehicle.name:lower():find(searchText) then
+            table.insert(matchedVehicles, vehicle)
+        end
+    end
+    
+    if #matchedVehicles == 0 then
+        UILibrary:Notify({
+            Title = "搜索结果",
+            Text = "未找到匹配的车辆",
+            Duration = 5
+        })
+        searchResultsFrame.Visible = false
+        return
+    end
+    
+    -- 显示搜索结果
+    searchResultsFrame.Visible = true
+    
+    for i, vehicle in ipairs(matchedVehicles) do
+        if i > 10 then break end -- 最多显示10个结果
+        
+        local resultFrame = Instance.new("Frame")
+        resultFrame.Name = "Result_" .. i
+        resultFrame.Size = UDim2.new(1, 0, 0, 60)
+        resultFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
+        resultFrame.BackgroundTransparency = 0.5
+        resultFrame.Parent = searchResultsFrame
+        
+        local resultCorner = Instance.new("UICorner")
+        resultCorner.CornerRadius = UDim.new(0, 4)
+        resultCorner.Parent = resultFrame
+        
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Name = "NameLabel"
+        nameLabel.Size = UDim2.new(1, -100, 0, 25)
+        nameLabel.Position = UDim2.new(0, 8, 0, 4)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = vehicle.name
+        nameLabel.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+        nameLabel.TextSize = 12
+        nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+        nameLabel.Font = THEME.Font
+        nameLabel.Parent = resultFrame
+        
+        local priceLabel = Instance.new("TextLabel")
+        priceLabel.Name = "PriceLabel"
+        priceLabel.Size = UDim2.new(1, -100, 0, 20)
+        priceLabel.Position = UDim2.new(0, 8, 0, 29)
+        priceLabel.BackgroundTransparency = 1
+        priceLabel.Text = "$" .. formatNumber(vehicle.price)
+        priceLabel.TextColor3 = Color3.fromRGB(76, 175, 80)
+        priceLabel.TextSize = 11
+        priceLabel.TextXAlignment = Enum.TextXAlignment.Left
+        priceLabel.Font = THEME.Font
+        priceLabel.Parent = resultFrame
+        
+        local buyButton = Instance.new("TextButton")
+        buyButton.Name = "BuyButton"
+        buyButton.Size = UDim2.new(0, 80, 0, 30)
+        buyButton.Position = UDim2.new(1, -88, 0.5, -15)
+        buyButton.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
+        buyButton.BackgroundTransparency = 0.3
+        buyButton.Text = "购买"
+        buyButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+        buyButton.TextSize = 11
+        buyButton.Font = THEME.Font
+        buyButton.Parent = resultFrame
+        
+        local buyButtonCorner = Instance.new("UICorner")
+        buyButtonCorner.CornerRadius = UDim.new(0, 4)
+        buyButtonCorner.Parent = buyButton
+        
+        buyButton.MouseButton1Click:Connect(function()
+            local currentCash = purchaseFunctions.getCurrentCash()
+            
+            if currentCash < vehicle.price then
+                UILibrary:Notify({
+                    Title = "资金不足",
+                    Text = string.format("需要: $%s\n当前: $%s", formatNumber(vehicle.price), formatNumber(currentCash)),
+                    Duration = 5
+                })
+                return
+            end
+            
+            local success, result = purchaseFunctions.buyVehicle(vehicle.name)
+            
+            if success then
+                UILibrary:Notify({
+                    Title = "购买成功",
+                    Text = string.format("已购买: %s\n价格: $%s", vehicle.name, formatNumber(vehicle.price)),
+                    Duration = 5
+                })
+                
+                -- 清空搜索结果
+                searchInput.Text = ""
+                for _, child in ipairs(searchResultsFrame:GetChildren()) do
+                    if child:IsA("Frame") then
+                        child:Destroy()
+                    end
+                end
+                searchResultsFrame.Visible = false
+            else
+                UILibrary:Notify({
+                    Title = "购买失败",
+                    Text = string.format("无法购买: %s", vehicle.name),
+                    Duration = 5
+                })
+            end
+        end)
+    end
+    
+    -- 更新滚动框大小
+    searchResultsFrame.CanvasSize = UDim2.new(0, 0, 0, math.max(200, #matchedVehicles * 64 + 8))
+end)
+
+-- 一键购买功能
+local autoBuyCard = UILibrary:CreateCard(purchaseContent, { IsMultiElement = true })
+UILibrary:CreateLabel(autoBuyCard, {
+    Text = "一键购买",
+})
+
+local autoBuyStatus = false
+
+local startAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
+    Text = "开始一键购买",
+    Callback = function()
+        if autoBuyStatus then
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "一键购买已在运行中",
+                Duration = 3
+            })
+            return
+        end
+        
+        autoBuyStatus = true
+        
+        spawn(function()
+            -- 进入车店
+            if not purchaseFunctions.enterDealership() then
+                UILibrary:Notify({
+                    Title = "错误",
+                    Text = "无法进入车店",
+                    Duration = 5
+                })
+                autoBuyStatus = false
+                return
+            end
+            
+            task.wait(1) -- 等待车店加载
+            
+            -- 获取所有车辆
+            local vehicles = purchaseFunctions.getAllVehicles()
+            
+            if #vehicles == 0 then
+                UILibrary:Notify({
+                    Title = "错误",
+                    Text = "未找到任何车辆",
+                    Duration = 5
+                })
+                autoBuyStatus = false
+                return
+            end
+            
+            -- 按价格从低到高排序
+            table.sort(vehicles, function(a, b)
+                return a.price < b.price
+            end)
+            
+            local currentCash = purchaseFunctions.getCurrentCash()
+            local purchasedCount = 0
+            local totalSpent = 0
+            
+            UILibrary:Notify({
+                Title = "一键购买开始",
+                Text = string.format("当前资金: $%s\n车辆数量: %d", formatNumber(currentCash), #vehicles),
+                Duration = 5
+            })
+            
+            -- 依次购买
+            for _, vehicle in ipairs(vehicles) do
+                if not autoBuyStatus then
+                    break
+                end
+                
+                if currentCash >= vehicle.price then
+                    local success, result = purchaseFunctions.buyVehicle(vehicle.name)
+                    
+                    if success then
+                        currentCash = currentCash - vehicle.price
+                        totalSpent = totalSpent + vehicle.price
+                        purchasedCount = purchasedCount + 1
+                        
+                        debugLog("[AutoBuy] 已购买:", vehicle.name, "剩余资金:", formatNumber(currentCash))
+                        
+                        task.wait(0.5) -- 购买间隔
+                    else
+                        debugLog("[AutoBuy] 购买失败:", vehicle.name)
+                    end
+                else
+                    debugLog("[AutoBuy] 资金不足，停止购买")
+                    break
+                end
+            end
+            
+            autoBuyStatus = false
+            
+            UILibrary:Notify({
+                Title = "一键购买完成",
+                Text = string.format("已购买: %d辆\n总花费: $%s\n剩余资金: $%s", 
+                    purchasedCount, formatNumber(totalSpent), formatNumber(currentCash)),
+                Duration = 5
+            })
+        end)
+    end
+})
+
+local stopAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
+    Text = "停止一键购买",
+    Callback = function()
+        autoBuyStatus = false
+        UILibrary:Notify({
+            Title = "提示",
+            Text = "一键购买已停止",
+            Duration = 3
+        })
     end
 })
 
