@@ -2570,18 +2570,6 @@ local stopAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
     end
 })
 
-local stopAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
-    Text = "停止一键购买",
-    Callback = function()
-        autoBuyStatus = false
-        UILibrary:Notify({
-            Title = "提示",
-            Text = "一键购买已停止",
-            Duration = 3
-        })
-    end
-})
-
 -- 关于标签页
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "关于"
