@@ -440,7 +440,7 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     return tweens
 end
 
--- 创建卡片（苹果风格）
+-- 创建卡片
 function UILibrary:CreateCard(parent, options)
     if not parent then
         warn("[Card]: Creation failed: Parent is nil")
@@ -451,33 +451,29 @@ function UILibrary:CreateCard(parent, options)
     local card = Instance.new("Frame")
     card.Name = "Card"
     card.AutomaticSize = Enum.AutomaticSize.Y
-    card.Size = UDim2.new(1, -UI_STYLES.EdgeInset * 2, 0, 0)
+    card.Size = UDim2.new(1, 0, 0, 0)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.2
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
 
-    -- 苹果风格圆角
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.RadiusMedium)
     corner.Parent = card
 
-    -- 统一的元素间距
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, UI_STYLES.SpacingSmall)
     layout.Parent = card
 
-    -- 统一的内边距
     local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+    padding.PaddingLeft = UDim.new(0, 0)
+    padding.PaddingRight = UDim.new(0, 0)
     padding.PaddingTop = UDim.new(0, UI_STYLES.SpacingSmall)
     padding.PaddingBottom = UDim.new(0, UI_STYLES.SpacingSmall)
     padding.Parent = card
 
-    -- 柔和的淡入动画
     TweenService:Create(card, self.TWEEN_INFO_UI, {
         BackgroundTransparency = 0.2
     }):Play()
@@ -1024,8 +1020,9 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
     content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     content.BackgroundTransparency = isActive and 0.3 or 1
-    content.ScrollBarThickness = 3
-    content.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+    content.ScrollBarThickness = 2
+    content.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
+    content.ScrollBarImageTransparency = 0.3
     content.ScrollingEnabled = true
     content.ClipsDescendants = true
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
@@ -1039,15 +1036,15 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     listLayout.Parent = content
 
     local contentPadding = Instance.new("UIPadding")
-    contentPadding.PaddingLeft = UDim.new(0, UI_STYLES.EdgeInset)
-    contentPadding.PaddingRight = UDim.new(0, UI_STYLES.EdgeInset)
-    contentPadding.PaddingTop = UDim.new(0, UI_STYLES.SpacingMedium)
-    contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.SpacingMedium)
+    contentPadding.PaddingLeft = UDim.new(0, 0)
+    contentPadding.PaddingRight = UDim.new(0, 0)
+    contentPadding.PaddingTop = UDim.new(0, UI_STYLES.SpacingSmall)
+    contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.SpacingSmall)
     contentPadding.Parent = content
 
     listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         task.defer(function()
-            content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + UI_STYLES.SpacingMedium * 2)
+            content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + UI_STYLES.SpacingSmall * 2)
         end)
     end)
 
