@@ -2178,10 +2178,16 @@ function purchaseFunctions.regretAllPurchases()
     debugLog("[Regret] ========== 开始后悔所有购买 ==========")
     debugLog("[Regret] 需要后悔的车辆数量:", #purchaseFunctions.autoPurchasedVehicles)
     
+    -- 创建副本，避免在遍历时修改原表
+    local vehiclesToSell = {}
+    for i, vehicle in ipairs(purchaseFunctions.autoPurchasedVehicles) do
+        table.insert(vehiclesToSell, vehicle)
+    end
+    
     local soldCount = 0
     local totalRefund = 0
     
-    for i, vehicle in ipairs(purchaseFunctions.autoPurchasedVehicles) do
+    for i, vehicle in ipairs(vehiclesToSell) do
         local success = purchaseFunctions.sellVehicle(vehicle)
         if success then
             soldCount = soldCount + 1
