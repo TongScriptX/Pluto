@@ -2162,7 +2162,11 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         for _, vehicle in ipairs(vehicles) do
             local vehicleNameLower = vehicle.name:lower()
             if vehicleNameLower:find(searchText) then
-                table.insert(matchedVehicles, vehicle.name)
+                table.insert(matchedVehicles, {
+                    name = vehicle.name,
+                    price = vehicle.price,
+                    displayText = vehicle.name .. " - $" .. formatNumber(vehicle.price)
+                })
             end
         end
         
@@ -2182,12 +2186,19 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         local buyButton = nil
         
         local success, errorMsg = pcall(function()
+            -- 提取显示文本列表
+            local displayOptions = {}
+            for _, v in ipairs(matchedVehicles) do
+                table.insert(displayOptions, v.displayText)
+            end
+            
             vehicleDropdown = UILibrary:CreateDropdown(searchCard, {
                 Text = "选择车辆",
-                DefaultOption = matchedVehicles[1],
-                Options = matchedVehicles,
-                Callback = function(selectedVehicle)
-                    -- 车辆选择回调
+                DefaultOption = displayOptions[1],
+                Options = displayOptions,
+                Callback = function(selectedDisplayText)
+                    -- 车辆选择回调，从displayText中提取车辆名称
+                    local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
                 end
             })
         end)
@@ -2230,7 +2241,19 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         return
                     end
                     
-                    local selectedVehicleName = dropdownButton.Text
+                    local selectedDisplayText = dropdownButton.Text
+                    -- 从displayText中提取车辆名称（格式：名称 - $价格）
+                    local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
+                    
+                    if not selectedVehicleName then
+                        debugLog("[Purchase] 无法从displayText中提取车辆名称:", selectedDisplayText)
+                        UILibrary:Notify({
+                            Title = "错误",
+                            Text = "无法解析车辆名称",
+                            Duration = 3
+                        })
+                        return
+                    end
                     
                     -- 查找车辆价格
                     local selectedVehicle = nil
