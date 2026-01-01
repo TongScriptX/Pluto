@@ -559,6 +559,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     monitor.webhookDisabled = false
     monitor.lastValues = {}
     monitor.checkInterval = 1
+    monitor.beforeSendCallback = nil -- 发送前的回调函数
     
     -- 初始化所有数据类型
     function monitor:init()
@@ -766,6 +767,14 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
             footer = { text = "桐 · TStudioX" }
         }
+        
+        -- 调用发送前回调，允许修改 embed
+        if self.beforeSendCallback then
+            local success, modifiedEmbed = pcall(self.beforeSendCallback, embed)
+            if success and modifiedEmbed then
+                embed = modifiedEmbed
+            end
+        end
         
         return self.webhookManager:dispatchWebhook({ embeds = { embed } })
     end
