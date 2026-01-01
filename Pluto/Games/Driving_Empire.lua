@@ -1956,6 +1956,8 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] PlayerGui 获取成功")
         
+        task.wait(1)  -- 等待 PlayerGui 完全加载
+        
         debugLog("[Purchase] 步骤2: 查找 DealershipHolder")
         local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
         if not dealershipHolder then
@@ -1963,6 +1965,8 @@ function purchaseFunctions.getAllVehicles()
             return vehicles
         end
         debugLog("[Purchase] DealershipHolder 找到")
+        
+        task.wait(1)  -- 等待 DealershipHolder 加载
         
         debugLog("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
@@ -1972,6 +1976,8 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] Dealership 找到")
         
+        task.wait(1)  -- 等待 Dealership 加载
+        
         debugLog("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
         if not selector then
@@ -1979,6 +1985,8 @@ function purchaseFunctions.getAllVehicles()
             return vehicles
         end
         debugLog("[Purchase] Selector 找到")
+        
+        task.wait(1)  -- 等待 Selector 加载
         
         debugLog("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
@@ -1988,6 +1996,8 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] View 找到")
         
+        task.wait(1)  -- 等待 View 加载
+        
         debugLog("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
         if not allView then
@@ -1995,6 +2005,8 @@ function purchaseFunctions.getAllVehicles()
             return vehicles
         end
         debugLog("[Purchase] All 找到")
+        
+        task.wait(1)  -- 等待 All 视图加载
         
         debugLog("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
@@ -2004,6 +2016,8 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] Container 找到")
         debugLog("[Purchase] Container 的子元素数量:", #container:GetChildren())
+        
+        task.wait(2)  -- 等待 Container 加载车辆数据
         
         local allChildren = container:GetChildren()
         local totalChildren = #allChildren
