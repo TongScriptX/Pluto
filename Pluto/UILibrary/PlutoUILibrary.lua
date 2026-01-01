@@ -8,7 +8,7 @@ local UILibrary = {}
 -- 存储已创建的UI实例
 UILibrary._instances = {}
 
--- 通知队列管理 - 改进版本
+-- 通知队列管理
 UILibrary._notifications = {}
 UILibrary._notificationId = 0
 
@@ -53,7 +53,7 @@ local UI_STYLES = {
     SidebarWidth       = 80,
     TitleBarHeight     = 32,
     -- 通知相关样式
-    NotificationSpacing = 4, -- 减少间隔
+    NotificationSpacing = 4,
     NotificationWidth = 200,
     NotificationMargin = 10
 }
@@ -102,9 +102,8 @@ UILibrary.THEME = THEME
 UILibrary.DEFAULT_THEME = DEFAULT_THEME
 UILibrary.UI_STYLES = UI_STYLES
 
--- 销毁已存在的UI实例 - 增强版本
+-- 销毁已存在的UI实例
 function UILibrary:DestroyExistingInstances()
-    -- 销毁所有PlutoUILibrary相关的ScreenGui
     if Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui") then
         local playerGui = Players.LocalPlayer.PlayerGui
         for _, child in ipairs(playerGui:GetChildren()) do
@@ -126,7 +125,7 @@ end
 local notificationContainer = nil
 local screenGui = nil
 
--- 初始化通知容器 - 改进版本（右下角定位）
+-- 初始化通知容器
 local function initNotificationContainer()
     if not Players.LocalPlayer then
         warn("[Notification]: LocalPlayer not found")
@@ -164,7 +163,7 @@ local function initNotificationContainer()
     screenGui.ResetOnSpawn = false
     screenGui.Enabled = true
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.DisplayOrder = 15 -- 提高显示层级
+    screenGui.DisplayOrder = 15
     
     -- 存储实例引用
     UILibrary._instances.screenGui = screenGui
@@ -184,19 +183,18 @@ local function initNotificationContainer()
     return true
 end
 
--- 计算通知应该显示的Y位置（使用实际高度）
+-- 计算通知应该显示的Y位置
 local function calculateNotificationYPosition()
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
     end
     
-    local totalHeight = 20 -- 底部边距
+    local totalHeight = 20
     
-    -- 计算所有现有通知占用的高度（使用实际高度）
+    -- 计算所有现有通知占用的高度
     for _, notifData in ipairs(UILibrary._notifications) do
         if notifData.frame and notifData.frame.Parent and not notifData.isRemoved then
-            -- 优先使用实际高度，如果没有则使用预估高度
             local actualHeight = notifData.frame.AbsoluteSize.Y
             local heightToUse = actualHeight > 0 and actualHeight or (notifData.estimatedHeight or 80)
             totalHeight = totalHeight + heightToUse + UI_STYLES.NotificationSpacing
@@ -207,14 +205,14 @@ local function calculateNotificationYPosition()
     return screenSize.Y - totalHeight
 end
 
--- 重新排列所有通知位置（改进版本，无并发限制）
+-- 重新排列所有通知位置
 local function rearrangeNotifications()
     local screenSize = GuiService:GetScreenResolution()
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
     end
     
-    local currentY = 20 -- 底部边距
+    local currentY = 20
     
     -- 从最新的通知开始，从下往上重新排列
     for i = #UILibrary._notifications, 1, -1 do
@@ -234,7 +232,7 @@ local function rearrangeNotifications()
                 notifData.moveTween:Cancel()
             end
             
-            -- 创建新的移动动画（仅在位置差异较大时）
+            -- 创建新的移动动画
             if math.abs(notifData.frame.Position.Y.Offset - targetY) > 1 then
                 notifData.moveTween = TweenService:Create(notifData.frame, UILibrary.TWEEN_INFO_UI, {
                     Position = targetPos
@@ -247,7 +245,7 @@ local function rearrangeNotifications()
     end
 end
 
--- 移除通知（改进版本，确保队列管理正确）
+-- 移除通知
 local function removeNotification(notificationData)
     if not notificationData or not notificationData.frame then
         return
@@ -288,13 +286,12 @@ local function removeNotification(notificationData)
         if notification and notification.Parent then
             notification:Destroy()
         end
-        -- 延迟重新排列，确保销毁完成
         task.wait(0.1)
         rearrangeNotifications()
     end)
 end
 
--- 通知模块 - 优化版本（防止重叠）
+-- 通知模块
 function UILibrary:Notify(options)
     options = options or {}
     if not initNotificationContainer() then
@@ -380,7 +377,7 @@ function UILibrary:Notify(options)
         local targetY = calculateNotificationYPosition()
         notification.Position = UDim2.new(1, UI_STYLES.NotificationWidth + UI_STYLES.NotificationMargin, 0, targetY)
         
-        -- 立即执行滑入动画（无延迟）
+        -- 立即执行滑入动画
         notificationData.slideInTween = TweenService:Create(notification, UILibrary.TWEEN_INFO_UI, {
             Position = UDim2.new(1, -UI_STYLES.NotificationMargin, 0, targetY),
             BackgroundTransparency = 0.1
@@ -439,8 +436,8 @@ function UILibrary:CreateCard(parent, options)
     options = options or {}
     local card = Instance.new("Frame")
     card.Name = "Card"
-    card.AutomaticSize = Enum.AutomaticSize.Y -- 自动适应高度
-    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0) -- 宽度固定，高度自适应
+    card.AutomaticSize = Enum.AutomaticSize.Y
+    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
     card.Parent = parent
@@ -453,13 +450,13 @@ function UILibrary:CreateCard(parent, options)
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 2) -- 缩小内部元素间距
+    layout.Padding = UDim.new(0, 2)
     layout.Parent = card
 
     local padding = Instance.new("UIPadding")
     padding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
     padding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
-    padding.PaddingTop = UDim.new(0, 2) -- 减少上下内边距
+    padding.PaddingTop = UDim.new(0, 2)
     padding.PaddingBottom = UDim.new(0, 2)
     padding.Parent = card
 
@@ -798,7 +795,6 @@ function UILibrary:CreateDropdown(parent, options)
     optionsList.Visible = false
     optionsList.ZIndex = 99999
     
-    -- 找到ScreenGui作为父级，确保显示在最上层
     local screenGui = parent
     while screenGui and screenGui.ClassName ~= "ScreenGui" do
         screenGui = screenGui.Parent
@@ -932,7 +928,7 @@ function UILibrary:CreateDropdown(parent, options)
 end
 
 -- 拖拽模块
-local developmentMode = false -- 设置为 false 时将不输出调试信息
+local developmentMode = false
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
@@ -996,7 +992,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     end)
 end
 
--- 主窗口模块 - 增强销毁功能
+-- 主窗口模块
 function UILibrary:CreateUIWindow(options)
     options = options or {}
     if not Players.LocalPlayer then

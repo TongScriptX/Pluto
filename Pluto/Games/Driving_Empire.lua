@@ -1881,9 +1881,7 @@ local targetValueLabels = {}
 for _, dataType in ipairs(dataTypes) do
     local keyUpper = string.upper(dataType.id:sub(1, 1)) .. dataType.id:sub(2)
 
-    -- 只为支持目标检测的数据类型创建分隔标签和设置卡片
     if dataType.supportTarget then
-        -- 为支持目标检测的数据类型创建分隔标签
         local separatorCard = UILibrary:CreateCard(notifyContent)
         PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, dataType)
 
@@ -1949,14 +1947,14 @@ function purchaseFunctions.getAllVehicles()
     
     local success, err = pcall(function()
         debugLog("[Purchase] 步骤1: 获取 PlayerGui")
-        local playerGui = player:WaitForChild("PlayerGui", 10)  -- 增加超时到10秒
+        local playerGui = player:WaitForChild("PlayerGui", 10)
         if not playerGui then
             warn("[Purchase] PlayerGui 获取超时")
             return vehicles
         end
         debugLog("[Purchase] PlayerGui 获取成功")
         
-        task.wait(1)  -- 等待 PlayerGui 完全加载
+        task.wait(0.7)
         
         debugLog("[Purchase] 步骤2: 查找 DealershipHolder")
         local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
@@ -1966,7 +1964,7 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] DealershipHolder 找到")
         
-        task.wait(1)  -- 等待 DealershipHolder 加载
+        task.wait(0.7)
         
         debugLog("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
@@ -1976,7 +1974,7 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] Dealership 找到")
         
-        task.wait(1)  -- 等待 Dealership 加载
+        task.wait(0.7)
         
         debugLog("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
@@ -1986,7 +1984,7 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] Selector 找到")
         
-        task.wait(1)  -- 等待 Selector 加载
+        task.wait(0.7)
         
         debugLog("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
@@ -1996,7 +1994,7 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] View 找到")
         
-        task.wait(1)  -- 等待 View 加载
+        task.wait(0.7)
         
         debugLog("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
@@ -2006,7 +2004,7 @@ function purchaseFunctions.getAllVehicles()
         end
         debugLog("[Purchase] All 找到")
         
-        task.wait(1)  -- 等待 All 视图加载
+        task.wait(0.7)
         
         debugLog("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
@@ -2017,7 +2015,7 @@ function purchaseFunctions.getAllVehicles()
         debugLog("[Purchase] Container 找到")
         debugLog("[Purchase] Container 的子元素数量:", #container:GetChildren())
         
-        task.wait(2)  -- 等待 Container 加载车辆数据
+        task.wait(1)
         
         local allChildren = container:GetChildren()
         local totalChildren = #allChildren
