@@ -2099,6 +2099,8 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             return
         end
         
+        debugLog("[Purchase] 开始搜索，关键词:", searchText)
+        
         -- 进入车店并获取车辆数据
         if not purchaseFunctions.enterDealership() then
             UILibrary:Notify({
@@ -2112,19 +2114,30 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         task.wait(1) -- 等待车店加载
         
         local vehicles = purchaseFunctions.getAllVehicles()
+        debugLog("[Purchase] 获取到车辆数量:", #vehicles)
+        
+        -- 打印所有车辆名称用于调试
+        for i, vehicle in ipairs(vehicles) do
+            debugLog("[Purchase] 车辆", i, ":", vehicle.name)
+        end
+        
         local matchedVehicles = {}
         
         -- 搜索匹配的车辆
         for _, vehicle in ipairs(vehicles) do
-            if vehicle.name:lower():find(searchText) then
+            local vehicleNameLower = vehicle.name:lower()
+            if vehicleNameLower:find(searchText) then
                 table.insert(matchedVehicles, vehicle.name)
+                debugLog("[Purchase] 匹配成功:", vehicle.name)
             end
         end
+        
+        debugLog("[Purchase] 匹配到车辆数量:", #matchedVehicles)
         
         if #matchedVehicles == 0 then
             UILibrary:Notify({
                 Title = "搜索结果",
-                Text = "未找到匹配的车辆",
+                Text = string.format("未找到匹配的车辆\n关键词: %s\n可用车辆: %d", text, #vehicles),
                 Duration = 5
             })
             return
@@ -2136,7 +2149,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             DefaultOption = matchedVehicles[1],
             Options = matchedVehicles,
             Callback = function(selectedVehicle)
-                print("选择了车辆:", selectedVehicle)
+                debugLog("[Purchase] 选择了车辆:", selectedVehicle)
             end
         })
         
