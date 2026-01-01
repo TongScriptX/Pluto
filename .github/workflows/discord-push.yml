@@ -46,19 +46,19 @@ jobs:
           
           if [ "$IS_MERGE" -gt 0 ]; then
             echo "检测到 Merge Commit，获取父提交信息"
-            # 获取第一个父提交（通常是 develop 分支的提交）
-            PARENT1=$(git log -1 --pretty=%h --first-parent)
-            PARENT1_MESSAGE=$(git log -1 --pretty=%s --first-parent)
-            PARENT1_AUTHOR=$(git log -1 --pretty=%an --first-parent)
-            PARENT1_HASH=$(git rev-parse --short HEAD^)
+            # 获取第二个父提交（develop 分支的提交）
+            PARENT2=$(git log -1 --pretty=%h HEAD^2)
+            PARENT2_MESSAGE=$(git log -1 --pretty=%s HEAD^2)
+            PARENT2_AUTHOR=$(git log -1 --pretty=%an HEAD^2)
+            PARENT2_HASH=$(git rev-parse --short HEAD^2)
             
-            echo "父提交 1: $PARENT1"
-            echo "父提交 1 消息: $PARENT1_MESSAGE"
-            echo "父提交 1 作者: $PARENT1_AUTHOR"
+            echo "父提交 (develop): $PARENT2"
+            echo "父提交消息: $PARENT2_MESSAGE"
+            echo "父提交作者: $PARENT2_AUTHOR"
             
-            COMMIT_MESSAGE="$PARENT1_MESSAGE"
-            COMMIT_AUTHOR="$PARENT1_AUTHOR"
-            COMMIT_HASH="$PARENT1_HASH"
+            COMMIT_MESSAGE="$PARENT2_MESSAGE"
+            COMMIT_AUTHOR="$PARENT2_AUTHOR"
+            COMMIT_HASH="$PARENT2_HASH"
           else
             COMMIT_MESSAGE=$(git log -1 --pretty=%s)
             COMMIT_AUTHOR=$(git log -1 --pretty=%an)
