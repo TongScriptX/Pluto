@@ -2053,27 +2053,55 @@ end
 
 -- 购买指定车辆
 function purchaseFunctions.buyVehicle(vehicleName)
+    debugLog("[Purchase] ========== 开始购买 ==========")
+    debugLog("[Purchase] 车辆名称:", vehicleName)
+    
     local success, result = pcall(function()
         local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
+        debugLog("[Purchase] 找到Purchase远程事件")
         
         -- 随机颜色配置
+        local mainColor = purchaseFunctions.randomColor()
+        local secondaryColor = purchaseFunctions.randomColor()
+        local wheelColor = purchaseFunctions.randomColor()
+        
         local args = {
             {
                 vehicleName,
-                purchaseFunctions.randomColor(), -- 主颜色（随机）
-                purchaseFunctions.randomColor(), -- 次要颜色（随机）
-                purchaseFunctions.randomColor()  -- 轮毂颜色（随机）
+                mainColor, -- 主颜色（随机）
+                secondaryColor, -- 次要颜色（随机）
+                wheelColor  -- 轮毂颜色（随机）
             }
         }
         
-        return purchaseRemote:InvokeServer(unpack(args))
+        debugLog("[Purchase] 购买参数:")
+        debugLog("[Purchase]  - 车辆:", vehicleName)
+        debugLog("[Purchase]  - 主颜色:", mainColor)
+        debugLog("[Purchase]  - 次要颜色:", secondaryColor)
+        debugLog("[Purchase]  - 轮毂颜色:", wheelColor)
+        
+        local purchaseResult = purchaseRemote:InvokeServer(unpack(args))
+        debugLog("[Purchase] 远程调用返回:", type(purchaseResult))
+        
+        if type(purchaseResult) == "table" then
+            debugLog("[Purchase] 返回的table内容:")
+            for k, v in pairs(purchaseResult) do
+                debugLog("[Purchase]   ", k, "=", v)
+            end
+        else
+            debugLog("[Purchase] 返回值:", purchaseResult)
+        end
+        
+        return purchaseResult
     end)
     
     if success then
-        debugLog("[Purchase] 购买成功:", vehicleName)
+        debugLog("[Purchase] pcall成功，结果:", result)
+        debugLog("[Purchase] ========== 购买完成 ==========")
         return true, result
     else
-        warn("[Purchase] 购买失败:", result)
+        warn("[Purchase] pcall失败，错误:", result)
+        debugLog("[Purchase] ========== 购买失败 ==========")
         return false, result
     end
 end
