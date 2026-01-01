@@ -8,7 +8,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 local lastSendTime = os.time()
 local sendingWelcome = false
 local isAutoRobActive = false
@@ -213,6 +213,25 @@ end
 
 local function parseContents(contents)
     local rank = 1
+    local leaderboardList = {}
+    
+    -- 输出完整榜单
+    debugLog("[排行榜] ========== 完整榜单 ==========")
+    for _, child in ipairs(contents:GetChildren()) do
+        local placement = child:FindFirstChild("Placement")
+        local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
+        table.insert(leaderboardList, string.format("#%d: %s", foundRank, child.Name))
+        rank = rank + 1
+    end
+    
+    -- 输出榜单列表
+    for _, entry in ipairs(leaderboardList) do
+        debugLog("[排行榜] " .. entry)
+    end
+    debugLog("[排行榜] ==========================")
+    
+    -- 查找玩家排名
+    rank = 1
     for _, child in ipairs(contents:GetChildren()) do
         if tonumber(child.Name) == userId or child.Name == username then
             local placement = child:FindFirstChild("Placement")
