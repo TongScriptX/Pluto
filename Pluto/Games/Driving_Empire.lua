@@ -2131,16 +2131,17 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         pcall(function()
             if previousDropdown and previousDropdown.Parent then
                 previousDropdown:Destroy()
-                previousDropdown = nil
             end
         end)
         
         pcall(function()
             if previousBuyButton and previousBuyButton.Parent then
                 previousBuyButton:Destroy()
-                previousBuyButton = nil
             end
         end)
+        
+        previousDropdown = nil
+        previousBuyButton = nil
         
         -- 进入车店并获取车辆数据
         if not purchaseFunctions.enterDealership() then
@@ -2230,6 +2231,12 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             buyButton = UILibrary:CreateButton(searchCard, {
                 Text = "购买选中车辆",
                 Callback = function()
+                    -- 检查下拉框是否还存在
+                    if not vehicleDropdown or not vehicleDropdown.Parent then
+                        debugLog("[Purchase] 下拉框已被销毁")
+                        return
+                    end
+                    
                     -- 获取下拉框选中的车辆
                     local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
                     if not dropdownButton then
@@ -2304,6 +2311,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                             if vehicleDropdown and vehicleDropdown.Parent then
                                 debugLog("[Purchase] 销毁下拉框")
                                 vehicleDropdown:Destroy()
+                                vehicleDropdown = nil
                             end
                         end)
                         
@@ -2311,6 +2319,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                             if buyButton and buyButton.Parent then
                                 debugLog("[Purchase] 销毁购买按钮")
                                 buyButton:Destroy()
+                                buyButton = nil
                             end
                         end)
                         
