@@ -215,13 +215,16 @@ local function parseContents(contents)
     local rank = 1
     local leaderboardList = {}
     
-    -- 输出完整榜单
+    -- 输出完整榜单（只显示玩家数据）
     debugLog("[排行榜] ========== 完整榜单 ==========")
     for _, child in ipairs(contents:GetChildren()) do
-        local placement = child:FindFirstChild("Placement")
-        local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-        table.insert(leaderboardList, string.format("#%d: %s", foundRank, child.Name))
-        rank = rank + 1
+        -- 跳过模板元素（名称不是数字的）
+        if tonumber(child.Name) then
+            local placement = child:FindFirstChild("Placement")
+            local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
+            table.insert(leaderboardList, string.format("#%d: %s", foundRank, child.Name))
+            rank = rank + 1
+        end
     end
     
     -- 输出榜单列表
@@ -233,13 +236,16 @@ local function parseContents(contents)
     -- 查找玩家排名
     rank = 1
     for _, child in ipairs(contents:GetChildren()) do
-        if tonumber(child.Name) == userId or child.Name == username then
-            local placement = child:FindFirstChild("Placement")
-            local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-            debugLog("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
-            return foundRank, true
+        -- 跳过模板元素
+        if tonumber(child.Name) then
+            if tonumber(child.Name) == userId or child.Name == username then
+                local placement = child:FindFirstChild("Placement")
+                local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
+                debugLog("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
+                return foundRank, true
+            end
+            rank = rank + 1
         end
-        rank = rank + 1
     end
     debugLog("[排行榜] ❌ 未在排行榜中找到玩家")
     return nil, false
