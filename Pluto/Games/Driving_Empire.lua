@@ -1940,58 +1940,120 @@ end
 function purchaseFunctions.getAllVehicles()
     local vehicles = {}
     
+    debugLog("[Purchase] ========== 开始获取车辆数据 ==========")
+    
     local success, err = pcall(function()
+        debugLog("[Purchase] 步骤1: 获取 PlayerGui")
         local playerGui = player:WaitForChild("PlayerGui", 5)
-        local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
-        
-        if not dealershipHolder then
-            warn("[Purchase] 未找到 DealershipHolder")
+        if not playerGui then
+            warn("[Purchase] PlayerGui 获取超时")
             return vehicles
         end
+        debugLog("[Purchase] PlayerGui 获取成功")
         
+        debugLog("[Purchase] 步骤2: 查找 DealershipHolder")
+        local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
+        if not dealershipHolder then
+            warn("[Purchase] 未找到 DealershipHolder")
+            debugLog("[Purchase] PlayerGui 的子元素:")
+            for _, child in ipairs(playerGui:GetChildren()) do
+                debugLog("  -", child.Name, ":", child.ClassName)
+            end
+            return vehicles
+        end
+        debugLog("[Purchase] DealershipHolder 找到")
+        
+        debugLog("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
         if not dealership then
             warn("[Purchase] 未找到 Dealership")
+            debugLog("[Purchase] DealershipHolder 的子元素:")
+            for _, child in ipairs(dealershipHolder:GetChildren()) do
+                debugLog("  -", child.Name, ":", child.ClassName)
+            end
             return vehicles
         end
+        debugLog("[Purchase] Dealership 找到")
         
+        debugLog("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
         if not selector then
             warn("[Purchase] 未找到 Selector")
+            debugLog("[Purchase] Dealership 的子元素:")
+            for _, child in ipairs(dealership:GetChildren()) do
+                debugLog("  -", child.Name, ":", child.ClassName)
+            end
             return vehicles
         end
+        debugLog("[Purchase] Selector 找到")
         
+        debugLog("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
         if not view then
             warn("[Purchase] 未找到 View")
+            debugLog("[Purchase] Selector 的子元素:")
+            for _, child in ipairs(selector:GetChildren()) do
+                debugLog("  -", child.Name, ":", child.ClassName)
+            end
             return vehicles
         end
+        debugLog("[Purchase] View 找到")
         
+        debugLog("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
         if not allView then
             warn("[Purchase] 未找到 All")
+            debugLog("[Purchase] View 的子元素:")
+            for _, child in ipairs(view:GetChildren()) do
+                debugLog("  -", child.Name, ":", child.ClassName)
+            end
             return vehicles
         end
+        debugLog("[Purchase] All 找到")
         
+        debugLog("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
         if not container then
             warn("[Purchase] 未找到 Container")
+            debugLog("[Purchase] All 的子元素:")
+            for _, child in ipairs(allView:GetChildren()) do
+                debugLog("  -", child.Name, ":", child.ClassName)
+            end
             return vehicles
         end
+        debugLog("[Purchase] Container 找到")
+        debugLog("[Purchase] Container 的子元素数量:", #container:GetChildren())
         
         -- 遍历所有车辆
+        local vehicleCount = 0
         for _, vehicleFrame in ipairs(container:GetChildren()) do
+            debugLog("[Purchase] 检查子元素:", vehicleFrame.Name, "类型:", vehicleFrame.ClassName)
+            
             if vehicleFrame:IsA("Frame") then
+                debugLog("[Purchase] 找到 Frame:", vehicleFrame.Name)
+                debugLog("[Purchase] Frame 的子元素:")
+                for _, child in ipairs(vehicleFrame:GetChildren()) do
+                    debugLog("  -", child.Name, ":", child.ClassName)
+                end
+                
                 local vehicleNameLabel = vehicleFrame:FindFirstChild("VehicleName")
                 local priceLabel = vehicleFrame:FindFirstChild("Price")
+                
+                debugLog("[Purchase] VehicleName:", vehicleNameLabel ~= nil and "找到" or "未找到")
+                debugLog("[Purchase] Price:", priceLabel ~= nil and "找到" or "未找到")
                 
                 if vehicleNameLabel and priceLabel then
                     local name = vehicleNameLabel.Text
                     local priceText = priceLabel.Text
                     
+                    debugLog("[Purchase] 车辆名称:", name)
+                    debugLog("[Purchase] 价格文本:", priceText)
+                    
                     -- 解析价格（移除$和逗号）
                     local cleanPrice = priceText:gsub("[$,]", "")
                     local price = tonumber(cleanPrice)
+                    
+                    debugLog("[Purchase] 解析后价格:", price)
                     
                     if name and price then
                         table.insert(vehicles, {
@@ -1999,15 +2061,27 @@ function purchaseFunctions.getAllVehicles()
                             price = price,
                             frame = vehicleFrame
                         })
+                        vehicleCount = vehicleCount + 1
+                        debugLog("[Purchase] ✓ 成功添加车辆:", name)
+                    else
+                        debugLog("[Purchase] ✗ 跳过车辆（名称或价格无效）")
                     end
+                else
+                    debugLog("[Purchase] ✗ 跳过 Frame（缺少 VehicleName 或 Price）")
                 end
             end
         end
+        
+        debugLog("[Purchase] 总共添加", vehicleCount, "辆车辆")
     end)
     
     if not success then
         warn("[Purchase] 获取车辆数据失败:", err)
+        debugLog("[Purchase] 错误详情:", err)
     end
+    
+    debugLog("[Purchase] ========== 获取车辆数据完成 ==========")
+    debugLog("[Purchase] 返回车辆数量:", #vehicles)
     
     return vehicles
 end
