@@ -2056,7 +2056,6 @@ end
 function purchaseFunctions.buyVehicle(frameName)
     debugLog("[Purchase] ========== 开始购买 ==========")
     debugLog("[Purchase] 购买名称:", frameName)
-    debugLog("[Purchase] 购买名称类型:", type(frameName))
     
     local success, result = pcall(function()
         local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
@@ -2106,6 +2105,125 @@ function purchaseFunctions.buyVehicle(frameName)
         debugLog("[Purchase] ========== 购买失败 ==========")
         return false, result
     end
+end
+
+-- 独立的购买车辆函数（整合版）
+function purchaseFunctions.purchaseVehicle(vehicle)
+    debugLog("[Purchase] ========== 开始购买车辆 ==========")
+    debugLog("[Purchase] 车辆名称:", vehicle.name)
+    debugLog("[Purchase] Frame Name:", vehicle.frameName)
+    debugLog("[Purchase] 车辆价格:", vehicle.price)
+    
+    -- 检查资金是否足够
+    local currentCash = purchaseFunctions.getCurrentCash()
+    if currentCash < vehicle.price then
+        debugLog("[Purchase] 资金不足")
+        return false, "资金不足"
+    end
+    
+    -- 执行购买
+    local success, result = purchaseFunctions.buyVehicle(vehicle.frameName)
+    
+    if success then
+        debugLog("[Purchase] 购买成功")
+        return true, result
+    else
+        debugLog("[Purchase] 购买失败:", result)
+        return false, result
+    end
+end
+
+-- 通用自动购买函数
+function purchaseFunctions.autoPurchase(options)
+    options = options or {}
+    local sortAscending = options.sortAscending ~= false  -- 默认按价格从低到高排序
+    local maxPurchases = options.maxPurchases or math.huge  -- 最大购买数量
+    local onProgress = options.onProgress or function() end  -- 进度回调
+    local shouldContinue = options.shouldContinue or function() return true end  -- 继续条件
+    
+    debugLog("[AutoPurchase] ========== 开始自动购买 ==========")
+    
+    -- 进入车店
+    if not purchaseFunctions.enterDealership() then
+        return false, "无法进入车店"
+    end
+    
+    task.wait(1) -- 等待车店加载
+    
+    -- 获取所有车辆
+    local vehicles = purchaseFunctions.getAllVehicles()
+    
+    if #vehicles == 0 then
+        return false, "未找到任何车辆"
+    end
+    
+    -- 排序
+    if sortAscending then
+        table.sort(vehicles, function(a, b)
+            return a.price < b.price
+        end)
+        debugLog("[AutoPurchase] 按价格从低到高排序")
+    else
+        table.sort(vehicles, function(a, b)
+            return a.price > b.price
+        end)
+        debugLog("[AutoPurchase] 按价格从高到低排序")
+    end
+    
+    local currentCash = purchaseFunctions.getCurrentCash()
+    local purchasedCount = 0
+    local totalSpent = 0
+    
+    debugLog("[AutoPurchase] 当前资金:", formatNumber(currentCash), "车辆数量:", #vehicles)
+    
+    -- 依次购买
+    for _, vehicle in ipairs(vehicles) do
+        if purchasedCount >= maxPurchases then
+            debugLog("[AutoPurchase] 达到最大购买数量:", maxPurchases)
+            break
+        end
+        
+        if not shouldContinue() then
+            debugLog("[AutoPurchase] 停止条件触发")
+            break
+        end
+        
+        if currentCash >= vehicle.price then
+            local success, result = purchaseFunctions.purchaseVehicle(vehicle)
+            
+            if success then
+                currentCash = currentCash - vehicle.price
+                totalSpent = totalSpent + vehicle.price
+                purchasedCount = purchasedCount + 1
+                
+                debugLog("[AutoPurchase] 已购买:", vehicle.name, "剩余资金:", formatNumber(currentCash))
+                
+                -- 调用进度回调
+                onProgress({
+                    vehicle = vehicle,
+                    purchasedCount = purchasedCount,
+                    totalSpent = totalSpent,
+                    remainingCash = currentCash
+                })
+                
+                task.wait(0.5) -- 购买间隔
+            else
+                debugLog("[AutoPurchase] 购买失败:", vehicle.name)
+            end
+        else
+            debugLog("[AutoPurchase] 资金不足，停止购买")
+            break
+        end
+    end
+    
+    debugLog("[AutoPurchase] ========== 自动购买完成 ==========")
+    debugLog("[AutoPurchase] 购买数量:", purchasedCount, "总花费:", formatNumber(totalSpent))
+    
+    return true, {
+        purchasedCount = purchasedCount,
+        totalSpent = totalSpent,
+        remainingCash = currentCash
+    }
 end
 
 -- 搜索购买UI
@@ -2312,22 +2430,8 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         return
                     end
                     
-                    local currentCash = purchaseFunctions.getCurrentCash()
-                    debugLog("[Purchase] 当前资金:", currentCash, "车辆价格:", selectedVehicle.price)
-                    
-                    if currentCash < selectedVehicle.price then
-                        debugLog("[Purchase] 资金不足")
-                        UILibrary:Notify({
-                            Title = "资金不足",
-                            Text = string.format("需要: $%s\n当前: $%s", formatNumber(selectedVehicle.price), formatNumber(currentCash)),
-                            Duration = 5
-                        })
-                        return
-                    end
-                    
                     debugLog("[Purchase] 开始购买:", selectedVehicle.name)
-                    debugLog("[Purchase] 使用Frame Name:", selectedVehicle.frameName)
-                    local success, result = purchaseFunctions.buyVehicle(selectedVehicle.frameName)
+                    local success, result = purchaseFunctions.purchaseVehicle(selectedVehicle)
                     debugLog("[Purchase] 购买结果:", success, result)
                     
                     if success then
@@ -2412,82 +2516,57 @@ local startAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
         autoBuyStatus = true
         
         spawn(function()
-            -- 进入车店
-            if not purchaseFunctions.enterDealership() then
-                UILibrary:Notify({
-                    Title = "错误",
-                    Text = "无法进入车店",
-                    Duration = 5
-                })
-                autoBuyStatus = false
-                return
-            end
-            
-            task.wait(1) -- 等待车店加载
-            
-            -- 获取所有车辆
-            local vehicles = purchaseFunctions.getAllVehicles()
-            
-            if #vehicles == 0 then
-                UILibrary:Notify({
-                    Title = "错误",
-                    Text = "未找到任何车辆",
-                    Duration = 5
-                })
-                autoBuyStatus = false
-                return
-            end
-            
-            -- 按价格从低到高排序
-            table.sort(vehicles, function(a, b)
-                return a.price < b.price
-            end)
-            
-            local currentCash = purchaseFunctions.getCurrentCash()
-            local purchasedCount = 0
-            local totalSpent = 0
-            
-            UILibrary:Notify({
-                Title = "一键购买开始",
-                Text = string.format("当前资金: $%s\n车辆数量: %d", formatNumber(currentCash), #vehicles),
-                Duration = 5
+            local success, result = purchaseFunctions.autoPurchase({
+                sortAscending = true,  -- 按价格从低到高
+                shouldContinue = function()
+                    return autoBuyStatus
+                end,
+                onProgress = function(progress)
+                    debugLog("[AutoBuy] 进度:", progress.purchasedCount, "已花费:", formatNumber(progress.totalSpent))
+                end
             })
-            
-            -- 依次购买
-            for _, vehicle in ipairs(vehicles) do
-                if not autoBuyStatus then
-                    break
-                end
-                
-                if currentCash >= vehicle.price then
-                    local success, result = purchaseFunctions.buyVehicle(vehicle.name)
-                    
-                    if success then
-                        currentCash = currentCash - vehicle.price
-                        totalSpent = totalSpent + vehicle.price
-                        purchasedCount = purchasedCount + 1
-                        
-                        debugLog("[AutoBuy] 已购买:", vehicle.name, "剩余资金:", formatNumber(currentCash))
-                        
-                        task.wait(0.5) -- 购买间隔
-                    else
-                        debugLog("[AutoBuy] 购买失败:", vehicle.name)
-                    end
-                else
-                    debugLog("[AutoBuy] 资金不足，停止购买")
-                    break
-                end
-            end
             
             autoBuyStatus = false
             
-            UILibrary:Notify({
-                Title = "一键购买完成",
-                Text = string.format("已购买: %d辆\n总花费: $%s\n剩余资金: $%s", 
-                    purchasedCount, formatNumber(totalSpent), formatNumber(currentCash)),
-                Duration = 5
-            })
+            if success then
+                UILibrary:Notify({
+                    Title = "一键购买完成",
+                    Text = string.format(
+                        "购买数量: %d\n总花费: $%s\n剩余资金: $%s",
+                        result.purchasedCount,
+                        formatNumber(result.totalSpent),
+                        formatNumber(result.remainingCash)
+                    ),
+                    Duration = 5
+                })
+            else
+                UILibrary:Notify({
+                    Title = "一键购买失败",
+                    Text = result,
+                    Duration = 5
+                })
+            end
         end)
+    end
+})
+
+local stopAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
+    Text = "停止一键购买",
+    Callback = function()
+        if autoBuyStatus then
+            autoBuyStatus = false
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "一键购买已停止",
+                Duration = 3
+            })
+        else
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "一键购买未在运行",
+                Duration = 3
+            })
+        end
     end
 })
 
