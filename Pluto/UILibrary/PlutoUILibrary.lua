@@ -871,7 +871,8 @@ function UILibrary:CreateDropdown(parent, options)
         end
 
         -- 更新选项列表高度
-        optionsList.CanvasSize = UDim2.new(0, 0, 0, math.max(100, #options.Options * 28 + 8))
+        local contentHeight = #options.Options * 28 + 8
+        optionsList.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
     end
 
     createOptions()
@@ -883,10 +884,15 @@ function UILibrary:CreateDropdown(parent, options)
         arrowLabel.Text = isOpen and "▲" or "▼"
 
         if isOpen then
+            -- 设置实际高度
+            local listHeight = math.min(200, #options.Options * 28 + 8)
+            optionsList.Size = UDim2.new(0.4, -ddPad, 0, listHeight)
             TweenService:Create(optionsList, self.TWEEN_INFO_UI, {
                 BackgroundTransparency = 0.3
             }):Play()
         else
+            -- 隐藏时重置高度为0
+            optionsList.Size = UDim2.new(0.4, -ddPad, 0, 0)
             TweenService:Create(optionsList, self.TWEEN_INFO_UI, {
                 BackgroundTransparency = 0.3
             }):Play()

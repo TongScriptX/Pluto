@@ -2084,6 +2084,10 @@ UILibrary:CreateLabel(searchCard, {
     Text = "搜索购买",
 })
 
+-- 存储之前创建的UI元素
+local previousDropdown = nil
+local previousBuyButton = nil
+
 local searchResultsFrame = Instance.new("ScrollingFrame")
 searchResultsFrame.Name = "SearchResults"
 searchResultsFrame.Size = UDim2.new(1, -16, 0, 200)
@@ -2122,6 +2126,21 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         end
         
         debugLog("[Purchase] 开始搜索，关键词:", searchText)
+        
+        -- 销毁之前创建的UI元素
+        pcall(function()
+            if previousDropdown and previousDropdown.Parent then
+                previousDropdown:Destroy()
+                previousDropdown = nil
+            end
+        end)
+        
+        pcall(function()
+            if previousBuyButton and previousBuyButton.Parent then
+                previousBuyButton:Destroy()
+                previousBuyButton = nil
+            end
+        end)
         
         -- 进入车店并获取车辆数据
         if not purchaseFunctions.enterDealership() then
@@ -2191,6 +2210,9 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             })
             return
         end
+        
+        -- 存储下拉框引用
+        previousDropdown = vehicleDropdown
         
         -- 创建购买按钮
         pcall(function()
