@@ -99,6 +99,7 @@ end
 UILibrary.TWEEN_INFO_UI = TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 UILibrary.TWEEN_INFO_BUTTON = TweenInfo.new(0.15, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
 UILibrary.THEME = THEME
+UILibrary.DEFAULT_THEME = DEFAULT_THEME
 UILibrary.UI_STYLES = UI_STYLES
 
 -- 销毁已存在的UI实例 - 增强版本
