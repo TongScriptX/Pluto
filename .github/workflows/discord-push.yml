@@ -41,10 +41,31 @@ jobs:
           
           echo ""
           echo "=== 提取提交信息 ==="
-          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+          # 检查是否是 merge commit
+          IS_MERGE=$(git log -1 --pretty=%P | grep -c "^")
+          
+          if [ "$IS_MERGE" -gt 0 ]; then
+            echo "检测到 Merge Commit，获取父提交信息"
+            # 获取第一个父提交（通常是 develop 分支的提交）
+            PARENT1=$(git log -1 --pretty=%h --first-parent)
+            PARENT1_MESSAGE=$(git log -1 --pretty=%s --first-parent)
+            PARENT1_AUTHOR=$(git log -1 --pretty=%an --first-parent)
+            PARENT1_HASH=$(git rev-parse --short HEAD^)
+            
+            echo "父提交 1: $PARENT1"
+            echo "父提交 1 消息: $PARENT1_MESSAGE"
+            echo "父提交 1 作者: $PARENT1_AUTHOR"
+            
+            COMMIT_MESSAGE="$PARENT1_MESSAGE"
+            COMMIT_AUTHOR="$PARENT1_AUTHOR"
+            COMMIT_HASH="$PARENT1_HASH"
+          else
+            COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+            COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+            COMMIT_HASH=$(git rev-parse --short HEAD)
+          fi
+          
           COMMIT_BODY=$(git log -1 --pretty=%b)
-          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
-          COMMIT_HASH=$(git rev-parse --short HEAD)
           FILES=$(git diff --name-only HEAD^ HEAD || echo "")
           FILE_NAMES=$(echo "$FILES" | xargs -n1 basename 2>/dev/null | paste -sd ", " - || echo "无更改")
           
