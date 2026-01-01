@@ -675,7 +675,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         -- 计算下次通知时间
         local nextNotifyTimestamp = currentTime + (self.config.notificationInterval or 30) * 60
         local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
-        local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
+        local countdownT = string.format("<t:%d:f>", nextNotifyTimestamp)
         
         -- 构建 embed fields
         local fields = {}
@@ -710,7 +710,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                                 
                                 -- 计算完成时间戳
                                 local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
-                                local countdownT = string.format("<t:%d:T>", completionTimestamp)
+                                local countdownT = string.format("<t:%d:f>", completionTimestamp)
                                 
                                 if days > 0 then
                                     estimatedTimeText = string.format("\n**预计完成**: %d天%d小时%d分钟\n**完成时间**: %s", days, hours, minutes, countdownT)
