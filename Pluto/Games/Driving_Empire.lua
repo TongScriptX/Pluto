@@ -2107,6 +2107,9 @@ function purchaseFunctions.buyVehicle(frameName)
     end
 end
 
+-- 记录一键购买的车辆
+purchaseFunctions.autoPurchasedVehicles = {}
+
 -- 独立的购买车辆函数（整合版）
 function purchaseFunctions.purchaseVehicle(vehicle)
     debugLog("[Purchase] ========== 开始购买车辆 ==========")
@@ -2126,11 +2129,83 @@ function purchaseFunctions.purchaseVehicle(vehicle)
     
     if success then
         debugLog("[Purchase] 购买成功")
+        -- 记录购买的车辆
+        table.insert(purchaseFunctions.autoPurchasedVehicles, vehicle)
+        debugLog("[Purchase] 已记录购买车辆:", vehicle.name, "当前记录数量:", #purchaseFunctions.autoPurchasedVehicles)
         return true, result
     else
         debugLog("[Purchase] 购买失败:", result)
         return false, result
     end
+end
+
+-- 后悔功能（卖车）
+function purchaseFunctions.sellVehicle(vehicle)
+    debugLog("[Sell] ========== 开始卖车 ==========")
+    debugLog("[Sell] 车辆名称:", vehicle.name)
+    debugLog("[Sell] Frame Name:", vehicle.frameName)
+    
+    local success, err = pcall(function()
+        local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SellCar")
+        debugLog("[Sell] 找到SellCar远程事件")
+        
+        local args = {
+            vehicle.frameName
+        }
+        
+        debugLog("[Sell] 卖车参数:", vehicle.frameName)
+        sellRemote:FireServer(unpack(args))
+        
+        return true
+    end)
+    
+    if success then
+        debugLog("[Sell] 卖车成功")
+        -- 从记录中移除
+        for i, v in ipairs(purchaseFunctions.autoPurchasedVehicles) do
+            if v.frameName == vehicle.frameName then
+                table.remove(purchaseFunctions.autoPurchasedVehicles, i)
+                debugLog("[Sell] 已从记录中移除:", vehicle.name)
+                break
+            end
+        end
+        return true
+    else
+        warn("[Sell] 卖车失败:", err)
+        debugLog("[Sell] ========== 卖车失败 ==========")
+        return false, err
+    end
+end
+
+-- 后悔所有购买的车辆
+function purchaseFunctions.regretAllPurchases()
+    debugLog("[Regret] ========== 开始后悔所有购买 ==========")
+    debugLog("[Regret] 需要后悔的车辆数量:", #purchaseFunctions.autoPurchasedVehicles)
+    
+    local soldCount = 0
+    local totalRefund = 0
+    
+    for i, vehicle in ipairs(purchaseFunctions.autoPurchasedVehicles) do
+        local success = purchaseFunctions.sellVehicle(vehicle)
+        if success then
+            soldCount = soldCount + 1
+            totalRefund = totalRefund + vehicle.price
+            debugLog("[Regret] 已卖出:", vehicle.name, "价格:", vehicle.price)
+        else
+            debugLog("[Regret] 卖出失败:", vehicle.name)
+        end
+        
+        task.wait(0.3) -- 卖车间隔
+    end
+    
+    debugLog("[Regret] ========== 后悔完成 ==========")
+    debugLog("[Regret] 成功卖出:", soldCount, "辆")
+    debugLog("[Regret] 总退款:", formatNumber(totalRefund))
+    
+    return true, {
+        soldCount = soldCount,
+        totalRefund = totalRefund
+    }
 end
 
 -- 通用自动购买函数
@@ -2567,6 +2642,49 @@ local stopAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
                 Duration = 3
             })
         end
+    end
+})
+
+-- 后悔按钮
+local regretButton = UILibrary:CreateButton(autoBuyCard, {
+    Text = "后悔所有购买",
+    Callback = function()
+        if #purchaseFunctions.autoPurchasedVehicles == 0 then
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "没有可后悔的车辆",
+                Duration = 3
+            })
+            return
+        end
+        
+        UILibrary:Notify({
+            Title = "确认",
+            Text = string.format("确定要卖出 %d 辆车吗？", #purchaseFunctions.autoPurchasedVehicles),
+            Duration = 5
+        })
+        
+        spawn(function()
+            local success, result = purchaseFunctions.regretAllPurchases()
+            
+            if success then
+                UILibrary:Notify({
+                    Title = "后悔完成",
+                    Text = string.format(
+                        "成功卖出: %d 辆\n总退款: $%s",
+                        result.soldCount,
+                        formatNumber(result.totalRefund)
+                    ),
+                    Duration = 5
+                })
+            else
+                UILibrary:Notify({
+                    Title = "后悔失败",
+                    Text = result,
+                    Duration = 5
+                })
+            end
+        end)
     end
 })
 
