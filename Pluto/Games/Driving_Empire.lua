@@ -171,6 +171,28 @@ PlutoX.registerDataType({
     supportTarget = true
 })
 
+-- 注册排行榜数据类型
+PlutoX.registerDataType({
+    id = "leaderboard",
+    name = "排行榜排名",
+    icon = "🏆",
+    fetchFunc = function()
+        local rank, isOnLeaderboard = fetchPlayerRank()
+        if isOnLeaderboard then
+            return rank
+        end
+        return nil
+    end,
+    calculateAvg = false,
+    supportTarget = true,
+    formatFunc = function(value)
+        if value then
+            return "#" .. tostring(value)
+        end
+        return "未上榜"
+    end
+})
+
 -- 排行榜配置
 local leaderboardConfig = {
     position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
