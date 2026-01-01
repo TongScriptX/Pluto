@@ -5,6 +5,8 @@ function module.CreateUI(playerGui)
     local gui = Instance.new("ScreenGui", playerGui)
     gui.Name = "OneTimeConsoleGui"
     gui.ResetOnSpawn = false
+    gui.DisplayOrder = 999  -- 设置极高的显示层级，确保在所有游戏UI之上
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
     -- 主框架
     local frame = Instance.new("Frame", gui)
@@ -12,12 +14,14 @@ function module.CreateUI(playerGui)
     frame.Position = UDim2.new(0.1, 0, 0.25, 0)
     frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     frame.Visible = false
+    frame.ZIndex = 10  -- 主框架层级
 
     local scroll = Instance.new("ScrollingFrame", frame)
     scroll.Size = UDim2.new(1, 0, 0.85, 0)
     scroll.ScrollBarThickness = 6
     scroll.BackgroundTransparency = 1
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+    scroll.ZIndex = 11  -- 滚动框层级
 
     local layout = Instance.new("UIListLayout", scroll)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -29,12 +33,14 @@ function module.CreateUI(playerGui)
     clearBtn.Position = UDim2.new(1, -260, 0.85, 0)
     clearBtn.Text = "清空"
     clearBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    clearBtn.ZIndex = 12  -- 按钮层级
 
     local copyBtn = Instance.new("TextButton", frame)
     copyBtn.Size = UDim2.new(0, 140, 0, 40)
     copyBtn.Position = UDim2.new(1, -150, 0.85, 0)
     copyBtn.Text = "复制并清空"
     copyBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    copyBtn.ZIndex = 12  -- 按钮层级
 
     local notice = Instance.new("TextLabel", frame)
     notice.Size = UDim2.new(0.6, 0, 0, 30)
@@ -45,6 +51,7 @@ function module.CreateUI(playerGui)
     notice.TextSize = 14
     notice.TextXAlignment = Enum.TextXAlignment.Left
     notice.Text = ""
+    notice.ZIndex = 12  -- 通知层级
 
     local floatBtn = Instance.new("TextButton", gui)
     floatBtn.Size = UDim2.new(0, 60, 0, 60)
@@ -52,6 +59,7 @@ function module.CreateUI(playerGui)
     floatBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
     floatBtn.Text = "≡"
     floatBtn.TextSize = 24
+    floatBtn.ZIndex = 20  -- 悬浮按钮层级（最高）
 
     -- 拖动逻辑
     local dragging, dragInput, dragStart, startPos

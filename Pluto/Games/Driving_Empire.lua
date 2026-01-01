@@ -56,7 +56,12 @@ end
 -- UI 库加载
 local UILibrary
 local success, result = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local url
+    if DEBUG_MODE then
+        url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
+    else
+        url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    end
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)
@@ -215,10 +220,10 @@ local function parseContents(contents)
     local rank = 1
     local leaderboardList = {}
     
-    -- 输出完整榜单（只显示玩家数据）
+    -- 输出完整榜单
     debugLog("[排行榜] ========== 完整榜单 ==========")
     for _, child in ipairs(contents:GetChildren()) do
-        -- 跳过模板元素（名称不是数字的）
+        -- 跳过模板元素
         if tonumber(child.Name) then
             local placement = child:FindFirstChild("Placement")
             local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
@@ -608,7 +613,7 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
--- 重新定义 forceDeliverRobbedAmount 函数（确保在 config 初始化之后）
+-- forceDeliverRobbedAmount 函数
 local function forceDeliverRobbedAmount(isShutdown)
     debugLog("[AutoRob] === 开始强制投放流程 ===")
     
@@ -809,7 +814,7 @@ local function forceDeliverRobbedAmount(isShutdown)
     return deliverySuccess, deliveryAttempts, initialRobbedAmount
 end
 
--- 重新定义 checkAndForceDelivery 函数（确保在 config 初始化之后）
+-- checkAndForceDelivery 函数
 local function checkAndForceDelivery(tempTarget)
     local robbedAmount = getRobbedAmount() or 0
     local targetAmount = tempTarget or config.robTargetAmount or 0
@@ -846,7 +851,7 @@ local function checkAndForceDelivery(tempTarget)
     return false
 end
 
--- 重新定义 monitorDropOffStatusAndUpdateTarget 函数（确保在 config 初始化之后）
+-- monitorDropOffStatusAndUpdateTarget 函数
 local lastDropOffEnabledStatus = nil
 
 local function monitorDropOffStatusAndUpdateTarget()
@@ -1908,6 +1913,774 @@ UILibrary:CreateButton(recalculateCard, {
             function() configManager:saveConfig() end,
             targetValueLabels
         )
+    end
+})
+
+-- 购买标签页
+local purchaseTab, purchaseContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "购买"
+})
+
+-- 车辆数据获取功能
+local purchaseFunctions = {}
+
+-- 进入车店
+function purchaseFunctions.enterDealership()
+    local success, err = pcall(function()
+        local locationRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Location")
+        locationRemote:FireServer("Enter", "Cars")
+        debugLog("[Purchase] 已进入车店")
+        return true
+    end)
+    
+    if not success then
+        warn("[Purchase] 进入车店失败:", err)
+        return false
+    end
+    
+    return true
+end
+
+-- 获取所有车辆数据
+function purchaseFunctions.getAllVehicles()
+    local vehicles = {}
+    
+    local success, err = pcall(function()
+        local playerGui = player:WaitForChild("PlayerGui", 5)
+        if not playerGui then
+            warn("[Purchase] PlayerGui 获取超时")
+            return vehicles
+        end
+        
+        local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
+        if not dealershipHolder then
+            warn("[Purchase] 未找到 DealershipHolder")
+            return vehicles
+        end
+        
+        local dealership = dealershipHolder:FindFirstChild("Dealership")
+        if not dealership then
+            warn("[Purchase] 未找到 Dealership")
+            return vehicles
+        end
+        
+        local selector = dealership:FindFirstChild("Selector")
+        if not selector then
+            warn("[Purchase] 未找到 Selector")
+            return vehicles
+        end
+        
+        local view = selector:FindFirstChild("View")
+        if not view then
+            warn("[Purchase] 未找到 View")
+            return vehicles
+        end
+        
+        local allView = view:FindFirstChild("All")
+        if not allView then
+            warn("[Purchase] 未找到 All")
+            return vehicles
+        end
+        
+        local container = allView:FindFirstChild("Container")
+        if not container then
+            warn("[Purchase] 未找到 Container")
+            return vehicles
+        end
+        
+        local allChildren = container:GetChildren()
+        local totalChildren = #allChildren
+        
+        for i, vehicleFrame in ipairs(allChildren) do
+            if i % 10 == 0 then
+                task.wait()
+            end
+            
+            if vehicleFrame:IsA("Frame") or vehicleFrame:IsA("ImageButton") then
+                local vehicleName = nil
+                local price = nil
+                
+                for _, child in ipairs(vehicleFrame:GetChildren()) do
+                    if child.Name == "VehicleName" and child:IsA("TextLabel") then
+                        vehicleName = child.Text
+                    elseif child.Name == "Price" and child:IsA("TextLabel") then
+                        local priceText = child.Text
+                        local cleanPrice = priceText:gsub("[$,]", "")
+                        price = tonumber(cleanPrice)
+                    end
+                end
+                
+                if vehicleName and price then
+                    table.insert(vehicles, {
+                        name = vehicleName,
+                        price = price,
+                        frame = vehicleFrame,
+                        frameName = vehicleFrame.Name
+                    })
+                end
+            end
+        end
+    end)
+    
+    if not success then
+        warn("[Purchase] 获取车辆数据失败:", err)
+    end
+    
+    debugLog("[Purchase] 获取到", #vehicles, "辆车辆")
+    
+    return vehicles
+end
+
+-- 获取当前资金
+function purchaseFunctions.getCurrentCash()
+    local leaderstats = player:FindFirstChild("leaderstats")
+    if leaderstats then
+        local cash = leaderstats:FindFirstChild("Cash")
+        if cash then
+            return cash.Value
+        end
+    end
+    return 0
+end
+
+-- 生成随机颜色
+function purchaseFunctions.randomColor()
+    return Color3.new(math.random(), math.random(), math.random())
+end
+
+-- 购买指定车辆
+function purchaseFunctions.buyVehicle(frameName)
+    debugLog("[Purchase] ========== 开始购买 ==========")
+    debugLog("[Purchase] 购买名称:", frameName)
+    
+    local success, result = pcall(function()
+        local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
+        debugLog("[Purchase] 找到Purchase远程事件")
+        
+        -- 随机颜色配置
+        local mainColor = purchaseFunctions.randomColor()
+        local secondaryColor = purchaseFunctions.randomColor()
+        local wheelColor = purchaseFunctions.randomColor()
+        
+        local args = {
+            {
+                frameName,
+                mainColor, -- 主颜色（随机）
+                secondaryColor, -- 次要颜色（随机）
+                wheelColor  -- 轮毂颜色（随机）
+            }
+        }
+        
+        debugLog("[Purchase] 购买参数:")
+        debugLog("[Purchase]  - 购买名称:", frameName)
+        debugLog("[Purchase]  - 主颜色:", mainColor)
+        debugLog("[Purchase]  - 次要颜色:", secondaryColor)
+        debugLog("[Purchase]  - 轮毂颜色:", wheelColor)
+        
+        local purchaseResult = purchaseRemote:InvokeServer(unpack(args))
+        debugLog("[Purchase] 远程调用返回:", type(purchaseResult))
+        
+        if type(purchaseResult) == "table" then
+            debugLog("[Purchase] 返回的table内容:")
+            for k, v in pairs(purchaseResult) do
+                debugLog("[Purchase]   ", k, "=", v)
+            end
+        else
+            debugLog("[Purchase] 返回值:", purchaseResult)
+        end
+        
+        return purchaseResult
+    end)
+    
+    if success then
+        debugLog("[Purchase] pcall成功，结果:", result)
+        debugLog("[Purchase] ========== 购买完成 ==========")
+        return true, result
+    else
+        warn("[Purchase] pcall失败，错误:", result)
+        debugLog("[Purchase] ========== 购买失败 ==========")
+        return false, result
+    end
+end
+
+-- 记录一键购买的车辆
+purchaseFunctions.autoPurchasedVehicles = {}
+
+-- 独立的购买车辆函数
+function purchaseFunctions.purchaseVehicle(vehicle)
+    debugLog("[Purchase] ========== 开始购买车辆 ==========")
+    debugLog("[Purchase] 车辆名称:", vehicle.name)
+    debugLog("[Purchase] Frame Name:", vehicle.frameName)
+    debugLog("[Purchase] 车辆价格:", vehicle.price)
+    
+    -- 检查资金是否足够
+    local currentCash = purchaseFunctions.getCurrentCash()
+    if currentCash < vehicle.price then
+        debugLog("[Purchase] 资金不足")
+        return false, "资金不足"
+    end
+    
+    -- 执行购买
+    local success, result = purchaseFunctions.buyVehicle(vehicle.frameName)
+    
+    if success then
+        debugLog("[Purchase] 购买成功")
+        -- 记录购买的车辆
+        table.insert(purchaseFunctions.autoPurchasedVehicles, vehicle)
+        debugLog("[Purchase] 已记录购买车辆:", vehicle.name, "当前记录数量:", #purchaseFunctions.autoPurchasedVehicles)
+        return true, result
+    else
+        debugLog("[Purchase] 购买失败:", result)
+        return false, result
+    end
+end
+
+-- 后悔功能（卖车）
+function purchaseFunctions.sellVehicle(vehicle)
+    debugLog("[Sell] ========== 开始卖车 ==========")
+    debugLog("[Sell] 车辆名称:", vehicle.name)
+    debugLog("[Sell] Frame Name:", vehicle.frameName)
+    
+    local success, err = pcall(function()
+        local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SellCar")
+        debugLog("[Sell] 找到SellCar远程事件")
+        
+        local args = {
+            vehicle.frameName
+        }
+        
+        debugLog("[Sell] 卖车参数:", vehicle.frameName)
+        sellRemote:FireServer(unpack(args))
+        
+        return true
+    end)
+    
+    if success then
+        debugLog("[Sell] 卖车成功")
+        -- 从记录中移除
+        for i, v in ipairs(purchaseFunctions.autoPurchasedVehicles) do
+            if v.frameName == vehicle.frameName then
+                table.remove(purchaseFunctions.autoPurchasedVehicles, i)
+                debugLog("[Sell] 已从记录中移除:", vehicle.name)
+                break
+            end
+        end
+        return true
+    else
+        warn("[Sell] 卖车失败:", err)
+        debugLog("[Sell] ========== 卖车失败 ==========")
+        return false, err
+    end
+end
+
+-- 后悔所有购买的车辆
+function purchaseFunctions.regretAllPurchases()
+    debugLog("[Regret] ========== 开始后悔所有购买 ==========")
+    debugLog("[Regret] 需要后悔的车辆数量:", #purchaseFunctions.autoPurchasedVehicles)
+    
+    local soldCount = 0
+    local totalRefund = 0
+    
+    for i, vehicle in ipairs(purchaseFunctions.autoPurchasedVehicles) do
+        local success = purchaseFunctions.sellVehicle(vehicle)
+        if success then
+            soldCount = soldCount + 1
+            totalRefund = totalRefund + vehicle.price
+            debugLog("[Regret] 已卖出:", vehicle.name, "价格:", vehicle.price)
+        else
+            debugLog("[Regret] 卖出失败:", vehicle.name)
+        end
+        
+        task.wait(1)
+    end
+    
+    debugLog("[Regret] ========== 后悔完成 ==========")
+    debugLog("[Regret] 成功卖出:", soldCount, "辆")
+    debugLog("[Regret] 总退款:", formatNumber(totalRefund))
+    
+    return true, {
+        soldCount = soldCount,
+        totalRefund = totalRefund
+    }
+end
+
+-- 通用自动购买函数
+function purchaseFunctions.autoPurchase(options)
+    options = options or {}
+    local sortAscending = options.sortAscending ~= false  -- 默认按价格从低到高排序
+    local maxPurchases = options.maxPurchases or math.huge  -- 最大购买数量
+    local onProgress = options.onProgress or function() end  -- 进度回调
+    local shouldContinue = options.shouldContinue or function() return true end
+    
+    debugLog("[AutoPurchase] ========== 开始自动购买 ==========")
+    
+    -- 进入车店
+    if not purchaseFunctions.enterDealership() then
+        return false, "无法进入车店"
+    end
+    
+    task.wait(1)
+    
+    -- 获取所有车辆
+    local vehicles = purchaseFunctions.getAllVehicles()
+    
+    if #vehicles == 0 then
+        return false, "未找到任何车辆"
+    end
+    
+    -- 排序
+    if sortAscending then
+        table.sort(vehicles, function(a, b)
+            return a.price < b.price
+        end)
+        debugLog("[AutoPurchase] 按价格从低到高排序")
+    else
+        table.sort(vehicles, function(a, b)
+            return a.price > b.price
+        end)
+        debugLog("[AutoPurchase] 按价格从高到低排序")
+    end
+    
+    local currentCash = purchaseFunctions.getCurrentCash()
+    local purchasedCount = 0
+    local totalSpent = 0
+    
+    debugLog("[AutoPurchase] 当前资金:", formatNumber(currentCash), "车辆数量:", #vehicles)
+    
+    -- 依次购买
+    for _, vehicle in ipairs(vehicles) do
+        if purchasedCount >= maxPurchases then
+            debugLog("[AutoPurchase] 达到最大购买数量:", maxPurchases)
+            break
+        end
+        
+        if not shouldContinue() then
+            debugLog("[AutoPurchase] 停止条件触发")
+            break
+        end
+        
+        if currentCash >= vehicle.price then
+            local success, result = purchaseFunctions.purchaseVehicle(vehicle)
+            
+            if success then
+                currentCash = currentCash - vehicle.price
+                totalSpent = totalSpent + vehicle.price
+                purchasedCount = purchasedCount + 1
+                
+                debugLog("[AutoPurchase] 已购买:", vehicle.name, "剩余资金:", formatNumber(currentCash))
+                
+                -- 调用进度回调
+                onProgress({
+                    vehicle = vehicle,
+                    purchasedCount = purchasedCount,
+                    totalSpent = totalSpent,
+                    remainingCash = currentCash
+                })
+                
+                task.wait(1)
+            else
+                debugLog("[AutoPurchase] 购买失败:", vehicle.name)
+            end
+        else
+            debugLog("[AutoPurchase] 资金不足，停止购买")
+            break
+        end
+    end
+    
+    debugLog("[AutoPurchase] ========== 自动购买完成 ==========")
+    debugLog("[AutoPurchase] 购买数量:", purchasedCount, "总花费:", formatNumber(totalSpent))
+    
+    return true, {
+        purchasedCount = purchasedCount,
+        totalSpent = totalSpent,
+        remainingCash = currentCash
+    }
+end
+
+-- 搜索购买UI
+local searchCard = UILibrary:CreateCard(purchaseContent, { IsMultiElement = true })
+UILibrary:CreateLabel(searchCard, {
+    Text = "搜索购买",
+})
+
+-- 存储之前创建的UI元素
+local previousDropdown = nil
+local previousBuyButton = nil
+
+local searchResultsFrame = Instance.new("ScrollingFrame")
+searchResultsFrame.Name = "SearchResults"
+searchResultsFrame.Size = UDim2.new(1, -16, 0, 200)
+searchResultsFrame.Position = UDim2.new(0, 8, 0, 80)
+searchResultsFrame.BackgroundColor3 = UILibrary.THEME.SecondaryBackground or UILibrary.DEFAULT_THEME.SecondaryBackground
+searchResultsFrame.BackgroundTransparency = 0.3
+searchResultsFrame.BorderSizePixel = 0
+searchResultsFrame.ScrollBarThickness = 6
+searchResultsFrame.ScrollBarImageColor3 = UILibrary.THEME.Primary or UILibrary.DEFAULT_THEME.Primary
+searchResultsFrame.Parent = searchCard
+searchResultsFrame.Visible = false
+
+local searchResultsLayout = Instance.new("UIListLayout")
+searchResultsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+searchResultsLayout.Padding = UDim.new(0, 4)
+searchResultsLayout.Parent = searchResultsFrame
+
+local searchResultsPadding = Instance.new("UIPadding")
+searchResultsPadding.PaddingLeft = UDim.new(0, 4)
+searchResultsPadding.PaddingRight = UDim.new(0, 4)
+searchResultsPadding.PaddingTop = UDim.new(0, 4)
+searchResultsPadding.PaddingBottom = UDim.new(0, 4)
+searchResultsPadding.Parent = searchResultsFrame
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, UILibrary.UI_STYLES.CornerRadius)
+corner.Parent = searchResultsFrame
+
+local searchInput = UILibrary:CreateTextBox(searchCard, {
+    PlaceholderText = "输入车辆名称关键词",
+    OnFocusLost = function(text)
+        local searchText = text:lower()
+        
+        if searchText == "" then
+            return
+        end
+        
+        debugLog("[Purchase] 开始搜索，关键词:", searchText)
+        
+        -- 销毁之前创建的UI元素
+        pcall(function()
+            if previousDropdown and previousDropdown.Parent then
+                previousDropdown:Destroy()
+            end
+        end)
+        
+        pcall(function()
+            if previousBuyButton and previousBuyButton.Parent then
+                previousBuyButton:Destroy()
+            end
+        end)
+        
+        previousDropdown = nil
+        previousBuyButton = nil
+        
+        -- 进入车店并获取车辆数据
+        if not purchaseFunctions.enterDealership() then
+            UILibrary:Notify({
+                Title = "错误",
+                Text = "无法进入车店",
+                Duration = 5
+            })
+            return
+        end
+        
+        task.wait(1)
+        
+        local vehicles = purchaseFunctions.getAllVehicles()
+        
+        local matchedVehicles = {}
+        
+        -- 搜索匹配的车辆
+        for _, vehicle in ipairs(vehicles) do
+            local vehicleNameLower = vehicle.name:lower()
+            if vehicleNameLower:find(searchText) then
+                table.insert(matchedVehicles, {
+                    name = vehicle.name,
+                    price = vehicle.price,
+                    frameName = vehicle.frameName,
+                    displayText = vehicle.name .. " - $" .. formatNumber(vehicle.price)
+                })
+            end
+        end
+        
+        debugLog("[Purchase] 搜索完成，匹配到", #matchedVehicles, "辆车辆")
+        
+        if #matchedVehicles == 0 then
+            UILibrary:Notify({
+                Title = "搜索结果",
+                Text = string.format("未找到匹配的车辆\n关键词: %s\n可用车辆: %d", text, #vehicles),
+                Duration = 5
+            })
+            return
+        end
+        
+        -- 创建车辆下拉框
+        local vehicleDropdown = nil
+        local buyButton = nil
+        
+        local success, errorMsg = pcall(function()
+            -- 提取显示文本列表
+            local displayOptions = {}
+            for _, v in ipairs(matchedVehicles) do
+                table.insert(displayOptions, v.displayText)
+            end
+            
+            vehicleDropdown = UILibrary:CreateDropdown(searchCard, {
+                Text = "选择车辆",
+                DefaultOption = displayOptions[1],
+                Options = displayOptions,
+                Callback = function(selectedDisplayText)
+                    -- 车辆选择回调，从displayText中提取车辆名称
+                    local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
+                end
+            })
+        end)
+        
+        if not success then
+            debugLog("[Purchase] 创建下拉框失败:", errorMsg)
+            UILibrary:Notify({
+                Title = "错误",
+                Text = "创建下拉框失败: " .. tostring(errorMsg),
+                Duration = 10
+            })
+            return
+        end
+        
+        if not vehicleDropdown then
+            UILibrary:Notify({
+                Title = "错误",
+                Text = "无法创建下拉框",
+                Duration = 5
+            })
+            return
+        end
+        
+        -- 存储下拉框引用
+        previousDropdown = vehicleDropdown
+        
+        -- 创建购买按钮
+        pcall(function()
+            buyButton = UILibrary:CreateButton(searchCard, {
+                Text = "购买选中车辆",
+                Callback = function()
+                    -- 检查下拉框是否还存在
+                    if not vehicleDropdown or not vehicleDropdown.Parent then
+                        debugLog("[Purchase] 下拉框已被销毁")
+                        return
+                    end
+                    
+                    -- 获取下拉框选中的车辆
+                    local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
+                    if not dropdownButton then
+                        UILibrary:Notify({
+                            Title = "错误",
+                            Text = "请先选择车辆",
+                            Duration = 3
+                        })
+                        return
+                    end
+                    
+                    local selectedDisplayText = dropdownButton.Text
+                    -- 从displayText中提取车辆名
+                    local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
+                    
+                    if not selectedVehicleName then
+                        debugLog("[Purchase] 无法从displayText中提取车辆名称:", selectedDisplayText)
+                        UILibrary:Notify({
+                            Title = "错误",
+                            Text = "无法解析车辆名称",
+                            Duration = 3
+                        })
+                        return
+                    end
+                    
+                    -- 查找车辆
+                    local selectedVehicle = nil
+                    for _, vehicle in ipairs(matchedVehicles) do
+                        if vehicle.name == selectedVehicleName then
+                            selectedVehicle = vehicle
+                            break
+                        end
+                    end
+                    
+                    if not selectedVehicle then
+                        debugLog("[Purchase] 未找到选中的车辆数据")
+                        UILibrary:Notify({
+                            Title = "错误",
+                            Text = "未找到选中的车辆",
+                            Duration = 5
+                        })
+                        return
+                    end
+                    
+                    debugLog("[Purchase] 开始购买:", selectedVehicle.name)
+                    local success, result = purchaseFunctions.purchaseVehicle(selectedVehicle)
+                    debugLog("[Purchase] 购买结果:", success, result)
+                    
+                    if success then
+                        debugLog("[Purchase] 购买成功，开始清理UI")
+                        UILibrary:Notify({
+                            Title = "购买成功",
+                            Text = string.format("已购买: %s\n价格: $%s", selectedVehicle.name, formatNumber(selectedVehicle.price)),
+                            Duration = 5
+                        })
+                        
+                        -- 安全地清理UI元素
+                        pcall(function()
+                            if vehicleDropdown and vehicleDropdown.Parent then
+                                debugLog("[Purchase] 销毁下拉框")
+                                vehicleDropdown:Destroy()
+                                vehicleDropdown = nil
+                            end
+                        end)
+                        
+                        pcall(function()
+                            if buyButton and buyButton.Parent then
+                                debugLog("[Purchase] 销毁购买按钮")
+                                buyButton:Destroy()
+                                buyButton = nil
+                            end
+                        end)
+                        
+                        -- 清空搜索框
+                        debugLog("[Purchase] 清空搜索框")
+                        if searchInput and searchInput.Parent then
+                            searchInput.Text = ""
+                        end
+                    else
+                        debugLog("[Purchase] 购买失败")
+                        UILibrary:Notify({
+                            Title = "购买失败",
+                            Text = string.format("无法购买: %s", selectedVehicle.name),
+                            Duration = 5
+                        })
+                    end
+                end
+            })
+            
+            debugLog("[Purchase] 购买按钮创建成功")
+        end)
+        
+        -- 存储购买按钮引用
+        previousBuyButton = buyButton
+        
+        if not buyButton then
+            debugLog("[Purchase] 购买按钮创建失败")
+            UILibrary:Notify({
+                Title = "错误",
+                Text = "无法创建购买按钮",
+                Duration = 5
+            })
+            return
+        end
+    end
+})
+
+-- 一键购买功能
+local autoBuyCard = UILibrary:CreateCard(purchaseContent, { IsMultiElement = true })
+UILibrary:CreateLabel(autoBuyCard, {
+    Text = "一键购买",
+})
+
+local autoBuyStatus = false
+
+local startAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
+    Text = "开始一键购买",
+    Callback = function()
+        if autoBuyStatus then
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "一键购买已在运行中",
+                Duration = 3
+            })
+            return
+        end
+        
+        autoBuyStatus = true
+        
+        spawn(function()
+            local success, result = purchaseFunctions.autoPurchase({
+                sortAscending = true,  -- 按价格从低到高
+                shouldContinue = function()
+                    return autoBuyStatus
+                end,
+                onProgress = function(progress)
+                    debugLog("[AutoBuy] 进度:", progress.purchasedCount, "已花费:", formatNumber(progress.totalSpent))
+                end
+            })
+            
+            autoBuyStatus = false
+            
+            if success then
+                UILibrary:Notify({
+                    Title = "一键购买完成",
+                    Text = string.format(
+                        "购买数量: %d\n总花费: $%s\n剩余资金: $%s",
+                        result.purchasedCount,
+                        formatNumber(result.totalSpent),
+                        formatNumber(result.remainingCash)
+                    ),
+                    Duration = 5
+                })
+            else
+                UILibrary:Notify({
+                    Title = "一键购买失败",
+                    Text = result,
+                    Duration = 5
+                })
+            end
+        end)
+    end
+})
+
+local stopAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
+    Text = "停止一键购买",
+    Callback = function()
+        if autoBuyStatus then
+            autoBuyStatus = false
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "一键购买已停止",
+                Duration = 3
+            })
+        else
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "一键购买未在运行",
+                Duration = 3
+            })
+        end
+    end
+})
+
+-- 后悔按钮
+local regretButton = UILibrary:CreateButton(autoBuyCard, {
+    Text = "后悔所有购买",
+    Callback = function()
+        if #purchaseFunctions.autoPurchasedVehicles == 0 then
+            UILibrary:Notify({
+                Title = "提示",
+                Text = "没有可后悔的车辆",
+                Duration = 3
+            })
+            return
+        end
+        
+        UILibrary:Notify({
+            Title = "确认",
+            Text = string.format("确定要卖出 %d 辆车吗？", #purchaseFunctions.autoPurchasedVehicles),
+            Duration = 5
+        })
+        
+        spawn(function()
+            local success, result = purchaseFunctions.regretAllPurchases()
+            
+            if success then
+                UILibrary:Notify({
+                    Title = "后悔完成",
+                    Text = string.format(
+                        "成功卖出: %d 辆\n总退款: $%s",
+                        result.soldCount,
+                        formatNumber(result.totalRefund)
+                    ),
+                    Duration = 5
+                })
+            else
+                UILibrary:Notify({
+                    Title = "后悔失败",
+                    Text = result,
+                    Duration = 5
+                })
+            end
+        end)
     end
 })
 
