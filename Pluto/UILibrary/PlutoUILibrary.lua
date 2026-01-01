@@ -730,6 +730,184 @@ function UILibrary:CreateToggle(parent, options)
     return toggleFrame, state
 end
 
+-- 下拉框模块
+function UILibrary:CreateDropdown(parent, options)
+    if not parent then
+        warn("[Dropdown]: Creation failed: Parent is nil")
+        return nil
+    end
+
+    options = options or {}
+    local ddPad = UI_STYLES.Padding or 6
+
+    local dropdownFrame = Instance.new("Frame")
+    dropdownFrame.Name = "Dropdown_" .. (options.Text or "Unnamed")
+    dropdownFrame.Size = UDim2.new(1, -2 * ddPad, 0, UI_STYLES.ButtonHeight)
+    dropdownFrame.BackgroundTransparency = 1
+    dropdownFrame.Parent = parent
+    dropdownFrame.ZIndex = 2
+
+    local label = self:CreateLabel(dropdownFrame, {
+        Text = options.Text or "",
+        Size = UDim2.new(0.6, -ddPad, 1, 0),
+        TextSize = 12
+    })
+    label.ZIndex = 3
+
+    local dropdownButton = Instance.new("TextButton")
+    dropdownButton.Name = "DropdownButton"
+    dropdownButton.Size = UDim2.new(0.4, -ddPad, 0, UI_STYLES.ButtonHeight)
+    dropdownButton.Position = UDim2.new(0.6, ddPad, 0, 0)
+    dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    dropdownButton.BackgroundTransparency = 0.3
+    dropdownButton.BorderSizePixel = 1
+    dropdownButton.BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+    dropdownButton.Text = options.DefaultOption or "选择选项"
+    dropdownButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+    dropdownButton.TextSize = 11
+    dropdownButton.Font = THEME.Font
+    dropdownButton.TextXAlignment = Enum.TextXAlignment.Left
+    dropdownButton.Parent = dropdownFrame
+    dropdownButton.ZIndex = 3
+
+    local buttonCorner = Instance.new("UICorner", dropdownButton)
+    buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+
+    local arrowLabel = Instance.new("TextLabel")
+    arrowLabel.Name = "Arrow"
+    arrowLabel.Size = UDim2.new(0, 20, 1, 0)
+    arrowLabel.Position = UDim2.new(1, -20, 0, 0)
+    arrowLabel.BackgroundTransparency = 1
+    arrowLabel.Text = "▼"
+    arrowLabel.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+    arrowLabel.TextSize = 10
+    arrowLabel.Font = THEME.Font
+    arrowLabel.Parent = dropdownButton
+    arrowLabel.ZIndex = 4
+
+    local optionsList = Instance.new("ScrollingFrame")
+    optionsList.Name = "OptionsList"
+    optionsList.Size = UDim2.new(0.4, -ddPad, 0, 0)
+    optionsList.Position = UDim2.new(0.6, ddPad, 1, 4)
+    optionsList.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    optionsList.BackgroundTransparency = 0.3
+    optionsList.BorderSizePixel = 1
+    optionsList.BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+    optionsList.ScrollBarThickness = 4
+    optionsList.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
+    optionsList.Visible = false
+    optionsList.Parent = dropdownFrame
+    optionsList.ZIndex = 5
+
+    local optionsListCorner = Instance.new("UICorner", optionsList)
+    optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+
+    local optionsListLayout = Instance.new("UIListLayout")
+    optionsListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    optionsListLayout.Padding = UDim.new(0, 2)
+    optionsListLayout.Parent = optionsList
+
+    local optionsListPadding = Instance.new("UIPadding")
+    optionsListPadding.PaddingLeft = UDim.new(0, 4)
+    optionsListPadding.PaddingRight = UDim.new(0, 4)
+    optionsListPadding.PaddingTop = UDim.new(0, 4)
+    optionsListPadding.PaddingBottom = UDim.new(0, 4)
+    optionsListPadding.Parent = optionsList
+
+    local isOpen = false
+    local selectedOption = options.DefaultOption or nil
+
+    -- 创建选项按钮
+    local function createOptions()
+        for _, child in ipairs(optionsList:GetChildren()) do
+            if child:IsA("TextButton") then
+                child:Destroy()
+            end
+        end
+
+        for i, option in ipairs(options.Options or {}) do
+            local optionButton = Instance.new("TextButton")
+            optionButton.Name = "Option_" .. i
+            optionButton.Size = UDim2.new(1, 0, 0, 24)
+            optionButton.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
+            optionButton.BackgroundTransparency = 0.5
+            optionButton.BorderSizePixel = 0
+            optionButton.Text = tostring(option)
+            optionButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+            optionButton.TextSize = 11
+            optionButton.Font = THEME.Font
+            optionButton.TextXAlignment = Enum.TextXAlignment.Left
+            optionButton.Parent = optionsList
+            optionButton.ZIndex = 6
+
+            local optionCorner = Instance.new("UICorner", optionButton)
+            optionCorner.CornerRadius = UDim.new(0, 4)
+
+            optionButton.MouseEnter:Connect(function()
+                TweenService:Create(optionButton, self.TWEEN_INFO_BUTTON, {
+                    BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent,
+                    BackgroundTransparency = 0.5
+                }):Play()
+            end)
+
+            optionButton.MouseLeave:Connect(function()
+                TweenService:Create(optionButton, self.TWEEN_INFO_BUTTON, {
+                    BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background,
+                    BackgroundTransparency = 0.5
+                }):Play()
+            end)
+
+            optionButton.MouseButton1Click:Connect(function()
+                selectedOption = tostring(option)
+                dropdownButton.Text = selectedOption
+                isOpen = false
+                optionsList.Visible = false
+                arrowLabel.Text = "▼"
+                
+                if options.Callback then
+                    pcall(options.Callback, selectedOption)
+                end
+            end)
+        end
+
+        -- 更新选项列表高度
+        optionsList.CanvasSize = UDim2.new(0, 0, 0, math.max(100, #options.Options * 28 + 8))
+    end
+
+    createOptions()
+
+    -- 切换下拉框显示状态
+    dropdownButton.MouseButton1Click:Connect(function()
+        isOpen = not isOpen
+        optionsList.Visible = isOpen
+        arrowLabel.Text = isOpen and "▲" or "▼"
+
+        if isOpen then
+            TweenService:Create(optionsList, self.TWEEN_INFO_UI, {
+                BackgroundTransparency = 0.3
+            }):Play()
+        else
+            TweenService:Create(optionsList, self.TWEEN_INFO_UI, {
+                BackgroundTransparency = 0.3
+            }):Play()
+        end
+    end)
+
+    dropdownButton.MouseEnter:Connect(function()
+        TweenService:Create(dropdownButton, self.TWEEN_INFO_BUTTON, {
+            BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary
+        }):Play()
+    end)
+
+    dropdownButton.MouseLeave:Connect(function()
+        TweenService:Create(dropdownButton, self.TWEEN_INFO_BUTTON, {
+            BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+        }):Play()
+    end)
+
+    return dropdownFrame
+end
+
 -- 拖拽模块
 local developmentMode = false -- 设置为 false 时将不输出调试信息
 
