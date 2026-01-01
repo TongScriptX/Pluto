@@ -1818,6 +1818,11 @@ UILibrary:CreateToggle(autoRobCard, {
     end
 })
 
+-- 自动购买标签页
+local purchaseTab, purchaseContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "自动购买"
+})
+
 -- 通知设置标签页
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "通知设置"
@@ -1914,11 +1919,6 @@ UILibrary:CreateButton(recalculateCard, {
             targetValueLabels
         )
     end
-})
-
--- 购买标签页
-local purchaseTab, purchaseContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "购买"
 })
 
 -- 车辆数据获取功能

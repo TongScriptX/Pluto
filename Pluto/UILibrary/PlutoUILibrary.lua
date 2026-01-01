@@ -749,15 +749,15 @@ function UILibrary:CreateDropdown(parent, options)
 
     local label = self:CreateLabel(dropdownFrame, {
         Text = options.Text or "",
-        Size = UDim2.new(0.3, -ddPad, 1, 0),
+        Size = UDim2.new(0.2, -ddPad, 1, 0),
         TextSize = 12
     })
     label.ZIndex = 101
 
     local dropdownButton = Instance.new("TextButton")
     dropdownButton.Name = "DropdownButton"
-    dropdownButton.Size = UDim2.new(0.7, -ddPad, 0, UI_STYLES.ButtonHeight)
-    dropdownButton.Position = UDim2.new(0.3, ddPad, 0, 0)
+    dropdownButton.Size = UDim2.new(0.8, -ddPad, 0, UI_STYLES.ButtonHeight)
+    dropdownButton.Position = UDim2.new(0.2, ddPad, 0, 0)
     dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     dropdownButton.BackgroundTransparency = 0.3
     dropdownButton.BorderSizePixel = 1
@@ -787,8 +787,8 @@ function UILibrary:CreateDropdown(parent, options)
 
     local optionsList = Instance.new("ScrollingFrame")
     optionsList.Name = "OptionsList"
-    optionsList.Size = UDim2.new(0.7, -ddPad, 0, 0)
-    optionsList.Position = UDim2.new(0.3, ddPad, 1, 4)
+    optionsList.Size = UDim2.new(0.8, -ddPad, 0, 0)
+    optionsList.Position = UDim2.new(0.2, ddPad, 1, 4)
     optionsList.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     optionsList.BackgroundTransparency = 0.3
     optionsList.BorderSizePixel = 1
