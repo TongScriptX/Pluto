@@ -1936,104 +1936,65 @@ function purchaseFunctions.enterDealership()
     return true
 end
 
--- 获取所有车辆数据
+-- 获取所有车辆数据（异步处理，避免卡顿）
 function purchaseFunctions.getAllVehicles()
     local vehicles = {}
     
-    debugLog("[Purchase] ========== 开始获取车辆数据 ==========")
-    
     local success, err = pcall(function()
-        debugLog("[Purchase] 步骤1: 获取 PlayerGui")
         local playerGui = player:WaitForChild("PlayerGui", 5)
         if not playerGui then
             warn("[Purchase] PlayerGui 获取超时")
             return vehicles
         end
-        debugLog("[Purchase] PlayerGui 获取成功")
         
-        debugLog("[Purchase] 步骤2: 查找 DealershipHolder")
         local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
         if not dealershipHolder then
             warn("[Purchase] 未找到 DealershipHolder")
-            debugLog("[Purchase] PlayerGui 的子元素:")
-            for _, child in ipairs(playerGui:GetChildren()) do
-                debugLog("  -", child.Name, ":", child.ClassName)
-            end
             return vehicles
         end
-        debugLog("[Purchase] DealershipHolder 找到")
         
-        debugLog("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
         if not dealership then
             warn("[Purchase] 未找到 Dealership")
-            debugLog("[Purchase] DealershipHolder 的子元素:")
-            for _, child in ipairs(dealershipHolder:GetChildren()) do
-                debugLog("  -", child.Name, ":", child.ClassName)
-            end
             return vehicles
         end
-        debugLog("[Purchase] Dealership 找到")
         
-        debugLog("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
         if not selector then
             warn("[Purchase] 未找到 Selector")
-            debugLog("[Purchase] Dealership 的子元素:")
-            for _, child in ipairs(dealership:GetChildren()) do
-                debugLog("  -", child.Name, ":", child.ClassName)
-            end
             return vehicles
         end
-        debugLog("[Purchase] Selector 找到")
         
-        debugLog("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
         if not view then
             warn("[Purchase] 未找到 View")
-            debugLog("[Purchase] Selector 的子元素:")
-            for _, child in ipairs(selector:GetChildren()) do
-                debugLog("  -", child.Name, ":", child.ClassName)
-            end
             return vehicles
         end
-        debugLog("[Purchase] View 找到")
         
-        debugLog("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
         if not allView then
             warn("[Purchase] 未找到 All")
-            debugLog("[Purchase] View 的子元素:")
-            for _, child in ipairs(view:GetChildren()) do
-                debugLog("  -", child.Name, ":", child.ClassName)
-            end
             return vehicles
         end
-        debugLog("[Purchase] All 找到")
         
-        debugLog("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
         if not container then
             warn("[Purchase] 未找到 Container")
-            debugLog("[Purchase] All 的子元素:")
-            for _, child in ipairs(allView:GetChildren()) do
-                debugLog("  -", child.Name, ":", child.ClassName)
-            end
             return vehicles
         end
-        debugLog("[Purchase] Container 找到")
-        debugLog("[Purchase] Container 的子元素数量:", #container:GetChildren())
         
-        -- 遍历所有车辆
-        local vehicleCount = 0
-        for _, vehicleFrame in ipairs(container:GetChildren()) do
-            debugLog("[Purchase] 检查子元素:", vehicleFrame.Name, "类型:", vehicleFrame.ClassName)
+        -- 使用协程处理车辆遍历，避免卡顿
+        local allChildren = container:GetChildren()
+        local totalChildren = #allChildren
+        
+        for i, vehicleFrame in ipairs(allChildren) do
+            -- 每处理 10 辆车让出一次控制权
+            if i % 10 == 0 then
+                task.wait()
+            end
             
             -- 车辆可能是 Frame 或 ImageButton 类型
             if vehicleFrame:IsA("Frame") or vehicleFrame:IsA("ImageButton") then
-                debugLog("[Purchase] 找到车辆元素:", vehicleFrame.Name)
-                
-                -- 尝试从子元素获取车辆名称和价格
                 local vehicleName = nil
                 local price = nil
                 
@@ -2041,17 +2002,12 @@ function purchaseFunctions.getAllVehicles()
                 for _, child in ipairs(vehicleFrame:GetChildren()) do
                     if child.Name == "VehicleName" and child:IsA("TextLabel") then
                         vehicleName = child.Text
-                        debugLog("[Purchase] 找到 VehicleName:", vehicleName)
                     elseif child.Name == "Price" and child:IsA("TextLabel") then
                         local priceText = child.Text
                         local cleanPrice = priceText:gsub("[$,]", "")
                         price = tonumber(cleanPrice)
-                        debugLog("[Purchase] 找到 Price:", priceText, "解析后:", price)
                     end
                 end
-                
-                debugLog("[Purchase] 最终车辆名称:", vehicleName)
-                debugLog("[Purchase] 最终价格:", price)
                 
                 if vehicleName and price then
                     table.insert(vehicles, {
@@ -2059,24 +2015,16 @@ function purchaseFunctions.getAllVehicles()
                         price = price,
                         frame = vehicleFrame
                     })
-                    vehicleCount = vehicleCount + 1
-                    debugLog("[Purchase] ✓ 成功添加车辆:", vehicleName, "价格:", price)
-                else
-                    debugLog("[Purchase] ✗ 跳过车辆（名称或价格无效）")
                 end
             end
         end
-        
-        debugLog("[Purchase] 总共添加", vehicleCount, "辆车辆")
     end)
     
     if not success then
         warn("[Purchase] 获取车辆数据失败:", err)
-        debugLog("[Purchase] 错误详情:", err)
     end
     
-    debugLog("[Purchase] ========== 获取车辆数据完成 ==========")
-    debugLog("[Purchase] 返回车辆数量:", #vehicles)
+    debugLog("[Purchase] 获取到", #vehicles, "辆车辆")
     
     return vehicles
 end
@@ -2183,12 +2131,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         task.wait(1) -- 等待车店加载
         
         local vehicles = purchaseFunctions.getAllVehicles()
-        debugLog("[Purchase] 获取到车辆数量:", #vehicles)
-        
-        -- 打印所有车辆名称用于调试
-        for i, vehicle in ipairs(vehicles) do
-            debugLog("[Purchase] 车辆", i, ":", vehicle.name)
-        end
         
         local matchedVehicles = {}
         
@@ -2197,11 +2139,10 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             local vehicleNameLower = vehicle.name:lower()
             if vehicleNameLower:find(searchText) then
                 table.insert(matchedVehicles, vehicle.name)
-                debugLog("[Purchase] 匹配成功:", vehicle.name)
             end
         end
         
-        debugLog("[Purchase] 匹配到车辆数量:", #matchedVehicles)
+        debugLog("[Purchase] 搜索完成，匹配到", #matchedVehicles, "辆车辆")
         
         if #matchedVehicles == 0 then
             UILibrary:Notify({
@@ -2216,21 +2157,26 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         local vehicleDropdown = nil
         local buyButton = nil
         
-        debugLog("[Purchase] 准备创建下拉框，选项数量:", #matchedVehicles)
-        debugLog("[Purchase] 第一个选项:", matchedVehicles[1])
-        
-        pcall(function()
+        local success, errorMsg = pcall(function()
             vehicleDropdown = UILibrary:CreateDropdown(searchCard, {
                 Text = "选择车辆",
                 DefaultOption = matchedVehicles[1],
                 Options = matchedVehicles,
                 Callback = function(selectedVehicle)
-                    debugLog("[Purchase] 选择了车辆:", selectedVehicle)
+                    -- 车辆选择回调
                 end
             })
-            
-            debugLog("[Purchase] 下拉框创建成功")
         end)
+        
+        if not success then
+            debugLog("[Purchase] 创建下拉框失败:", errorMsg)
+            UILibrary:Notify({
+                Title = "错误",
+                Text = "创建下拉框失败: " .. tostring(errorMsg),
+                Duration = 10
+            })
+            return
+        end
         
         if not vehicleDropdown then
             UILibrary:Notify({
@@ -2241,20 +2187,14 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             return
         end
         
-        debugLog("[Purchase] 下拉框对象存在:", vehicleDropdown ~= nil)
-        debugLog("[Purchase] 下拉框父级:", vehicleDropdown.Parent ~= nil)
-        
         -- 创建购买按钮
         pcall(function()
             buyButton = UILibrary:CreateButton(searchCard, {
                 Text = "购买选中车辆",
                 Callback = function()
-                    debugLog("[Purchase] 购买按钮被点击")
-                    
                     -- 获取下拉框选中的车辆
                     local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
                     if not dropdownButton then
-                        debugLog("[Purchase] 未找到 DropdownButton")
                         UILibrary:Notify({
                             Title = "错误",
                             Text = "请先选择车辆",
@@ -2264,7 +2204,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     local selectedVehicleName = dropdownButton.Text
-                    debugLog("[Purchase] 选中的车辆:", selectedVehicleName)
                     
                     -- 查找车辆价格
                     local selectedVehicle = nil
