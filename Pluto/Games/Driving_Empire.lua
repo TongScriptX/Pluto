@@ -267,16 +267,24 @@ local function fetchPlayerRank()
         return nil, false
     end
     
-    debugLog("[排行榜] 已请求流式传输，等待加载...")
-    wait(leaderboardConfig.streamTimeout)
+    debugLog("[排行榜] 已请求流式传输，开始轮询检测...")
     
-    contents = tryGetContents(2)
-    if contents then
-        debugLog("[排行榜] ✅ 远程加载成功")
-        return parseContents(contents)
+    -- 轮询检测排行榜是否加载完成
+    local checkStartTime = tick()
+    local maxCheckTime = leaderboardConfig.streamTimeout
+    local checkInterval = 0.5
+    
+    while (tick() - checkStartTime) < maxCheckTime do
+        wait(checkInterval)
+        contents = tryGetContents(1)
+        if contents then
+            debugLog("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
+            return parseContents(contents)
+        end
+        debugLog("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
     end
     
-    debugLog("[排行榜] ========== 远程加载失败 ==========")
+    debugLog("[排行榜] ========== 远程加载失败 (超时) ==========")
     return nil, false
 end
 
