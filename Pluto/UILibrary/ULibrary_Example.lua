@@ -58,6 +58,50 @@ UILibrary:CreateButton(actionCard, {
     end
 })
 
+-- 下拉框示例
+local dropdownCard = UILibrary:CreateCard(homeContent)
+UILibrary:CreateLabel(dropdownCard, {
+    Text = "选择角色",
+    TextSize = 14
+})
+
+local roleDropdown = UILibrary:CreateDropdown(dropdownCard, {
+    Text = "角色",
+    DefaultOption = "战士",
+    Options = {
+        "战士",
+        "法师",
+        "弓箭手",
+        "刺客"
+    },
+    Callback = function(selectedRole)
+        UILibrary:Notify({
+            Title = "角色选择",
+            Text = "你选择了: " .. selectedRole
+        })
+    end
+})
+
+-- 输入框示例
+local inputCard = UILibrary:CreateCard(homeContent)
+UILibrary:CreateLabel(inputCard, {
+    Text = "输入设置",
+    TextSize = 14
+})
+
+local nameInput = UILibrary:CreateTextBox(inputCard, {
+    PlaceholderText = "请输入你的名字",
+    Text = "",
+    OnFocusLost = function(text)
+        if text and text ~= "" then
+            UILibrary:Notify({
+                Title = "输入确认",
+                Text = "你的名字是: " .. text
+            })
+        end
+    end
+})
+
 -- === 设置页面内容 ===
 -- 显示设置
 local displayCard = UILibrary:CreateCard(settingsContent)
