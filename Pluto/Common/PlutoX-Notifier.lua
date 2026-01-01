@@ -692,7 +692,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         -- 计算下次通知时间
         local nextNotifyTimestamp = currentTime + (self.config.notificationInterval or 30) * 60
         local countdownR = string.format("<t:%d:R>", nextNotifyTimestamp)
-        local countdownT = string.format("<t:%d:f>", nextNotifyTimestamp)
+        local countdownT = string.format("<t:%d:T>", nextNotifyTimestamp)
         
         -- 构建 embed fields
         local fields = {}
