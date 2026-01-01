@@ -1963,7 +1963,7 @@ spawn(function()
         end
 
         -- 排行榜踢出检测（与主通知时间同步）
-        if config.leaderboardKick and (currentTime - lastSendTime) >= notifyIntervalSeconds then
+        if config.leaderboardKick and (currentTime - lastSendTime) >= (config.notificationInterval or 30) then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
             
             if isOnLeaderboard then
