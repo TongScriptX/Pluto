@@ -38,36 +38,40 @@ local DEFAULT_THEME = {
     Font = Enum.Font.Roboto  
 }  
 
--- UI 样式常量（参考苹果设计语言，8pt网格系统）
+-- UI 样式常量（Windows 11风格，亚克力设计系统）
 local UI_STYLES = {
-    CardHeightSingle   = 56,
-    CardHeightMulti    = 80,
-    ButtonHeight       = 32,
-    LabelHeight        = 20,
-    TabButtonHeight    = 36,
-    Padding            = 12,  -- 内边距
-    YPadding           = 8,   -- 垂直间距
-    CornerRadius       = 10,  -- 圆角（苹果风格）
-    WindowWidth        = 420,
-    WindowHeight       = 320,
+    CardHeightSingle   = 64,
+    CardHeightMulti    = 88,
+    ButtonHeight       = 36,
+    LabelHeight        = 22,
+    TabButtonHeight    = 40,
+    Padding            = 16,  -- 内边距
+    YPadding           = 12,  -- 垂直间距
+    CornerRadius       = 8,   -- 圆角（Windows风格）
+    WindowWidth        = 440,
+    WindowHeight       = 340,
     SidebarWidth       = 80,
-    TitleBarHeight     = 36,
+    TitleBarHeight     = 40,
     -- 通知相关样式
-    NotificationSpacing = 8,   -- 通知间距
-    NotificationWidth = 220,
-    NotificationMargin = 12,  -- 通知边距
-    -- 苹果风格间距系统
+    NotificationSpacing = 10,  -- 通知间距
+    NotificationWidth = 240,
+    NotificationMargin = 16,  -- 通知边距
+    -- Windows风格间距系统
     SpacingTiny        = 4,   -- 极小间距
     SpacingSmall       = 8,   -- 小间距
     SpacingMedium      = 12,  -- 中等间距
     SpacingLarge       = 16,  -- 大间距
     SpacingXL          = 24,  -- 超大间距
-    -- 圆角系统
-    RadiusSmall        = 6,   -- 小元素圆角
-    RadiusMedium       = 10,  -- 中等元素圆角
-    RadiusLarge        = 14,  -- 大元素圆角
+    -- 圆角系统（Windows 11）
+    RadiusSmall        = 4,   -- 小元素圆角
+    RadiusMedium       = 8,   -- 中等元素圆角
+    RadiusLarge        = 12,  -- 大元素圆角
     -- 边界对齐
-    EdgeInset          = 16   -- 边界内缩
+    EdgeInset          = 16,  -- 边界内缩
+    -- 亚克力效果参数
+    AcrylicOpacity     = 0.85,-- 亚克力不透明度
+    AcrylicBlurSize    = 32,  -- 模糊大小
+    GlassOpacity       = 0.6  -- 毛玻璃不透明度
 }
 
 -- 备选字体
@@ -418,9 +422,9 @@ end
 function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     local tweens = {}
     if target:IsA("Frame") or target:IsA("ScrollingFrame") then
-        local transparency = isVisible and 0.5 or 1
+        local transparency = isVisible and UI_STYLES.GlassOpacity or 1
         if target.Name == "Sidebar" or target.Name == "TitleBar" then
-            transparency = isVisible and 0 or 1
+            transparency = isVisible and 0.3 or 1
         end
         table.insert(tweens, TweenService:Create(target, tweenInfo, {BackgroundTransparency = transparency}))
     elseif target:IsA("TextLabel") or target:IsA("TextButton") then
@@ -428,9 +432,9 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     end
     for _, child in ipairs(target:GetDescendants()) do
         if child:IsA("Frame") or child:IsA("ScrollingFrame") then
-            local transparency = isVisible and 0.5 or 1
+            local transparency = isVisible and UI_STYLES.GlassOpacity or 1
             if child.Name == "Sidebar" or child.Name == "TitleBar" then
-                transparency = isVisible and 0 or 1
+                transparency = isVisible and 0.3 or 1
             end
             table.insert(tweens, TweenService:Create(child, tweenInfo, {BackgroundTransparency = transparency}))
         elseif child:IsA("TextLabel") or child:IsA("TextButton") then
@@ -440,7 +444,7 @@ function UILibrary:ApplyFadeTweens(target, tweenInfo, isVisible)
     return tweens
 end
 
--- 创建卡片
+-- 创建卡片（Windows风格，毛玻璃效果）
 function UILibrary:CreateCard(parent, options)
     if not parent then
         warn("[Card]: Creation failed: Parent is nil")
@@ -453,7 +457,7 @@ function UILibrary:CreateCard(parent, options)
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.Size = UDim2.new(1, 0, 0, 0)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    card.BackgroundTransparency = 0.2
+    card.BackgroundTransparency = UI_STYLES.GlassOpacity
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
@@ -461,6 +465,12 @@ function UILibrary:CreateCard(parent, options)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.RadiusMedium)
     corner.Parent = card
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 1
+    stroke.Transparency = 0.85
+    stroke.Parent = card
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -475,13 +485,13 @@ function UILibrary:CreateCard(parent, options)
     padding.Parent = card
 
     TweenService:Create(card, self.TWEEN_INFO_UI, {
-        BackgroundTransparency = 0.2
+        BackgroundTransparency = UI_STYLES.GlassOpacity
     }):Play()
 
     return card
 end
 
--- 按钮模块（苹果风格）
+-- 按钮模块（Windows风格）
 function UILibrary:CreateButton(parent, options)
     if not parent then
         warn("[Button]: Creation failed: Parent is nil")
@@ -501,7 +511,6 @@ function UILibrary:CreateButton(parent, options)
     button.Visible = true
     button.ZIndex = 3
 
-    -- 苹果风格圆角
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.RadiusSmall)
     corner.Parent = button
@@ -509,7 +518,6 @@ function UILibrary:CreateButton(parent, options)
     if options.Callback then
         button.MouseButton1Click:Connect(function()
             local originalSize = button.Size
-            -- 苹果风格的按压反馈
             TweenService:Create(button, self.TWEEN_INFO_BUTTON, {
                 Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.97, originalSize.Y.Scale, originalSize.Y.Offset * 0.97),
                 BackgroundTransparency = 0.5
@@ -819,7 +827,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     end)
 end
 
--- 主窗口模块（苹果风格）
+-- 主窗口模块（Windows风格，亚克力效果）
 function UILibrary:CreateUIWindow(options)
     options = options or {}
     if not Players.LocalPlayer then
@@ -870,28 +878,38 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
     mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = 0.3
+    mainFrame.BackgroundTransparency = UI_STYLES.GlassOpacity
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
     mainFrame.ClipsDescendants = true
 
-    -- 苹果风格大圆角
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.RadiusLarge)
     corner.Parent = mainFrame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Thickness = 1
+    stroke.Transparency = 0.9
+    stroke.Parent = mainFrame
+
+    local shadow = Instance.new("UIStroke")
+    shadow.Color = Color3.fromRGB(0, 0, 0)
+    shadow.Thickness = 1
+    shadow.Transparency = 0.7
+    shadow.Parent = mainFrame
 
     -- 侧边栏
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
     sidebar.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    sidebar.BackgroundTransparency = 0
+    sidebar.BackgroundTransparency = 0.3
     sidebar.Parent = mainFrame
     sidebar.Visible = true
     sidebar.ZIndex = 6
 
-    -- 侧边栏圆角（仅左侧）
     local sidebarCorner = Instance.new("UICorner")
     sidebarCorner.CornerRadius = UDim.new(0, UI_STYLES.RadiusLarge)
     sidebarCorner.Parent = sidebar
@@ -914,7 +932,7 @@ function UILibrary:CreateUIWindow(options)
     titleBar.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     titleBar.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, 0)
     titleBar.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    titleBar.BackgroundTransparency = 0
+    titleBar.BackgroundTransparency = 0.3
     titleBar.Parent = mainFrame
     titleBar.Visible = true
     titleBar.ZIndex = 6
@@ -923,12 +941,11 @@ function UILibrary:CreateUIWindow(options)
     titleCorner.CornerRadius = UDim.new(0, UI_STYLES.RadiusLarge)
     titleCorner.Parent = titleBar
 
-    -- 遮盖左侧圆角
     local titleMask = Instance.new("Frame")
     titleMask.Size = UDim2.new(0, UI_STYLES.RadiusLarge, 1, 0)
     titleMask.Position = UDim2.new(0, -UI_STYLES.RadiusLarge, 0, 0)
     titleMask.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    titleMask.BackgroundTransparency = 0
+    titleMask.BackgroundTransparency = 0.3
     titleMask.BorderSizePixel = 0
     titleMask.ZIndex = 7
     titleMask.Parent = titleBar
@@ -948,7 +965,7 @@ function UILibrary:CreateUIWindow(options)
     mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
     mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    mainPage.BackgroundTransparency = 0.3
+    mainPage.BackgroundTransparency = UI_STYLES.GlassOpacity
     mainPage.Parent = mainFrame
     mainPage.Visible = true
     mainPage.ZIndex = 6
@@ -958,12 +975,11 @@ function UILibrary:CreateUIWindow(options)
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.RadiusLarge)
     pageCorner.Parent = mainPage
 
-    -- 遮盖左侧和顶部圆角
     local pageMask = Instance.new("Frame")
     pageMask.Size = UDim2.new(0, UI_STYLES.RadiusLarge, 0, UI_STYLES.RadiusLarge)
     pageMask.Position = UDim2.new(0, -UI_STYLES.RadiusLarge, 0, -UI_STYLES.RadiusLarge)
     pageMask.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    pageMask.BackgroundTransparency = 0.3
+    pageMask.BackgroundTransparency = UI_STYLES.GlassOpacity
     pageMask.BorderSizePixel = 0
     pageMask.ZIndex = 7
     pageMask.Parent = mainPage
@@ -1019,10 +1035,10 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Size = UDim2.new(1, 0, 1, 0)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
     content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    content.BackgroundTransparency = isActive and 0.3 or 1
+    content.BackgroundTransparency = isActive and UI_STYLES.GlassOpacity or 1
     content.ScrollBarThickness = 2
     content.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
-    content.ScrollBarImageTransparency = 0.3
+    content.ScrollBarImageTransparency = 0.4
     content.ScrollingEnabled = true
     content.ClipsDescendants = true
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
@@ -1066,10 +1082,9 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         content.CanvasPosition = Vector2.new(0, 0)
 
         TweenService:Create(content, self.TWEEN_INFO_UI, {
-            Position = UDim2.new(0, 0, 0, 0),
-            BackgroundTransparency = 0.3
-        }):Play()
-
+                Position = UDim2.new(0, 0, 0, 0),
+                BackgroundTransparency = UI_STYLES.GlassOpacity
+            }):Play()
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
@@ -1138,14 +1153,19 @@ function UILibrary:SetTheme(newTheme)
         if element:IsA("Frame") or element:IsA("ScrollingFrame") then
             if element.Name == "MainFrame" then
                 element.BackgroundColor3 = THEME.Background
+                element.BackgroundTransparency = UI_STYLES.AcrylicOpacity
             elseif element.Name == "Sidebar" then
-                element.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+                element.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+                element.BackgroundTransparency = 0.3
             elseif element.Name == "TitleBar" then
                 element.BackgroundColor3 = THEME.Primary
+                element.BackgroundTransparency = 0.3
             elseif element.Name == "MainPage" or element.Name:match("^TabContent_") then
                 element.BackgroundColor3 = THEME.SecondaryBackground
+                element.BackgroundTransparency = UI_STYLES.GlassOpacity
             elseif element.Name == "Card" or element.Name == "AuthorFrame" then
                 element.BackgroundColor3 = THEME.SecondaryBackground
+                element.BackgroundTransparency = UI_STYLES.GlassOpacity
             elseif element.Name == "Notification" then
                 element.BackgroundColor3 = THEME.Background
             end
