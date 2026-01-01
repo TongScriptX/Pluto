@@ -45,33 +45,33 @@ local UI_STYLES = {
     ButtonHeight       = 36,
     LabelHeight        = 22,
     TabButtonHeight    = 40,
-    Padding            = 16,  -- 内边距
-    YPadding           = 12,  -- 垂直间距
-    CornerRadius       = 8,   -- 圆角（Windows风格）
-    WindowWidth        = 440,
-    WindowHeight       = 340,
+    Padding            = 16,
+    YPadding           = 12,
+    CornerRadius       = 8,
+    WindowWidth        = 400,
+    WindowHeight       = 300,
     SidebarWidth       = 80,
     TitleBarHeight     = 40,
     -- 通知相关样式
-    NotificationSpacing = 10,  -- 通知间距
+    NotificationSpacing = 10,
     NotificationWidth = 240,
-    NotificationMargin = 16,  -- 通知边距
+    NotificationMargin = 16,
     -- Windows风格间距系统
-    SpacingTiny        = 4,   -- 极小间距
-    SpacingSmall       = 8,   -- 小间距
-    SpacingMedium      = 12,  -- 中等间距
-    SpacingLarge       = 16,  -- 大间距
-    SpacingXL          = 24,  -- 超大间距
+    SpacingTiny        = 4,
+    SpacingSmall       = 8,
+    SpacingMedium      = 12,
+    SpacingLarge       = 16,
+    SpacingXL          = 24,
     -- 圆角系统（Windows 11）
-    RadiusSmall        = 4,   -- 小元素圆角
-    RadiusMedium       = 8,   -- 中等元素圆角
-    RadiusLarge        = 12,  -- 大元素圆角
+    RadiusSmall        = 4,
+    RadiusMedium       = 8,
+    RadiusLarge        = 12,
     -- 边界对齐
-    EdgeInset          = 16,  -- 边界内缩
+    EdgeInset          = 16,
     -- 亚克力效果参数
-    AcrylicOpacity     = 0.85,-- 亚克力不透明度
-    AcrylicBlurSize    = 32,  -- 模糊大小
-    GlassOpacity       = 0.6  -- 毛玻璃不透明度
+    AcrylicOpacity     = 0.85,
+    AcrylicBlurSize    = 32,
+    GlassOpacity       = 0.6
 }
 
 -- 备选字体
@@ -568,6 +568,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.TextSize = 12
     button.Font = THEME.Font
     button.Rotation = 0
+    button.Active = true
     button.Parent = parent
     button.Visible = true
     button.ZIndex = 15
@@ -827,7 +828,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     end)
 end
 
--- 主窗口模块（Windows风格，亚克力效果）
+-- 主窗口模块（Windows风格，亚克力毛玻璃效果）
 function UILibrary:CreateUIWindow(options)
     options = options or {}
     if not Players.LocalPlayer then
@@ -856,8 +857,8 @@ function UILibrary:CreateUIWindow(options)
     if screenSize == Vector2.new(0, 0) then
         screenSize = Vector2.new(720, 1280)
     end
-    local windowWidth = math.min(UI_STYLES.WindowWidth, screenSize.X * 0.85)
-    local windowHeight = math.min(UI_STYLES.WindowHeight, screenSize.Y * 0.85)
+    local windowWidth = math.min(UI_STYLES.WindowWidth, screenSize.X * 0.8)
+    local windowHeight = math.min(UI_STYLES.WindowHeight, screenSize.Y * 0.8)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "PlutoUILibraryWindow"
@@ -878,7 +879,7 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
     mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = UI_STYLES.GlassOpacity
+    mainFrame.BackgroundTransparency = UI_STYLES.AcrylicOpacity
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
@@ -900,7 +901,6 @@ function UILibrary:CreateUIWindow(options)
     shadow.Transparency = 0.7
     shadow.Parent = mainFrame
 
-    -- 侧边栏
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
@@ -914,6 +914,11 @@ function UILibrary:CreateUIWindow(options)
     sidebarCorner.CornerRadius = UDim.new(0, UI_STYLES.RadiusLarge)
     sidebarCorner.Parent = sidebar
 
+    local sidebarLayout = Instance.new("UIListLayout")
+    sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    sidebarLayout.Padding = UDim.new(0, UI_STYLES.SpacingMedium)
+    sidebarLayout.Parent = sidebar
+
     local sidebarPadding = Instance.new("UIPadding")
     sidebarPadding.PaddingLeft = UDim.new(0, UI_STYLES.SpacingMedium)
     sidebarPadding.PaddingRight = UDim.new(0, UI_STYLES.SpacingMedium)
@@ -921,12 +926,6 @@ function UILibrary:CreateUIWindow(options)
     sidebarPadding.PaddingBottom = UDim.new(0, UI_STYLES.SpacingMedium)
     sidebarPadding.Parent = sidebar
 
-    local sidebarLayout = Instance.new("UIListLayout")
-    sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    sidebarLayout.Padding = UDim.new(0, UI_STYLES.SpacingSmall)
-    sidebarLayout.Parent = sidebar
-
-    -- 标题栏
     local titleBar = Instance.new("Frame")
     titleBar.Name = "TitleBar"
     titleBar.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
@@ -941,15 +940,6 @@ function UILibrary:CreateUIWindow(options)
     titleCorner.CornerRadius = UDim.new(0, UI_STYLES.RadiusLarge)
     titleCorner.Parent = titleBar
 
-    local titleMask = Instance.new("Frame")
-    titleMask.Size = UDim2.new(0, UI_STYLES.RadiusLarge, 1, 0)
-    titleMask.Position = UDim2.new(0, -UI_STYLES.RadiusLarge, 0, 0)
-    titleMask.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    titleMask.BackgroundTransparency = 0.3
-    titleMask.BorderSizePixel = 0
-    titleMask.ZIndex = 7
-    titleMask.Parent = titleBar
-
     local titleLabel = self:CreateLabel(titleBar, {
         Text = "Home",
         Size = UDim2.new(1, 0, 1, 0),
@@ -957,9 +947,8 @@ function UILibrary:CreateUIWindow(options)
         TextSize = 15,
         TextTransparency = 0
     })
-    titleLabel.ZIndex = 8
+    titleLabel.ZIndex = 7
 
-    -- 主内容区
     local mainPage = Instance.new("Frame")
     mainPage.Name = "MainPage"
     mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
@@ -974,15 +963,6 @@ function UILibrary:CreateUIWindow(options)
     local pageCorner = Instance.new("UICorner")
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.RadiusLarge)
     pageCorner.Parent = mainPage
-
-    local pageMask = Instance.new("Frame")
-    pageMask.Size = UDim2.new(0, UI_STYLES.RadiusLarge, 0, UI_STYLES.RadiusLarge)
-    pageMask.Position = UDim2.new(0, -UI_STYLES.RadiusLarge, 0, -UI_STYLES.RadiusLarge)
-    pageMask.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    pageMask.BackgroundTransparency = UI_STYLES.GlassOpacity
-    pageMask.BorderSizePixel = 0
-    pageMask.ZIndex = 7
-    pageMask.Parent = mainPage
 
     self:MakeDraggable(titleBar, mainFrame)
     self:MakeDraggable(sidebar, mainFrame)
@@ -1019,9 +999,9 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
 
     local tabButton = self:CreateButton(sidebar, {
         Text = tabText,
-        Size = UDim2.new(1, 0, 0, UI_STYLES.TabButtonHeight),
+        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.TabButtonHeight),
         BackgroundColor3 = isActive and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
-        BackgroundTransparency = isActive and 0.2 or 0.5
+        BackgroundTransparency = isActive and 0 or 0.5
     })
 
     if not tabButton then
@@ -1036,7 +1016,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
     content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     content.BackgroundTransparency = isActive and UI_STYLES.GlassOpacity or 1
-    content.ScrollBarThickness = 2
+    content.ScrollBarThickness = 3
     content.ScrollBarImageColor3 = Color3.fromRGB(120, 120, 120)
     content.ScrollBarImageTransparency = 0.4
     content.ScrollingEnabled = true
@@ -1082,9 +1062,10 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
         content.CanvasPosition = Vector2.new(0, 0)
 
         TweenService:Create(content, self.TWEEN_INFO_UI, {
-                Position = UDim2.new(0, 0, 0, 0),
-                BackgroundTransparency = UI_STYLES.GlassOpacity
-            }):Play()
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = UI_STYLES.GlassOpacity
+        }):Play()
+
         for _, btn in ipairs(sidebar:GetChildren()) do
             if btn:IsA("TextButton") then
                 TweenService:Create(btn, self.TWEEN_INFO_BUTTON, {
@@ -1153,19 +1134,14 @@ function UILibrary:SetTheme(newTheme)
         if element:IsA("Frame") or element:IsA("ScrollingFrame") then
             if element.Name == "MainFrame" then
                 element.BackgroundColor3 = THEME.Background
-                element.BackgroundTransparency = UI_STYLES.AcrylicOpacity
             elseif element.Name == "Sidebar" then
-                element.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-                element.BackgroundTransparency = 0.3
+                element.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
             elseif element.Name == "TitleBar" then
                 element.BackgroundColor3 = THEME.Primary
-                element.BackgroundTransparency = 0.3
             elseif element.Name == "MainPage" or element.Name:match("^TabContent_") then
                 element.BackgroundColor3 = THEME.SecondaryBackground
-                element.BackgroundTransparency = UI_STYLES.GlassOpacity
             elseif element.Name == "Card" or element.Name == "AuthorFrame" then
                 element.BackgroundColor3 = THEME.SecondaryBackground
-                element.BackgroundTransparency = UI_STYLES.GlassOpacity
             elseif element.Name == "Notification" then
                 element.BackgroundColor3 = THEME.Background
             end
