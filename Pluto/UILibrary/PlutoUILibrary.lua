@@ -745,19 +745,19 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownFrame.Size = UDim2.new(1, -2 * ddPad, 0, UI_STYLES.ButtonHeight)
     dropdownFrame.BackgroundTransparency = 1
     dropdownFrame.Parent = parent
-    dropdownFrame.ZIndex = 10
+    dropdownFrame.ZIndex = 100
 
     local label = self:CreateLabel(dropdownFrame, {
         Text = options.Text or "",
-        Size = UDim2.new(0.6, -ddPad, 1, 0),
+        Size = UDim2.new(0.3, -ddPad, 1, 0),
         TextSize = 12
     })
-    label.ZIndex = 11
+    label.ZIndex = 101
 
     local dropdownButton = Instance.new("TextButton")
     dropdownButton.Name = "DropdownButton"
-    dropdownButton.Size = UDim2.new(0.4, -ddPad, 0, UI_STYLES.ButtonHeight)
-    dropdownButton.Position = UDim2.new(0.6, ddPad, 0, 0)
+    dropdownButton.Size = UDim2.new(0.7, -ddPad, 0, UI_STYLES.ButtonHeight)
+    dropdownButton.Position = UDim2.new(0.3, ddPad, 0, 0)
     dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     dropdownButton.BackgroundTransparency = 0.3
     dropdownButton.BorderSizePixel = 1
@@ -768,7 +768,7 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.Font = THEME.Font
     dropdownButton.TextXAlignment = Enum.TextXAlignment.Left
     dropdownButton.Parent = dropdownFrame
-    dropdownButton.ZIndex = 11
+    dropdownButton.ZIndex = 101
 
     local buttonCorner = Instance.new("UICorner", dropdownButton)
     buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
@@ -783,12 +783,12 @@ function UILibrary:CreateDropdown(parent, options)
     arrowLabel.TextSize = 10
     arrowLabel.Font = THEME.Font
     arrowLabel.Parent = dropdownButton
-    arrowLabel.ZIndex = 12
+    arrowLabel.ZIndex = 102
 
     local optionsList = Instance.new("ScrollingFrame")
     optionsList.Name = "OptionsList"
-    optionsList.Size = UDim2.new(0.4, -ddPad, 0, 0)
-    optionsList.Position = UDim2.new(0.6, ddPad, 1, 4)
+    optionsList.Size = UDim2.new(0.7, -ddPad, 0, 0)
+    optionsList.Position = UDim2.new(0.3, ddPad, 1, 4)
     optionsList.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     optionsList.BackgroundTransparency = 0.3
     optionsList.BorderSizePixel = 1
@@ -797,7 +797,7 @@ function UILibrary:CreateDropdown(parent, options)
     optionsList.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
     optionsList.Visible = false
     optionsList.Parent = dropdownFrame
-    optionsList.ZIndex = 100
+    optionsList.ZIndex = 1000
 
     local optionsListCorner = Instance.new("UICorner", optionsList)
     optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
@@ -838,7 +838,7 @@ function UILibrary:CreateDropdown(parent, options)
             optionButton.Font = THEME.Font
             optionButton.TextXAlignment = Enum.TextXAlignment.Left
             optionButton.Parent = optionsList
-            optionButton.ZIndex = 101
+            optionButton.ZIndex = 1001
 
             local optionCorner = Instance.new("UICorner", optionButton)
             optionCorner.CornerRadius = UDim.new(0, 4)
