@@ -8,7 +8,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 local lastSendTime = os.time()
 local sendingWelcome = false
 local isAutoRobActive = false
@@ -1945,48 +1945,65 @@ end
 function purchaseFunctions.getAllVehicles()
     local vehicles = {}
     
+    debugLog("[Purchase] ========== 开始获取车辆数据 ==========")
+    
     local success, err = pcall(function()
-        local playerGui = player:WaitForChild("PlayerGui", 5)
+        debugLog("[Purchase] 步骤1: 获取 PlayerGui")
+        local playerGui = player:WaitForChild("PlayerGui", 10)  -- 增加超时到10秒
         if not playerGui then
             warn("[Purchase] PlayerGui 获取超时")
             return vehicles
         end
+        debugLog("[Purchase] PlayerGui 获取成功")
         
+        debugLog("[Purchase] 步骤2: 查找 DealershipHolder")
         local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
         if not dealershipHolder then
             warn("[Purchase] 未找到 DealershipHolder")
             return vehicles
         end
+        debugLog("[Purchase] DealershipHolder 找到")
         
+        debugLog("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
         if not dealership then
             warn("[Purchase] 未找到 Dealership")
             return vehicles
         end
+        debugLog("[Purchase] Dealership 找到")
         
+        debugLog("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
         if not selector then
             warn("[Purchase] 未找到 Selector")
             return vehicles
         end
+        debugLog("[Purchase] Selector 找到")
         
+        debugLog("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
         if not view then
             warn("[Purchase] 未找到 View")
             return vehicles
         end
+        debugLog("[Purchase] View 找到")
         
+        debugLog("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
         if not allView then
             warn("[Purchase] 未找到 All")
             return vehicles
         end
+        debugLog("[Purchase] All 找到")
         
+        debugLog("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
         if not container then
             warn("[Purchase] 未找到 Container")
             return vehicles
         end
+        debugLog("[Purchase] Container 找到")
+        debugLog("[Purchase] Container 的子元素数量:", #container:GetChildren())
         
         local allChildren = container:GetChildren()
         local totalChildren = #allChildren
@@ -2027,6 +2044,7 @@ function purchaseFunctions.getAllVehicles()
     end
     
     debugLog("[Purchase] 获取到", #vehicles, "辆车辆")
+    debugLog("[Purchase] ========== 获取车辆数据完成 ==========")
     
     return vehicles
 end
