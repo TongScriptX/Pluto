@@ -594,7 +594,7 @@ local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tem
 end
 
 -- 初始化
-local configFile = "Pluto_X_DE_config.json"
+local configFile = "PlutoX/Driving_Empire_config.json"
 
 local dataTypes = PlutoX.getAllDataTypes()
 local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)

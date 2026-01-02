@@ -86,7 +86,7 @@ PlutoX.registerDataType({
 
 -- 配置管理
 
-local configFile = "Pluto_X_RT2_config.json"
+local configFile = "PlutoX/Restaurant_Tycoon_2_config.json"
 
 -- 获取所有注册的数据类型
 local dataTypes = PlutoX.getAllDataTypes()

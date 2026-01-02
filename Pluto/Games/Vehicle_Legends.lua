@@ -95,7 +95,7 @@ PlutoX.registerDataType({
 
 -- 配置管理
 
-local configFile = "Pluto_X_VL_config.json"
+local configFile = "PlutoX/Vehicle_Legends_config.json"
 
 -- 获取所有注册的数据类型
 local dataTypes = PlutoX.getAllDataTypes()

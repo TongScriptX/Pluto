@@ -75,7 +75,7 @@ PlutoX.registerDataType({
 })
 
 -- 配置管理
-local configFile = "Pluto_X_TC_config.json"
+local configFile = "PlutoX/Tang_Country_config.json"
 
 -- 获取所有注册的数据类型
 local dataTypes = PlutoX.getAllDataTypes()
