@@ -8,7 +8,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
-local DEBUG_MODE = true
+local DEBUG_MODE = false
 local lastSendTime = os.time()
 local sendingWelcome = false
 local isAutoRobActive = false
@@ -319,7 +319,7 @@ local leaderboardConfig = {
     cachedRank = nil,
     cachedIsOnLeaderboard = false,
     isFetching = false, -- 是否正在获取中
-    hasFetched = false, -- 是否已经获取过（无论结果如何）
+    hasFetched = false, -- 是否已经获取过
 }
 
 local function tryGetContents(timeout)
@@ -1272,7 +1272,7 @@ local function performAutoRobATMs()
                 local spawners = spawnersFolder:GetChildren()
                 local currentSpawnerIndex = 1
                 local lastLoadTime = tick()
-                local loadInterval = 2 -- 每2秒加载一个spawner
+                local loadInterval = 2 
                 
                 while isAutoRobActive do
                     task.wait(0.1)
@@ -1283,7 +1283,6 @@ local function performAutoRobATMs()
                         
                         if #spawners > 0 then
                             local spawner = spawners[currentSpawnerIndex]
-                            -- 使用RequestStreamAroundAsync加载spawner，不传送角色
                             pcall(function()
                                 player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
                             end)
@@ -1510,7 +1509,6 @@ local function performAutoRobATMs()
                             for i, spawner in pairs(spawners) do
                                 if not isAutoRobActive then break end
                                 
-                                -- 使用RequestStreamAroundAsync加载spawner，不传送角色
                                 pcall(function()
                                     player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
                                 end)
@@ -2611,7 +2609,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 DefaultOption = displayOptions[1],
                 Options = displayOptions,
                 Callback = function(selectedDisplayText)
-                    -- 车辆选择回调，从displayText中提取车辆名称
                     local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
                 end
             })
@@ -2644,13 +2641,11 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             buyButton = UILibrary:CreateButton(searchCard, {
                 Text = "购买选中车辆",
                 Callback = function()
-                    -- 检查下拉框是否还存在
                     if not vehicleDropdown or not vehicleDropdown.Parent then
                         PlutoX.debug("[Purchase] 下拉框已被销毁")
                         return
                     end
                     
-                    -- 获取下拉框选中的车辆
                     local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
                     if not dropdownButton then
                         UILibrary:Notify({
@@ -2662,7 +2657,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     local selectedDisplayText = dropdownButton.Text
-                    -- 从displayText中提取车辆名
                     local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
                     
                     if not selectedVehicleName then
@@ -2706,7 +2700,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                             Duration = 5
                         })
                         
-                        -- 安全地清理UI元素
                         pcall(function()
                             if vehicleDropdown and vehicleDropdown.Parent then
                                 PlutoX.debug("[Purchase] 销毁下拉框")
@@ -2781,7 +2774,7 @@ local startAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
         
         spawn(function()
             local success, result = purchaseFunctions.autoPurchase({
-                sortAscending = true,  -- 按价格从低到高
+                sortAscending = true,
                 shouldContinue = function()
                     return autoBuyStatus
                 end,
@@ -2928,7 +2921,7 @@ spawn(function()
             return
         end
 
-        -- 排行榜踢出检测（与主通知时间同步）
+        -- 排行榜踢出检测
         if config.leaderboardKick and (currentTime - lastSendTime) >= (config.notificationInterval or 30) then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
             

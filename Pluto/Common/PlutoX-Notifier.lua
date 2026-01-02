@@ -122,7 +122,7 @@ function PlutoX.initDebugSystem()
         end
     end
     
-    -- 使用 LogService 捕获所有输出（包括错误）
+    -- 使用 LogService 捕获所有输出
     local LogService = game:GetService("LogService")
     if LogService then
         LogService.MessageOut:Connect(function(message, messageType)

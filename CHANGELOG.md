@@ -1,5 +1,20 @@
 # Changelog
 
+## [Driving Empire] - 2026-01-02
+
+### Added
+- 日志系统增强：使用LogService捕获所有类型的输出（包括错误和警告）
+- 目标达成自动退出：达到目标金额后发送webhook并自动退出游戏
+- Webhook重试机制：目标达成webhook发送失败时自动重试（最多3次）
+
+### Fixed
+- 修复FPS Boost中Transparency类型错误（ParticleEmitter和Trail使用NumberSequence类型）
+- 修复投放检测中lastCheckAmount未初始化导致的错误
+
+### Performance
+- 优化Console.lua性能：使用对象池、批量更新、LayoutOrder优化、更新节流
+- 限制可见日志数量为50条，但保留完整历史记录
+
 ## [Driving Empire] - 2026-01-01
 
 ### Added

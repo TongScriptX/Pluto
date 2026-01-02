@@ -24,14 +24,14 @@ local ui = uiModule.CreateUI(playerGui)
 
 -- 性能优化配置
 local UPDATE_THROTTLE = 0.05 -- UI更新节流时间（秒）
-local MAX_VISIBLE_LOGS = 50 -- 最大可见日志数
+local MAX_VISIBLE_LOGS = 150 -- 最大可见日志数
 
 -- 保存日志（按时间顺序存储）
 local logHistory = {}
-local pendingLogs = {} -- 待处理的日志队列
+local pendingLogs = {}
 local lastUpdateTime = 0
 local isUpdating = false
-local nextLayoutOrder = 0 -- 使用递增的LayoutOrder而不是更新所有子项
+local nextLayoutOrder = 0
 
 -- 对象池（重用TextLabel）
 local textLabelPool = {}
@@ -63,7 +63,7 @@ local function getColor(msgType)
     end
 end
 
--- 批量更新UI（优化：减少LayoutOrder更新）
+-- 批量更新UI
 local function updateUI()
     if isUpdating then return end
     isUpdating = true
@@ -94,7 +94,7 @@ local function updateUI()
     -- 清空待处理队列
     pendingLogs = {}
     
-    -- 限制可见日志数量（只删除超出限制的旧日志，不更新LayoutOrder）
+    -- 限制可见日志数量
     local children = ui.Scroll:GetChildren()
     local visibleCount = 0
     local textLabels = {}
