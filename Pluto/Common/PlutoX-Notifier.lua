@@ -446,9 +446,21 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             "Pluto_X_VL_config.json"
         }
         
+        -- 旧配置到新配置的映射
+        local oldToNewConfig = {
+            ["Pluto_X_APS_config.json"] = "PlutoX/Autopilot_Simulator_config.json",
+            ["Pluto_X_DW_config.json"] = "PlutoX/Drive_World_config.json",
+            ["Pluto_X_DE_config.json"] = "PlutoX/Driving_Empire_config.json",
+            ["Pluto_X_GV_config.json"] = "PlutoX/Greenville_config.json",
+            ["Pluto_X_MC_config.json"] = "PlutoX/Midnight_Chasers_config.json",
+            ["Pluto_X_RT2_config.json"] = "PlutoX/Retail_Tycoon_2_config.json",
+            ["Pluto_X_TC_config.json"] = "PlutoX/Tang_Country_config.json",
+            ["Pluto_X_VL_config.json"] = "PlutoX/Vehicle_Legends_config.json"
+        }
+        
         -- 检查是否有旧配置文件需要迁移
         for _, oldFile in ipairs(oldConfigFiles) do
-            if isfile(oldFile) and oldFile ~= self.configFile then
+            if isfile(oldFile) then
                 PlutoX.debug("[Config] 发现旧配置文件: " .. oldFile)
                 
                 -- 读取旧配置
@@ -457,60 +469,59 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                 end)
                 
                 if ok and type(content) == "table" then
-                    local oldUserConfig = content[self.username]
-                    PlutoX.debug("[Config] 旧配置内容: " .. tostring(type(oldUserConfig)))
-                    
-                    if oldUserConfig and type(oldUserConfig) == "table" then
-                        -- 检查新配置文件是否已有该用户配置
-                        local hasNewConfig = false
-                        if isfile(self.configFile) then
-                            PlutoX.debug("[Config] 新配置文件存在，检查是否已有用户配置")
-                            local ok2, newContent = pcall(function()
-                                return self.HttpService:JSONDecode(readfile(self.configFile))
-                            end)
-                            if ok2 and type(newContent) == "table" and newContent[self.username] then
-                                hasNewConfig = true
-                                PlutoX.debug("[Config] 新配置文件已有用户配置，跳过迁移")
-                            end
-                        else
-                            PlutoX.debug("[Config] 新配置文件不存在")
-                        end
-                        
-                        -- 如果新配置没有用户配置，则从旧配置迁移
-                        if not hasNewConfig then
-                            PlutoX.debug("[Config] 迁移配置: " .. oldFile .. " -> " .. self.configFile)
+                    -- 迁移所有用户的配置
+                    local userCount = 0
+                    for username, oldUserConfig in pairs(content) do
+                        if type(oldUserConfig) == "table" then
+                            userCount = userCount + 1
+                            PlutoX.debug("[Config] 迁移用户配置: " .. username)
                             
-                            -- 创建或读取新配置文件
+                            -- 获取对应的新配置文件路径
+                            local newConfigFile = oldToNewConfig[oldFile]
+                            if not newConfigFile then
+                                PlutoX.debug("[Config] 警告: 未找到映射，使用默认路径")
+                                newConfigFile = "PlutoX/" .. oldFile:gsub("Pluto_X_", ""):gsub("_config.json", "_config.json")
+                            end
+                            
+                            -- 创建新配置文件夹
+                            if not isfolder("PlutoX") then
+                                makefolder("PlutoX")
+                            end
+                            
+                            -- 读取或创建新配置文件
                             local allConfigs = {}
-                            if isfile(self.configFile) then
-                                local ok3, newContent = pcall(function()
-                                    return self.HttpService:JSONDecode(readfile(self.configFile))
+                            if isfile(newConfigFile) then
+                                local ok2, newContent = pcall(function()
+                                    return self.HttpService:JSONDecode(readfile(newConfigFile))
                                 end)
-                                if ok3 and type(newContent) == "table" then
+                                if ok2 and type(newContent) == "table" then
                                     allConfigs = newContent
                                 end
                             end
                             
                             -- 添加迁移的配置
-                            allConfigs[self.username] = oldUserConfig
+                            allConfigs[username] = oldUserConfig
                             
                             -- 写入新配置文件
-                            writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
-                            PlutoX.debug("[Config] 配置迁移完成")
-                            
-                            -- 删除已迁移的旧配置文件
-                            pcall(function()
-                                delfile(oldFile)
-                                PlutoX.debug("[Config] 已删除旧配置文件: " .. oldFile)
-                            end)
-                            
-                            if self.UILibrary then
-                                self.UILibrary:Notify({
-                                    Title = "配置迁移",
-                                    Text = "配置已迁移到新位置",
-                                    Duration = 5
-                                })
-                            end
+                            writefile(newConfigFile, self.HttpService:JSONEncode(allConfigs))
+                        end
+                    end
+                    
+                    if userCount > 0 then
+                        PlutoX.debug("[Config] 配置迁移完成，共迁移 " .. userCount .. " 个用户配置")
+                        
+                        -- 删除已迁移的旧配置文件
+                        pcall(function()
+                            delfile(oldFile)
+                            PlutoX.debug("[Config] 已删除旧配置文件: " .. oldFile)
+                        end)
+                        
+                        if self.UILibrary then
+                            self.UILibrary:Notify({
+                                Title = "配置迁移",
+                                Text = string.format("已迁移 %d 个用户配置到新位置", userCount),
+                                Duration = 5
+                            })
                         end
                     end
                 end
