@@ -33,6 +33,10 @@ end)
 
 if success and result then
     PlutoX = result
+
+-- 启用调试模式（默认关闭，可在代码中设置 DEBUG_MODE = true 启用）
+local DEBUG_MODE = false
+PlutoX.debugEnabled = DEBUG_MODE
 else
     error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
@@ -54,6 +58,13 @@ end
 
 -- 获取游戏信息
 local gameName = "未知游戏"
+
+-- 初始化调试系统（如果调试模式开启）
+if DEBUG_MODE then
+    PlutoX.setGameInfo(gameName, username)
+    PlutoX.initDebugSystem()
+    PlutoX.debug("调试系统已初始化")
+end
 do
     local success, info = pcall(function()
         return MarketplaceService:GetProductInfo(game.PlaceId)
@@ -153,7 +164,7 @@ PlutoX.registerDataType({
 
 -- 配置管理
 
-local configFile = "Pluto_X_DW_config.json"
+local configFile = "PlutoX/Drive_World_config.json"
 
 -- 获取所有注册的数据类型
 local dataTypes = PlutoX.getAllDataTypes()

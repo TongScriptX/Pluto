@@ -34,6 +34,9 @@ end)
 
 if success and result then
     PlutoX = result
+
+-- 启用调试模式
+local DEBUG_MODE = false
 else
     error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
@@ -47,6 +50,13 @@ local userId = player.UserId
 local username = player.Name
 
 local gameName = "未知游戏"
+
+-- 初始化调试系统（如果调试模式开启）
+if DEBUG_MODE then
+    PlutoX.setGameInfo(gameName, username)
+    PlutoX.initDebugSystem()
+    PlutoX.debug("调试系统已初始化")
+end
 do
     local success, info = pcall(function()
         return MarketplaceService:GetProductInfo(game.PlaceId)
@@ -75,7 +85,7 @@ PlutoX.registerDataType({
 })
 
 -- 配置管理
-local configFile = "Pluto_X_TC_config.json"
+local configFile = "PlutoX/Tang_Country_config.json"
 
 -- 获取所有注册的数据类型
 local dataTypes = PlutoX.getAllDataTypes()
@@ -611,18 +621,18 @@ for _, dataType in ipairs(dataTypes) do
         local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
             notifyContent, UILibrary, config, function() configManager:saveConfig() end, 
             function() return dataMonitor:fetchValue(dataType) end,
-            keyUpper,  -- 传递数据类型的 keyUpper
-            dataType.icon  -- 传递图标
+            keyUpper, 
+            dataType.icon
         )
         
         local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
             notifyContent, UILibrary, config, function() configManager:saveConfig() end,
             function() return dataMonitor:fetchValue(dataType) end,
-            keyUpper  -- 传递数据类型的 keyUpper
+            keyUpper
         )
         
         setTargetValueLabel(targetValueLabel)
-        targetValueLabels[dataType.id] = targetValueLabel  -- 保存标签引用
+        targetValueLabels[dataType.id] = targetValueLabel
     end
 end
 
@@ -663,7 +673,7 @@ spawn(function()
         dataMonitor:checkAndNotify(function() configManager:saveConfig() end)
         
         -- 掉线检测
-        local cashType = dataTypes[1]  -- 假设第一个数据类型是 Cash
+        local cashType = dataTypes[1]
         if cashType then
             local currentCash = dataMonitor:fetchValue(cashType)
             disconnectDetector:checkAndNotify(currentCash)

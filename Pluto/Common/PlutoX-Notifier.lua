@@ -5,11 +5,198 @@ local PlutoX = {}
 
 -- Debug 功能
 PlutoX.debugEnabled = false
+PlutoX.logFile = nil -- 当前日志文件句柄
+PlutoX.currentLogFile = nil -- 当前日志文件路径
+PlutoX.originalPrint = nil -- 保存原始 print 函数
+PlutoX.gameName = nil -- 游戏名称
+PlutoX.username = nil -- 用户名称
+PlutoX.isInitialized = false -- 是否已初始化
+
+-- 设置游戏信息（用于日志文件命名）
+function PlutoX.setGameInfo(gameName, username)
+    PlutoX.gameName = gameName
+    PlutoX.username = username
+end
+
+-- 获取日志文件路径
+function PlutoX.getLogFilePath()
+    local dateStr = os.date("%Y-%m-%d")
+    local timeStr = os.date("%H-%M-%S")
+    -- 过滤掉emoji和特殊字符，只保留字母、数字、下划线和连字符
+    local safeGameName = (PlutoX.gameName or "Unknown"):gsub("[^%w%-_]", "_")
+    local safeUsername = (PlutoX.username or "Unknown"):gsub("[^%w%-_]", "_")
+    return string.format("PlutoX/debuglog/%s_%s_%s_%s.log", 
+        safeGameName, 
+        safeUsername, 
+        dateStr,
+        timeStr)
+end
+
+-- 初始化日志系统
+function PlutoX.initDebugSystem()
+    if not PlutoX.debugEnabled or PlutoX.isInitialized then
+        return
+    end
+    
+    -- 创建 debuglog 文件夹
+    if not isfolder("PlutoX") then
+        makefolder("PlutoX")
+    end
+    if not isfolder("PlutoX/debuglog") then
+        makefolder("PlutoX/debuglog")
+    end
+    
+    -- 关闭旧文件
+    if PlutoX.logFile then
+        pcall(function()
+            PlutoX.logFile:close()
+        end)
+        PlutoX.logFile = nil
+    end
+    
+    -- 获取日志文件路径（每次使用新的时间戳）
+    local logPath = PlutoX.getLogFilePath()
+    PlutoX.currentLogFile = logPath
+    
+    -- 创建新日志文件
+    local success, err = pcall(function()
+        local header = string.format("========== 日志开始 [%s] ==========\n", os.date("%Y-%m-%d %H:%M:%S"))
+        header = header .. string.format("游戏: %s\n", PlutoX.gameName or "Unknown")
+        header = header .. string.format("用户: %s\n", PlutoX.username or "Unknown")
+        header = header .. "==========================================\n\n"
+        writefile(logPath, header)
+    end)
+    
+    if success then
+        PlutoX.isInitialized = true
+    else
+        warn("[PlutoX-Log] 无法创建日志文件: " .. tostring(err))
+        PlutoX.currentLogFile = nil
+    end
+    
+    -- 保存原始 print 和 warn 函数
+    if not PlutoX.originalPrint then
+        PlutoX.originalPrint = print
+        PlutoX.originalWarn = warn
+        
+        -- 重写 print 函数，将所有输出写入日志
+        print = function(...)
+            -- 调用原始 print 输出到控制台
+            PlutoX.originalPrint(...)
+            
+            -- 写入日志文件
+            if PlutoX.currentLogFile then
+                local args = {...}
+                local formatted = {}
+                for i, arg in ipairs(args) do
+                    if type(arg) == "table" then
+                        formatted[i] = "{...}"
+                    else
+                        formatted[i] = tostring(arg)
+                    end
+                end
+                local logMessage = string.format("[%s] %s\n", os.date("%H:%M:%S"), table.concat(formatted, " "))
+                PlutoX.writeLog(logMessage)
+            end
+        end
+        
+        -- 重写 warn 函数，将警告和错误写入日志
+        warn = function(...)
+            -- 调用原始 warn 输出到控制台
+            PlutoX.originalWarn(...)
+            
+            -- 写入日志文件
+            if PlutoX.currentLogFile then
+                local args = {...}
+                local formatted = {}
+                for i, arg in ipairs(args) do
+                    if type(arg) == "table" then
+                        formatted[i] = "{...}"
+                    else
+                        formatted[i] = tostring(arg)
+                    end
+                end
+                local logMessage = string.format("[%s] [WARNING] %s\n", os.date("%H:%M:%S"), table.concat(formatted, " "))
+                PlutoX.writeLog(logMessage)
+            end
+        end
+    end
+    
+    -- 使用 LogService 捕获所有输出
+    local LogService = game:GetService("LogService")
+    if LogService then
+        LogService.MessageOut:Connect(function(message, messageType)
+            if not PlutoX.currentLogFile then
+                return
+            end
+            
+            local messageTypeStr = "INFO"
+            if messageType == Enum.MessageType.MessageWarning then
+                messageTypeStr = "WARNING"
+            elseif messageType == Enum.MessageType.MessageError then
+                messageTypeStr = "ERROR"
+            elseif messageType == Enum.MessageType.MessageInfo then
+                messageTypeStr = "INFO"
+            elseif messageType == Enum.MessageType.MessageOutput then
+                messageTypeStr = "OUTPUT"
+            end
+            
+            local logMessage = string.format("[%s] [%s] %s\n", os.date("%H:%M:%S"), messageTypeStr, tostring(message))
+            PlutoX.writeLog(logMessage)
+        end)
+    end
+end
+
+-- 写入日志
+function PlutoX.writeLog(message)
+    if not PlutoX.debugEnabled then
+        return
+    end
+    
+    -- 使用 Roblox 的 writefile API
+    if not PlutoX.currentLogFile then
+        return
+    end
+    
+    local success, err = pcall(function()
+        -- 读取现有内容并追加
+        local existingContent = ""
+        if isfile(PlutoX.currentLogFile) then
+            existingContent = readfile(PlutoX.currentLogFile)
+        end
+        writefile(PlutoX.currentLogFile, existingContent .. message)
+    end)
+    
+    if not success then
+        warn("[PlutoX-Log] 写入日志失败: " .. tostring(err))
+    end
+end
 
 function PlutoX.debug(...)
-    if PlutoX.debugEnabled then
-        print("[PlutoX-DEBUG]", ...)
+    if not PlutoX.debugEnabled then
+        return
     end
+    
+    local timestamp = os.date("%H:%M:%S")
+    local info = debug.getinfo(2, "Sl")
+    local source = info and info.short_src or "unknown"
+    local line = info and info.currentline or 0
+    
+    -- 格式化输出
+    local args = {...}
+    local formatted = {}
+    for i, arg in ipairs(args) do
+        if type(arg) == "table" then
+            formatted[i] = "{...}" -- 简化表格输出
+        else
+            formatted[i] = tostring(arg)
+        end
+    end
+    
+    local logMessage = string.format("[%s][DEBUG][%s:%d] %s\n", timestamp, source, line, table.concat(formatted, " "))
+    
+    -- 输出到控制台（通过重写的 print 函数）
+    print(logMessage:gsub("\n$", ""))
 end
 
 -- Webhook Footer 配置
@@ -293,6 +480,100 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             self.config[k] = v
         end
 
+        -- 配置迁移：检查旧配置文件并迁移到新位置
+        local oldConfigFiles = {
+            "Pluto_X_APS_config.json",
+            "Pluto_X_DW_config.json",
+            "Pluto_X_DE_config.json",
+            "Pluto_X_GV_config.json",
+            "Pluto_X_MC_config.json",
+            "Pluto_X_RT2_config.json",
+            "Pluto_X_TC_config.json",
+            "Pluto_X_VL_config.json"
+        }
+        
+        -- 旧配置到新配置的映射
+        local oldToNewConfig = {
+            ["Pluto_X_APS_config.json"] = "PlutoX/Autopilot_Simulator_config.json",
+            ["Pluto_X_DW_config.json"] = "PlutoX/Drive_World_config.json",
+            ["Pluto_X_DE_config.json"] = "PlutoX/Driving_Empire_config.json",
+            ["Pluto_X_GV_config.json"] = "PlutoX/Greenville_config.json",
+            ["Pluto_X_MC_config.json"] = "PlutoX/Midnight_Chasers_config.json",
+            ["Pluto_X_RT2_config.json"] = "PlutoX/Retail_Tycoon_2_config.json",
+            ["Pluto_X_TC_config.json"] = "PlutoX/Tang_Country_config.json",
+            ["Pluto_X_VL_config.json"] = "PlutoX/Vehicle_Legends_config.json"
+        }
+        
+        -- 检查是否有旧配置文件需要迁移
+        for _, oldFile in ipairs(oldConfigFiles) do
+            if isfile(oldFile) then
+                PlutoX.debug("[Config] 发现旧配置文件: " .. oldFile)
+                
+                -- 读取旧配置
+                local ok, content = pcall(function()
+                    return self.HttpService:JSONDecode(readfile(oldFile))
+                end)
+                
+                if ok and type(content) == "table" then
+                    -- 迁移所有用户的配置
+                    local userCount = 0
+                    for username, oldUserConfig in pairs(content) do
+                        if type(oldUserConfig) == "table" then
+                            userCount = userCount + 1
+                            PlutoX.debug("[Config] 迁移用户配置: " .. username)
+                            
+                            -- 获取对应的新配置文件路径
+                            local newConfigFile = oldToNewConfig[oldFile]
+                            if not newConfigFile then
+                                PlutoX.debug("[Config] 警告: 未找到映射，使用默认路径")
+                                newConfigFile = "PlutoX/" .. oldFile:gsub("Pluto_X_", ""):gsub("_config.json", "_config.json")
+                            end
+                            
+                            -- 创建新配置文件夹
+                            if not isfolder("PlutoX") then
+                                makefolder("PlutoX")
+                            end
+                            
+                            -- 读取或创建新配置文件
+                            local allConfigs = {}
+                            if isfile(newConfigFile) then
+                                local ok2, newContent = pcall(function()
+                                    return self.HttpService:JSONDecode(readfile(newConfigFile))
+                                end)
+                                if ok2 and type(newContent) == "table" then
+                                    allConfigs = newContent
+                                end
+                            end
+                            
+                            -- 添加迁移的配置
+                            allConfigs[username] = oldUserConfig
+                            
+                            -- 写入新配置文件
+                            writefile(newConfigFile, self.HttpService:JSONEncode(allConfigs))
+                        end
+                    end
+                    
+                    if userCount > 0 then
+                        PlutoX.debug("[Config] 配置迁移完成，共迁移 " .. userCount .. " 个用户配置")
+                        
+                        -- 删除已迁移的旧配置文件
+                        pcall(function()
+                            delfile(oldFile)
+                            PlutoX.debug("[Config] 已删除旧配置文件: " .. oldFile)
+                        end)
+                        
+                        if self.UILibrary then
+                            self.UILibrary:Notify({
+                                Title = "配置迁移",
+                                Text = string.format("已迁移 %d 个用户配置到新位置", userCount),
+                                Duration = 5
+                            })
+                        end
+                    end
+                end
+            end
+        end
+
         if not isfile(self.configFile) then
             if self.UILibrary then
                 self.UILibrary:Notify({
@@ -383,6 +664,37 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         local instanceId = self.gameName .. ":" .. self.username
         if not PlutoX.scriptInstances[instanceId] then
             warn("[Webhook] 脚本实例已失效，停止发送: " .. instanceId)
+            
+            -- 发送重复运行警告
+            local warningPayload = {
+                embeds = {{
+                    title = "⚠️ 重复运行检测",
+                    description = string.format("**游戏**: %s\n**用户**: %s\n\n检测到脚本重复运行，已停止发送通知", self.gameName, self.username),
+                    color = 16753920,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "桐 · TStudioX" }
+                }}
+            }
+            
+            -- 尝试发送警告（忽略结果）
+            pcall(function()
+                local requestFunc = syn and syn.request or http and http.request or request
+                if requestFunc and self.config.webhookUrl ~= "" then
+                    local bodyJson = self.HttpService:JSONEncode({
+                        content = nil,
+                        embeds = warningPayload.embeds
+                    })
+                    requestFunc({
+                        Url = self.config.webhookUrl,
+                        Method = "POST",
+                        Headers = {
+                            ["Content-Type"] = "application/json"
+                        },
+                        Body = bodyJson
+                    })
+                end
+            end)
+            
             return false
         end
         
@@ -483,28 +795,87 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     
     -- 发送目标达成通知
     function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime, dataTypeName)
-        return self:dispatchWebhook({
-            embeds = {{
-                title = "🎯 目标达成",
-                description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
-                fields = {
-                    {
-                        name = "📊 达成信息",
-                        value = string.format(
-                            "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
-                            dataTypeName or "未知",
-                            PlutoX.formatNumber(currentValue),
-                            PlutoX.formatNumber(targetAmount),
-                            PlutoX.formatNumber(baseAmount),
-                            PlutoX.formatElapsedTime(runTime)),
-                        inline = false
-                    }
-                },
-                color = _G.PRIMARY_COLOR or 5793266,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "桐 · TStudioX" }
-            }}
-        })
+        local maxRetries = 3
+        local retryDelay = 2
+        local success = false
+        
+        for attempt = 1, maxRetries do
+            success = self:dispatchWebhook({
+                embeds = {{
+                    title = "🎯 目标达成",
+                    description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                    fields = {
+                        {
+                            name = "📊 达成信息",
+                            value = string.format(
+                                "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
+                                dataTypeName or "未知",
+                                PlutoX.formatNumber(currentValue),
+                                PlutoX.formatNumber(targetAmount),
+                                PlutoX.formatNumber(baseAmount),
+                                PlutoX.formatElapsedTime(runTime)),
+                            inline = false
+                        }
+                    },
+                    color = _G.PRIMARY_COLOR or 5793266,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "桐 · TStudioX" }
+                }}
+            })
+            
+            if success then
+                PlutoX.debug("[目标达成] Webhook发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）")
+                break
+            else
+                warn("[目标达成] Webhook发送失败，尝试 " .. attempt .. "/" .. maxRetries)
+                if attempt < maxRetries then
+                    task.wait(retryDelay)
+                end
+            end
+        end
+        
+        -- 无论是否成功都退出游戏
+        if success then
+            PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
+            
+            -- 检查当前值是否高于目标值
+            if currentValue > targetAmount then
+                PlutoX.debug("[目标达成] 当前" .. (dataTypeName or "值") .. "(" .. PlutoX.formatNumber(currentValue) .. ")高于目标(" .. PlutoX.formatNumber(targetAmount) .. ")")
+                
+                -- 关闭目标踢出功能
+                if dataTypeName then
+                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
+                    local kickConfigKey = "enable" .. keyUpper .. "Kick"
+                    if self.config[kickConfigKey] then
+                        self.config[kickConfigKey] = false
+                        PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
+                    end
+                end
+                
+                -- 清除目标
+                if dataTypeName then
+                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
+                    self.config["target" .. keyUpper] = 0
+                    self.config["base" .. keyUpper] = 0
+                    self.config["lastSaved" .. keyUpper] = 0
+                    PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
+                end
+            end
+        else
+            warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
+        end
+        
+        task.wait(1)
+        
+        -- 注销脚本实例
+        PlutoX.unregisterScriptInstance(self.gameName, self.username)
+        
+        -- 关闭游戏
+        pcall(function()
+            game:Shutdown()
+        end)
+        
+        return success
     end
     
     -- 发送掉线通知
@@ -589,6 +960,26 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                     self.config["lastNotify" .. keyUpper] = value
                     self.lastValues[dataType.id] = value
                     table.insert(initInfo, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+                end
+            end
+        end
+        
+        -- 启动时检查目标踢出功能
+        for _, dataType in ipairs(self.dataTypes) do
+            if dataType.supportTarget then
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                local kickConfigKey = "enable" .. keyUpper .. "Kick"
+                
+                -- 检查是否开启了目标踢出功能
+                if self.config[kickConfigKey] then
+                    local currentValue = self:fetchValue(dataType)
+                    local targetValue = self.config["target" .. keyUpper]
+                    
+                    -- 如果当前值已达到或超过目标值，关闭踢出功能
+                    if currentValue and targetValue and currentValue >= targetValue then
+                        self.config[kickConfigKey] = false
+                        PlutoX.debug("[启动检查] " .. dataType.name .. "当前值(" .. PlutoX.formatNumber(currentValue) .. ")已达到目标(" .. PlutoX.formatNumber(targetValue) .. ")，已关闭踢出功能")
+                    end
                 end
             end
         end
@@ -841,12 +1232,16 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         -- 检查是否有任何数据变化
         if not self:hasAnyChange(data) then
             self.unchangedCount = self.unchangedCount + 1
+            PlutoX.debug("[checkAndNotify] 数据无变化，unchangedCount:", self.unchangedCount)
         else
             self.unchangedCount = 0
+            self.webhookDisabled = false -- 数据有变化时重置禁用标志
+            PlutoX.debug("[checkAndNotify] 数据有变化，重置unchangedCount和webhookDisabled")
         end
         
         -- 连续无变化警告
         if self.unchangedCount >= 2 then
+            PlutoX.debug("[checkAndNotify] 连续2次无变化，发送警告并禁用webhook")
             self:sendNoChange()
             self.webhookDisabled = true
             self.lastSendTime = currentTime
@@ -864,6 +1259,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         end
         
         -- 发送数据变化通知
+        PlutoX.debug("[checkAndNotify] 发送数据变化通知")
         self:sendDataChange(currentTime, interval)
         self.lastSendTime = currentTime
         
@@ -917,8 +1313,6 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         local valueDifference = currentValue - self.config["lastSaved" .. keyUpper]
         local configChanged = false
         
-        PlutoX.debug("[DEBUG] adjustTargetValue: " .. dataType.id .. ", lastSaved=" .. self.config["lastSaved" .. keyUpper] .. ", current=" .. currentValue .. ", diff=" .. valueDifference)
-        
         -- 只在值减少时调整
         if valueDifference < 0 then
             local newTargetValue = targetValue + valueDifference
@@ -950,7 +1344,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                 configChanged = true
             end
         else
-            PlutoX.debug("[DEBUG] adjustTargetValue: 值未减少，不调整目标")
+            -- 值未减少，不调整目标
         end
         
         -- 更新 lastSaved 值（即使没有变化）
@@ -958,10 +1352,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         
         -- 只在配置变化时保存
         if configChanged and saveConfig then
-            PlutoX.debug("[DEBUG] adjustTargetValue: 配置已变化，调用 saveConfig")
             saveConfig()
-        else
-            PlutoX.debug("[DEBUG] adjustTargetValue: 配置未变化，不保存")
         end
         return true
     end

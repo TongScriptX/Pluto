@@ -14,12 +14,6 @@ local sendingWelcome = false
 local isAutoRobActive = false
 local isDeliveryInProgress = false
 
-local function debugLog(...)
-    if DEBUG_MODE then
-        print(...)
-    end
-end
-
 local function formatNumber(num)
     local formatted = tostring(num)
     local result = ""
@@ -83,6 +77,9 @@ if not success or not PlutoX then
     error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
 
+-- 启用 PlutoX 调试模式
+PlutoX.debugEnabled = DEBUG_MODE
+
 -- 玩家和游戏信息
 local player = Players.LocalPlayer
 if not player then
@@ -102,6 +99,110 @@ do
     end
 end
 
+-- 初始化调试系统（如果调试模式开启）
+if DEBUG_MODE then
+    PlutoX.setGameInfo(gameName, username)
+    PlutoX.initDebugSystem()
+    PlutoX.debug("调试系统已初始化")
+end
+
+-- FPS Boost 持续优化功能
+local function applyFPSBoost()
+    local RunService = game:GetService("RunService")
+    local Lighting = game:GetService("Lighting")
+    
+    -- 定义需要保留的对象（ATM相关）
+    local function shouldPreserveObject(obj)
+        -- 保留ATM相关的对象
+        if obj.Name:find("ATM") or obj.Name:find("Criminal") or obj.Name:find("Spawner") then
+            return true
+        end
+        -- 检查父级是否是ATM相关
+        local parent = obj.Parent
+        while parent do
+            if parent.Name:find("ATM") or parent.Name:find("Criminal") or parent.Name:find("Spawner") then
+                return true
+            end
+            parent = parent.Parent
+        end
+        return false
+    end
+    
+    -- 优化现有对象
+    local root = workspace:FindFirstChild("MapRoot") or workspace
+    local toDestroy = {}
+    
+    for _, obj in ipairs(root:GetDescendants()) do
+        if shouldPreserveObject(obj) then
+            continue
+        end
+        
+        if obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Sparkles") then
+            obj.Transparency = 1
+            table.insert(toDestroy, obj)
+        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+            obj.Transparency = NumberSequence.new(1)
+            table.insert(toDestroy, obj)
+        elseif obj:IsA("BasePart") then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+            obj.CastShadow = false
+        end
+    end
+    
+    -- 分批销毁
+    task.spawn(function()
+        for i, obj in ipairs(toDestroy) do
+            task.defer(function()
+                if obj and obj.Parent then obj:Destroy() end
+            end)
+            if i % 30 == 0 then task.wait() end
+        end
+    end)
+    
+    -- 持续监控新添加的对象
+    workspace.DescendantAdded:Connect(function(obj)
+        if shouldPreserveObject(obj) then
+            return
+        end
+        
+        task.defer(function()
+            if obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Sparkles") then
+                obj.Transparency = 1
+                task.wait()
+                if obj.Parent then obj:Destroy() end
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                obj.Transparency = NumberSequence.new(1)
+                task.wait()
+                if obj.Parent then obj:Destroy() end
+            elseif obj:IsA("BasePart") then
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.Reflectance = 0
+                obj.CastShadow = false
+            end
+        end)
+    end)
+    
+    -- Lighting 优化
+    Lighting.GlobalShadows = false
+    Lighting.FogEnd = 1e9
+    Lighting.Brightness = 0.5
+    Lighting.OutdoorAmbient = Color3.new(0,0,0)
+    
+    for _, name in ipairs({"BloomEffect","DepthOfFieldEffect","ColorCorrectionEffect","SunRaysEffect","BlurEffect"}) do
+        local e = Lighting:FindFirstChild(name)
+        if e then e.Enabled = false end
+    end
+    
+    -- FPS 解锁
+    if setfpscap then setfpscap(999) end
+    
+    PlutoX.debug("[FPSBoost] FPS优化已启用")
+end
+
+-- 初始化FPS Boost
+applyFPSBoost()
+
 -- 游戏特定功能
 local function teleportCharacterTo(targetCFrame)
     if not player.Character or not player.Character.PrimaryPart then
@@ -115,10 +216,10 @@ local function teleportCharacterTo(targetCFrame)
     
     if seat and vehicle then
         vehicle:PivotTo(targetCFrame)
-        debugLog("[Teleport] 使用车辆传送")
+        PlutoX.debug("[Teleport] 使用车辆传送")
     else
         player.Character:SetPrimaryPartCFrame(targetCFrame)
-        debugLog("[Teleport] 使用角色传送")
+        PlutoX.debug("[Teleport] 使用角色传送")
     end
     
     return true
@@ -151,7 +252,7 @@ local function checkAutoRobStatus(context)
     end
     
     if not config.autoRobATMsEnabled then
-        debugLog("[AutoRob] [" .. ctx .. "] 检测到功能已关闭，停止操作")
+        PlutoX.debug("[AutoRob] [" .. ctx .. "] 检测到功能已关闭，停止操作")
         return false
     end
     return true
@@ -202,6 +303,12 @@ PlutoX.registerDataType({
 local leaderboardConfig = {
     position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
     streamTimeout = 10,
+    cacheTime = 300, -- 缓存时间（秒），5分钟
+    lastFetchTime = 0,
+    cachedRank = nil,
+    cachedIsOnLeaderboard = false,
+    isFetching = false, -- 是否正在获取中
+    hasFetched = false, -- 是否已经获取过
 }
 
 local function tryGetContents(timeout)
@@ -221,7 +328,7 @@ local function parseContents(contents)
     local leaderboardList = {}
     
     -- 输出完整榜单
-    debugLog("[排行榜] ========== 完整榜单 ==========")
+    PlutoX.debug("[排行榜] ========== 完整榜单 ==========")
     for _, child in ipairs(contents:GetChildren()) do
         -- 跳过模板元素
         if tonumber(child.Name) then
@@ -234,9 +341,9 @@ local function parseContents(contents)
     
     -- 输出榜单列表
     for _, entry in ipairs(leaderboardList) do
-        debugLog("[排行榜] " .. entry)
+        PlutoX.debug("[排行榜] " .. entry)
     end
-    debugLog("[排行榜] ==========================")
+    PlutoX.debug("[排行榜] ==========================")
     
     -- 查找玩家排名
     rank = 1
@@ -246,27 +353,50 @@ local function parseContents(contents)
             if tonumber(child.Name) == userId or child.Name == username then
                 local placement = child:FindFirstChild("Placement")
                 local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-                debugLog("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
+                PlutoX.debug("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
                 return foundRank, true
             end
             rank = rank + 1
         end
     end
-    debugLog("[排行榜] ❌ 未在排行榜中找到玩家")
+    PlutoX.debug("[排行榜] ❌ 未在排行榜中找到玩家")
     return nil, false
 end
 
 local function fetchPlayerRank()
-    debugLog("[排行榜] ========== 开始检测排行榜 ==========")
-    debugLog("[排行榜] 玩家: " .. username .. " (ID: " .. userId .. ")")
+    local currentTime = tick()
+    
+    -- 如果正在获取中，返回缓存值（如果有）
+    if leaderboardConfig.isFetching then
+        PlutoX.debug("[排行榜] 正在获取中，返回缓存值")
+        return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+    end
+    
+    -- 如果已经获取过且缓存未过期，直接返回缓存值
+    if leaderboardConfig.hasFetched and (currentTime - leaderboardConfig.lastFetchTime) < leaderboardConfig.cacheTime then
+        -- 移除频繁输出的缓存日志
+        return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+    end
+    
+    -- 开始新获取
+    leaderboardConfig.isFetching = true
+    PlutoX.debug("[排行榜] ========== 开始检测排行榜 ==========")
+    PlutoX.debug("[排行榜] 玩家: " .. username .. " (ID: " .. userId .. ")")
     
     local contents = tryGetContents(2)
     if contents then
-        debugLog("[排行榜] ✅ 直接获取成功")
-        return parseContents(contents)
+        PlutoX.debug("[排行榜] ✅ 直接获取成功")
+        local rank, isOnLeaderboard = parseContents(contents)
+        -- 更新缓存
+        leaderboardConfig.cachedRank = rank
+        leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
+        leaderboardConfig.lastFetchTime = currentTime
+        leaderboardConfig.hasFetched = true
+        leaderboardConfig.isFetching = false
+        return rank, isOnLeaderboard
     end
     
-    debugLog("[排行榜] 直接获取失败，使用 RequestStreamAroundAsync 远程加载...")
+    PlutoX.debug("[排行榜] 直接获取失败，使用 RequestStreamAroundAsync 远程加载...")
     
     local success, err = pcall(function()
         player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
@@ -274,11 +404,13 @@ local function fetchPlayerRank()
     
     if not success then
         warn("[排行榜] RequestStreamAroundAsync 失败: " .. tostring(err))
-        debugLog("[排行榜] ========== 远程加载失败 ==========")
+        PlutoX.debug("[排行榜] ========== 远程加载失败 ==========")
+        leaderboardConfig.hasFetched = true
+        leaderboardConfig.isFetching = false
         return nil, false
     end
     
-    debugLog("[排行榜] 已请求流式传输，开始轮询检测...")
+    PlutoX.debug("[排行榜] 已请求流式传输，开始轮询检测...")
     
     -- 轮询检测排行榜是否加载完成
     local checkStartTime = tick()
@@ -289,13 +421,22 @@ local function fetchPlayerRank()
         wait(checkInterval)
         contents = tryGetContents(1)
         if contents then
-            debugLog("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
-            return parseContents(contents)
+            PlutoX.debug("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
+            local rank, isOnLeaderboard = parseContents(contents)
+            -- 更新缓存
+            leaderboardConfig.cachedRank = rank
+            leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
+            leaderboardConfig.lastFetchTime = currentTime
+            leaderboardConfig.hasFetched = true
+            leaderboardConfig.isFetching = false
+            return rank, isOnLeaderboard
         end
-        debugLog("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
+        PlutoX.debug("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
     end
     
-    debugLog("[排行榜] ========== 远程加载失败 (超时) ==========")
+    PlutoX.debug("[排行榜] ========== 远程加载失败 (超时) ==========")
+    leaderboardConfig.hasFetched = true
+    leaderboardConfig.isFetching = false
     return nil, false
 end
 
@@ -360,7 +501,7 @@ local function findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
         return nil, -1, vehicleCount
     end
     
-    debugLog("[AutoSpawnVehicle] 找到", vehicleCount, "辆拥有的车辆")
+    PlutoX.debug("[AutoSpawnVehicle] 找到", vehicleCount, "辆拥有的车辆")
     
     local vehicleData = fetchVehicleStatsConcurrent(ownedVehicles, GetVehicleStats)
     
@@ -436,36 +577,36 @@ local function getRobbedAmount()
     local success, amount = pcall(function()
         local character = workspace:FindFirstChild(player.Name)
         if not character then
-            debugLog("[AutoRob] 警告: 无法找到角色对象")
+            PlutoX.debug("[AutoRob] 警告: 无法找到角色对象")
             return 0
         end
         
         local head = character:FindFirstChild("Head")
         if not head then
-            debugLog("[AutoRob] 警告: 无法找到角色头部")
+            PlutoX.debug("[AutoRob] 警告: 无法找到角色头部")
             return 0
         end
         
         local billboard = head:FindFirstChild("CharacterBillboard")
         if not billboard then
-            debugLog("[AutoRob] 警告: 无法找到角色公告牌")
+            PlutoX.debug("[AutoRob] 警告: 无法找到角色公告牌")
             return 0
         end
         
         local children = billboard:GetChildren()
         if #children < 4 then
-            debugLog("[AutoRob] 警告: 公告牌子元素数量不足，当前数量: " .. #children)
+            PlutoX.debug("[AutoRob] 警告: 公告牌子元素数量不足，当前数量: " .. #children)
             return 0
         end
         
         local textLabel = children[4]
         if not textLabel then
-            debugLog("[AutoRob] 警告: 无法找到第4个子元素")
+            PlutoX.debug("[AutoRob] 警告: 无法找到第4个子元素")
             return 0
         end
         
         if not textLabel.ContentText then
-            debugLog("[AutoRob] 警告: 文本标签ContentText为空")
+            PlutoX.debug("[AutoRob] 警告: 文本标签ContentText为空")
             return 0
         end
         
@@ -509,7 +650,7 @@ local function checkDropOffPointEnabled()
     
     if dropOffPoint then
         local enabled = dropOffPoint.Enabled
-        debugLog("[DropOff] 交付点enabled状态: " .. tostring(enabled))
+        PlutoX.debug("[DropOff] 交付点enabled状态: " .. tostring(enabled))
         return enabled
     else
         warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
@@ -523,27 +664,27 @@ local function checkRobberyCompletion(previousAmount)
     local currentAmount = getRobbedAmount()
     local change = currentAmount - (previousAmount or 0)
     
-    debugLog("[AutoRob] 金额检测结果:")
-    debugLog("  - 之前金额: " .. formatNumber(previousAmount))
-    debugLog("  - 当前金额: " .. formatNumber(currentAmount))
-    debugLog("  - 变化量: " .. (change >= 0 and "+" or "") .. formatNumber(change))
+    PlutoX.debug("[AutoRob] 金额检测结果:")
+    PlutoX.debug("  - 之前金额: " .. formatNumber(previousAmount))
+    PlutoX.debug("  - 当前金额: " .. formatNumber(currentAmount))
+    PlutoX.debug("  - 变化量: " .. (change >= 0 and "+" or "") .. formatNumber(change))
     
     if change > 0 then
-        debugLog("[AutoRob] ✓ 检测到抢劫成功获得金额: +" .. formatNumber(change))
+        PlutoX.debug("[AutoRob] ✓ 检测到抢劫成功获得金额: +" .. formatNumber(change))
         return true, change
     elseif change < 0 then
-        debugLog("[AutoRob] ⚠ 检测到金额减少: " .. formatNumber(change))
+        PlutoX.debug("[AutoRob] ⚠ 检测到金额减少: " .. formatNumber(change))
         return false, change
     else
-        debugLog("[AutoRob] - 金额无变化")
+        PlutoX.debug("[AutoRob] - 金额无变化")
         return false, 0
     end
 end
 
 local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tempTargetRef)
-    debugLog("[Recovery] === 启动投放失败恢复机制 ===")
-    debugLog("[Recovery] 当前已抢金额: " .. formatNumber(robbedAmount))
-    debugLog("[Recovery] 原始目标金额: " .. formatNumber(originalTarget))
+    PlutoX.debug("[Recovery] === 启动投放失败恢复机制 ===")
+    PlutoX.debug("[Recovery] 当前已抢金额: " .. formatNumber(robbedAmount))
+    PlutoX.debug("[Recovery] 原始目标金额: " .. formatNumber(originalTarget))
 
     local collectionService = game:GetService("CollectionService")
     local moneyBags = collectionService:GetTagged("CriminalMoneyBagTool")
@@ -559,38 +700,38 @@ local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tem
     if character and character.PrimaryPart then
         character.PrimaryPart.Velocity = Vector3.zero
         character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 20, 0))
-        debugLog("[Recovery] 已传送到安全位置重置状态")
+        PlutoX.debug("[Recovery] 已传送到安全位置重置状态")
     end
 
     task.wait(1)
 
     local currentRobbedAmount = getRobbedAmount() or 0
-    debugLog("[Recovery] 重置后已抢金额: " .. formatNumber(currentRobbedAmount))
+    PlutoX.debug("[Recovery] 重置后已抢金额: " .. formatNumber(currentRobbedAmount))
 
     if currentRobbedAmount > 0 then
-        debugLog("[Recovery] 发现剩余金额，尝试再次投放...")
+        PlutoX.debug("[Recovery] 发现剩余金额，尝试再次投放...")
         local retrySuccess, retryAttempts, retryDelivered = forceDeliverRobbedAmount(false)
 
         if retrySuccess then
-            debugLog("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
-            debugLog("[Recovery] === 投放失败恢复机制结束（成功） ===")
+            PlutoX.debug("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
+            PlutoX.debug("[Recovery] === 投放失败恢复机制结束（成功） ===")
             return true, retryDelivered
         else
-            debugLog("[Recovery] ✗ 重试投放仍然失败")
+            PlutoX.debug("[Recovery] ✗ 重试投放仍然失败")
         end
     end
 
     local newTempTarget = currentRobbedAmount + originalTarget
     tempTargetRef.value = newTempTarget
 
-    debugLog("[Recovery] ✗ 投放失败，继续增加临时目标: " .. formatNumber(newTempTarget))
-    debugLog("[Recovery] === 投放失败恢复机制结束（失败，增加临时目标） ===")
+    PlutoX.debug("[Recovery] ✗ 投放失败，继续增加临时目标: " .. formatNumber(newTempTarget))
+    PlutoX.debug("[Recovery] === 投放失败恢复机制结束（失败，增加临时目标） ===")
 
     return false, 0
 end
 
 -- 初始化
-local configFile = "Pluto_X_DE_config.json"
+local configFile = "PlutoX/Driving_Empire_config.json"
 
 local dataTypes = PlutoX.getAllDataTypes()
 local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)
@@ -615,7 +756,7 @@ local config = configManager:loadConfig()
 
 -- forceDeliverRobbedAmount 函数
 local function forceDeliverRobbedAmount(isShutdown)
-    debugLog("[AutoRob] === 开始强制投放流程 ===")
+    PlutoX.debug("[AutoRob] === 开始强制投放流程 ===")
     
     isDeliveryInProgress = true
     
@@ -631,10 +772,10 @@ local function forceDeliverRobbedAmount(isShutdown)
     end
     
     local robbedAmount = getRobbedAmount() or 0
-    debugLog("[AutoRob] 当前已抢金额: " .. formatNumber(robbedAmount))
+    PlutoX.debug("[AutoRob] 当前已抢金额: " .. formatNumber(robbedAmount))
     
     if robbedAmount > 0 then
-        debugLog("[AutoRob] 清理背包中的金钱袋...")
+        PlutoX.debug("[AutoRob] 清理背包中的金钱袋...")
         for _, bag in pairs(collectionService:GetTagged("CriminalMoneyBagTool")) do
             pcall(function()
                 bag:Destroy()
@@ -652,32 +793,32 @@ local function forceDeliverRobbedAmount(isShutdown)
 
     while not deliverySuccess and deliveryAttempts < maxDeliveryAttempts do
         deliveryAttempts = deliveryAttempts + 1
-        debugLog("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
+        PlutoX.debug("[AutoRob] 强制投放 - 第 " .. deliveryAttempts .. " 次传送尝试")
         
         local dropOffEnabled = checkDropOffPointEnabled()
         if not dropOffEnabled then
-            debugLog("[AutoRob] 投放点不可用，等待2秒后重试...")
+            PlutoX.debug("[AutoRob] 投放点不可用，等待2秒后重试...")
             task.wait(2)
             
             if not checkDropOffPointEnabled() then
-                debugLog("[AutoRob] 投放点仍然不可用，跳过本次尝试")
+                PlutoX.debug("[AutoRob] 投放点仍然不可用，跳过本次尝试")
                 task.wait(1)
             else
                 if character and character.PrimaryPart then
                     character.PrimaryPart.Velocity = Vector3.zero
                     character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                    debugLog("[AutoRob] 已传送到交付位置")
+                    PlutoX.debug("[AutoRob] 已传送到交付位置")
                 end
 
-                debugLog("[AutoRob] 等待角色稳定...")
+                PlutoX.debug("[AutoRob] 等待角色稳定...")
                 task.wait(1)
 
-                debugLog("[AutoRob] 执行跳跃动作触发交付")
+                PlutoX.debug("[AutoRob] 执行跳跃动作触发交付")
                 VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
                 task.wait(0.1)
                 VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
 
-                debugLog("[AutoRob] 检测金额是否到账...")
+                PlutoX.debug("[AutoRob] 检测金额是否到账...")
                 local checkStart = tick()
                 local checkTimeout = 5
                 local lastCheckAmount = initialRobbedAmount
@@ -695,13 +836,13 @@ local function forceDeliverRobbedAmount(isShutdown)
                         if currentRobbedAmount < lastCheckAmount then
                             local deliveredAmount = lastCheckAmount - currentRobbedAmount
                             totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
-                            debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
+                            PlutoX.debug("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
                         end
                         lastCheckAmount = currentRobbedAmount
                     end
 
                     if currentRobbedAmount == 0 then
-                        debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
+                        PlutoX.debug("[AutoRob] ✓ 交付成功！已抢金额已清零")
                         deliverySuccess = true
                         break
                     end
@@ -710,15 +851,15 @@ local function forceDeliverRobbedAmount(isShutdown)
                 if not deliverySuccess then
                     local currentRobbedAmount = getRobbedAmount() or 0
                     if currentRobbedAmount < initialRobbedAmount * 0.5 then
-                        debugLog("[AutoRob] 金额显著减少，继续等待...")
+                        PlutoX.debug("[AutoRob] 金额显著减少，继续等待...")
                         task.wait(3)
                         currentRobbedAmount = getRobbedAmount()
                         if currentRobbedAmount == 0 then
-                            debugLog("[AutoRob] ✓ 交付成功！")
+                            PlutoX.debug("[AutoRob] ✓ 交付成功！")
                             deliverySuccess = true
                         end
                     else
-                        debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
+                        PlutoX.debug("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
                         task.wait(1)
                     end
                 end
@@ -727,21 +868,21 @@ local function forceDeliverRobbedAmount(isShutdown)
             if character and character.PrimaryPart then
                 character.PrimaryPart.Velocity = Vector3.zero
                 character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 5, 0))
-                debugLog("[AutoRob] 已传送到交付位置")
+                PlutoX.debug("[AutoRob] 已传送到交付位置")
             end
 
-            debugLog("[AutoRob] 等待角色稳定...")
+            PlutoX.debug("[AutoRob] 等待角色稳定...")
             task.wait(1)
 
-            debugLog("[AutoRob] 执行跳跃动作触发交付")
+            PlutoX.debug("[AutoRob] 执行跳跃动作触发交付")
             VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.Space, false, game)
             task.wait(0.1)
             VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.Space, false, game)
 
-            debugLog("[AutoRob] 等待跳跃动作完成...")
+            PlutoX.debug("[AutoRob] 等待跳跃动作完成...")
             task.wait(1.5)
 
-            debugLog("[AutoRob] 保持位置等待交付处理...")
+            PlutoX.debug("[AutoRob] 保持位置等待交付处理...")
             local holdTime = tick()
             repeat
                 task.wait(0.1)
@@ -751,7 +892,7 @@ local function forceDeliverRobbedAmount(isShutdown)
                 end
             until tick() - holdTime > 2
 
-            debugLog("[AutoRob] 检测金额是否到账...")
+            PlutoX.debug("[AutoRob] 检测金额是否到账...")
             local checkStart = tick()
             local checkTimeout = 5
 
@@ -768,13 +909,13 @@ local function forceDeliverRobbedAmount(isShutdown)
                     if currentRobbedAmount < lastCheckAmount then
                         local deliveredAmount = lastCheckAmount - currentRobbedAmount
                         totalDeliveredAmount = totalDeliveredAmount + deliveredAmount
-                        debugLog("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
+                        PlutoX.debug("[AutoRob] ✓ 检测到已抢金额减少: " .. formatNumber(deliveredAmount))
                     end
                     lastCheckAmount = currentRobbedAmount
                 end
 
                 if currentRobbedAmount == 0 then
-                    debugLog("[AutoRob] ✓ 交付成功！已抢金额已清零")
+                    PlutoX.debug("[AutoRob] ✓ 交付成功！已抢金额已清零")
                     deliverySuccess = true
                     break
                 end
@@ -783,15 +924,15 @@ local function forceDeliverRobbedAmount(isShutdown)
             if not deliverySuccess then
                 local currentRobbedAmount = getRobbedAmount() or 0
                 if currentRobbedAmount < initialRobbedAmount * 0.5 then
-                    debugLog("[AutoRob] 金额显著减少，继续等待...")
+                    PlutoX.debug("[AutoRob] 金额显著减少，继续等待...")
                     task.wait(3)
                     currentRobbedAmount = getRobbedAmount()
                     if currentRobbedAmount == 0 then
-                        debugLog("[AutoRob] ✓ 交付成功！")
+                        PlutoX.debug("[AutoRob] ✓ 交付成功！")
                         deliverySuccess = true
                     end
                 else
-                    debugLog("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
+                    PlutoX.debug("[AutoRob] ✗ 本次传送未成功交付，当前已抢金额: " .. formatNumber(currentRobbedAmount))
                     task.wait(1)
                 end
             end
@@ -799,15 +940,15 @@ local function forceDeliverRobbedAmount(isShutdown)
     end
     
     if deliverySuccess then
-        debugLog("[AutoRob] ✓ 强制投放完成，共尝试 " .. deliveryAttempts .. " 次")
+        PlutoX.debug("[AutoRob] ✓ 强制投放完成，共尝试 " .. deliveryAttempts .. " 次")
     elseif isShutdown then
         warn("[AutoRob] ✗ 关闭时投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
     else
         warn("[AutoRob] ✗ 强制投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
     end
     
-    debugLog("[AutoRob] === 强制投放流程结束 ===")
-    debugLog("[AutoRob] 总计投放金额: " .. formatNumber(totalDeliveredAmount))
+    PlutoX.debug("[AutoRob] === 强制投放流程结束 ===")
+    PlutoX.debug("[AutoRob] 总计投放金额: " .. formatNumber(totalDeliveredAmount))
     
     isDeliveryInProgress = false
     
@@ -820,16 +961,16 @@ local function checkAndForceDelivery(tempTarget)
     local targetAmount = tempTarget or config.robTargetAmount or 0
 
     if targetAmount > 0 and robbedAmount >= targetAmount then
-        debugLog("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
+        PlutoX.debug("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
 
         local dropOffEnabled = checkDropOffPointEnabled()
 
         if not dropOffEnabled then
-            debugLog("[AutoRob] 交付点不可用，继续抢劫...")
+            PlutoX.debug("[AutoRob] 交付点不可用，继续抢劫...")
             return false, 0, 0
         end
 
-        debugLog("[AutoRob] 交付点可用，执行强制投放...")
+        PlutoX.debug("[AutoRob] 交付点可用，执行强制投放...")
 
         local success, attempts, deliveredAmount = forceDeliverRobbedAmount(false)
 
@@ -859,12 +1000,12 @@ local function monitorDropOffStatusAndUpdateTarget()
     
     if lastDropOffEnabledStatus == nil then
         lastDropOffEnabledStatus = currentStatus
-        debugLog("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
+        PlutoX.debug("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
         return false
     end
     
     if not lastDropOffEnabledStatus and currentStatus then
-        debugLog("[DropOff] 交付点从不可用变为可用！")
+        PlutoX.debug("[DropOff] 交付点从不可用变为可用！")
         
         local currentRobbedAmount = getRobbedAmount() or 0
         if currentRobbedAmount > 0 then
@@ -877,7 +1018,7 @@ local function monitorDropOffStatusAndUpdateTarget()
                 Duration = 5
             })
             
-            debugLog("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
+            PlutoX.debug("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
         end
         
         lastDropOffEnabledStatus = currentStatus
@@ -890,7 +1031,7 @@ end
 
 local function claimPlaytimeRewards()
     if not config.onlineRewardEnabled then
-        debugLog("[PlaytimeRewards] 功能未启用")
+        PlutoX.debug("[PlaytimeRewards] 功能未启用")
         return
     end
 
@@ -947,7 +1088,7 @@ local function claimPlaytimeRewards()
             end
 
             if allClaimed then
-                debugLog("[PlaytimeRewards] 所有奖励已领取")
+                PlutoX.debug("[PlaytimeRewards] 所有奖励已领取")
                 task.wait(rewardCheckInterval)
                 continue
             end
@@ -961,43 +1102,41 @@ local function claimPlaytimeRewards()
                 task.wait(rewardCheckInterval)
                 continue
             end
-
-            for i = 1, 7 do
-                local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
-                local canClaim = false
-                local alreadyClaimed = claimedList[i] == true
-
-                if rewardItem then
-                    local holder = rewardItem:FindFirstChild("Holder")
-                    local collect = holder and holder:FindFirstChild("Collect")
-                    if collect and collect.Visible and not alreadyClaimed then
-                        canClaim = true
-                    end
-                end
-
-                if canClaim then
-                    pcall(function()
-                        uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
-                        task.wait(0.2)
-                        playRewards:FireServer(i, false)
-                        debugLog("[PlaytimeRewards] 已领取奖励 ID:", i)
-                    end)
-                    task.wait(0.4)
-                end
-            end
-
-            task.wait(rewardCheckInterval)
-        end
-    end)
-end
-
+                            for i = 1, 7 do
+                                            local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
+                                            local canClaim = false
+                                            local alreadyClaimed = claimedList[i] == true
+                            
+                                            if rewardItem then
+                                                local holder = rewardItem:FindFirstChild("Holder")
+                                                local collect = holder and holder:FindFirstChild("Collect")
+                                                if collect and collect.Visible and not alreadyClaimed then
+                                                    canClaim = true
+                                                end
+                                            end
+                            
+                                            if canClaim then
+                                                pcall(function()
+                                                    uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
+                                                    task.wait(0.2)
+                                                    playRewards:FireServer(i, false)
+                                                    PlutoX.debug("[PlaytimeRewards] 已领取奖励 ID:", i)
+                                                end)
+                                                task.wait(0.4)
+                                            end
+                                        end
+                            
+                                        task.wait(rewardCheckInterval)
+                                    end
+                                end)
+                            end
 local function performAutoSpawnVehicle()
     if not config.autoSpawnVehicleEnabled then
-        debugLog("[AutoSpawnVehicle] 功能未启用")
+        PlutoX.debug("[AutoSpawnVehicle] 功能未启用")
         return
     end
 
-    debugLog("[AutoSpawnVehicle] 开始执行车辆生成...")
+    PlutoX.debug("[AutoSpawnVehicle] 开始执行车辆生成...")
     local startTime = tick()
 
     local localPlayer = Players.LocalPlayer
@@ -1040,7 +1179,7 @@ local function performAutoSpawnVehicle()
     local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
     local searchTime = tick() - startTime
     
-    debugLog("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
+    PlutoX.debug("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
 
     if fastestName and fastestSpeed > 0 then
         local success, err = pcall(function()
@@ -1067,7 +1206,7 @@ local originalLocationNameCall = nil
 -- Auto Rob ATMs功能
 local function performAutoRobATMs()
     isAutoRobActive = true
-    debugLog("[AutoRobATMs] 自动抢劫已启动，活动状态: " .. tostring(isAutoRobActive))
+    PlutoX.debug("[AutoRobATMs] 自动抢劫已启动，活动状态: " .. tostring(isAutoRobActive))
     
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     local requestStartJobSession = remotes:WaitForChild("RequestStartJobSession")
@@ -1077,7 +1216,7 @@ local function performAutoRobATMs()
         "jobPad"
     }
     requestStartJobSession:FireServer(unpack(args))
-    debugLog("[AutoRobATMs] 已启动 Criminal Job")
+    PlutoX.debug("[AutoRobATMs] 已启动 Criminal Job")
     
     local locationRemote = remotes:WaitForChild("Location")
     
@@ -1091,7 +1230,7 @@ local function performAutoRobATMs()
         
         if method == "FireServer" and self.Name == "Location" then
             if #args >= 2 and args[1] == "Enter" then
-                debugLog("[AutoRobATMs] 拦截进入区域请求:", args[2])
+                PlutoX.debug("[AutoRobATMs] 拦截进入区域请求:", args[2])
                 return
             end
         end
@@ -1112,9 +1251,38 @@ local function performAutoRobATMs()
         local lastSuccessfulRobbery = tick()
         local noATMFoundCount = 0
         local maxNoATMFoundCount = 5
-        
-        local knownATMLocations = {}
-        local maxKnownLocations = 20
+
+        -- 后台持续加载spawner的协程
+        spawn(function()
+            local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
+            if spawnersFolder then
+                local spawners = spawnersFolder:GetChildren()
+                local currentSpawnerIndex = 1
+                local lastLoadTime = tick()
+                local loadInterval = 2 
+                
+                while isAutoRobActive do
+                    task.wait(0.1)
+                    
+                    local currentTime = tick()
+                    if currentTime - lastLoadTime >= loadInterval then
+                        lastLoadTime = currentTime
+                        
+                        if #spawners > 0 then
+                            local spawner = spawners[currentSpawnerIndex]
+                            pcall(function()
+                                player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
+                            end)
+                            
+                            currentSpawnerIndex = currentSpawnerIndex + 1
+                            if currentSpawnerIndex > #spawners then
+                                currentSpawnerIndex = 1
+                            end
+                        end
+                    end
+                end
+            end
+        end)
 
         while isAutoRobActive do
             task.wait()
@@ -1200,7 +1368,7 @@ local function performAutoRobATMs()
                     local teleportTime = atmType == "tagged" and 1 or 0.2
                     local atmTypeName = atmType == "tagged" and "ATM" or "nil ATM"
 
-                    debugLog("[AutoRob] 开始抢劫" .. atmTypeName)
+                    PlutoX.debug("[AutoRob] 开始抢劫" .. atmTypeName)
 
                     local teleportStart = tick()
                     repeat
@@ -1229,10 +1397,10 @@ local function performAutoRobATMs()
                     if not isAutoRobActive then return false end
 
                     local beforeRobberyAmount = getRobbedAmount() or 0
-                    debugLog("[AutoRob] 开始抢劫" .. atmTypeName .. "，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
+                    PlutoX.debug("[AutoRob] 开始抢劫" .. atmTypeName .. "，当前已抢金额: " .. formatNumber(beforeRobberyAmount))
 
                     game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
-                    debugLog("[AutoRob] 已调用" .. atmTypeName .. "的AttemptATMBustComplete，等待抢劫完成...")
+                    PlutoX.debug("[AutoRob] 已调用" .. atmTypeName .. "的AttemptATMBustComplete，等待抢劫完成...")
 
                     local cooldownStart = tick()
                     repeat
@@ -1254,37 +1422,19 @@ local function performAutoRobATMs()
                     task.wait(0.5)
                     local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
 
-                    local atmLocation = atm.WorldPivot
-                    
-                    local alreadyRecorded = false
-                    for _, loc in ipairs(knownATMLocations) do
-                        if (loc.Position - atmLocation.Position).Magnitude < 5 then
-                            alreadyRecorded = true
-                            break
-                        end
-                    end
-                    
-                    if not alreadyRecorded then
-                        table.insert(knownATMLocations, 1, atmLocation)
-                        if #knownATMLocations > maxKnownLocations then
-                            table.remove(knownATMLocations)
-                        end
-                        debugLog("[AutoRobATMs] 记录新ATM位置，当前记录数: " .. #knownATMLocations)
-                    end
-
                     if robberySuccess then
-                        debugLog("[AutoRob] ✓ " .. atmTypeName .. "抢劫成功！获得金额: +" .. formatNumber(amountChange))
+                        PlutoX.debug("[AutoRob] ✓ " .. atmTypeName .. "抢劫成功！获得金额: +" .. formatNumber(amountChange))
                         
                         lastSuccessfulRobbery = tick()
                         noATMFoundCount = 0
 
                         local shouldStop = checkAndForceDelivery(tempTargetAmount)
                         if shouldStop then
-                            debugLog("[AutoRob] 🔄 投放完成，重新开始抢劫循环")
+                            PlutoX.debug("[AutoRob] 🔄 投放完成，重新开始抢劫循环")
                             return true
                         end
                     else
-                        debugLog("[AutoRob] ⚠ " .. atmTypeName .. "抢劫未获得金额或失败")
+                        PlutoX.debug("[AutoRob] ⚠ " .. atmTypeName .. "抢劫未获得金额或失败")
                     end
 
                     return false
@@ -1311,12 +1461,12 @@ local function performAutoRobATMs()
 
                 if foundATMCount.count == 0 then
                     noATMFoundCount = noATMFoundCount + 1
-                    debugLog("[AutoRobATMs] 未找到可用ATM，计数: " .. noATMFoundCount .. "/" .. maxNoATMFoundCount)
+                    PlutoX.debug("[AutoRobATMs] 未找到可用ATM，计数: " .. noATMFoundCount .. "/" .. maxNoATMFoundCount)
 
                     if noATMFoundCount >= maxNoATMFoundCount then
                         warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行搜索重置")
 
-                        debugLog("[AutoRobATMs] 重置状态...")
+                        PlutoX.debug("[AutoRobATMs] 重置状态...")
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
                         noATMFoundCount = 0
@@ -1341,51 +1491,48 @@ local function performAutoRobATMs()
                         local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
                         if spawnersFolder then
                             local spawners = spawnersFolder:GetChildren()
-                            debugLog("[AutoRobATMs] 新逻辑：依次传送" .. #spawners .. "个spawner搜索ATM")
+                            PlutoX.debug("[AutoRobATMs] 后台加载" .. #spawners .. "个spawner")
                             
                             for i, spawner in pairs(spawners) do
                                 if not isAutoRobActive then break end
                                 
-                                if character and character.PrimaryPart then
-                                    character.PrimaryPart.Velocity = Vector3.zero
-                                    character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
-                                    debugLog("[AutoRobATMs] 传送spawner " .. i .. "/" .. #spawners)
-                                end
+                                pcall(function()
+                                    player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
+                                end)
+                                PlutoX.debug("[AutoRobATMs] 加载spawner " .. i .. "/" .. #spawners)
                                 
                                 task.wait(0.5)
-                                localPlayer.ReplicationFocus = nil
                                 
                                 if searchATMs() then
-                                    debugLog("[AutoRobATMs] spawner " .. i .. " 找到ATM")
+                                    PlutoX.debug("[AutoRobATMs] spawner " .. i .. " 找到ATM")
                                     noATMFoundCount = 0
                                     break
                                 end
                             end
                             
                             if not searchATMs() and isAutoRobActive then
-                                debugLog("[AutoRobATMs] 新逻辑：所有spawner未找到ATM，传送到中心点")
-                                if character and character.PrimaryPart then
-                                    character:PivotTo(CFrame.new(0, 50, 0))
-                                end
+                                PlutoX.debug("[AutoRobATMs] 所有spawner未找到ATM，加载中心点")
+                                pcall(function()
+                                    player:RequestStreamAroundAsync(Vector3.new(0, 50, 0), 1)
+                                end)
                                 task.wait(1)
-                                localPlayer.ReplicationFocus = nil
                                 
                                 if searchATMs() then
-                                    debugLog("[AutoRobATMs] 新逻辑：中心点找到ATM")
+                                    PlutoX.debug("[AutoRobATMs] 中心点找到ATM")
                                     noATMFoundCount = 0
                                 else
-                                    debugLog("[AutoRobATMs] 新逻辑：中心点未找到ATM，重新开始spawner循环")
+                                    PlutoX.debug("[AutoRobATMs] 中心点未找到ATM，重新开始spawner循环")
                                 end
                             end
                         end
 
-                        debugLog("[AutoRobATMs] 原逻辑：强制刷新spawner")
+                        PlutoX.debug("[AutoRobATMs] 原逻辑：强制刷新spawner")
                         if spawnersFolder then
                             local spawners = spawnersFolder:GetChildren()
-                            debugLog("[AutoRobATMs] 强制刷新" .. #spawners .. "个spawner")
+                            PlutoX.debug("[AutoRobATMs] 强制刷新" .. #spawners .. "个spawner")
                             for i, spawner in pairs(spawners) do
                                 if i == 1 or i == #spawners or i % 5 == 0 then
-                                    debugLog("[AutoRobATMs] 聚焦spawner " .. i .. "/" .. #spawners)
+                                    PlutoX.debug("[AutoRobATMs] 聚焦spawner " .. i .. "/" .. #spawners)
                                 end
                                 localPlayer.ReplicationFocus = spawner
                                 task.wait(0.2)
@@ -1396,7 +1543,7 @@ local function performAutoRobATMs()
 
                         local searchSuccess = false
                         if character and character.PrimaryPart then
-                            debugLog("[AutoRobATMs] 第1步：传送到中心点搜索")
+                            PlutoX.debug("[AutoRobATMs] 第1步：传送到中心点搜索")
                             character:PivotTo(CFrame.new(0, 50, 0))
                         else
                             warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
@@ -1409,7 +1556,7 @@ local function performAutoRobATMs()
                         for _, atm in pairs(taggedATMs) do
                             if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                 searchSuccess = true
-                                debugLog("[AutoRobATMs] 中心点找到ATM (tagged)")
+                                PlutoX.debug("[AutoRobATMs] 中心点找到ATM (tagged)")
                                 break
                             end
                         end
@@ -1417,7 +1564,7 @@ local function performAutoRobATMs()
                             for _, obj in pairs(getnilinstances()) do
                                 if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                     searchSuccess = true
-                                    debugLog("[AutoRobATMs] 中心点找到ATM (nil)")
+                                    PlutoX.debug("[AutoRobATMs] 中心点找到ATM (nil)")
                                     break
                                 end
                             end
@@ -1441,7 +1588,7 @@ local function performAutoRobATMs()
                                     end
                                 end
                                 if character and character.PrimaryPart then
-                                    debugLog("[AutoRobATMs] 第2步：传送到CriminalArea搜索")
+                                    PlutoX.debug("[AutoRobATMs] 第2步：传送到CriminalArea搜索")
                                     character:PivotTo(criminalAreaPosition + Vector3.new(0, 50, 0))
                                 end
                                 task.wait(1)
@@ -1452,7 +1599,7 @@ local function performAutoRobATMs()
                                 for _, atm in pairs(taggedATMs) do
                                     if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
-                                        debugLog("[AutoRobATMs] CriminalArea找到ATM (tagged)")
+                                        PlutoX.debug("[AutoRobATMs] CriminalArea找到ATM (tagged)")
                                         break
                                     end
                                 end
@@ -1460,7 +1607,7 @@ local function performAutoRobATMs()
                                     for _, obj in pairs(getnilinstances()) do
                                         if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                             searchSuccess = true
-                                            debugLog("[AutoRobATMs] CriminalArea找到ATM (nil)")
+                                            PlutoX.debug("[AutoRobATMs] CriminalArea找到ATM (nil)")
                                             break
                                         end
                                     end
@@ -1472,7 +1619,7 @@ local function performAutoRobATMs()
 
                         
                         if not searchSuccess and #knownATMLocations > 0 then
-                            debugLog("[AutoRobATMs] 第3步：依次访问" .. #knownATMLocations .. "个已知ATM位置")
+                            PlutoX.debug("[AutoRobATMs] 第3步：依次访问" .. #knownATMLocations .. "个已知ATM位置")
                             
                             for i, location in ipairs(knownATMLocations) do
                                 if not isAutoRobActive then break end
@@ -1480,7 +1627,7 @@ local function performAutoRobATMs()
                                 if character and character.PrimaryPart then
                                     character.PrimaryPart.Velocity = Vector3.zero
                                     character:PivotTo(location + Vector3.new(0, 5, 0))
-                                    debugLog("[AutoRobATMs] 访问已知ATM位置 " .. i .. "/" .. #knownATMLocations)
+                                    PlutoX.debug("[AutoRobATMs] 访问已知ATM位置 " .. i .. "/" .. #knownATMLocations)
                                 end
                                 
                                 task.wait(0.5)
@@ -1489,7 +1636,7 @@ local function performAutoRobATMs()
                                 for _, atm in pairs(taggedATMs) do
                                     if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
-                                        debugLog("[AutoRobATMs] 已知位置找到ATM (tagged)")
+                                        PlutoX.debug("[AutoRobATMs] 已知位置找到ATM (tagged)")
                                         break
                                     end
                                 end
@@ -1498,7 +1645,7 @@ local function performAutoRobATMs()
                                 for _, obj in pairs(getnilinstances()) do
                                     if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                         searchSuccess = true
-                                        debugLog("[AutoRobATMs] 已知位置找到ATM (nil)")
+                                        PlutoX.debug("[AutoRobATMs] 已知位置找到ATM (nil)")
                                         break
                                     end
                                 end
@@ -1508,14 +1655,14 @@ local function performAutoRobATMs()
 
                         
                         if character and character.PrimaryPart then
-                            debugLog("[AutoRobATMs] 第4步：回到中心点开始循环")
+                            PlutoX.debug("[AutoRobATMs] 第4步：回到中心点开始循环")
                             character:PivotTo(CFrame.new(0, 50, 0))
                         else
                             warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
                         end
                         task.wait(1)
                         localPlayer.ReplicationFocus = nil
-                        debugLog("[AutoRobATMs] ATM搜索已重置，准备重新开始")
+                        PlutoX.debug("[AutoRobATMs] ATM搜索已重置，准备重新开始")
                     end
                 else
                     noATMFoundCount = 0
@@ -1523,12 +1670,7 @@ local function performAutoRobATMs()
 
                 if not (getfenv().atmloadercooldown or targetATM) then
                     getfenv().atmloadercooldown = true
-                    debugLog("[AutoRobATMs] 启动后台ATM加载器")
-                    UILibrary:Notify({
-                        Title = "加载中",
-                        Text = "正在后台加载ATM...",
-                        Duration = 3
-                    })
+                    PlutoX.debug("[AutoRobATMs] 启动后台ATM加载器")
 
                     spawn(function()
                         local spawners = workspace.Game.Jobs.CriminalATMSpawners
@@ -1537,7 +1679,7 @@ local function performAutoRobATMs()
                         else
                             local spawnerList = spawners:GetChildren()
                             local totalSpawners = #spawnerList
-                            debugLog("[AutoRobATMs] 后台加载spawner数量: " .. totalSpawners)
+                            PlutoX.debug("[AutoRobATMs] 后台加载spawner数量: " .. totalSpawners)
 
                             local processedCount = 0
                             local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
@@ -1549,7 +1691,7 @@ local function performAutoRobATMs()
                                 end
                                 processedCount = processedCount + 1
                                 if processedCount % 5 == 0 then
-                                    debugLog("[AutoRobATMs] 后台已加载 " .. processedCount .. "/" .. totalSpawners .. " 个spawner")
+                                    PlutoX.debug("[AutoRobATMs] 后台已加载 " .. processedCount .. "/" .. totalSpawners .. " 个spawner")
                                 end
                                 localPlayer.ReplicationFocus = spawner
                                 task.wait(0.5)
@@ -1572,13 +1714,13 @@ local function performAutoRobATMs()
                                 end
                             end
                             if nilSpawnerCount > 0 then
-                                debugLog("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
+                                PlutoX.debug("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
                             end
                         end
 
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
-                        debugLog("[AutoRobATMs] 后台ATM加载器完成")
+                        PlutoX.debug("[AutoRobATMs] 后台ATM加载器完成")
                     end)
                 end
             end)
@@ -1591,7 +1733,7 @@ local function performAutoRobATMs()
             end
         end
         
-        debugLog("[AutoRobATMs] 自动抢劫已停止")
+        PlutoX.debug("[AutoRobATMs] 自动抢劫已停止")
         
         if originalLocationNameCall then
             local mt = getrawmetatable(game)
@@ -1599,7 +1741,7 @@ local function performAutoRobATMs()
             mt.__namecall = originalLocationNameCall
             setreadonly(mt, true)
             originalLocationNameCall = nil
-            debugLog("[AutoRobATMs] 已恢复 Location remote")
+            PlutoX.debug("[AutoRobATMs] 已恢复 Location remote")
         end
     end)
 end
@@ -1781,16 +1923,16 @@ UILibrary:CreateToggle(autoRobCard, {
             
             local currentRobbedAmount = getRobbedAmount() or 0
             if currentRobbedAmount > 0 then
-                debugLog("[UI] 关闭自动抢劫，开始投放已抢金额: " .. formatNumber(currentRobbedAmount))
+                PlutoX.debug("[UI] 关闭自动抢劫，开始投放已抢金额: " .. formatNumber(currentRobbedAmount))
                 spawn(function()
                     forceDeliverRobbedAmount(true)
                 end)
             else
-                debugLog("[UI] 关闭自动抢劫，无已抢金额需要投放")
+                PlutoX.debug("[UI] 关闭自动抢劫，无已抢金额需要投放")
                 isDeliveryInProgress = false
             end
             
-            debugLog("[UI] 用户关闭自动抢劫功能，设置状态为非活动")
+            PlutoX.debug("[UI] 用户关闭自动抢劫功能，设置状态为非活动")
             
             if originalLocationNameCall then
                 local mt = getrawmetatable(game)
@@ -1798,10 +1940,10 @@ UILibrary:CreateToggle(autoRobCard, {
                 mt.__namecall = originalLocationNameCall
                 setreadonly(mt, true)
                 originalLocationNameCall = nil
-                debugLog("[UI] 已恢复 Location remote")
+                PlutoX.debug("[UI] 已恢复 Location remote")
             end
         else
-            debugLog("[UI] 用户开启自动抢劫功能")
+            PlutoX.debug("[UI] 用户开启自动抢劫功能")
             spawn(function()
                 task.wait(0.5)
                 if performAutoRobATMs then
@@ -1927,7 +2069,7 @@ function purchaseFunctions.enterDealership()
     local success, err = pcall(function()
         local locationRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Location")
         locationRemote:FireServer("Enter", "Cars")
-        debugLog("[Purchase] 已进入车店")
+        PlutoX.debug("[Purchase] 已进入车店")
         return true
     end)
     
@@ -1943,77 +2085,77 @@ end
 function purchaseFunctions.getAllVehicles()
     local vehicles = {}
     
-    debugLog("[Purchase] ========== 开始获取车辆数据 ==========")
+    PlutoX.debug("[Purchase] ========== 开始获取车辆数据 ==========")
     
     local success, err = pcall(function()
-        debugLog("[Purchase] 步骤1: 获取 PlayerGui")
+        PlutoX.debug("[Purchase] 步骤1: 获取 PlayerGui")
         local playerGui = player:WaitForChild("PlayerGui", 10)
         if not playerGui then
             warn("[Purchase] PlayerGui 获取超时")
             return vehicles
         end
-        debugLog("[Purchase] PlayerGui 获取成功")
+        PlutoX.debug("[Purchase] PlayerGui 获取成功")
         
         task.wait(0.7)
         
-        debugLog("[Purchase] 步骤2: 查找 DealershipHolder")
+        PlutoX.debug("[Purchase] 步骤2: 查找 DealershipHolder")
         local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
         if not dealershipHolder then
             warn("[Purchase] 未找到 DealershipHolder")
             return vehicles
         end
-        debugLog("[Purchase] DealershipHolder 找到")
+        PlutoX.debug("[Purchase] DealershipHolder 找到")
         
         task.wait(0.7)
         
-        debugLog("[Purchase] 步骤3: 查找 Dealership")
+        PlutoX.debug("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
         if not dealership then
             warn("[Purchase] 未找到 Dealership")
             return vehicles
         end
-        debugLog("[Purchase] Dealership 找到")
+        PlutoX.debug("[Purchase] Dealership 找到")
         
         task.wait(0.7)
         
-        debugLog("[Purchase] 步骤4: 查找 Selector")
+        PlutoX.debug("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
         if not selector then
             warn("[Purchase] 未找到 Selector")
             return vehicles
         end
-        debugLog("[Purchase] Selector 找到")
+        PlutoX.debug("[Purchase] Selector 找到")
         
         task.wait(0.7)
         
-        debugLog("[Purchase] 步骤5: 查找 View")
+        PlutoX.debug("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
         if not view then
             warn("[Purchase] 未找到 View")
             return vehicles
         end
-        debugLog("[Purchase] View 找到")
+        PlutoX.debug("[Purchase] View 找到")
         
         task.wait(0.7)
         
-        debugLog("[Purchase] 步骤6: 查找 All")
+        PlutoX.debug("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
         if not allView then
             warn("[Purchase] 未找到 All")
             return vehicles
         end
-        debugLog("[Purchase] All 找到")
+        PlutoX.debug("[Purchase] All 找到")
         
         task.wait(0.7)
         
-        debugLog("[Purchase] 步骤7: 查找 Container")
+        PlutoX.debug("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
         if not container then
             warn("[Purchase] 未找到 Container")
             return vehicles
         end
-        debugLog("[Purchase] Container 找到")
-        debugLog("[Purchase] Container 的子元素数量:", #container:GetChildren())
+        PlutoX.debug("[Purchase] Container 找到")
+        PlutoX.debug("[Purchase] Container 的子元素数量:", #container:GetChildren())
         
         task.wait(1)
         
@@ -2055,8 +2197,8 @@ function purchaseFunctions.getAllVehicles()
         warn("[Purchase] 获取车辆数据失败:", err)
     end
     
-    debugLog("[Purchase] 获取到", #vehicles, "辆车辆")
-    debugLog("[Purchase] ========== 获取车辆数据完成 ==========")
+    PlutoX.debug("[Purchase] 获取到", #vehicles, "辆车辆")
+    PlutoX.debug("[Purchase] ========== 获取车辆数据完成 ==========")
     
     return vehicles
 end
@@ -2080,12 +2222,12 @@ end
 
 -- 购买指定车辆
 function purchaseFunctions.buyVehicle(frameName)
-    debugLog("[Purchase] ========== 开始购买 ==========")
-    debugLog("[Purchase] 购买名称:", frameName)
+    PlutoX.debug("[Purchase] ========== 开始购买 ==========")
+    PlutoX.debug("[Purchase] 购买名称:", frameName)
     
     local success, result = pcall(function()
         local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
-        debugLog("[Purchase] 找到Purchase远程事件")
+        PlutoX.debug("[Purchase] 找到Purchase远程事件")
         
         -- 随机颜色配置
         local mainColor = purchaseFunctions.randomColor()
@@ -2101,34 +2243,34 @@ function purchaseFunctions.buyVehicle(frameName)
             }
         }
         
-        debugLog("[Purchase] 购买参数:")
-        debugLog("[Purchase]  - 购买名称:", frameName)
-        debugLog("[Purchase]  - 主颜色:", mainColor)
-        debugLog("[Purchase]  - 次要颜色:", secondaryColor)
-        debugLog("[Purchase]  - 轮毂颜色:", wheelColor)
+        PlutoX.debug("[Purchase] 购买参数:")
+        PlutoX.debug("[Purchase]  - 购买名称:", frameName)
+        PlutoX.debug("[Purchase]  - 主颜色:", mainColor)
+        PlutoX.debug("[Purchase]  - 次要颜色:", secondaryColor)
+        PlutoX.debug("[Purchase]  - 轮毂颜色:", wheelColor)
         
         local purchaseResult = purchaseRemote:InvokeServer(unpack(args))
-        debugLog("[Purchase] 远程调用返回:", type(purchaseResult))
+        PlutoX.debug("[Purchase] 远程调用返回:", type(purchaseResult))
         
         if type(purchaseResult) == "table" then
-            debugLog("[Purchase] 返回的table内容:")
+            PlutoX.debug("[Purchase] 返回的table内容:")
             for k, v in pairs(purchaseResult) do
-                debugLog("[Purchase]   ", k, "=", v)
+                PlutoX.debug("[Purchase]   ", k, "=", v)
             end
         else
-            debugLog("[Purchase] 返回值:", purchaseResult)
+            PlutoX.debug("[Purchase] 返回值:", purchaseResult)
         end
         
         return purchaseResult
     end)
     
     if success then
-        debugLog("[Purchase] pcall成功，结果:", result)
-        debugLog("[Purchase] ========== 购买完成 ==========")
+        PlutoX.debug("[Purchase] pcall成功，结果:", result)
+        PlutoX.debug("[Purchase] ========== 购买完成 ==========")
         return true, result
     else
         warn("[Purchase] pcall失败，错误:", result)
-        debugLog("[Purchase] ========== 购买失败 ==========")
+        PlutoX.debug("[Purchase] ========== 购买失败 ==========")
         return false, result
     end
 end
@@ -2138,15 +2280,15 @@ purchaseFunctions.autoPurchasedVehicles = {}
 
 -- 独立的购买车辆函数
 function purchaseFunctions.purchaseVehicle(vehicle)
-    debugLog("[Purchase] ========== 开始购买车辆 ==========")
-    debugLog("[Purchase] 车辆名称:", vehicle.name)
-    debugLog("[Purchase] Frame Name:", vehicle.frameName)
-    debugLog("[Purchase] 车辆价格:", vehicle.price)
+    PlutoX.debug("[Purchase] ========== 开始购买车辆 ==========")
+    PlutoX.debug("[Purchase] 车辆名称:", vehicle.name)
+    PlutoX.debug("[Purchase] Frame Name:", vehicle.frameName)
+    PlutoX.debug("[Purchase] 车辆价格:", vehicle.price)
     
     -- 检查资金是否足够
     local currentCash = purchaseFunctions.getCurrentCash()
     if currentCash < vehicle.price then
-        debugLog("[Purchase] 资金不足")
+        PlutoX.debug("[Purchase] 资金不足")
         return false, "资金不足"
     end
     
@@ -2154,59 +2296,59 @@ function purchaseFunctions.purchaseVehicle(vehicle)
     local success, result = purchaseFunctions.buyVehicle(vehicle.frameName)
     
     if success then
-        debugLog("[Purchase] 购买成功")
+        PlutoX.debug("[Purchase] 购买成功")
         -- 记录购买的车辆
         table.insert(purchaseFunctions.autoPurchasedVehicles, vehicle)
-        debugLog("[Purchase] 已记录购买车辆:", vehicle.name, "当前记录数量:", #purchaseFunctions.autoPurchasedVehicles)
+        PlutoX.debug("[Purchase] 已记录购买车辆:", vehicle.name, "当前记录数量:", #purchaseFunctions.autoPurchasedVehicles)
         return true, result
     else
-        debugLog("[Purchase] 购买失败:", result)
+        PlutoX.debug("[Purchase] 购买失败:", result)
         return false, result
     end
 end
 
 -- 后悔功能（卖车）
 function purchaseFunctions.sellVehicle(vehicle)
-    debugLog("[Sell] ========== 开始卖车 ==========")
-    debugLog("[Sell] 车辆名称:", vehicle.name)
-    debugLog("[Sell] Frame Name:", vehicle.frameName)
+    PlutoX.debug("[Sell] ========== 开始卖车 ==========")
+    PlutoX.debug("[Sell] 车辆名称:", vehicle.name)
+    PlutoX.debug("[Sell] Frame Name:", vehicle.frameName)
     
     local success, err = pcall(function()
         local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SellCar")
-        debugLog("[Sell] 找到SellCar远程事件")
+        PlutoX.debug("[Sell] 找到SellCar远程事件")
         
         local args = {
             vehicle.frameName
         }
         
-        debugLog("[Sell] 卖车参数:", vehicle.frameName)
+        PlutoX.debug("[Sell] 卖车参数:", vehicle.frameName)
         sellRemote:FireServer(unpack(args))
         
         return true
     end)
     
     if success then
-        debugLog("[Sell] 卖车成功")
+        PlutoX.debug("[Sell] 卖车成功")
         -- 从记录中移除
         for i, v in ipairs(purchaseFunctions.autoPurchasedVehicles) do
             if v.frameName == vehicle.frameName then
                 table.remove(purchaseFunctions.autoPurchasedVehicles, i)
-                debugLog("[Sell] 已从记录中移除:", vehicle.name)
+                PlutoX.debug("[Sell] 已从记录中移除:", vehicle.name)
                 break
             end
         end
         return true
     else
         warn("[Sell] 卖车失败:", err)
-        debugLog("[Sell] ========== 卖车失败 ==========")
+        PlutoX.debug("[Sell] ========== 卖车失败 ==========")
         return false, err
     end
 end
 
 -- 后悔所有购买的车辆
 function purchaseFunctions.regretAllPurchases()
-    debugLog("[Regret] ========== 开始后悔所有购买 ==========")
-    debugLog("[Regret] 需要后悔的车辆数量:", #purchaseFunctions.autoPurchasedVehicles)
+    PlutoX.debug("[Regret] ========== 开始后悔所有购买 ==========")
+    PlutoX.debug("[Regret] 需要后悔的车辆数量:", #purchaseFunctions.autoPurchasedVehicles)
     
     -- 创建副本，避免在遍历时修改原表
     local vehiclesToSell = {}
@@ -2222,17 +2364,17 @@ function purchaseFunctions.regretAllPurchases()
         if success then
             soldCount = soldCount + 1
             totalRefund = totalRefund + vehicle.price
-            debugLog("[Regret] 已卖出:", vehicle.name, "价格:", vehicle.price)
+            PlutoX.debug("[Regret] 已卖出:", vehicle.name, "价格:", vehicle.price)
         else
-            debugLog("[Regret] 卖出失败:", vehicle.name)
+            PlutoX.debug("[Regret] 卖出失败:", vehicle.name)
         end
         
         task.wait(1)
     end
     
-    debugLog("[Regret] ========== 后悔完成 ==========")
-    debugLog("[Regret] 成功卖出:", soldCount, "辆")
-    debugLog("[Regret] 总退款:", formatNumber(totalRefund))
+    PlutoX.debug("[Regret] ========== 后悔完成 ==========")
+    PlutoX.debug("[Regret] 成功卖出:", soldCount, "辆")
+    PlutoX.debug("[Regret] 总退款:", formatNumber(totalRefund))
     
     return true, {
         soldCount = soldCount,
@@ -2248,7 +2390,7 @@ function purchaseFunctions.autoPurchase(options)
     local onProgress = options.onProgress or function() end  -- 进度回调
     local shouldContinue = options.shouldContinue or function() return true end
     
-    debugLog("[AutoPurchase] ========== 开始自动购买 ==========")
+    PlutoX.debug("[AutoPurchase] ========== 开始自动购买 ==========")
     
     -- 进入车店
     if not purchaseFunctions.enterDealership() then
@@ -2269,29 +2411,29 @@ function purchaseFunctions.autoPurchase(options)
         table.sort(vehicles, function(a, b)
             return a.price < b.price
         end)
-        debugLog("[AutoPurchase] 按价格从低到高排序")
+        PlutoX.debug("[AutoPurchase] 按价格从低到高排序")
     else
         table.sort(vehicles, function(a, b)
             return a.price > b.price
         end)
-        debugLog("[AutoPurchase] 按价格从高到低排序")
+        PlutoX.debug("[AutoPurchase] 按价格从高到低排序")
     end
     
     local currentCash = purchaseFunctions.getCurrentCash()
     local purchasedCount = 0
     local totalSpent = 0
     
-    debugLog("[AutoPurchase] 当前资金:", formatNumber(currentCash), "车辆数量:", #vehicles)
+    PlutoX.debug("[AutoPurchase] 当前资金:", formatNumber(currentCash), "车辆数量:", #vehicles)
     
     -- 依次购买
     for _, vehicle in ipairs(vehicles) do
         if purchasedCount >= maxPurchases then
-            debugLog("[AutoPurchase] 达到最大购买数量:", maxPurchases)
+            PlutoX.debug("[AutoPurchase] 达到最大购买数量:", maxPurchases)
             break
         end
         
         if not shouldContinue() then
-            debugLog("[AutoPurchase] 停止条件触发")
+            PlutoX.debug("[AutoPurchase] 停止条件触发")
             break
         end
         
@@ -2303,7 +2445,7 @@ function purchaseFunctions.autoPurchase(options)
                 totalSpent = totalSpent + vehicle.price
                 purchasedCount = purchasedCount + 1
                 
-                debugLog("[AutoPurchase] 已购买:", vehicle.name, "剩余资金:", formatNumber(currentCash))
+                PlutoX.debug("[AutoPurchase] 已购买:", vehicle.name, "剩余资金:", formatNumber(currentCash))
                 
                 -- 调用进度回调
                 onProgress({
@@ -2315,16 +2457,16 @@ function purchaseFunctions.autoPurchase(options)
                 
                 task.wait(1)
             else
-                debugLog("[AutoPurchase] 购买失败:", vehicle.name)
+                PlutoX.debug("[AutoPurchase] 购买失败:", vehicle.name)
             end
         else
-            debugLog("[AutoPurchase] 资金不足，停止购买")
+            PlutoX.debug("[AutoPurchase] 资金不足，停止购买")
             break
         end
     end
     
-    debugLog("[AutoPurchase] ========== 自动购买完成 ==========")
-    debugLog("[AutoPurchase] 购买数量:", purchasedCount, "总花费:", formatNumber(totalSpent))
+    PlutoX.debug("[AutoPurchase] ========== 自动购买完成 ==========")
+    PlutoX.debug("[AutoPurchase] 购买数量:", purchasedCount, "总花费:", formatNumber(totalSpent))
     
     return true, {
         purchasedCount = purchasedCount,
@@ -2380,7 +2522,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             return
         end
         
-        debugLog("[Purchase] 开始搜索，关键词:", searchText)
+        PlutoX.debug("[Purchase] 开始搜索，关键词:", searchText)
         
         -- 销毁之前创建的UI元素
         pcall(function()
@@ -2427,7 +2569,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             end
         end
         
-        debugLog("[Purchase] 搜索完成，匹配到", #matchedVehicles, "辆车辆")
+        PlutoX.debug("[Purchase] 搜索完成，匹配到", #matchedVehicles, "辆车辆")
         
         if #matchedVehicles == 0 then
             UILibrary:Notify({
@@ -2454,14 +2596,13 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 DefaultOption = displayOptions[1],
                 Options = displayOptions,
                 Callback = function(selectedDisplayText)
-                    -- 车辆选择回调，从displayText中提取车辆名称
                     local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
                 end
             })
         end)
         
         if not success then
-            debugLog("[Purchase] 创建下拉框失败:", errorMsg)
+            PlutoX.debug("[Purchase] 创建下拉框失败:", errorMsg)
             UILibrary:Notify({
                 Title = "错误",
                 Text = "创建下拉框失败: " .. tostring(errorMsg),
@@ -2487,13 +2628,11 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             buyButton = UILibrary:CreateButton(searchCard, {
                 Text = "购买选中车辆",
                 Callback = function()
-                    -- 检查下拉框是否还存在
                     if not vehicleDropdown or not vehicleDropdown.Parent then
-                        debugLog("[Purchase] 下拉框已被销毁")
+                        PlutoX.debug("[Purchase] 下拉框已被销毁")
                         return
                     end
                     
-                    -- 获取下拉框选中的车辆
                     local dropdownButton = vehicleDropdown:FindFirstChild("DropdownButton")
                     if not dropdownButton then
                         UILibrary:Notify({
@@ -2505,11 +2644,10 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     local selectedDisplayText = dropdownButton.Text
-                    -- 从displayText中提取车辆名
                     local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
                     
                     if not selectedVehicleName then
-                        debugLog("[Purchase] 无法从displayText中提取车辆名称:", selectedDisplayText)
+                        PlutoX.debug("[Purchase] 无法从displayText中提取车辆名称:", selectedDisplayText)
                         UILibrary:Notify({
                             Title = "错误",
                             Text = "无法解析车辆名称",
@@ -2528,7 +2666,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     if not selectedVehicle then
-                        debugLog("[Purchase] 未找到选中的车辆数据")
+                        PlutoX.debug("[Purchase] 未找到选中的车辆数据")
                         UILibrary:Notify({
                             Title = "错误",
                             Text = "未找到选中的车辆",
@@ -2537,22 +2675,21 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         return
                     end
                     
-                    debugLog("[Purchase] 开始购买:", selectedVehicle.name)
+                    PlutoX.debug("[Purchase] 开始购买:", selectedVehicle.name)
                     local success, result = purchaseFunctions.purchaseVehicle(selectedVehicle)
-                    debugLog("[Purchase] 购买结果:", success, result)
+                    PlutoX.debug("[Purchase] 购买结果:", success, result)
                     
                     if success then
-                        debugLog("[Purchase] 购买成功，开始清理UI")
+                        PlutoX.debug("[Purchase] 购买成功，开始清理UI")
                         UILibrary:Notify({
                             Title = "购买成功",
                             Text = string.format("已购买: %s\n价格: $%s", selectedVehicle.name, formatNumber(selectedVehicle.price)),
                             Duration = 5
                         })
                         
-                        -- 安全地清理UI元素
                         pcall(function()
                             if vehicleDropdown and vehicleDropdown.Parent then
-                                debugLog("[Purchase] 销毁下拉框")
+                                PlutoX.debug("[Purchase] 销毁下拉框")
                                 vehicleDropdown:Destroy()
                                 vehicleDropdown = nil
                             end
@@ -2560,19 +2697,19 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         
                         pcall(function()
                             if buyButton and buyButton.Parent then
-                                debugLog("[Purchase] 销毁购买按钮")
+                                PlutoX.debug("[Purchase] 销毁购买按钮")
                                 buyButton:Destroy()
                                 buyButton = nil
                             end
                         end)
                         
                         -- 清空搜索框
-                        debugLog("[Purchase] 清空搜索框")
+                        PlutoX.debug("[Purchase] 清空搜索框")
                         if searchInput and searchInput.Parent then
                             searchInput.Text = ""
                         end
                     else
-                        debugLog("[Purchase] 购买失败")
+                        PlutoX.debug("[Purchase] 购买失败")
                         UILibrary:Notify({
                             Title = "购买失败",
                             Text = string.format("无法购买: %s", selectedVehicle.name),
@@ -2582,14 +2719,14 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 end
             })
             
-            debugLog("[Purchase] 购买按钮创建成功")
+            PlutoX.debug("[Purchase] 购买按钮创建成功")
         end)
         
         -- 存储购买按钮引用
         previousBuyButton = buyButton
         
         if not buyButton then
-            debugLog("[Purchase] 购买按钮创建失败")
+            PlutoX.debug("[Purchase] 购买按钮创建失败")
             UILibrary:Notify({
                 Title = "错误",
                 Text = "无法创建购买按钮",
@@ -2624,12 +2761,12 @@ local startAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
         
         spawn(function()
             local success, result = purchaseFunctions.autoPurchase({
-                sortAscending = true,  -- 按价格从低到高
+                sortAscending = true,
                 shouldContinue = function()
                     return autoBuyStatus
                 end,
                 onProgress = function(progress)
-                    debugLog("[AutoBuy] 进度:", progress.purchasedCount, "已花费:", formatNumber(progress.totalSpent))
+                    PlutoX.debug("[AutoBuy] 进度:", progress.purchasedCount, "已花费:", formatNumber(progress.totalSpent))
                 end
             })
             
@@ -2771,7 +2908,7 @@ spawn(function()
             return
         end
 
-        -- 排行榜踢出检测（与主通知时间同步）
+        -- 排行榜踢出检测
         if config.leaderboardKick and (currentTime - lastSendTime) >= (config.notificationInterval or 30) then
             local currentRank, isOnLeaderboard = fetchPlayerRank()
             

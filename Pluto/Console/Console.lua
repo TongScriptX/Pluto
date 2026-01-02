@@ -1,6 +1,7 @@
 -- console.lua
 local Players = game:GetService("Players")
 local LogService = game:GetService("LogService")
+local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -21,8 +22,33 @@ end
 local uiModule = loadstring(uiCode)()
 local ui = uiModule.CreateUI(playerGui)
 
+-- 性能优化配置
+local UPDATE_THROTTLE = 0.05 -- UI更新节流时间（秒）
+local MAX_VISIBLE_LOGS = 150 -- 最大可见日志数
+
 -- 保存日志（按时间顺序存储）
 local logHistory = {}
+local pendingLogs = {}
+local lastUpdateTime = 0
+local isUpdating = false
+local nextLayoutOrder = 0
+
+-- 对象池（重用TextLabel）
+local textLabelPool = {}
+local function getLabel()
+    if #textLabelPool > 0 then
+        local label = table.remove(textLabelPool)
+        label.Visible = true
+        return label
+    end
+    return Instance.new("TextLabel")
+end
+
+local function returnLabel(label)
+    label.Visible = false
+    label.Parent = nil
+    table.insert(textLabelPool, label)
+end
 
 -- 根据类型获取颜色
 local function getColor(msgType)
@@ -37,31 +63,74 @@ local function getColor(msgType)
     end
 end
 
--- 在 Scroll 中插入一行彩色文本到顶部
-local function appendLog(msg, msgType)
-    -- 添加到历史记录（保持时间顺序）
-    table.insert(logHistory, ("[%s] %s"):format(msgType.Name, msg))
-
-    local line = Instance.new("TextLabel")
-    line.Size = UDim2.new(1, -10, 0, 0) -- 高度设为0，自动调整
-    line.AutomaticSize = Enum.AutomaticSize.Y
-    line.BackgroundTransparency = 1
-    line.TextColor3 = getColor(msgType)
-    line.TextXAlignment = Enum.TextXAlignment.Left
-    line.Font = Enum.Font.Code
-    line.TextSize = 14
-    line.Text = ("[%s] %s"):format(msgType.Name, msg)
-    line.TextWrapped = true
-    line.LayoutOrder = 0 -- 设置为0，确保在最上面
+-- 批量更新UI
+local function updateUI()
+    if isUpdating then return end
+    isUpdating = true
     
-    -- 更新所有现有行的LayoutOrder
-    for _, child in ipairs(ui.Scroll:GetChildren()) do
-        if child:IsA("TextLabel") then
-            child.LayoutOrder = child.LayoutOrder + 1
+    -- 处理待处理的日志
+    for _, logData in ipairs(pendingLogs) do
+        local msg, msgType = logData.msg, logData.msgType
+        
+        -- 添加到历史记录
+        table.insert(logHistory, ("[%s] %s"):format(msgType.Name, msg))
+
+        local line = getLabel()
+        line.Size = UDim2.new(1, -10, 0, 0)
+        line.AutomaticSize = Enum.AutomaticSize.Y
+        line.BackgroundTransparency = 1
+        line.TextColor3 = getColor(msgType)
+        line.TextXAlignment = Enum.TextXAlignment.Left
+        line.Font = Enum.Font.Code
+        line.TextSize = 14
+        line.Text = ("[%s] %s"):format(msgType.Name, msg)
+        line.TextWrapped = true
+        line.LayoutOrder = nextLayoutOrder
+        nextLayoutOrder = nextLayoutOrder + 1
+        
+        line.Parent = ui.Scroll
+    end
+    
+    -- 清空待处理队列
+    pendingLogs = {}
+    
+    -- 限制可见日志数量
+    local children = ui.Scroll:GetChildren()
+    local visibleCount = 0
+    local textLabels = {}
+    
+    -- 收集所有TextLabel
+    for _, child in ipairs(children) do
+        if child:IsA("TextLabel") and child.Visible then
+            table.insert(textLabels, child)
+            visibleCount = visibleCount + 1
         end
     end
     
-    line.Parent = ui.Scroll
+    -- 如果超过最大可见数量，删除最旧的
+    if visibleCount > MAX_VISIBLE_LOGS then
+        -- 按LayoutOrder排序（最小的最旧）
+        table.sort(textLabels, function(a, b) return a.LayoutOrder < b.LayoutOrder end)
+        
+        -- 删除超出限制的旧日志
+        for i = 1, visibleCount - MAX_VISIBLE_LOGS do
+            returnLabel(textLabels[i])
+        end
+    end
+    
+    isUpdating = false
+    lastUpdateTime = tick()
+end
+
+-- 添加日志到队列
+local function appendLog(msg, msgType)
+    table.insert(pendingLogs, {msg = msg, msgType = msgType})
+    
+    -- 检查是否需要更新UI
+    local currentTime = tick()
+    if currentTime - lastUpdateTime >= UPDATE_THROTTLE then
+        updateUI()
+    end
 end
 
 -- 监听消息
@@ -100,20 +169,40 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
 
     -- 清空日志
     logHistory = {}
+    pendingLogs = {}
+    
+    -- 返回所有标签到对象池
     for _, child in ipairs(ui.Scroll:GetChildren()) do
         if child:IsA("TextLabel") then
-            child:Destroy()
+            returnLabel(child)
         end
     end
+    
+    nextLayoutOrder = 0
 end)
 
 -- 点击清空按钮
 ui.ClearBtn.MouseButton1Click:Connect(function()
     logHistory = {}
+    pendingLogs = {}
+    
+    -- 返回所有标签到对象池
     for _, child in ipairs(ui.Scroll:GetChildren()) do
         if child:IsA("TextLabel") then
-            child:Destroy()
+            returnLabel(child)
         end
     end
+    
+    nextLayoutOrder = 0
     ui.Notice.Text = "🗑️ 日志已清空"
+end)
+
+-- 定期更新UI（确保待处理的日志被处理）
+spawn(function()
+    while true do
+        task.wait(UPDATE_THROTTLE)
+        if #pendingLogs > 0 then
+            updateUI()
+        end
+    end
 end)

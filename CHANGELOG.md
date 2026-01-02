@@ -1,5 +1,45 @@
 # Changelog
 
+## [Driving Empire] - 2026-01-02
+
+### Added
+- 日志系统增强：使用LogService捕获所有类型的输出（包括错误和警告）
+- 目标达成自动退出：达到目标金额后发送webhook并自动退出游戏
+- Webhook重试机制：目标达成webhook发送失败时自动重试（最多3次）
+- 启动时目标检查：脚本启动时自动检查是否已达到目标值，自动关闭踢出功能
+- 目标达成配置清理：达到目标后自动关闭踢出功能并清除目标值
+
+### Fixed
+- 修复FPS Boost中Transparency类型错误（ParticleEmitter和Trail使用NumberSequence类型）
+- 修复投放检测中lastCheckAmount未初始化导致的错误
+- 修复标签页按钮与侧边栏居中对齐问题
+
+### Performance
+- 优化Console.lua性能：使用对象池、批量更新、LayoutOrder优化、更新节流
+- 限制可见日志数量为50条，但保留完整历史记录
+
+### Code Quality
+- 恢复continue语句使用（Roblox Luau支持）
+- 删除无用的垃圾回收函数（Roblox环境不支持）
+
+### Chores
+- 关闭调试模式（DEBUG_MODE设置为false）
+
+## [Driving Empire] - 2026-01-01
+
+### Added
+- 日志系统增强：使用LogService捕获所有类型的输出（包括错误和警告）
+- 目标达成自动退出：达到目标金额后发送webhook并自动退出游戏
+- Webhook重试机制：目标达成webhook发送失败时自动重试（最多3次）
+
+### Fixed
+- 修复FPS Boost中Transparency类型错误（ParticleEmitter和Trail使用NumberSequence类型）
+- 修复投放检测中lastCheckAmount未初始化导致的错误
+
+### Performance
+- 优化Console.lua性能：使用对象池、批量更新、LayoutOrder优化、更新节流
+- 限制可见日志数量为50条，但保留完整历史记录
+
 ## [Driving Empire] - 2026-01-01
 
 ### Added
