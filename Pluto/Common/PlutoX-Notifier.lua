@@ -383,6 +383,37 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         local instanceId = self.gameName .. ":" .. self.username
         if not PlutoX.scriptInstances[instanceId] then
             warn("[Webhook] 脚本实例已失效，停止发送: " .. instanceId)
+            
+            -- 发送重复运行警告
+            local warningPayload = {
+                embeds = {{
+                    title = "⚠️ 重复运行检测",
+                    description = string.format("**游戏**: %s\n**用户**: %s\n\n检测到脚本重复运行，已停止发送通知", self.gameName, self.username),
+                    color = 16753920,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "桐 · TStudioX" }
+                }}
+            }
+            
+            -- 尝试发送警告（忽略结果）
+            pcall(function()
+                local requestFunc = syn and syn.request or http and http.request or request
+                if requestFunc and self.config.webhookUrl ~= "" then
+                    local bodyJson = self.HttpService:JSONEncode({
+                        content = nil,
+                        embeds = warningPayload.embeds
+                    })
+                    requestFunc({
+                        Url = self.config.webhookUrl,
+                        Method = "POST",
+                        Headers = {
+                            ["Content-Type"] = "application/json"
+                        },
+                        Body = bodyJson
+                    })
+                end
+            end)
+            
             return false
         end
         
@@ -821,16 +852,21 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     
     -- 主检查循环
     function monitor:checkAndNotify(saveConfig)
+        PlutoX.debug("[checkAndNotify] 开始检查，webhookDisabled:", self.webhookDisabled)
+        
         if self.webhookDisabled then
+            PlutoX.debug("[checkAndNotify] webhook已禁用，跳过检查")
             return false
         end
         
         if not self:shouldNotify() then
+            PlutoX.debug("[checkAndNotify] 无需通知")
             return false
         end
         
         local currentTime = os.time()
         local interval = currentTime - self.lastSendTime
+        PlutoX.debug("[checkAndNotify] 距离上次发送:", interval, "秒，需要:", self:getNotificationIntervalSeconds(), "秒")
         
         if interval < self:getNotificationIntervalSeconds() then
             return false
@@ -841,12 +877,16 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         -- 检查是否有任何数据变化
         if not self:hasAnyChange(data) then
             self.unchangedCount = self.unchangedCount + 1
+            PlutoX.debug("[checkAndNotify] 数据无变化，unchangedCount:", self.unchangedCount)
         else
             self.unchangedCount = 0
+            self.webhookDisabled = false -- 数据有变化时重置禁用标志
+            PlutoX.debug("[checkAndNotify] 数据有变化，重置unchangedCount和webhookDisabled")
         end
         
         -- 连续无变化警告
         if self.unchangedCount >= 2 then
+            PlutoX.debug("[checkAndNotify] 连续2次无变化，发送警告并禁用webhook")
             self:sendNoChange()
             self.webhookDisabled = true
             self.lastSendTime = currentTime
@@ -864,6 +904,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         end
         
         -- 发送数据变化通知
+        PlutoX.debug("[checkAndNotify] 发送数据变化通知")
         self:sendDataChange(currentTime, interval)
         self.lastSendTime = currentTime
         

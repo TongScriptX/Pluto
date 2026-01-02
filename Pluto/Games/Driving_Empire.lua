@@ -8,7 +8,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 local lastSendTime = os.time()
 local sendingWelcome = false
 local isAutoRobActive = false
@@ -82,6 +82,10 @@ end)
 if not success or not PlutoX then
     error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
+
+-- 启用 PlutoX 调试模式
+PlutoX.debugEnabled = DEBUG_MODE
+debugLog("[PlutoX] 调试模式已启用")
 
 -- 玩家和游戏信息
 local player = Players.LocalPlayer
