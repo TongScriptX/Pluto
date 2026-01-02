@@ -33,6 +33,10 @@ end)
 
 if success and result then
     PlutoX = result
+
+-- 启用调试模式（默认关闭，可在代码中设置 DEBUG_MODE = true 启用）
+local DEBUG_MODE = DEBUG_MODE or false
+PlutoX.debugEnabled = DEBUG_MODE
 else
     error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end

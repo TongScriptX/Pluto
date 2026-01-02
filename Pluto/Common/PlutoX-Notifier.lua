@@ -8,7 +8,23 @@ PlutoX.debugEnabled = false
 
 function PlutoX.debug(...)
     if PlutoX.debugEnabled then
-        print("[PlutoX-DEBUG]", ...)
+        local timestamp = os.date("%H:%M:%S")
+        local info = debug.getinfo(2, "Sl")
+        local source = info and info.short_src or "unknown"
+        local line = info and info.currentline or 0
+        
+        -- 格式化输出
+        local args = {...}
+        local formatted = {}
+        for i, arg in ipairs(args) do
+            if type(arg) == "table" then
+                formatted[i] = "{...}" -- 简化表格输出
+            else
+                formatted[i] = tostring(arg)
+            end
+        end
+        
+        print(string.format("[%s][DEBUG][%s:%d] %s", timestamp, source, line, table.concat(formatted, " ")))
     end
 end
 
