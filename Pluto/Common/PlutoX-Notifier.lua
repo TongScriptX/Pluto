@@ -58,71 +58,71 @@ function PlutoX.initDebugSystem()
     local logPath = PlutoX.getLogFilePath()
     PlutoX.currentLogFile = logPath
     
-    -- 打开新文件
-    local success, file = pcall(function()
-        return io.open(logPath, "w")
+    -- 创建新日志文件
+    local success, err = pcall(function()
+        local header = string.format("========== 日志开始 [%s] ==========\n", os.date("%Y-%m-%d %H:%M:%S"))
+        header = header .. string.format("游戏: %s\n", PlutoX.gameName or "Unknown")
+        header = header .. string.format("用户: %s\n", PlutoX.username or "Unknown")
+        header = header .. "==========================================\n\n"
+        writefile(logPath, header)
     end)
     
-    if success and file then
-        PlutoX.logFile = file
-        -- 写入日志开始标记
-        file:write(string.format("========== 日志开始 [%s] ==========\n", os.date("%Y-%m-%d %H:%M:%S")))
-        file:write(string.format("游戏: %s\n", PlutoX.gameName or "Unknown"))
-        file:write(string.format("用户: %s\n", PlutoX.username or "Unknown"))
-        file:write("==========================================\n\n")
-        file:flush()
-        
-        -- 保存原始 print 函数
-        if not PlutoX.originalPrint then
-            PlutoX.originalPrint = print
-        
-            -- 重写 print 函数，将所有输出写入日志
-            print = function(...)
-                -- 调用原始 print 输出到控制台
-                PlutoX.originalPrint(...)
-                
-                -- 写入日志文件
-                if PlutoX.logFile then
-                    local args = {...}
-                    local formatted = {}
-                    for i, arg in ipairs(args) do
-                        if type(arg) == "table" then
-                            formatted[i] = "{...}"
-                        else
-                            formatted[i] = tostring(arg)
-                        end
-                    end
-                    local logMessage = string.format("[%s] %s\n", os.date("%H:%M:%S"), table.concat(formatted, " "))
-                    pcall(function()
-                        PlutoX.logFile:write(logMessage)
-                        PlutoX.logFile:flush()
-                    end)
-                end
-            end
-        end
-        
+    if success then
         PlutoX.isInitialized = true
     else
-        warn("[PlutoX-Log] 无法打开日志文件: " .. logPath)
-        PlutoX.logFile = nil
+        warn("[PlutoX-Log] 无法创建日志文件: " .. tostring(err))
+        PlutoX.currentLogFile = nil
+    end
+    
+    -- 保存原始 print 函数
+    if not PlutoX.originalPrint then
+        PlutoX.originalPrint = print
+        
+        -- 重写 print 函数，将所有输出写入日志
+        print = function(...)
+            -- 调用原始 print 输出到控制台
+            PlutoX.originalPrint(...)
+            
+            -- 写入日志文件
+            if PlutoX.currentLogFile then
+                local args = {...}
+                local formatted = {}
+                for i, arg in ipairs(args) do
+                    if type(arg) == "table" then
+                        formatted[i] = "{...}"
+                    else
+                        formatted[i] = tostring(arg)
+                    end
+                end
+                local logMessage = string.format("[%s] %s\n", os.date("%H:%M:%S"), table.concat(formatted, " "))
+                PlutoX.writeLog(logMessage)
+            end
+        end
     end
 end
 
 -- 写入日志
 function PlutoX.writeLog(message)
-    if not PlutoX.debugEnabled or not PlutoX.logFile then
+    if not PlutoX.debugEnabled then
+        return
+    end
+    
+    -- 使用 Roblox 的 writefile API
+    if not PlutoX.currentLogFile then
         return
     end
     
     local success, err = pcall(function()
-        PlutoX.logFile:write(message)
-        PlutoX.logFile:flush()
+        -- 读取现有内容并追加
+        local existingContent = ""
+        if isfile(PlutoX.currentLogFile) then
+            existingContent = readfile(PlutoX.currentLogFile)
+        end
+        writefile(PlutoX.currentLogFile, existingContent .. message)
     end)
     
     if not success then
         warn("[PlutoX-Log] 写入日志失败: " .. tostring(err))
-        -- 尝试重新打开文件
-        PlutoX.logFile = nil
     end
 end
 
@@ -458,16 +458,22 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                 
                 if ok and type(content) == "table" then
                     local oldUserConfig = content[self.username]
+                    PlutoX.debug("[Config] 旧配置内容: " .. tostring(type(oldUserConfig)))
+                    
                     if oldUserConfig and type(oldUserConfig) == "table" then
                         -- 检查新配置文件是否已有该用户配置
                         local hasNewConfig = false
                         if isfile(self.configFile) then
+                            PlutoX.debug("[Config] 新配置文件存在，检查是否已有用户配置")
                             local ok2, newContent = pcall(function()
                                 return self.HttpService:JSONDecode(readfile(self.configFile))
                             end)
                             if ok2 and type(newContent) == "table" and newContent[self.username] then
                                 hasNewConfig = true
+                                PlutoX.debug("[Config] 新配置文件已有用户配置，跳过迁移")
                             end
+                        else
+                            PlutoX.debug("[Config] 新配置文件不存在")
                         end
                         
                         -- 如果新配置没有用户配置，则从旧配置迁移
