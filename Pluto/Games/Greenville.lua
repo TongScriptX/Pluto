@@ -44,9 +44,7 @@ if getrawmetatable ~= nil then
     end)
 end
 
--- ============================================================================
 -- 服务和变量声明
--- ============================================================================
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -70,9 +68,7 @@ else
     error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- ============================================================================
 -- PlutoX 模块加载
--- ============================================================================
 local success, PlutoX = pcall(function()
     local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
     local source = game:HttpGet(url)
@@ -83,9 +79,7 @@ if not success or not PlutoX then
     error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
 
--- ============================================================================
 -- 玩家和游戏信息
--- ============================================================================
 local player = Players.LocalPlayer
 if not player then
     error("无法获取当前玩家")
@@ -103,16 +97,14 @@ do
     end
 end
 
--- 初始化调试系统（如果调试模式开启）
+-- 初始化调试系统
 if DEBUG_MODE then
     PlutoX.setGameInfo(gameName, username)
     PlutoX.initDebugSystem()
     PlutoX.debug("调试系统已初始化")
 end
 
--- ============================================================================
 -- 注册数据类型
--- ============================================================================
 PlutoX.registerDataType({
     id = "cash",
     name = "金额",
@@ -139,9 +131,7 @@ PlutoX.registerDataType({
     supportTarget = true
 })
 
--- ============================================================================
 -- 初始化
--- ============================================================================
 local configFile = "PlutoX/Greenville_config.json"
 
 -- 获取所有注册的数据类型
@@ -260,9 +250,7 @@ UILibrary:CreateToggle(currencyNotifyCard, {
 
 PlutoX.createIntervalCard(notifyContent, UILibrary, configManager.config, function() configManager:saveConfig() end)
 
--- ============================================================================
 -- 数据类型设置区域
--- ============================================================================
 local targetValueLabels = {}
 
 for _, dataType in ipairs(dataTypes) do

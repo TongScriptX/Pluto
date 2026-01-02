@@ -35,7 +35,7 @@ end)
 if success and result then
     PlutoX = result
 
--- 启用调试模式（默认关闭，可在代码中设置 DEBUG_MODE = true 启用）
+-- 启用调试模式
 local DEBUG_MODE = false
 else
     error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
@@ -146,7 +146,7 @@ player.Idled:Connect(function()
     VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- 反检测功能（VL 特有）
+-- 反检测功能
 local PlayerGui = player:WaitForChild("PlayerGui")
 RunService.RenderStepped:Connect(function()
     local loadingGui = PlayerGui:FindFirstChild("LoadingGui")
@@ -275,7 +275,7 @@ for _, dataType in ipairs(dataTypes) do
             notifyContent, UILibrary, config, function() configManager:saveConfig() end, 
             function() return dataMonitor:fetchValue(dataType) end,
             keyUpper,
-            dataType.icon  -- 传递图标
+            dataType.icon
         )
         
         local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
@@ -285,7 +285,7 @@ for _, dataType in ipairs(dataTypes) do
         )
         
         setTargetValueLabel(targetValueLabel)
-        targetValueLabels[dataType.id] = targetValueLabel  -- 保存标签引用
+        targetValueLabels[dataType.id] = targetValueLabel
     end
 end
 
@@ -327,7 +327,7 @@ spawn(function()
         dataMonitor:checkAndNotify(function() configManager:saveConfig() end)
         
         -- 掉线检测
-        local cashType = dataTypes[1]  -- 假设第一个数据类型是 Cash
+        local cashType = dataTypes[1]
         if cashType then
             local currentCash = dataMonitor:fetchValue(cashType)
             disconnectDetector:checkAndNotify(currentCash)
