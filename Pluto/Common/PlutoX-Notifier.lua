@@ -795,28 +795,63 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     
     -- 发送目标达成通知
     function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime, dataTypeName)
-        return self:dispatchWebhook({
-            embeds = {{
-                title = "🎯 目标达成",
-                description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
-                fields = {
-                    {
-                        name = "📊 达成信息",
-                        value = string.format(
-                            "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
-                            dataTypeName or "未知",
-                            PlutoX.formatNumber(currentValue),
-                            PlutoX.formatNumber(targetAmount),
-                            PlutoX.formatNumber(baseAmount),
-                            PlutoX.formatElapsedTime(runTime)),
-                        inline = false
-                    }
-                },
-                color = _G.PRIMARY_COLOR or 5793266,
-                timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                footer = { text = "桐 · TStudioX" }
-            }}
-        })
+        local maxRetries = 3
+        local retryDelay = 2
+        local success = false
+        
+        for attempt = 1, maxRetries do
+            success = self:dispatchWebhook({
+                embeds = {{
+                    title = "🎯 目标达成",
+                    description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                    fields = {
+                        {
+                            name = "📊 达成信息",
+                            value = string.format(
+                                "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
+                                dataTypeName or "未知",
+                                PlutoX.formatNumber(currentValue),
+                                PlutoX.formatNumber(targetAmount),
+                                PlutoX.formatNumber(baseAmount),
+                                PlutoX.formatElapsedTime(runTime)),
+                            inline = false
+                        }
+                    },
+                    color = _G.PRIMARY_COLOR or 5793266,
+                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                    footer = { text = "桐 · TStudioX" }
+                }}
+            })
+            
+            if success then
+                PlutoX.debug("[目标达成] Webhook发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）")
+                break
+            else
+                warn("[目标达成] Webhook发送失败，尝试 " .. attempt .. "/" .. maxRetries)
+                if attempt < maxRetries then
+                    task.wait(retryDelay)
+                end
+            end
+        end
+        
+        -- 无论是否成功都退出游戏
+        if success then
+            PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
+        else
+            warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
+        end
+        
+        task.wait(1)
+        
+        -- 注销脚本实例
+        PlutoX.unregisterScriptInstance(self.gameName, self.username)
+        
+        -- 关闭游戏
+        pcall(function()
+            game:Shutdown()
+        end)
+        
+        return success
     end
     
     -- 发送掉线通知
