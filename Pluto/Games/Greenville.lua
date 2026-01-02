@@ -37,8 +37,6 @@ if getrawmetatable ~= nil then
     local originalNamecall = gameMetatable.__namecall
 
     gameMetatable.__namecall = newcclosure(function(self, ...)
-        local method = getnamecallmethod()
-        if method == "FireServer" and (self.Name == "BanMe" or self.Name == "Bunny") then
             return nil
         else
             return originalNamecall(self, ...)
@@ -103,6 +101,13 @@ do
     if success and info then
         gameName = info.Name
     end
+end
+
+-- 初始化调试系统（如果调试模式开启）
+if DEBUG_MODE then
+    PlutoX.setGameInfo(gameName, username)
+    PlutoX.initDebugSystem()
+    PlutoX.debug("调试系统已初始化")
 end
 
 -- ============================================================================

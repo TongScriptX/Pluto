@@ -79,7 +79,6 @@ end
 
 -- 启用 PlutoX 调试模式
 PlutoX.debugEnabled = DEBUG_MODE
-PlutoX.debug("[PlutoX] 调试模式已启用")
 
 -- 玩家和游戏信息
 local player = Players.LocalPlayer
@@ -98,6 +97,13 @@ do
     if success and info then
         gameName = info.Name
     end
+end
+
+-- 初始化调试系统（如果调试模式开启）
+if DEBUG_MODE then
+    PlutoX.setGameInfo(gameName, username)
+    PlutoX.initDebugSystem()
+    PlutoX.debug("调试系统已初始化")
 end
 
 -- 游戏特定功能

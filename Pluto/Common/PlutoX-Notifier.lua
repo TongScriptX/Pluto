@@ -5,27 +5,149 @@ local PlutoX = {}
 
 -- Debug 功能
 PlutoX.debugEnabled = false
+PlutoX.logFile = nil -- 当前日志文件句柄
+PlutoX.currentLogFile = nil -- 当前日志文件路径
+PlutoX.originalPrint = nil -- 保存原始 print 函数
+PlutoX.gameName = nil -- 游戏名称
+PlutoX.username = nil -- 用户名称
+PlutoX.isInitialized = false -- 是否已初始化
 
-function PlutoX.debug(...)
-    if PlutoX.debugEnabled then
-        local timestamp = os.date("%H:%M:%S")
-        local info = debug.getinfo(2, "Sl")
-        local source = info and info.short_src or "unknown"
-        local line = info and info.currentline or 0
+-- 设置游戏信息（用于日志文件命名）
+function PlutoX.setGameInfo(gameName, username)
+    PlutoX.gameName = gameName
+    PlutoX.username = username
+end
+
+-- 获取日志文件路径
+function PlutoX.getLogFilePath()
+    local dateStr = os.date("%Y-%m-%d")
+    local timeStr = os.date("%H-%M-%S")
+    return string.format("PlutoX/debuglog/%s_%s_%s_%s.log", 
+        (PlutoX.gameName or "Unknown"):gsub(" ", "_"), 
+        PlutoX.username or "Unknown", 
+        dateStr,
+        timeStr)
+end
+
+-- 初始化日志系统
+function PlutoX.initDebugSystem()
+    if not PlutoX.debugEnabled or PlutoX.isInitialized then
+        return
+    end
+    
+    -- 创建 debuglog 文件夹
+    if not isfolder("PlutoX") then
+        makefolder("PlutoX")
+    end
+    if not isfolder("PlutoX/debuglog") then
+        makefolder("PlutoX/debuglog")
+    end
+    
+    -- 关闭旧文件
+    if PlutoX.logFile then
+        pcall(function()
+            PlutoX.logFile:close()
+        end)
+        PlutoX.logFile = nil
+    end
+    
+    -- 获取日志文件路径（每次使用新的时间戳）
+    local logPath = PlutoX.getLogFilePath()
+    PlutoX.currentLogFile = logPath
+    
+    -- 打开新文件
+    local success, file = pcall(function()
+        return io.open(logPath, "w")
+    end)
+    
+    if success and file then
+        PlutoX.logFile = file
+        -- 写入日志开始标记
+        file:write(string.format("========== 日志开始 [%s] ==========\n", os.date("%Y-%m-%d %H:%M:%S")))
+        file:write(string.format("游戏: %s\n", PlutoX.gameName or "Unknown"))
+        file:write(string.format("用户: %s\n", PlutoX.username or "Unknown"))
+        file:write("==========================================\n\n")
+        file:flush()
         
-        -- 格式化输出
-        local args = {...}
-        local formatted = {}
-        for i, arg in ipairs(args) do
-            if type(arg) == "table" then
-                formatted[i] = "{...}" -- 简化表格输出
-            else
-                formatted[i] = tostring(arg)
+        -- 保存原始 print 函数
+        if not PlutoX.originalPrint then
+            PlutoX.originalPrint = print
+        
+            -- 重写 print 函数，将所有输出写入日志
+            print = function(...)
+                -- 调用原始 print 输出到控制台
+                PlutoX.originalPrint(...)
+                
+                -- 写入日志文件
+                if PlutoX.logFile then
+                    local args = {...}
+                    local formatted = {}
+                    for i, arg in ipairs(args) do
+                        if type(arg) == "table" then
+                            formatted[i] = "{...}"
+                        else
+                            formatted[i] = tostring(arg)
+                        end
+                    end
+                    local logMessage = string.format("[%s] %s\n", os.date("%H:%M:%S"), table.concat(formatted, " "))
+                    pcall(function()
+                        PlutoX.logFile:write(logMessage)
+                        PlutoX.logFile:flush()
+                    end)
+                end
             end
         end
         
-        print(string.format("[%s][DEBUG][%s:%d] %s", timestamp, source, line, table.concat(formatted, " ")))
+        PlutoX.isInitialized = true
+    else
+        warn("[PlutoX-Log] 无法打开日志文件: " .. logPath)
+        PlutoX.logFile = nil
     end
+end
+
+-- 写入日志
+function PlutoX.writeLog(message)
+    if not PlutoX.debugEnabled or not PlutoX.logFile then
+        return
+    end
+    
+    local success, err = pcall(function()
+        PlutoX.logFile:write(message)
+        PlutoX.logFile:flush()
+    end)
+    
+    if not success then
+        warn("[PlutoX-Log] 写入日志失败: " .. tostring(err))
+        -- 尝试重新打开文件
+        PlutoX.logFile = nil
+    end
+end
+
+function PlutoX.debug(...)
+    if not PlutoX.debugEnabled then
+        return
+    end
+    
+    local timestamp = os.date("%H:%M:%S")
+    local info = debug.getinfo(2, "Sl")
+    local source = info and info.short_src or "unknown"
+    local line = info and info.currentline or 0
+    
+    -- 格式化输出
+    local args = {...}
+    local formatted = {}
+    for i, arg in ipairs(args) do
+        if type(arg) == "table" then
+            formatted[i] = "{...}" -- 简化表格输出
+        else
+            formatted[i] = tostring(arg)
+        end
+    end
+    
+    local logMessage = string.format("[%s][DEBUG][%s:%d] %s\n", timestamp, source, line, table.concat(formatted, " "))
+    
+    -- 输出到控制台（通过重写的 print 函数）
+    print(logMessage:gsub("\n$", ""))
 end
 
 -- Webhook Footer 配置
