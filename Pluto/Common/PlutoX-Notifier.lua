@@ -74,9 +74,10 @@ function PlutoX.initDebugSystem()
         PlutoX.currentLogFile = nil
     end
     
-    -- 保存原始 print 函数
+    -- 保存原始 print 和 warn 函数
     if not PlutoX.originalPrint then
         PlutoX.originalPrint = print
+        PlutoX.originalWarn = warn
         
         -- 重写 print 函数，将所有输出写入日志
         print = function(...)
@@ -98,6 +99,51 @@ function PlutoX.initDebugSystem()
                 PlutoX.writeLog(logMessage)
             end
         end
+        
+        -- 重写 warn 函数，将警告和错误写入日志
+        warn = function(...)
+            -- 调用原始 warn 输出到控制台
+            PlutoX.originalWarn(...)
+            
+            -- 写入日志文件
+            if PlutoX.currentLogFile then
+                local args = {...}
+                local formatted = {}
+                for i, arg in ipairs(args) do
+                    if type(arg) == "table" then
+                        formatted[i] = "{...}"
+                    else
+                        formatted[i] = tostring(arg)
+                    end
+                end
+                local logMessage = string.format("[%s] [WARNING] %s\n", os.date("%H:%M:%S"), table.concat(formatted, " "))
+                PlutoX.writeLog(logMessage)
+            end
+        end
+    end
+    
+    -- 使用 LogService 捕获所有输出（包括错误）
+    local LogService = game:GetService("LogService")
+    if LogService then
+        LogService.MessageOut:Connect(function(message, messageType)
+            if not PlutoX.currentLogFile then
+                return
+            end
+            
+            local messageTypeStr = "INFO"
+            if messageType == Enum.MessageType.MessageWarning then
+                messageTypeStr = "WARNING"
+            elseif messageType == Enum.MessageType.MessageError then
+                messageTypeStr = "ERROR"
+            elseif messageType == Enum.MessageType.MessageInfo then
+                messageTypeStr = "INFO"
+            elseif messageType == Enum.MessageType.MessageOutput then
+                messageTypeStr = "OUTPUT"
+            end
+            
+            local logMessage = string.format("[%s] [%s] %s\n", os.date("%H:%M:%S"), messageTypeStr, tostring(message))
+            PlutoX.writeLog(logMessage)
+        end)
     end
 end
 
