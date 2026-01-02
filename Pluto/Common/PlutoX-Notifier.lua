@@ -1075,7 +1075,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         
         local currentTime = os.time()
         local interval = currentTime - self.lastSendTime
-        PlutoX.debug("[checkAndNotify] 距离上次发送:", interval, "秒，需要:", self:getNotificationIntervalSeconds(), "秒")
+        -- 移除频繁的倒计时输出以减少日志spam
+        -- PlutoX.debug("[checkAndNotify] 距离上次发送:", interval, "秒，需要:", self:getNotificationIntervalSeconds(), "秒")
         
         if interval < self:getNotificationIntervalSeconds() then
             return false
