@@ -137,9 +137,11 @@ local function applyFPSBoost()
             continue
         end
         
-        if obj:IsA("Decal") or obj:IsA("Texture")
-            or obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Sparkles") then
+        if obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Sparkles") then
             obj.Transparency = 1
+            table.insert(toDestroy, obj)
+        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+            obj.Transparency = NumberSequence.new(1)
             table.insert(toDestroy, obj)
         elseif obj:IsA("BasePart") then
             obj.Material = Enum.Material.SmoothPlastic
@@ -165,9 +167,12 @@ local function applyFPSBoost()
         end
         
         task.defer(function()
-            if obj:IsA("Decal") or obj:IsA("Texture")
-                or obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Sparkles") then
+            if obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Sparkles") then
                 obj.Transparency = 1
+                task.wait()
+                if obj.Parent then obj:Destroy() end
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                obj.Transparency = NumberSequence.new(1)
                 task.wait()
                 if obj.Parent then obj:Destroy() end
             elseif obj:IsA("BasePart") then
