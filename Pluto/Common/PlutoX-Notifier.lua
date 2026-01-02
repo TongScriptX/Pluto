@@ -964,6 +964,26 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             end
         end
         
+        -- 启动时检查目标踢出功能
+        for _, dataType in ipairs(self.dataTypes) do
+            if dataType.supportTarget then
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                local kickConfigKey = "enable" .. keyUpper .. "Kick"
+                
+                -- 检查是否开启了目标踢出功能
+                if self.config[kickConfigKey] then
+                    local currentValue = self:fetchValue(dataType)
+                    local targetValue = self.config["target" .. keyUpper]
+                    
+                    -- 如果当前值已达到或超过目标值，关闭踢出功能
+                    if currentValue and targetValue and currentValue >= targetValue then
+                        self.config[kickConfigKey] = false
+                        PlutoX.debug("[启动检查] " .. dataType.name .. "当前值(" .. PlutoX.formatNumber(currentValue) .. ")已达到目标(" .. PlutoX.formatNumber(targetValue) .. ")，已关闭踢出功能")
+                    end
+                end
+            end
+        end
+        
         if #initInfo > 0 and self.UILibrary then
             self.UILibrary:Notify({
                 Title = "初始化成功",
