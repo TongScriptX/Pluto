@@ -206,6 +206,11 @@ PlutoX.registerDataType({
 local leaderboardConfig = {
     position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
     streamTimeout = 10,
+    cacheTime = 300, -- 缓存时间（秒），5分钟
+    lastFetchTime = 0,
+    cachedRank = nil,
+    cachedIsOnLeaderboard = false,
+    isFetching = false, -- 是否正在获取中
 }
 
 local function tryGetContents(timeout)
@@ -261,13 +266,35 @@ local function parseContents(contents)
 end
 
 local function fetchPlayerRank()
+    local currentTime = tick()
+    
+    -- 如果正在获取中，返回缓存值（如果有）
+    if leaderboardConfig.isFetching then
+        PlutoX.debug("[排行榜] 正在获取中，返回缓存值")
+        return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+    end
+    
+    -- 如果缓存未过期，直接返回缓存值
+    if leaderboardConfig.cachedRank ~= nil and (currentTime - leaderboardConfig.lastFetchTime) < leaderboardConfig.cacheTime then
+        PlutoX.debug("[排行榜] 使用缓存值 (剩余: " .. string.format("%.0f", leaderboardConfig.cacheTime - (currentTime - leaderboardConfig.lastFetchTime)) .. "秒)")
+        return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+    end
+    
+    -- 开始新获取
+    leaderboardConfig.isFetching = true
     PlutoX.debug("[排行榜] ========== 开始检测排行榜 ==========")
     PlutoX.debug("[排行榜] 玩家: " .. username .. " (ID: " .. userId .. ")")
     
     local contents = tryGetContents(2)
     if contents then
         PlutoX.debug("[排行榜] ✅ 直接获取成功")
-        return parseContents(contents)
+        local rank, isOnLeaderboard = parseContents(contents)
+        -- 更新缓存
+        leaderboardConfig.cachedRank = rank
+        leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
+        leaderboardConfig.lastFetchTime = currentTime
+        leaderboardConfig.isFetching = false
+        return rank, isOnLeaderboard
     end
     
     PlutoX.debug("[排行榜] 直接获取失败，使用 RequestStreamAroundAsync 远程加载...")
@@ -279,6 +306,7 @@ local function fetchPlayerRank()
     if not success then
         warn("[排行榜] RequestStreamAroundAsync 失败: " .. tostring(err))
         PlutoX.debug("[排行榜] ========== 远程加载失败 ==========")
+        leaderboardConfig.isFetching = false
         return nil, false
     end
     
@@ -294,12 +322,19 @@ local function fetchPlayerRank()
         contents = tryGetContents(1)
         if contents then
             PlutoX.debug("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
-            return parseContents(contents)
+            local rank, isOnLeaderboard = parseContents(contents)
+            -- 更新缓存
+            leaderboardConfig.cachedRank = rank
+            leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
+            leaderboardConfig.lastFetchTime = currentTime
+            leaderboardConfig.isFetching = false
+            return rank, isOnLeaderboard
         end
         PlutoX.debug("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
     end
     
     PlutoX.debug("[排行榜] ========== 远程加载失败 (超时) ==========")
+    leaderboardConfig.isFetching = false
     return nil, false
 end
 
