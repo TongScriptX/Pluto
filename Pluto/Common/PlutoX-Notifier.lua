@@ -22,9 +22,12 @@ end
 function PlutoX.getLogFilePath()
     local dateStr = os.date("%Y-%m-%d")
     local timeStr = os.date("%H-%M-%S")
+    -- 过滤掉emoji和特殊字符，只保留字母、数字、下划线和连字符
+    local safeGameName = (PlutoX.gameName or "Unknown"):gsub("[^%w%-_]", "_")
+    local safeUsername = (PlutoX.username or "Unknown"):gsub("[^%w%-_]", "_")
     return string.format("PlutoX/debuglog/%s_%s_%s_%s.log", 
-        (PlutoX.gameName or "Unknown"):gsub(" ", "_"), 
-        PlutoX.username or "Unknown", 
+        safeGameName, 
+        safeUsername, 
         dateStr,
         timeStr)
 end
