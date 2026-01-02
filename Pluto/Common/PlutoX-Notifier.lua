@@ -1061,22 +1061,16 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     
     -- 主检查循环
     function monitor:checkAndNotify(saveConfig)
-        PlutoX.debug("[checkAndNotify] 开始检查，webhookDisabled:", self.webhookDisabled)
-        
         if self.webhookDisabled then
-            PlutoX.debug("[checkAndNotify] webhook已禁用，跳过检查")
             return false
         end
         
         if not self:shouldNotify() then
-            PlutoX.debug("[checkAndNotify] 无需通知")
             return false
         end
         
         local currentTime = os.time()
         local interval = currentTime - self.lastSendTime
-        -- 移除频繁的倒计时输出以减少日志spam
-        -- PlutoX.debug("[checkAndNotify] 距离上次发送:", interval, "秒，需要:", self:getNotificationIntervalSeconds(), "秒")
         
         if interval < self:getNotificationIntervalSeconds() then
             return false
