@@ -133,18 +133,20 @@ local function applyFPSBoost()
     local toDestroy = {}
     
     for _, obj in ipairs(root:GetDescendants()) do
-        if not shouldPreserveObject(obj) then
-            if obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Sparkles") then
-                obj.Transparency = 1
-                table.insert(toDestroy, obj)
-            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                obj.Transparency = NumberSequence.new(1)
-                table.insert(toDestroy, obj)
-            elseif obj:IsA("BasePart") then
-                obj.Material = Enum.Material.SmoothPlastic
-                obj.Reflectance = 0
-                obj.CastShadow = false
-            end
+        if shouldPreserveObject(obj) then
+            continue
+        end
+        
+        if obj:IsA("Decal") or obj:IsA("Texture") or obj:IsA("Sparkles") then
+            obj.Transparency = 1
+            table.insert(toDestroy, obj)
+        elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+            obj.Transparency = NumberSequence.new(1)
+            table.insert(toDestroy, obj)
+        elseif obj:IsA("BasePart") then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.Reflectance = 0
+            obj.CastShadow = false
         end
     end
     
@@ -1047,85 +1049,87 @@ local function claimPlaytimeRewards()
             if not rewardsRoot then
                 warn("[PlaytimeRewards] 未找到奖励界面")
                 task.wait(rewardCheckInterval)
-            else
-                local statsGui
-                for _, v in ipairs(gui:GetChildren()) do
-                    if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
-                        statsGui = v
-                        break
-                    end
+                continue
+            end
+
+            local statsGui
+            for _, v in ipairs(gui:GetChildren()) do
+                if v:IsA("ScreenGui") and v.Name:find("'s Stats") then
+                    statsGui = v
+                    break
                 end
+            end
 
-                if not statsGui then
-                    warn("[PlaytimeRewards] 未找到玩家 Stats")
-                    task.wait(rewardCheckInterval)
-                else
-                    local claimedList = {}
-                    local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
-                    if claimedRaw and claimedRaw:IsA("StringValue") then
-                        local ok, parsed = pcall(function()
-                            return HttpService:JSONDecode(claimedRaw.Value)
-                        end)
-                        if ok and typeof(parsed) == "table" then
-                            for k, v in pairs(parsed) do
-                                claimedList[tonumber(k)] = v
-                            end
-                        end
-                    end
+            if not statsGui then
+                warn("[PlaytimeRewards] 未找到玩家 Stats")
+                task.wait(rewardCheckInterval)
+                continue
+            end
 
-                    local allClaimed = true
-                    for i = 1, 7 do
-                        if not claimedList[i] then
-                            allClaimed = false
-                            break
-                        end
-                    end
-
-                    if allClaimed then
-                        PlutoX.debug("[PlaytimeRewards] 所有奖励已领取")
-                        task.wait(rewardCheckInterval)
-                    else
-                        local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
-                        local uiInteraction = remotes and remotes:FindFirstChild("UIInteraction")
-                        local playRewards = remotes and remotes:FindFirstChild("PlayRewards")
-
-                        if not uiInteraction or not playRewards then
-                            warn("[PlaytimeRewards] 未找到远程事件")
-                            task.wait(rewardCheckInterval)
-                        else
-                            for i = 1, 7 do
-                                local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
-                                local canClaim = false
-                                local alreadyClaimed = claimedList[i] == true
-
-                                if rewardItem then
-                                    local holder = rewardItem:FindFirstChild("Holder")
-                                    local collect = holder and holder:FindFirstChild("Collect")
-                                    if collect and collect.Visible and not alreadyClaimed then
-                                        canClaim = true
-                                    end
-                                end
-
-                                if canClaim then
-                                    pcall(function()
-                                        uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
-                                        task.wait(0.2)
-                                        playRewards:FireServer(i, false)
-                                        PlutoX.debug("[PlaytimeRewards] 已领取奖励 ID:", i)
-                                    end)
-                                    task.wait(0.4)
-                                end
-                            end
-
-                            task.wait(rewardCheckInterval)
-                        end
+            local claimedList = {}
+            local claimedRaw = statsGui:FindFirstChild("ClaimedPlayTimeRewards")
+            if claimedRaw and claimedRaw:IsA("StringValue") then
+                local ok, parsed = pcall(function()
+                    return HttpService:JSONDecode(claimedRaw.Value)
+                end)
+                if ok and typeof(parsed) == "table" then
+                    for k, v in pairs(parsed) do
+                        claimedList[tonumber(k)] = v
                     end
                 end
             end
-        end
-    end)
-end
 
+            local allClaimed = true
+            for i = 1, 7 do
+                if not claimedList[i] then
+                    allClaimed = false
+                    break
+                end
+            end
+
+            if allClaimed then
+                PlutoX.debug("[PlaytimeRewards] 所有奖励已领取")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+
+            local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
+            local uiInteraction = remotes and remotes:FindFirstChild("UIInteraction")
+            local playRewards = remotes and remotes:FindFirstChild("PlayRewards")
+
+            if not uiInteraction or not playRewards then
+                warn("[PlaytimeRewards] 未找到远程事件")
+                task.wait(rewardCheckInterval)
+                continue
+            end
+                            for i = 1, 7 do
+                                            local rewardItem = rewardsRoot:FindFirstChild(tostring(i))
+                                            local canClaim = false
+                                            local alreadyClaimed = claimedList[i] == true
+                            
+                                            if rewardItem then
+                                                local holder = rewardItem:FindFirstChild("Holder")
+                                                local collect = holder and holder:FindFirstChild("Collect")
+                                                if collect and collect.Visible and not alreadyClaimed then
+                                                    canClaim = true
+                                                end
+                                            end
+                            
+                                            if canClaim then
+                                                pcall(function()
+                                                    uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
+                                                    task.wait(0.2)
+                                                    playRewards:FireServer(i, false)
+                                                    PlutoX.debug("[PlaytimeRewards] 已领取奖励 ID:", i)
+                                                end)
+                                                task.wait(0.4)
+                                            end
+                                        end
+                            
+                                        task.wait(rewardCheckInterval)
+                                    end
+                                end)
+                            end
 local function performAutoSpawnVehicle()
     if not config.autoSpawnVehicleEnabled then
         PlutoX.debug("[AutoSpawnVehicle] 功能未启用")
