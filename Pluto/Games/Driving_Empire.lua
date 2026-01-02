@@ -1156,9 +1156,6 @@ local function performAutoRobATMs()
         local lastSuccessfulRobbery = tick()
         local noATMFoundCount = 0
         local maxNoATMFoundCount = 5
-        
-        local knownATMLocations = {}
-        local maxKnownLocations = 20
 
         while isAutoRobActive do
             task.wait()
@@ -1297,24 +1294,6 @@ local function performAutoRobATMs()
 
                     task.wait(0.5)
                     local robberySuccess, amountChange = checkRobberyCompletion(beforeRobberyAmount)
-
-                    local atmLocation = atm.WorldPivot
-                    
-                    local alreadyRecorded = false
-                    for _, loc in ipairs(knownATMLocations) do
-                        if (loc.Position - atmLocation.Position).Magnitude < 5 then
-                            alreadyRecorded = true
-                            break
-                        end
-                    end
-                    
-                    if not alreadyRecorded then
-                        table.insert(knownATMLocations, 1, atmLocation)
-                        if #knownATMLocations > maxKnownLocations then
-                            table.remove(knownATMLocations)
-                        end
-                        PlutoX.debug("[AutoRobATMs] 记录新ATM位置，当前记录数: " .. #knownATMLocations)
-                    end
 
                     if robberySuccess then
                         PlutoX.debug("[AutoRob] ✓ " .. atmTypeName .. "抢劫成功！获得金额: +" .. formatNumber(amountChange))
