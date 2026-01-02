@@ -1670,20 +1670,31 @@ local function performAutoRobATMs()
 
                 if not (getfenv().atmloadercooldown or targetATM) then
                     getfenv().atmloadercooldown = true
-                    PlutoX.debug("[AutoRobATMs] 启动后台ATM加载器")
+                    PlutoX.debug("[AutoRobATMs] 启动ATM加载器")
 
                     spawn(function()
                         local spawners = workspace.Game.Jobs.CriminalATMSpawners
                         if not spawners then
                             warn("[AutoRobATMs] 无法找到CriminalATMSpawners")
                         else
+                            -- 原来的方式：传送所有ATM spawner
                             local spawnerList = spawners:GetChildren()
-                            local totalSpawners = #spawnerList
-                            PlutoX.debug("[AutoRobATMs] 后台加载spawner数量: " .. totalSpawners)
-
+                            PlutoX.debug("[AutoRobATMs] 开始加载所有spawner，数量: " .. #spawnerList)
+                            
+                            for i, spawner in ipairs(spawnerList) do
+                                if character and character.PrimaryPart then
+                                    character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
+                                    PlutoX.debug("[AutoRobATMs] 已传送到spawner " .. i .. "/" .. #spawnerList)
+                                    task.wait(0.3)
+                                end
+                            end
+                            
+                            PlutoX.debug("[AutoRobATMs] 所有spawner加载完成")
+                            
+                            -- 新增：后台持续加载spawner
                             local processedCount = 0
                             local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
-                            while config.autoRobATMsEnabled do
+                            while config.autoRobATMEnabled do
                                 local spawner
                                 spawnerIndex, spawner = spawnerIterator(spawnerArray, spawnerIndex)
                                 if spawnerIndex == nil then
@@ -1691,36 +1702,16 @@ local function performAutoRobATMs()
                                 end
                                 processedCount = processedCount + 1
                                 if processedCount % 5 == 0 then
-                                    PlutoX.debug("[AutoRobATMs] 后台已加载 " .. processedCount .. "/" .. totalSpawners .. " 个spawner")
+                                    PlutoX.debug("[AutoRobATMs] 后台已加载 " .. processedCount .. "/" .. #spawnerList .. " 个spawner")
                                 end
                                 localPlayer.ReplicationFocus = spawner
                                 task.wait(0.5)
                             end
                         end
 
-                        if config.autoRobATMsEnabled then
-                            local nilSpawnerCount = 0
-                            local nilSpawnerIterator, nilSpawnerArray, nilSpawnerIndex = pairs(getnilinstances())
-                            while config.autoRobATMsEnabled do
-                                local spawner
-                                nilSpawnerIndex, spawner = nilSpawnerIterator(nilSpawnerArray, nilSpawnerIndex)
-                                if nilSpawnerIndex == nil then
-                                    break
-                                end
-                                if spawner.Name == "CriminalATMSpawner" then
-                                    nilSpawnerCount = nilSpawnerCount + 1
-                                    localPlayer.ReplicationFocus = spawner
-                                    task.wait(0.5)
-                                end
-                            end
-                            if nilSpawnerCount > 0 then
-                                PlutoX.debug("[AutoRobATMs] nil instances中找到spawner数量: " .. nilSpawnerCount)
-                            end
-                        end
-
                         getfenv().atmloadercooldown = false
                         localPlayer.ReplicationFocus = nil
-                        PlutoX.debug("[AutoRobATMs] 后台ATM加载器完成")
+                        PlutoX.debug("[AutoRobATMs] ATM加载器完成")
                     end)
                 end
             end)
