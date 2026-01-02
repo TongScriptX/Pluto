@@ -837,6 +837,30 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         -- 无论是否成功都退出游戏
         if success then
             PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
+            
+            -- 关闭目标踢出功能
+            if dataTypeName then
+                local keyUpper = dataTypeName:gsub("^%l", string.upper)
+                local kickConfigKey = "enable" .. keyUpper .. "Kick"
+                if self.config[kickConfigKey] then
+                    self.config[kickConfigKey] = false
+                    PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
+                end
+            end
+            
+            -- 检查当前值是否高于目标值
+            if currentValue > targetAmount then
+                PlutoX.debug("[目标达成] 当前" .. (dataTypeName or "值") .. "(" .. PlutoX.formatNumber(currentValue) .. ")高于目标(" .. PlutoX.formatNumber(targetAmount) .. ")")
+                
+                -- 清除目标
+                if dataTypeName then
+                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
+                    self.config["target" .. keyUpper] = 0
+                    self.config["base" .. keyUpper] = 0
+                    self.config["lastSaved" .. keyUpper] = 0
+                    PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
+                end
+            end
         else
             warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
         end
