@@ -489,6 +489,12 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                             writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
                             PlutoX.debug("[Config] 配置迁移完成")
                             
+                            -- 删除已迁移的旧配置文件
+                            pcall(function()
+                                delfile(oldFile)
+                                PlutoX.debug("[Config] 已删除旧配置文件: " .. oldFile)
+                            end)
+                            
                             if self.UILibrary then
                                 self.UILibrary:Notify({
                                     Title = "配置迁移",
