@@ -277,7 +277,7 @@ local function fetchPlayerRank()
     
     -- 如果已经获取过且缓存未过期，直接返回缓存值
     if leaderboardConfig.hasFetched and (currentTime - leaderboardConfig.lastFetchTime) < leaderboardConfig.cacheTime then
-        PlutoX.debug("[排行榜] 使用缓存值 (剩余: " .. string.format("%.0f", leaderboardConfig.cacheTime - (currentTime - leaderboardConfig.lastFetchTime)) .. "秒)")
+        -- 移除频繁输出的缓存日志
         return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
     end
     
