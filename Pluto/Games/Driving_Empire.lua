@@ -1478,45 +1478,86 @@ local function performAutoRobATMs()
                                     return true
                                 end
                             end
-                            
+
                             for _, obj in pairs(getnilinstances()) do
                                 if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
                                     return true
                                 end
                             end
-                            
+
                             return false
                         end
 
                         local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
+
+                        -- 新增：直接传送所有spawner
+                        if spawnersFolder then
+                            local spawners = spawnersFolder:GetChildren()
+                            PlutoX.debug("[AutoRobATMs] 【新增】直接传送" .. #spawners .. "个spawner")
+
+                            local originalPosition = character and character.PrimaryPart and character:GetPivot() or CFrame.new(0, 50, 0)
+                            local foundATM = false
+
+                            for i, spawner in ipairs(spawners) do
+                                if not isAutoRobActive then break end
+
+                                if character and character.PrimaryPart then
+                                    character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
+                                    PlutoX.debug("[AutoRobATMs] 【新增】传送到spawner " .. i .. "/" .. #spawners)
+                                    task.wait(0.5)
+                                end
+
+                                if searchATMs() then
+                                    PlutoX.debug("[AutoRobATMs] 【新增】spawner " .. i .. " 找到ATM")
+                                    noATMFoundCount = 0
+                                    foundATM = true
+                                    break
+                                end
+                            end
+
+                            if not foundATM and isAutoRobActive then
+                                PlutoX.debug("[AutoRobATMs] 【新增】所有spawner未找到ATM，回到中心点")
+                                if character and character.PrimaryPart then
+                                    character:PivotTo(CFrame.new(0, 50, 0))
+                                end
+                                task.wait(1)
+
+                                if searchATMs() then
+                                    PlutoX.debug("[AutoRobATMs] 【新增】中心点找到ATM")
+                                    noATMFoundCount = 0
+                                end
+                            end
+                        end
+
+                        -- 原逻辑：后台加载spawner
                         if spawnersFolder then
                             local spawners = spawnersFolder:GetChildren()
                             PlutoX.debug("[AutoRobATMs] 后台加载" .. #spawners .. "个spawner")
-                            
+
                             for i, spawner in pairs(spawners) do
                                 if not isAutoRobActive then break end
-                                
+
                                 pcall(function()
                                     player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
                                 end)
                                 PlutoX.debug("[AutoRobATMs] 加载spawner " .. i .. "/" .. #spawners)
-                                
+
                                 task.wait(0.5)
-                                
+
                                 if searchATMs() then
                                     PlutoX.debug("[AutoRobATMs] spawner " .. i .. " 找到ATM")
                                     noATMFoundCount = 0
                                     break
                                 end
                             end
-                            
+
                             if not searchATMs() and isAutoRobActive then
                                 PlutoX.debug("[AutoRobATMs] 所有spawner未找到ATM，加载中心点")
                                 pcall(function()
                                     player:RequestStreamAroundAsync(Vector3.new(0, 50, 0), 1)
                                 end)
                                 task.wait(1)
-                                
+
                                 if searchATMs() then
                                     PlutoX.debug("[AutoRobATMs] 中心点找到ATM")
                                     noATMFoundCount = 0
