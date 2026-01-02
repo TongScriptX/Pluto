@@ -1145,7 +1145,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
 
     local tabButton = self:CreateButton(sidebar, {
         Text = tabText,
-        Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.TabButtonHeight),
+        Size = UDim2.new(1, 0, 0, UI_STYLES.TabButtonHeight),
         BackgroundColor3 = isActive and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
         BackgroundTransparency = isActive and 0 or 0.5
     })
