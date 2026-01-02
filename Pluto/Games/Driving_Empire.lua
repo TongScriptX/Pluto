@@ -1157,6 +1157,39 @@ local function performAutoRobATMs()
         local noATMFoundCount = 0
         local maxNoATMFoundCount = 5
 
+        -- 后台持续加载spawner的协程
+        spawn(function()
+            local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
+            if spawnersFolder then
+                local spawners = spawnersFolder:GetChildren()
+                local currentSpawnerIndex = 1
+                local lastLoadTime = tick()
+                local loadInterval = 2 -- 每2秒加载一个spawner
+                
+                while isAutoRobActive do
+                    task.wait(0.1)
+                    
+                    local currentTime = tick()
+                    if currentTime - lastLoadTime >= loadInterval then
+                        lastLoadTime = currentTime
+                        
+                        if #spawners > 0 then
+                            local spawner = spawners[currentSpawnerIndex]
+                            -- 使用RequestStreamAroundAsync加载spawner，不传送角色
+                            pcall(function()
+                                player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
+                            end)
+                            
+                            currentSpawnerIndex = currentSpawnerIndex + 1
+                            if currentSpawnerIndex > #spawners then
+                                currentSpawnerIndex = 1
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+
         while isAutoRobActive do
             task.wait()
             local success, err = pcall(function()
@@ -1364,19 +1397,18 @@ local function performAutoRobATMs()
                         local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
                         if spawnersFolder then
                             local spawners = spawnersFolder:GetChildren()
-                            PlutoX.debug("[AutoRobATMs] 新逻辑：依次传送" .. #spawners .. "个spawner搜索ATM")
+                            PlutoX.debug("[AutoRobATMs] 后台加载" .. #spawners .. "个spawner")
                             
                             for i, spawner in pairs(spawners) do
                                 if not isAutoRobActive then break end
                                 
-                                if character and character.PrimaryPart then
-                                    character.PrimaryPart.Velocity = Vector3.zero
-                                    character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
-                                    PlutoX.debug("[AutoRobATMs] 传送spawner " .. i .. "/" .. #spawners)
-                                end
+                                -- 使用RequestStreamAroundAsync加载spawner，不传送角色
+                                pcall(function()
+                                    player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
+                                end)
+                                PlutoX.debug("[AutoRobATMs] 加载spawner " .. i .. "/" .. #spawners)
                                 
                                 task.wait(0.5)
-                                localPlayer.ReplicationFocus = nil
                                 
                                 if searchATMs() then
                                     PlutoX.debug("[AutoRobATMs] spawner " .. i .. " 找到ATM")
@@ -1386,18 +1418,17 @@ local function performAutoRobATMs()
                             end
                             
                             if not searchATMs() and isAutoRobActive then
-                                PlutoX.debug("[AutoRobATMs] 新逻辑：所有spawner未找到ATM，传送到中心点")
-                                if character and character.PrimaryPart then
-                                    character:PivotTo(CFrame.new(0, 50, 0))
-                                end
+                                PlutoX.debug("[AutoRobATMs] 所有spawner未找到ATM，加载中心点")
+                                pcall(function()
+                                    player:RequestStreamAroundAsync(Vector3.new(0, 50, 0), 1)
+                                end)
                                 task.wait(1)
-                                localPlayer.ReplicationFocus = nil
                                 
                                 if searchATMs() then
-                                    PlutoX.debug("[AutoRobATMs] 新逻辑：中心点找到ATM")
+                                    PlutoX.debug("[AutoRobATMs] 中心点找到ATM")
                                     noATMFoundCount = 0
                                 else
-                                    PlutoX.debug("[AutoRobATMs] 新逻辑：中心点未找到ATM，重新开始spawner循环")
+                                    PlutoX.debug("[AutoRobATMs] 中心点未找到ATM，重新开始spawner循环")
                                 end
                             end
                         end
@@ -1547,11 +1578,6 @@ local function performAutoRobATMs()
                 if not (getfenv().atmloadercooldown or targetATM) then
                     getfenv().atmloadercooldown = true
                     PlutoX.debug("[AutoRobATMs] 启动后台ATM加载器")
-                    UILibrary:Notify({
-                        Title = "加载中",
-                        Text = "正在后台加载ATM...",
-                        Duration = 3
-                    })
 
                     spawn(function()
                         local spawners = workspace.Game.Jobs.CriminalATMSpawners
