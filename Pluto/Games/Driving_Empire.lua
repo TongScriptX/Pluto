@@ -200,19 +200,8 @@ local function applyFPSBoost()
     PlutoX.debug("[FPSBoost] FPS优化已启用")
 end
 
--- 持续垃圾回收
-local function startGarbageCollection()
-    task.spawn(function()
-        while true do
-            task.wait(10)
-            collectgarbage("collect")
-        end
-    end)
-end
-
 -- 初始化FPS Boost
 applyFPSBoost()
-startGarbageCollection()
 
 -- 游戏特定功能
 local function teleportCharacterTo(targetCFrame)
