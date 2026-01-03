@@ -493,15 +493,24 @@ function UILibrary:CreateButton(parent, options)
     corner.Parent = button
 
     if options.Callback then
+        local isAnimating = false
+        local initialSize = button.Size
+        
         button.MouseButton1Click:Connect(function()
-            local originalSize = button.Size
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = UDim2.new(originalSize.X.Scale, originalSize.X.Offset * 0.95, originalSize.Y.Scale, originalSize.Y.Offset * 0.95)}):Play()
+            if isAnimating then return end
+            isAnimating = true
+            
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = UDim2.new(initialSize.X.Scale, initialSize.X.Offset * 0.95, initialSize.Y.Scale, initialSize.Y.Offset * 0.95)}):Play()
             task.wait(0.1)
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = originalSize}):Play()
+            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Size = initialSize}):Play()
+            
             local success, err = pcall(options.Callback)
             if not success then
                 warn("[Button]: Callback failed: ", err)
             end
+            
+            task.wait(0.05)
+            isAnimating = false
         end)
     end
 
