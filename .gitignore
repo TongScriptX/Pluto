@@ -1,1 +1,5 @@
 assets/
+
+# 自动生成的文件（由GitHub Actions更新）
+CONTRIBUTORS.md
+.github/stats.json
