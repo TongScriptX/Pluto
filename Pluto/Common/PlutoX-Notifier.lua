@@ -414,7 +414,6 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             end
         end
         
-        -- 删除排行榜相关的旧配置项（排行榜不支持目标检测）
         local leaderboardOldKeys = {
             "targetLeaderboard",
             "baseLeaderboard",
@@ -881,11 +880,27 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     -- 发送掉线通知
     function manager:sendDisconnect(dataTable)
         local dataText = {}
+        
+        -- 检查是否有数据
+        local hasData = false
         for id, value in pairs(dataTable) do
-            local dataType = PlutoX.getDataType(id)
-            if dataType then
-                table.insert(dataText, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+            if value ~= nil then
+                hasData = true
+                break
             end
+        end
+        
+        if hasData then
+            -- 有数据，正常显示
+            for id, value in pairs(dataTable) do
+                local dataType = PlutoX.getDataType(id)
+                if dataType then
+                    table.insert(dataText, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+                end
+            end
+        else
+            -- 没有数据，显示无法获取
+            table.insert(dataText, "无法获取")
         end
 
         return self:dispatchWebhook({
@@ -1211,7 +1226,13 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     end
     
     -- 主检查循环
-    function monitor:checkAndNotify(saveConfig)
+    function monitor:checkAndNotify(saveConfig, disconnectDetector)
+        -- 检查是否掉线，如果掉线则停止发送通知
+        if disconnectDetector and disconnectDetector.shouldStopNotification and disconnectDetector:shouldStopNotification() then
+            PlutoX.debug("[checkAndNotify] 检测到掉线，停止发送通知")
+            return false
+        end
+        
         if self.webhookDisabled then
             return false
         end
@@ -1461,13 +1482,15 @@ end
 
 -- 掉线检测
 
-function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
+function PlutoX.createDisconnectDetector(UILibrary, webhookManager, fetchFuncs)
     local detector = {}
     
     detector.disconnected = false
     detector.notified = false  -- 标记是否已发送通知
     detector.UILibrary = UILibrary
     detector.webhookManager = webhookManager
+    detector.stopNotification = false  -- 标记是否停止发送通知
+    detector.fetchFuncs = fetchFuncs or {}  -- 数据获取函数列表
     
     -- 初始化检测
     function detector:init()
@@ -1478,6 +1501,7 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
             if not self.disconnected then
                 warn("[掉线检测] 网络断开")
                 self.disconnected = true
+                self.stopNotification = true  -- 掉线后停止发送通知
             end
         end)
         
@@ -1485,15 +1509,36 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
             if msg and msg ~= "" and not self.disconnected then
                 warn("[掉线检测] 错误提示：" .. msg)
                 self.disconnected = true
+                self.stopNotification = true  -- 掉线后停止发送通知
             end
         end)
     end
     
+    -- 获取所有数据
+    function detector:collectData()
+        local data = {}
+        for id, fetchFunc in pairs(self.fetchFuncs) do
+            if fetchFunc then
+                local success, value = pcall(fetchFunc)
+                if success and value ~= nil then
+                    data[id] = value
+                end
+            end
+        end
+        return data
+    end
+    
     -- 检测掉线并发送通知
-    function detector:checkAndNotify(currentValue)
+    function detector:checkAndNotify()
         if self.disconnected and not self.notified and self.webhookManager then
             self.notified = true  -- 标记已发送通知
-            self.webhookManager:sendDisconnect({ ["cash"] = currentValue })
+            
+            -- 获取当前数据
+            local data = self:collectData()
+            
+            -- 发送掉线通知
+            self.webhookManager:sendDisconnect(data)
+            
             if self.UILibrary then
                 self.UILibrary:Notify({
                     Title = "掉线检测",
@@ -1506,10 +1551,16 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager)
         return false
     end
     
+    -- 检查是否应该停止通知
+    function detector:shouldStopNotification()
+        return self.stopNotification
+    end
+    
     -- 重置状态
     function detector:reset()
         self.disconnected = false
         self.notified = false
+        self.stopNotification = false
     end
     
     return detector
@@ -1862,7 +1913,7 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
     return card, targetValueLabel, function(suppress, toggle) suppressTargetToggleCallback = suppress; targetValueToggle = toggle end, function(setLabel) if setLabel then setLabel(targetValueLabel) end end
 end
 
--- 创建目标值卡片（简化版，不带重新计算按钮）
+-- 创建目标值卡片
 function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfig, fetchValue, keyUpper)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
