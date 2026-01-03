@@ -1252,38 +1252,6 @@ local function performAutoRobATMs()
         local noATMFoundCount = 0
         local maxNoATMFoundCount = 5
 
-        -- 后台持续加载spawner的协程
-        spawn(function()
-            local spawnersFolder = workspace.Game.Jobs.CriminalATMSpawners
-            if spawnersFolder then
-                local spawners = spawnersFolder:GetChildren()
-                local currentSpawnerIndex = 1
-                local lastLoadTime = tick()
-                local loadInterval = 2 
-                
-                while isAutoRobActive do
-                    task.wait(0.1)
-                    
-                    local currentTime = tick()
-                    if currentTime - lastLoadTime >= loadInterval then
-                        lastLoadTime = currentTime
-                        
-                        if #spawners > 0 then
-                            local spawner = spawners[currentSpawnerIndex]
-                            pcall(function()
-                                player:RequestStreamAroundAsync(spawner:GetPivot().Position, 1)
-                            end)
-                            
-                            currentSpawnerIndex = currentSpawnerIndex + 1
-                            if currentSpawnerIndex > #spawners then
-                                currentSpawnerIndex = 1
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-
         while isAutoRobActive do
             task.wait()
             local success, err = pcall(function()
@@ -1504,9 +1472,11 @@ local function performAutoRobATMs()
                                 if character and character.PrimaryPart then
                                     character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
                                     PlutoX.debug("[AutoRobATMs] 传送到spawner " .. i .. "/" .. #spawners)
-                                    task.wait(0.5)
                                 end
-
+                                
+                                task.wait(0.5)
+                                localPlayer.ReplicationFocus = nil
+                                
                                 if searchATMs() then
                                     PlutoX.debug("[AutoRobATMs] spawner " .. i .. " 找到ATM")
                                     noATMFoundCount = 0
@@ -1662,45 +1632,63 @@ local function performAutoRobATMs()
                         end
 
                         
-                        if not searchSuccess and #knownATMLocations > 0 then
-                            PlutoX.debug("[AutoRobATMs] 第3步：依次访问" .. #knownATMLocations .. "个已知ATM位置")
+                        if character and character.PrimaryPart then
+                            PlutoX.debug("[AutoRobATMs] 第3步：传送所有指定目录下的ATM")
                             
-                            for i, location in ipairs(knownATMLocations) do
+                            -- 搜索所有可能的ATM对象
+                            local allATMs = {}
+                            
+                            -- 添加tagged的ATM
+                            local taggedATMs = collectionService:GetTagged("CriminalATM")
+                            for _, atm in pairs(taggedATMs) do
+                                table.insert(allATMs, atm)
+                            end
+                            
+                            -- 添加nil instances中的ATM
+                            for _, obj in pairs(getnilinstances()) do
+                                if obj.Name == "CriminalATM" then
+                                    table.insert(allATMs, obj)
+                                end
+                            end
+                            
+                            PlutoX.debug("[AutoRobATMs] 找到" .. #allATMs .. "个ATM对象")
+                            
+                            -- 传送到每个ATM位置
+                            for i, atm in ipairs(allATMs) do
                                 if not isAutoRobActive then break end
                                 
                                 if character and character.PrimaryPart then
-                                    character.PrimaryPart.Velocity = Vector3.zero
-                                    character:PivotTo(location + Vector3.new(0, 5, 0))
-                                    PlutoX.debug("[AutoRobATMs] 访问已知ATM位置 " .. i .. "/" .. #knownATMLocations)
-                                end
-                                
-                                task.wait(0.5)
-                                
-                                taggedATMs = collectionService:GetTagged("CriminalATM")
-                                for _, atm in pairs(taggedATMs) do
-                                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
-                                        searchSuccess = true
-                                        PlutoX.debug("[AutoRobATMs] 已知位置找到ATM (tagged)")
+                                    character:PivotTo(atm.WorldPivot + Vector3.new(0, 5, 0))
+                                    PlutoX.debug("[AutoRobATMs] 传送到ATM " .. i .. "/" .. #allATMs)
+                                    task.wait(0.5)
+                                    
+                                    -- 检查是否有可用的ATM
+                                    local foundAvailableATM = false
+                                    local taggedATMsCheck = collectionService:GetTagged("CriminalATM")
+                                    for _, checkATM in pairs(taggedATMsCheck) do
+                                        if checkATM:GetAttribute("State") ~= "Busted" and isAutoRobActive then
+                                            foundAvailableATM = true
+                                            PlutoX.debug("[AutoRobATMs] 在ATM " .. i .. " 找到可用ATM")
+                                            break
+                                        end
+                                    end
+                                    
+                                    if not foundAvailableATM then
+                                        for _, obj in pairs(getnilinstances()) do
+                                            if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
+                                                foundAvailableATM = true
+                                                PlutoX.debug("[AutoRobATMs] 在ATM " .. i .. " 找到可用ATM (nil)")
+                                                break
+                                            end
+                                        end
+                                    end
+                                    
+                                    if foundAvailableATM then
+                                        noATMFoundCount = 0
                                         break
                                     end
                                 end
-                                if searchSuccess then break end
-                                
-                                for _, obj in pairs(getnilinstances()) do
-                                    if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
-                                        searchSuccess = true
-                                        PlutoX.debug("[AutoRobATMs] 已知位置找到ATM (nil)")
-                                        break
-                                    end
-                                end
-                                if searchSuccess then break end
                             end
-                        end
-
-                        
-                        if character and character.PrimaryPart then
-                            PlutoX.debug("[AutoRobATMs] 第4步：回到中心点开始循环")
-                            character:PivotTo(CFrame.new(0, 50, 0))
                         else
                             warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
                         end
@@ -1715,6 +1703,11 @@ local function performAutoRobATMs()
                 if not (getfenv().atmloadercooldown or targetATM) then
                     getfenv().atmloadercooldown = true
                     PlutoX.debug("[AutoRobATMs] 启动后台ATM加载器")
+                    UILibrary:Notify({
+                        Title = "加载中",
+                        Text = "正在后台加载ATM...",
+                        Duration = 3
+                    })
 
                     spawn(function()
                         local spawners = workspace.Game.Jobs.CriminalATMSpawners
@@ -1725,53 +1718,9 @@ local function performAutoRobATMs()
                             local totalSpawners = #spawnerList
                             PlutoX.debug("[AutoRobATMs] 后台加载spawner数量: " .. totalSpawners)
 
-                            -- 先检查是否已经有可用ATM
-                            local hasAvailableATM = false
-                            for _, obj in pairs(getnilinstances()) do
-                                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" then
-                                    hasAvailableATM = true
-                                    break
-                                end
-                            end
-
-                            -- 如果没有可用ATM，传送所有spawner
-                            if not hasAvailableATM and character and character.PrimaryPart then
-                                PlutoX.debug("[AutoRobATMs] 未找到可用ATM，开始传送所有spawner")
-                                local originalPosition = character:GetPivot()
-                                local foundATM = false
-
-                                for i, spawner in ipairs(spawnerList) do
-                                    if not config.autoRobATMEnabled then break end
-
-                                    character:PivotTo(spawner:GetPivot() + Vector3.new(0, 5, 0))
-                                    PlutoX.debug("[AutoRobATMs] 已传送到spawner " .. i .. "/" .. totalSpawners)
-                                    task.wait(0.5) -- 等待ATM生成
-
-                                    -- 检查是否有可用的ATM
-                                    for _, obj in pairs(getnilinstances()) do
-                                        if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" then
-                                            foundATM = true
-                                            PlutoX.debug("[AutoRobATMs] 在spawner " .. i .. " 找到可用ATM，停止传送")
-                                            break
-                                        end
-                                    end
-
-                                    if foundATM then
-                                        break
-                                    end
-                                end
-
-                                -- 如果全部传完都没找到，回到中心点
-                                if not foundATM then
-                                    PlutoX.debug("[AutoRobATMs] 全部传送完成，未找到ATM，回到中心点")
-                                    character:PivotTo(originalPosition)
-                                end
-                            end
-
-                            -- 后台持续加载spawner
                             local processedCount = 0
                             local spawnerIterator, spawnerArray, spawnerIndex = pairs(spawnerList)
-                            while config.autoRobATMEnabled do
+                            while config.autoRobATMsEnabled do
                                 local spawner
                                 spawnerIndex, spawner = spawnerIterator(spawnerArray, spawnerIndex)
                                 if spawnerIndex == nil then
@@ -1786,10 +1735,10 @@ local function performAutoRobATMs()
                             end
                         end
 
-                        if config.autoRobATMEnabled then
+                        if config.autoRobATMsEnabled then
                             local nilSpawnerCount = 0
                             local nilSpawnerIterator, nilSpawnerArray, nilSpawnerIndex = pairs(getnilinstances())
-                            while config.autoRobATMEnabled do
+                            while config.autoRobATMsEnabled do
                                 local spawner
                                 nilSpawnerIndex, spawner = nilSpawnerIterator(nilSpawnerArray, nilSpawnerIndex)
                                 if nilSpawnerIndex == nil then
