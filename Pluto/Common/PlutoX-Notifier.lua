@@ -1109,10 +1109,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             local keyUpper = dataType.id:gsub("^%l", string.upper)
             
             if self.config["notify" .. keyUpper] and dataInfo.current ~= nil then
-                -- 计算平均速度
+                -- 计算平均速度（时间加权平均：总变化量/总时间）
                 local avg = "0"
-                if dataType.calculateAvg and interval > 0 and dataInfo.change ~= 0 then
-                    local rawAvg = dataInfo.change / (interval / 3600)
+                if dataType.calculateAvg and elapsedTime > 0 and dataInfo.totalEarned ~= 0 then
+                    local rawAvg = dataInfo.totalEarned / (elapsedTime / 3600)
                     avg = dataType.formatFunc(math.floor(rawAvg + 0.5))
                 end
                 
