@@ -31,7 +31,7 @@ local logHistory = {}
 local pendingLogs = {}
 local lastUpdateTime = 0
 local isUpdating = false
-local nextLayoutOrder = 0
+local nextLayoutOrder = 1000000  -- 从大数字开始递减，使新日志显示在上面
 
 -- 对象池（重用TextLabel）
 local textLabelPool = {}
@@ -86,7 +86,7 @@ local function updateUI()
         line.Text = ("[%s] %s"):format(msgType.Name, msg)
         line.TextWrapped = true
         line.LayoutOrder = nextLayoutOrder
-        nextLayoutOrder = nextLayoutOrder + 1
+        nextLayoutOrder = nextLayoutOrder - 1  -- 递减，使新日志显示在上面
         
         line.Parent = ui.Scroll
     end
@@ -109,8 +109,8 @@ local function updateUI()
     
     -- 如果超过最大可见数量，删除最旧的
     if visibleCount > MAX_VISIBLE_LOGS then
-        -- 按LayoutOrder排序（最小的最旧）
-        table.sort(textLabels, function(a, b) return a.LayoutOrder < b.LayoutOrder end)
+        -- 按LayoutOrder排序（最大的最旧）
+        table.sort(textLabels, function(a, b) return a.LayoutOrder > b.LayoutOrder end)
         
         -- 删除超出限制的旧日志
         for i = 1, visibleCount - MAX_VISIBLE_LOGS do
@@ -178,7 +178,7 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
         end
     end
     
-    nextLayoutOrder = 0
+    nextLayoutOrder = 1000000  -- 重置为初始值
 end)
 
 -- 点击清空按钮
@@ -193,7 +193,7 @@ ui.ClearBtn.MouseButton1Click:Connect(function()
         end
     end
     
-    nextLayoutOrder = 0
+    nextLayoutOrder = 1000000  -- 重置为初始值
     ui.Notice.Text = "🗑️ 日志已清空"
 end)
 
