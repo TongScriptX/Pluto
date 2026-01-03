@@ -46,19 +46,38 @@ jobs:
           
           if [ "$IS_MERGE" -gt 0 ]; then
             echo "检测到 Merge Commit，获取父提交信息"
-            # 获取第二个父提交（develop 分支的提交）
-            PARENT2=$(git log -1 --pretty=%h HEAD^2)
-            PARENT2_MESSAGE=$(git log -1 --pretty=%s HEAD^2)
-            PARENT2_AUTHOR=$(git log -1 --pretty=%an HEAD^2)
-            PARENT2_HASH=$(git rev-parse --short HEAD^2)
             
-            echo "父提交 (develop): $PARENT2"
-            echo "父提交消息: $PARENT2_MESSAGE"
-            echo "父提交作者: $PARENT2_AUTHOR"
+            # 获取merge commit的父提交数量
+            PARENT_COUNT=$(git log -1 --pretty=%P | grep -c "^")
+            echo "父提交数量: $PARENT_COUNT"
             
-            COMMIT_MESSAGE="$PARENT2_MESSAGE"
-            COMMIT_AUTHOR="$PARENT2_AUTHOR"
-            COMMIT_HASH="$PARENT2_HASH"
+            # 如果有第二个父提交，使用它（develop分支的提交）
+            if [ "$PARENT_COUNT" -ge 2 ]; then
+              PARENT2=$(git log -1 --pretty=%h HEAD^2 2>/dev/null || echo "")
+              if [ -n "$PARENT2" ]; then
+                PARENT2_MESSAGE=$(git log -1 --pretty=%s HEAD^2 2>/dev/null || echo "")
+                PARENT2_AUTHOR=$(git log -1 --pretty=%an HEAD^2 2>/dev/null || echo "")
+                PARENT2_HASH=$(git rev-parse --short HEAD^2 2>/dev/null || echo "")
+                
+                echo "父提交 (develop): $PARENT2"
+                echo "父提交消息: $PARENT2_MESSAGE"
+                echo "父提交作者: $PARENT2_AUTHOR"
+                
+                COMMIT_MESSAGE="$PARENT2_MESSAGE"
+                COMMIT_AUTHOR="$PARENT2_AUTHOR"
+                COMMIT_HASH="$PARENT2_HASH"
+              else
+                echo "无法获取第二个父提交，使用merge commit本身"
+                COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+                COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+                COMMIT_HASH=$(git rev-parse --short HEAD)
+              fi
+            else
+              echo "Merge Commit只有一个父提交，使用merge commit本身"
+              COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+              COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+              COMMIT_HASH=$(git rev-parse --short HEAD)
+            fi
           else
             COMMIT_MESSAGE=$(git log -1 --pretty=%s)
             COMMIT_AUTHOR=$(git log -1 --pretty=%an)
