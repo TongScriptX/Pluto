@@ -186,11 +186,25 @@ PlutoX.registerDataType({
     name = "排行榜排名",
     icon = "🏆",
     fetchFunc = function()
-        local rank, isOnLeaderboard = fetchPlayerRank()
-        if isOnLeaderboard then
-            return rank
+        -- 异步获取排行榜数据，避免阻塞主循环
+        local result = nil
+        local completed = false
+        
+        spawn(function()
+            local rank, isOnLeaderboard = fetchPlayerRank()
+            if isOnLeaderboard then
+                result = rank
+            end
+            completed = true
+        end)
+        
+        -- 等待最多 2 秒，避免长时间阻塞
+        local startTime = tick()
+        while not completed and (tick() - startTime) < 2 do
+            wait(0.1)
         end
-        return nil
+        
+        return result
     end,
     calculateAvg = false,
     supportTarget = false,
@@ -2818,12 +2832,14 @@ spawn(function()
             pcall(updateFunc)
         end
 
-        -- 检查并发送通知
-        dataMonitor:checkAndNotify(function() configManager:saveConfig() end)
+        -- 收集数据（只收集一次，用于多个地方使用）
+        local collectedData = dataMonitor:collectData()
 
-        -- 掉线检测
-        local cashValue = dataMonitor:fetchValue(dataTypes[1])
-        disconnectDetector:checkAndNotify(cashValue)
+        -- 检查并发送通知（传入已收集的数据）
+        dataMonitor:checkAndNotify(function() configManager:saveConfig() end, disconnectDetector, collectedData)
+
+        -- 掉线检测（传入已收集的数据，避免在掉线时重新获取）
+        disconnectDetector:checkAndNotify(collectedData)
 
         -- 目标值调整
         for _, dataType in ipairs(dataTypes) do
@@ -2835,7 +2851,7 @@ spawn(function()
             end
         end
 
-        -- 目标值达成检测
+        -- 目标值达成检测（异步执行，避免阻塞主循环）
         local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
         if achieved then
             webhookManager:sendTargetAchieved(
@@ -2845,30 +2861,32 @@ spawn(function()
                 os.time() - dataMonitor.startTime,
                 achieved.dataType.name
             )
-            return
+            -- 注意：sendTargetAchieved 现在是异步执行的，不会阻塞主循环
+            -- 所以不需要 return，主循环会继续运行
         end
 
-        -- 排行榜踢出检测
+        -- 排行榜踢出检测（异步执行，避免阻塞主循环）
         if config.leaderboardKick and (currentTime - lastSendTime) >= (config.notificationInterval or 30) then
-            local currentRank, isOnLeaderboard = fetchPlayerRank()
-            
-            if isOnLeaderboard then
-                webhookManager:dispatchWebhook({
-                    embeds = {{
-                        title = "🏆 排行榜踢出",
-                        description = string.format(
-                            "**游戏**: %s\n**用户**: %s\n**当前排名**: #%s\n检测到已上榜，已踢出",
-                            gameName, username, currentRank),
-                        color = 16753920,
-                        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                        footer = { text = "桐 · TStudioX" }
-                    }}
-                })
+            spawn(function()
+                local currentRank, isOnLeaderboard = fetchPlayerRank()
                 
-                wait(0.5)
-                game:Shutdown()
-                return
-            end
+                if isOnLeaderboard then
+                    webhookManager:dispatchWebhook({
+                        embeds = {{
+                            title = "🏆 排行榜踢出",
+                            description = string.format(
+                                "**游戏**: %s\n**用户**: %s\n**当前排名**: #%s\n检测到已上榜，已踢出",
+                                gameName, username, currentRank),
+                            color = 16753920,
+                            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                            footer = { text = "桐 · TStudioX" }
+                        }}
+                    })
+                    
+                    wait(0.5)
+                    game:Shutdown()
+                end
+            end)
         end
 
         wait(checkInterval)

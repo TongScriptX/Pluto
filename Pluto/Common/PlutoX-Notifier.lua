@@ -657,7 +657,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         warn("[Webhook] 检测到相同脚本已在运行: " .. instanceId)
     end
     
-    -- 发送 Webhook
+    -- 发送 Webhook（带超时保护）
     function manager:dispatchWebhook(payload)
         -- 检查脚本实例是否仍然有效
         local instanceId = self.gameName .. ":" .. self.username
@@ -713,38 +713,55 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             embeds = payload.embeds
         })
         
-        local success, res = pcall(function()
-            return requestFunc({
-                Url = self.config.webhookUrl,
-                Method = "POST",
-                Headers = {
-                    ["Content-Type"] = "application/json"
-                },
-                Body = bodyJson
-            })
+        -- 使用 spawn 异步发送 webhook，避免阻塞
+        local success = false
+        local completed = false
+        
+        spawn(function()
+            local reqSuccess, res = pcall(function()
+                return requestFunc({
+                    Url = self.config.webhookUrl,
+                    Method = "POST",
+                    Headers = {
+                        ["Content-Type"] = "application/json"
+                    },
+                    Body = bodyJson
+                })
+            end)
+            
+            if reqSuccess then
+                if not res then
+                    print("[Webhook] 执行器返回 nil，假定发送成功")
+                else
+                    local statusCode = res.StatusCode or res.statusCode or 0
+                    if statusCode == 204 or statusCode == 200 or statusCode == 0 then
+                        print("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
+                    else
+                        warn("[Webhook 错误] 状态码: " .. tostring(statusCode))
+                    end
+                end
+            else
+                warn("[Webhook 请求失败] pcall 错误: " .. tostring(res))
+            end
+            
+            completed = true
         end)
         
-        if not success then
-            warn("[Webhook 请求失败] pcall 错误: " .. tostring(res))
+        -- 最多等待 3 秒，超时则认为发送失败但不阻塞
+        local startTime = tick()
+        while not completed and (tick() - startTime) < 3 do
+            wait(0.1)
+        end
+        
+        if not completed then
+            warn("[Webhook] 发送超时（3秒），继续执行")
             return false
         end
         
-        if not res then
-            print("[Webhook] 执行器返回 nil，假定发送成功")
-            return true
-        end
-        
-        local statusCode = res.StatusCode or res.statusCode or 0
-        if statusCode == 204 or statusCode == 200 or statusCode == 0 then
-            print("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
-            return true
-        else
-            warn("[Webhook 错误] 状态码: " .. tostring(statusCode))
-            return false
-        end
+        return true
     end
     
-    -- 发送欢迎消息
+    -- 发送欢迎消息（异步执行，避免阻塞主循环）
     function manager:sendWelcomeMessage()
         if self.config.webhookUrl == "" then
             warn("[Webhook] 欢迎消息: Webhook 地址未设置")
@@ -774,107 +791,113 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             }}
         }
 
-        local success = self:dispatchWebhook(payload)
-        self.sendingWelcome = false
+        -- 异步发送欢迎消息
+        spawn(function()
+            local success = self:dispatchWebhook(payload)
+            self.sendingWelcome = false
 
-        if success then
-            if self.UILibrary then
-                self.UILibrary:Notify({
-                    Title = "Webhook",
-                    Text = "欢迎消息已发送",
-                    Duration = 3
-                })
+            if success then
+                if self.UILibrary then
+                    self.UILibrary:Notify({
+                        Title = "Webhook",
+                        Text = "欢迎消息已发送",
+                        Duration = 3
+                    })
+                end
+            else
+                warn("[Webhook] 欢迎消息发送失败")
             end
-        else
-            warn("[Webhook] 欢迎消息发送失败")
-        end
+        end)
 
-        return success
+        return true
     end
     
-    -- 发送目标达成通知
+    -- 发送目标达成通知（异步执行，避免阻塞主循环）
     function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime, dataTypeName)
-        local maxRetries = 3
-        local retryDelay = 2
-        local success = false
-        
-        for attempt = 1, maxRetries do
-            success = self:dispatchWebhook({
-                embeds = {{
-                    title = "🎯 目标达成",
-                    description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
-                    fields = {
-                        {
-                            name = "📊 达成信息",
-                            value = string.format(
-                                "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
-                                dataTypeName or "未知",
-                                PlutoX.formatNumber(currentValue),
-                                PlutoX.formatNumber(targetAmount),
-                                PlutoX.formatNumber(baseAmount),
-                                PlutoX.formatElapsedTime(runTime)),
-                            inline = false
-                        }
-                    },
-                    color = _G.PRIMARY_COLOR or 5793266,
-                    timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                    footer = { text = "桐 · TStudioX" }
-                }}
-            })
+        -- 使用 spawn 异步执行，避免阻塞主循环
+        spawn(function()
+            local maxRetries = 3
+            local retryDelay = 2
+            local success = false
             
-            if success then
-                PlutoX.debug("[目标达成] Webhook发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）")
-                break
-            else
-                warn("[目标达成] Webhook发送失败，尝试 " .. attempt .. "/" .. maxRetries)
-                if attempt < maxRetries then
-                    task.wait(retryDelay)
-                end
-            end
-        end
-        
-        -- 无论是否成功都退出游戏
-        if success then
-            PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
-            
-            -- 检查当前值是否高于目标值
-            if currentValue > targetAmount then
-                PlutoX.debug("[目标达成] 当前" .. (dataTypeName or "值") .. "(" .. PlutoX.formatNumber(currentValue) .. ")高于目标(" .. PlutoX.formatNumber(targetAmount) .. ")")
+            for attempt = 1, maxRetries do
+                success = self:dispatchWebhook({
+                    embeds = {{
+                        title = "🎯 目标达成",
+                        description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                        fields = {
+                            {
+                                name = "📊 达成信息",
+                                value = string.format(
+                                    "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
+                                    dataTypeName or "未知",
+                                    PlutoX.formatNumber(currentValue),
+                                    PlutoX.formatNumber(targetAmount),
+                                    PlutoX.formatNumber(baseAmount),
+                                    PlutoX.formatElapsedTime(runTime)),
+                                inline = false
+                            }
+                        },
+                        color = _G.PRIMARY_COLOR or 5793266,
+                        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                        footer = { text = "桐 · TStudioX" }
+                    }}
+                })
                 
-                -- 关闭目标踢出功能
-                if dataTypeName then
-                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
-                    local kickConfigKey = "enable" .. keyUpper .. "Kick"
-                    if self.config[kickConfigKey] then
-                        self.config[kickConfigKey] = false
-                        PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
+                if success then
+                    PlutoX.debug("[目标达成] Webhook发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）")
+                    break
+                else
+                    warn("[目标达成] Webhook发送失败，尝试 " .. attempt .. "/" .. maxRetries)
+                    if attempt < maxRetries then
+                        task.wait(retryDelay)
                     end
                 end
-                
-                -- 清除目标
-                if dataTypeName then
-                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
-                    self.config["target" .. keyUpper] = 0
-                    self.config["base" .. keyUpper] = 0
-                    self.config["lastSaved" .. keyUpper] = 0
-                    PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
-                end
             end
-        else
-            warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
-        end
-        
-        task.wait(1)
-        
-        -- 注销脚本实例
-        PlutoX.unregisterScriptInstance(self.gameName, self.username)
-        
-        -- 关闭游戏
-        pcall(function()
-            game:Shutdown()
+            
+            -- 无论是否成功都退出游戏
+            if success then
+                PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
+                
+                -- 检查当前值是否高于目标值
+                if currentValue > targetAmount then
+                    PlutoX.debug("[目标达成] 当前" .. (dataTypeName or "值") .. "(" .. PlutoX.formatNumber(currentValue) .. ")高于目标(" .. PlutoX.formatNumber(targetAmount) .. ")")
+                    
+                    -- 关闭目标踢出功能
+                    if dataTypeName then
+                        local keyUpper = dataTypeName:gsub("^%l", string.upper)
+                        local kickConfigKey = "enable" .. keyUpper .. "Kick"
+                        if self.config[kickConfigKey] then
+                            self.config[kickConfigKey] = false
+                            PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
+                        end
+                    end
+                    
+                    -- 清除目标
+                    if dataTypeName then
+                        local keyUpper = dataTypeName:gsub("^%l", string.upper)
+                        self.config["target" .. keyUpper] = 0
+                        self.config["base" .. keyUpper] = 0
+                        self.config["lastSaved" .. keyUpper] = 0
+                        PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
+                    end
+                end
+            else
+                warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
+            end
+            
+            task.wait(1)
+            
+            -- 注销脚本实例
+            PlutoX.unregisterScriptInstance(self.gameName, self.username)
+            
+            -- 关闭游戏
+            pcall(function()
+                game:Shutdown()
+            end)
         end)
         
-        return success
+        return true
     end
     
     -- 发送掉线通知
@@ -1090,9 +1113,12 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         return false
     end
     
-    -- 发送多数据变化通知
-    function monitor:sendDataChange(currentTime, interval)
-        local data = self:collectData()
+    -- 发送多数据变化通知（接收已收集的数据，避免重复获取）
+    function monitor:sendDataChange(currentTime, interval, data)
+        -- 如果没有传入数据，则收集数据（保持向后兼容）
+        if not data then
+            data = self:collectData()
+        end
         local elapsedTime = currentTime - self.startTime
         
         -- 计算下次通知时间
@@ -1201,9 +1227,12 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         return self.webhookManager:dispatchWebhook({ embeds = { embed } })
     end
     
-    -- 发送掉线通知
-    function monitor:sendDisconnect()
-        local data = self:collectData()
+    -- 发送掉线通知（接收已收集的数据，避免重复获取）
+    function monitor:sendDisconnect(data)
+        -- 如果没有传入数据，则收集数据（保持向后兼容）
+        if not data then
+            data = self:collectData()
+        end
         local dataTable = {}
         for id, dataInfo in pairs(data) do
             if dataInfo.current ~= nil then
@@ -1213,9 +1242,12 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         return self.webhookManager:sendDisconnect(dataTable)
     end
     
-    -- 发送数据未变化警告
-    function monitor:sendNoChange()
-        local data = self:collectData()
+    -- 发送数据未变化警告（接收已收集的数据，避免重复获取）
+    function monitor:sendNoChange(data)
+        -- 如果没有传入数据，则收集数据（保持向后兼容）
+        if not data then
+            data = self:collectData()
+        end
         local dataTable = {}
         for id, dataInfo in pairs(data) do
             if dataInfo.current ~= nil then
@@ -1225,8 +1257,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         return self.webhookManager:sendNoChange(dataTable)
     end
     
-    -- 主检查循环
-    function monitor:checkAndNotify(saveConfig, disconnectDetector)
+    -- 主检查循环（接收已收集的数据，避免重复获取）
+    function monitor:checkAndNotify(saveConfig, disconnectDetector, collectedData)
         -- 检查是否掉线，如果掉线则停止发送通知
         if disconnectDetector and disconnectDetector.shouldStopNotification and disconnectDetector:shouldStopNotification() then
             PlutoX.debug("[checkAndNotify] 检测到掉线，停止发送通知")
@@ -1248,7 +1280,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             return false
         end
         
-        local data = self:collectData()
+        -- 使用已收集的数据，避免重复获取
+        local data = collectedData or self:collectData()
         
         -- 检查是否有任何数据变化
         if not self:hasAnyChange(data) then
@@ -1260,10 +1293,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             PlutoX.debug("[checkAndNotify] 数据有变化，重置unchangedCount和webhookDisabled")
         end
         
-        -- 连续无变化警告
+        -- 连续无变化警告（传递已收集的数据，避免重复获取）
         if self.unchangedCount >= 2 then
             PlutoX.debug("[checkAndNotify] 连续2次无变化，发送警告并禁用webhook")
-            self:sendNoChange()
+            self:sendNoChange(data)
             self.webhookDisabled = true
             self.lastSendTime = currentTime
             
@@ -1279,9 +1312,9 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
             return false
         end
         
-        -- 发送数据变化通知
+        -- 发送数据变化通知（传递已收集的数据，避免重复获取）
         PlutoX.debug("[checkAndNotify] 发送数据变化通知")
-        self:sendDataChange(currentTime, interval)
+        self:sendDataChange(currentTime, interval, data)
         self.lastSendTime = currentTime
         
         -- 更新所有数据的上次通知值和最后值
@@ -1528,13 +1561,18 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager, fetchFuncs)
         return data
     end
     
-    -- 检测掉线并发送通知
-    function detector:checkAndNotify()
+    -- 检测掉线并发送通知（接收已收集的数据，避免在掉线时阻塞）
+    function detector:checkAndNotify(cachedData)
         if self.disconnected and not self.notified and self.webhookManager then
             self.notified = true  -- 标记已发送通知
             
-            -- 获取当前数据
-            local data = self:collectData()
+            -- 使用已缓存的数据，避免在掉线时重新获取
+            local data = cachedData or {}
+            
+            -- 如果没有缓存数据，尝试获取（带超时保护）
+            if not cachedData or next(cachedData) == nil then
+                data = self:collectData()
+            end
             
             -- 发送掉线通知
             self.webhookManager:sendDisconnect(data)
