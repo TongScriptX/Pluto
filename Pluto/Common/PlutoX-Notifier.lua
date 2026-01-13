@@ -12,6 +12,13 @@ PlutoX.gameName = nil -- 游戏名称
 PlutoX.username = nil -- 用户名称
 PlutoX.isInitialized = false -- 是否已初始化
 
+-- 数据上传相关
+PlutoX.uploaderConfig = nil
+PlutoX.uploaderHttpService = nil
+PlutoX.uploaderUILibrary = nil
+PlutoX.uploaderDataMonitor = nil
+PlutoX.dataUploader = nil
+
 -- 设置游戏信息（用于日志文件命名）
 function PlutoX.setGameInfo(gameName, username)
     PlutoX.gameName = gameName
@@ -644,6 +651,11 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     manager.gameName = gameName
     manager.username = username
     manager.sendingWelcome = false
+    
+    -- 保存上传器需要的参数
+    PlutoX.uploaderConfig = config
+    PlutoX.uploaderHttpService = HttpService
+    PlutoX.uploaderUILibrary = UILibrary
     
     -- 自动注册脚本实例
     local instanceId = gameName .. ":" .. username
@@ -1509,6 +1521,21 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         
         return card, label, updateLabel
     end
+    
+    -- 自动创建并启动数据上传器（完全独立运行）
+    spawn(function()
+        wait(2) -- 延迟启动，确保初始化完成
+        if self.webhookManager then
+            local uploader = PlutoX.createDataUploader(
+                self.config,
+                self.webhookManager.HttpService,
+                self.webhookManager.gameName,
+                self.webhookManager.username,
+                self
+            )
+            PlutoX.debug("[DataMonitor] 数据上传器已自动启动")
+        end
+    end)
     
     return monitor
 end
