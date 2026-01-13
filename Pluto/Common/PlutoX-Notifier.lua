@@ -4,7 +4,7 @@
 local PlutoX = {}
 
 -- Debug 功能
-PlutoX.debugEnabled = false
+PlutoX.debugEnabled = true
 PlutoX.logFile = nil -- 当前日志文件句柄
 PlutoX.currentLogFile = nil -- 当前日志文件路径
 PlutoX.originalPrint = nil -- 保存原始 print 函数
@@ -2074,6 +2074,226 @@ function PlutoX.recalculateAllTargetValues(config, UILibrary, dataMonitor, dataT
             Duration = 6
         })
     end
+end
+
+-- 数据上传管理器（Dashboard 数据上传）
+
+function PlutoX.createDataUploader(config, HttpService, gameName, username, dataMonitor)
+    local uploader = {}
+    
+    uploader.config = config
+    uploader.HttpService = HttpService
+    uploader.gameName = gameName
+    uploader.username = username
+    uploader.dataMonitor = dataMonitor
+    uploader.lastUploadTime = 0
+    uploader.uploadInterval = 5 * 60 -- 5 分钟
+    uploader.enabled = true
+    uploader.uploadUrl = "https://pluto-x.pages.dev/api/dashboard/upload"
+    uploader.sessionStartTime = os.time() -- 会话开始时间
+    
+    -- 发送数据上传请求
+    function uploader:uploadData()
+        if not self.enabled then
+            return false
+        end
+        
+        -- 检查是否到达上传间隔
+        local currentTime = os.time()
+        if currentTime - self.lastUploadTime < self.uploadInterval then
+            return false
+        end
+        
+        -- 收集所有数据
+        local data = self.dataMonitor:collectData()
+        if not data or next(data) == nil then
+            PlutoX.debug("[DataUploader] 无数据可上传")
+            return false
+        end
+        
+        -- 构建数据对象（JSONB 格式）
+        local dataObject = {}
+        local elapsedTime = currentTime - self.sessionStartTime
+        
+        for id, dataInfo in pairs(data) do
+            if dataInfo.current ~= nil then
+                local dataType = dataInfo.type
+                
+                -- 计算平均速度（每小时）
+                local avgPerHour = 0
+                if dataType.calculateAvg and elapsedTime > 0 and dataInfo.totalEarned ~= 0 then
+                    avgPerHour = math.floor(dataInfo.totalEarned / (elapsedTime / 3600) + 0.5)
+                end
+                
+                -- 计算预计完成时间
+                local estimatedCompletion = nil
+                if dataType.supportTarget then
+                    local keyUpper = dataType.id:gsub("^%l", string.upper)
+                    local targetValue = self.config["target" .. keyUpper]
+                    
+                    if targetValue and targetValue > 0 and avgPerHour > 0 then
+                        local remaining = targetValue - dataInfo.current
+                        if remaining > 0 then
+                            local hoursNeeded = remaining / avgPerHour
+                            local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
+                            
+                            estimatedCompletion = {
+                                days = math.floor(hoursNeeded / 24),
+                                hours = math.floor((hoursNeeded % 24)),
+                                minutes = math.floor((hoursNeeded * 60) % 60),
+                                timestamp = completionTimestamp
+                            }
+                        end
+                    end
+                end
+                
+                dataObject[id] = {
+                    current = dataInfo.current,
+                    change = dataInfo.change or 0,
+                    total_earned = dataInfo.totalEarned or 0,
+                    avg_per_hour = avgPerHour,
+                    session_start = self.sessionStartTime,
+                    estimated_completion = estimatedCompletion
+                }
+            end
+        end
+        
+        if next(dataObject) == nil then
+            PlutoX.debug("[DataUploader] 无有效数据可上传")
+            return false
+        end
+        
+        -- 构建上传数据
+        local uploadData = {
+            game_name = self.gameName,
+            username = self.username,
+            is_active = self.enabled,
+            data = dataObject,
+            session_start = os.date("!%Y-%m-%dT%H:%M:%SZ", self.sessionStartTime),
+            elapsed_time = elapsedTime
+        }
+        
+        -- 发送上传请求
+        local requestFunc = syn and syn.request or http and http.request or request
+        if not requestFunc then
+            warn("[DataUploader] 无可用请求函数")
+            return false
+        end
+        
+        -- 异步上传
+        spawn(function()
+            local reqSuccess, res = pcall(function()
+                return requestFunc({
+                    Url = self.uploadUrl,
+                    Method = "POST",
+                    Headers = {
+                        ["Content-Type"] = "application/json"
+                    },
+                    Body = self.HttpService:JSONEncode(uploadData)
+                })
+            end)
+            
+            if reqSuccess then
+                local statusCode = res.StatusCode or res.statusCode or 0
+                if statusCode == 200 or statusCode == 201 then
+                    self.lastUploadTime = currentTime
+                    PlutoX.debug("[DataUploader] 数据上传成功")
+                else
+                    warn("[DataUploader] 上传失败，状态码: " .. statusCode)
+                end
+            else
+                warn("[DataUploader] 上传失败，错误: " .. tostring(res))
+            end
+        end)
+        
+        return true
+    end
+    
+    -- 启动上传定时器
+    function uploader:start()
+        -- 立即上传一次初始数据
+        self:uploadData()
+        
+        -- 每 5 分钟上传一次
+        spawn(function()
+            while self.enabled do
+                wait(60) -- 每分钟检查一次
+                self:uploadData()
+            end
+        end)
+        
+        PlutoX.debug("[DataUploader] 数据上传已启动，每 5 分钟上传一次")
+    end
+    
+    -- 停止上传
+    function uploader:stop()
+        self.enabled = false
+        
+        -- 最后上传一次，设置 is_active 为 false
+        local currentTime = os.time()
+        local data = self.dataMonitor:collectData()
+        
+        if data and next(data) then
+            local dataObject = {}
+            local elapsedTime = currentTime - self.sessionStartTime
+            
+            for id, dataInfo in pairs(data) do
+                if dataInfo.current ~= nil then
+                    local dataType = dataInfo.type
+                    local avgPerHour = 0
+                    if dataType.calculateAvg and elapsedTime > 0 and dataInfo.totalEarned ~= 0 then
+                        avgPerHour = math.floor(dataInfo.totalEarned / (elapsedTime / 3600) + 0.5)
+                    end
+                    
+                    dataObject[id] = {
+                        current = dataInfo.current,
+                        change = dataInfo.change or 0,
+                        total_earned = dataInfo.totalEarned or 0,
+                        avg_per_hour = avgPerHour,
+                        session_start = self.sessionStartTime,
+                        estimated_completion = nil
+                    }
+                end
+            end
+            
+            if next(dataObject) then
+                local uploadData = {
+                    game_name = self.gameName,
+                    username = self.username,
+                    is_active = false,
+                    data = dataObject,
+                    session_start = os.date("!%Y-%m-%dT%H:%M:%SZ", self.sessionStartTime),
+                    elapsed_time = elapsedTime
+                }
+                
+                spawn(function()
+                    pcall(function()
+                        local requestFunc = syn and syn.request or http and http.request or request
+                        if requestFunc then
+                            requestFunc({
+                                Url = self.uploadUrl,
+                                Method = "POST",
+                                Headers = {
+                                    ["Content-Type"] = "application/json"
+                                },
+                                Body = self.HttpService:JSONEncode(uploadData)
+                            })
+                        end
+                    end)
+                end)
+            end
+        end
+        
+        PlutoX.debug("[DataUploader] 数据上传已停止")
+    end
+    
+    -- 手动触发上传
+    function uploader:forceUpload()
+        self.lastUploadTime = 0
+        return self:uploadData()
+    end
+    
+    return uploader
 end
 
 -- 创建关于页面
