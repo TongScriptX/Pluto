@@ -2293,6 +2293,9 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         return self:uploadData()
     end
     
+    -- 自动启动上传
+    self:start()
+    
     return uploader
 end
 
