@@ -1543,15 +1543,17 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     end
     
     -- 自动创建并启动数据上传器（完全独立运行）
+    -- 创建局部变量以在 spawn 中保持引用
+    local monitorRef = monitor
     spawn(function()
         wait(2) -- 延迟启动，确保初始化完成
-        if self.HttpService and self.gameName and self.username then
+        if monitorRef.HttpService and monitorRef.gameName and monitorRef.username then
             local uploader = PlutoX.createDataUploader(
-                self.config,
-                self.HttpService,
-                self.gameName,
-                self.username,
-                self
+                monitorRef.config,
+                monitorRef.HttpService,
+                monitorRef.gameName,
+                monitorRef.username,
+                monitorRef
             )
             PlutoX.debug("[DataMonitor] 数据上传器已自动启动")
         else
