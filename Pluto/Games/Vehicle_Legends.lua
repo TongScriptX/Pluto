@@ -60,8 +60,10 @@ end
 local gameName = "未知游戏"
 
 -- 初始化调试系统（如果调试模式开启）
+PlutoX.setGameInfo(gameName, username, HttpService)
+
+-- 初始化调试系统（如果调试模式开启）
 if DEBUG_MODE then
-    PlutoX.setGameInfo(gameName, username, HttpService)
     PlutoX.initDebugSystem()
     PlutoX.debug("调试系统已初始化")
 end
