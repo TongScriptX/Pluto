@@ -996,7 +996,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     local webhookGameName = nil
     local webhookUsername = nil
     
-    if webhookManager then
+    if webhookManager and type(webhookManager) == "table" then
         webhookHttpService = webhookManager.HttpService
         webhookGameName = webhookManager.gameName
         webhookUsername = webhookManager.username
