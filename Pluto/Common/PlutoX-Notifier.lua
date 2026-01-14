@@ -2143,6 +2143,13 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     uploader.uploadUrl = "https://pluto-x.pages.dev/api/dashboard/upload"
     uploader.sessionStartTime = os.time() -- 会话开始时间
     
+    -- 重试机制
+    uploader.retryCount = 0
+    uploader.maxRetries = 3 -- 最大重试次数
+    uploader.retryDelay = 30 -- 初始重试延迟（秒）
+    uploader.lastRetryTime = 0
+    uploader.isRetrying = false
+    
     -- 发送数据上传请求
     function uploader:uploadData()
         if not self.enabled then
@@ -2237,7 +2244,9 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         local uploadUrlRef = self.uploadUrl
         local httpServiceRef = self.HttpService
         local currentTimeRef = currentTime
-        spawn(function()
+        
+        -- 执行上传的内部函数
+        local function performUpload()
             local reqSuccess, res = pcall(function()
                 return requestFunc({
                     Url = uploadUrlRef,
@@ -2253,16 +2262,50 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 local statusCode = res.StatusCode or res.statusCode or 0
                 if statusCode == 200 or statusCode == 201 then
                     uploaderRef.lastUploadTime = currentTimeRef
+                    uploaderRef.retryCount = 0 -- 重置重试计数
+                    uploaderRef.isRetrying = false
                     PlutoX.debug("[DataUploader] 数据上传成功")
                 else
-                    warn("[DataUploader] 上传失败，状态码: " .. statusCode)
+                    -- 处理非 200/201 状态码
+                    uploaderRef:handleUploadFailure("状态码: " .. statusCode)
                 end
             else
-                warn("[DataUploader] 上传失败，错误: " .. tostring(res))
+                -- 处理网络错误
+                uploaderRef:handleUploadFailure(tostring(res))
             end
-        end)
+        end
+        
+        -- 检查是否需要重试
+        if self.retryCount > 0 and self.retryCount < self.maxRetries then
+            -- 计算重试延迟（指数退避）
+            local retryDelay = self.retryDelay * math.pow(2, self.retryCount - 1)
+            PlutoX.debug("[DataUploader] 等待 " .. retryDelay .. " 秒后重试（第 " .. self.retryCount .. " 次重试）")
+            spawn(function()
+                wait(retryDelay)
+                performUpload()
+            end)
+        else
+            -- 直接上传
+            performUpload()
+        end
         
         return true
+    end
+    
+    -- 处理上传失败
+    function uploader:handleUploadFailure(errorMsg)
+        self.retryCount = self.retryCount + 1
+        
+        if self.retryCount >= self.maxRetries then
+            -- 达到最大重试次数，延长下次上传间隔
+            warn("[DataUploader] 上传失败，已达到最大重试次数（" .. self.maxRetries .. " 次），错误: " .. errorMsg)
+            self.lastUploadTime = os.time() - self.uploadInterval + self.retryDelay * 4 -- 延长4倍重试延迟
+            self.retryCount = 0 -- 重置计数器
+        else
+            -- 还可以重试
+            PlutoX.debug("[DataUploader] 上传失败（第 " .. self.retryCount .. " 次），错误: " .. errorMsg)
+            -- 不更新 lastUploadTime，允许立即重试
+        end
     end
     
     -- 启动上传定时器
