@@ -2232,22 +2232,27 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         end
         
         -- 异步上传
+        -- 创建局部变量以在 spawn 中保持引用
+        local uploaderRef = self
+        local uploadUrlRef = self.uploadUrl
+        local httpServiceRef = self.HttpService
+        local currentTimeRef = currentTime
         spawn(function()
             local reqSuccess, res = pcall(function()
                 return requestFunc({
-                    Url = self.uploadUrl,
+                    Url = uploadUrlRef,
                     Method = "POST",
                     Headers = {
                         ["Content-Type"] = "application/json"
                     },
-                    Body = self.HttpService:JSONEncode(uploadData)
+                    Body = httpServiceRef:JSONEncode(uploadData)
                 })
             end)
             
             if reqSuccess then
                 local statusCode = res.StatusCode or res.statusCode or 0
                 if statusCode == 200 or statusCode == 201 then
-                    self.lastUploadTime = currentTime
+                    uploaderRef.lastUploadTime = currentTimeRef
                     PlutoX.debug("[DataUploader] 数据上传成功")
                 else
                     warn("[DataUploader] 上传失败，状态码: " .. statusCode)
@@ -2266,10 +2271,12 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         self:uploadData()
         
         -- 每 5 分钟上传一次
+        -- 创建局部变量以在 spawn 中保持引用
+        local uploaderRef = self
         spawn(function()
-            while self.enabled do
+            while uploaderRef.enabled do
                 wait(60) -- 每分钟检查一次
-                self:uploadData()
+                uploaderRef:uploadData()
             end
         end)
         
@@ -2317,17 +2324,19 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     elapsed_time = elapsedTime
                 }
                 
+                -- 创建局部变量以在 spawn 中保持引用
+                local uploaderRef = self
                 spawn(function()
                     pcall(function()
                         local requestFunc = syn and syn.request or http and http.request or request
                         if requestFunc then
                             requestFunc({
-                                Url = self.uploadUrl,
+                                Url = uploaderRef.uploadUrl,
                                 Method = "POST",
                                 Headers = {
                                     ["Content-Type"] = "application/json"
                                 },
-                                Body = self.HttpService:JSONEncode(uploadData)
+                                Body = uploaderRef.HttpService:JSONEncode(uploadData)
                             })
                         end
                     end)
