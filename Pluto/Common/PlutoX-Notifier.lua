@@ -991,9 +991,20 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     monitor.dataTypes = dataTypes or PlutoX.getAllDataTypes()
     
     -- 保存数据上传器需要的参数（独立于 webhook）
-    monitor.HttpService = PlutoX.uploaderHttpService or (webhookManager and webhookManager.HttpService)
-    monitor.gameName = PlutoX.gameName or (webhookManager and webhookManager.gameName)
-    monitor.username = PlutoX.username or (webhookManager and webhookManager.username)
+    -- 添加更安全的 nil 检查
+    local webhookHttpService = nil
+    local webhookGameName = nil
+    local webhookUsername = nil
+    
+    if webhookManager then
+        webhookHttpService = webhookManager.HttpService
+        webhookGameName = webhookManager.gameName
+        webhookUsername = webhookManager.username
+    end
+    
+    monitor.HttpService = PlutoX.uploaderHttpService or webhookHttpService
+    monitor.gameName = PlutoX.gameName or webhookGameName
+    monitor.username = PlutoX.username or webhookUsername
     
     -- 内部状态
     monitor.lastSendTime = os.time()
