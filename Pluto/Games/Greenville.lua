@@ -99,7 +99,7 @@ end
 
 -- 初始化调试系统
 if DEBUG_MODE then
-    PlutoX.setGameInfo(gameName, username)
+    PlutoX.setGameInfo(gameName, username, HttpService)
     PlutoX.initDebugSystem()
     PlutoX.debug("调试系统已初始化")
 end
