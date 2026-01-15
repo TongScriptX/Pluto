@@ -1548,6 +1548,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     spawn(function()
         wait(2) -- 延迟启动，确保初始化完成
         if monitorRef.HttpService and monitorRef.gameName and monitorRef.username then
+            warn("[DataUploader] 正在初始化数据上传器...")
             local uploader = PlutoX.createDataUploader(
                 monitorRef.config,
                 monitorRef.HttpService,
@@ -1555,8 +1556,13 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                 monitorRef.username,
                 monitorRef
             )
+            warn("[DataUploader] 数据上传器已启动，每 5 分钟上传一次")
             PlutoX.debug("[DataMonitor] 数据上传器已自动启动")
         else
+            warn("[DataUploader] 数据上传器启动失败：缺少必要参数")
+            warn("[DataUploader] HttpService: " .. tostring(monitorRef.HttpService))
+            warn("[DataUploader] gameName: " .. tostring(monitorRef.gameName))
+            warn("[DataUploader] username: " .. tostring(monitorRef.username))
             PlutoX.debug("[DataMonitor] 数据上传器启动失败：缺少必要参数")
         end
     end)
@@ -2310,6 +2316,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 启动上传定时器
     function uploader:start()
+        warn("[DataUploader] 正在启动上传定时器...")
         -- 立即上传一次初始数据
         self:uploadData()
         
@@ -2323,6 +2330,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             end
         end)
         
+        warn("[DataUploader] 数据上传定时器已启动")
         PlutoX.debug("[DataUploader] 数据上传已启动，每 5 分钟上传一次")
     end
     
