@@ -2229,68 +2229,68 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         for id, dataInfo in pairs(data) do
             -- 排行榜数据特殊处理：即使current为nil也要包含（表示未上榜）
             -- 其他数据类型只在current不为nil时包含
-            if dataInfo.current ~= nil or dataInfo.type.id == "leaderboard" then
-                local dataType = dataInfo.type
-                local keyUpper = dataType.id:gsub("^%l", string.upper)
+            -- 只上传通知开关开启的数据类型
+            local dataType = dataInfo.type
+            local keyUpper = dataType.id:gsub("^%l", string.upper)
+            local notifyEnabled = self.config["notify" .. keyUpper]
 
-                -- 排行榜数据不需要计算这些值
-                if dataType.id == "leaderboard" then
-                    dataObject[id] = {
-                        current = dataInfo.current,  -- nil表示未上榜
-                        is_on_leaderboard = dataInfo.current ~= nil
-                    }
-                else
-                    -- 获取目标值和基准值（来自配置文件）
-                    local targetValue = self.config["target" .. keyUpper] or 0
-                    local baseValue = self.config["base" .. keyUpper] or 0
+            -- 排行榜数据特殊处理：如果排行榜检测开启，即使未上榜也上传
+            if dataType.id == "leaderboard" and notifyEnabled then
+                dataObject[id] = {
+                    current = dataInfo.current,  -- nil表示未上榜
+                    is_on_leaderboard = dataInfo.current ~= nil
+                }
+            elseif dataInfo.current ~= nil and notifyEnabled then
+                -- 获取目标值和基准值（来自配置文件）
+                local targetValue = self.config["target" .. keyUpper] or 0
+                local baseValue = self.config["base" .. keyUpper] or 0
 
-                    -- 计算总赚取金额（自配置生成以来）
-                    local totalEarned = 0
-                    if baseValue > 0 then
-                        totalEarned = dataInfo.current - baseValue
-                    end
-
-                    -- 计算平均速度（每小时）
-                    local avgPerHour = 0
-                    if dataType.calculateAvg and elapsedTime > 0 and totalEarned ~= 0 then
-                        avgPerHour = math.floor(totalEarned / (elapsedTime / 3600) + 0.5)
-                    end
-
-                    -- 计算预计完成时间
-                    local estimatedCompletion = nil
-                    if dataType.supportTarget and targetValue > 0 and avgPerHour > 0 then
-                        local remaining = targetValue - dataInfo.current
-                        if remaining > 0 then
-                            local hoursNeeded = remaining / avgPerHour
-                            local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
-
-                            estimatedCompletion = {
-                                days = math.floor(hoursNeeded / 24),
-                                hours = math.floor((hoursNeeded % 24)),
-                                minutes = math.floor((hoursNeeded * 60) % 60),
-                                timestamp = completionTimestamp
-                            }
-                        end
-                    end
-
-                    -- 检查目标是否完成
-                    local targetCompleted = false
-                    if dataType.supportTarget and targetValue > 0 then
-                        targetCompleted = dataInfo.current >= targetValue
-                    end
-
-                    dataObject[id] = {
-                        current = dataInfo.current,
-                        change = dataInfo.change or 0,
-                        total_earned = totalEarned,
-                        avg_per_hour = avgPerHour,
-                        session_start = self.sessionStartTime,
-                        estimated_completion = estimatedCompletion,
-                        target_value = targetValue,
-                        base_value = baseValue,
-                        target_completed = targetCompleted
-                    }
+                -- 计算总赚取金额（自配置生成以来）
+                local totalEarned = 0
+                if baseValue > 0 then
+                    totalEarned = dataInfo.current - baseValue
                 end
+
+                -- 计算平均速度（每小时）
+                local avgPerHour = 0
+                if dataType.calculateAvg and elapsedTime > 0 and totalEarned ~= 0 then
+                    avgPerHour = math.floor(totalEarned / (elapsedTime / 3600) + 0.5)
+                end
+
+                -- 计算预计完成时间
+                local estimatedCompletion = nil
+                if dataType.supportTarget and targetValue > 0 and avgPerHour > 0 then
+                    local remaining = targetValue - dataInfo.current
+                    if remaining > 0 then
+                        local hoursNeeded = remaining / avgPerHour
+                        local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
+
+                        estimatedCompletion = {
+                            days = math.floor(hoursNeeded / 24),
+                            hours = math.floor((hoursNeeded % 24)),
+                            minutes = math.floor((hoursNeeded * 60) % 60),
+                            timestamp = completionTimestamp
+                        }
+                    end
+                end
+
+                -- 检查目标是否完成
+                local targetCompleted = false
+                if dataType.supportTarget and targetValue > 0 then
+                    targetCompleted = dataInfo.current >= targetValue
+                end
+
+                dataObject[id] = {
+                    current = dataInfo.current,
+                    change = dataInfo.change or 0,
+                    total_earned = totalEarned,
+                    avg_per_hour = avgPerHour,
+                    session_start = self.sessionStartTime,
+                    estimated_completion = estimatedCompletion,
+                    target_value = targetValue,
+                    base_value = baseValue,
+                    target_completed = targetCompleted
+                }
             end
         end
         
