@@ -2197,7 +2197,14 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             return false
         end
         
-        warn("[DataUploader] 数据收集完成，数据类型数量: " .. tostring(#(data or {})))
+        -- 计算实际有数据的数据类型数量
+        local validDataCount = 0
+        for id, dataInfo in pairs(data) do
+            if dataInfo.current ~= nil then
+                validDataCount = validDataCount + 1
+            end
+        end
+        warn("[DataUploader] 数据收集完成，有效数据类型数量: " .. tostring(validDataCount))
         
         -- 构建数据对象（JSONB 格式）
         local dataObject = {}
