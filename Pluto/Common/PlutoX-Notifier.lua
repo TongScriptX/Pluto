@@ -2234,8 +2234,8 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 local keyUpper = dataType.id:gsub("^%l", string.upper)
                 local notifyEnabled = self.config["notify" .. keyUpper]
 
-                -- 排行榜数据特殊处理：如果排行榜检测开启，即使未上榜也上传
-                if dataType.id == "leaderboard" and notifyEnabled then
+                -- 排行榜数据特殊处理：总是上传（即使未上榜），用于记录状态
+                if dataType.id == "leaderboard" then
                     dataObject[id] = {
                         current = dataInfo.current,  -- nil表示未上榜
                         is_on_leaderboard = dataInfo.current ~= nil,
