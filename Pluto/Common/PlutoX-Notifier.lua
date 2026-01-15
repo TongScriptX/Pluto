@@ -1564,7 +1564,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
     spawn(function()
         wait(2) -- 延迟启动，确保初始化完成
         if monitorRef.HttpService and monitorRef.gameName and monitorRef.username then
-            warn("[DataUploader] 正在初始化数据上传器...")
+            PlutoX.debug("[DataUploader] 正在初始化数据上传器...")
             local uploader = PlutoX.createDataUploader(
                 monitorRef.config,
                 monitorRef.HttpService,
@@ -1573,13 +1573,13 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                 monitorRef,
                 disconnectDetectorRef
             )
-            warn("[DataUploader] 数据上传器已启动，每 5 分钟上传一次")
+            PlutoX.debug("[DataUploader] 数据上传器已启动，每 5 分钟上传一次")
             PlutoX.debug("[DataMonitor] 数据上传器已自动启动")
         else
-            warn("[DataUploader] 数据上传器启动失败：缺少必要参数")
-            warn("[DataUploader] HttpService: " .. tostring(monitorRef.HttpService))
-            warn("[DataUploader] gameName: " .. tostring(monitorRef.gameName))
-            warn("[DataUploader] username: " .. tostring(monitorRef.username))
+            PlutoX.debug("[DataUploader] 数据上传器启动失败：缺少必要参数")
+            PlutoX.debug("[DataUploader] HttpService: " .. tostring(monitorRef.HttpService))
+            PlutoX.debug("[DataUploader] gameName: " .. tostring(monitorRef.gameName))
+            PlutoX.debug("[DataUploader] username: " .. tostring(monitorRef.username))
             PlutoX.debug("[DataMonitor] 数据上传器启动失败：缺少必要参数")
         end
     end)
@@ -2154,7 +2154,7 @@ end
 
 function PlutoX.createDataUploader(config, HttpService, gameName, username, dataMonitor, disconnectDetector)
     local uploader = {}
-
+    
     uploader.config = config
     uploader.HttpService = HttpService
     uploader.gameName = gameName
@@ -2167,7 +2167,8 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     uploader.uploadUrl = "https://pluto-x.pages.dev/api/dashboard/upload"
     uploader.sessionStartTime = os.time() -- 会话开始时间
     uploader.isUploading = false -- 防止重复上传的标志
-
+    -- 从全局变量读取 game_user_id（由 loader 设置）
+    uploader.gameUserId = _G.PLUTO_GAME_USER_ID or nil
     -- 重试机制
     uploader.retryCount = 0
     uploader.maxRetries = 3 -- 最大重试次数
@@ -2177,38 +2178,38 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 发送数据上传请求
     function uploader:uploadData()
-        warn("[DataUploader] uploadData 函数被调用，enabled=" .. tostring(self.enabled) .. ", isUploading=" .. tostring(self.isUploading))
+        PlutoX.debug("[DataUploader] uploadData 函数被调用，enabled=" .. tostring(self.enabled) .. ", isUploading=" .. tostring(self.isUploading))
         
         if not self.enabled then
-            warn("[DataUploader] 上传器未启用，跳过上传")
+            PlutoX.debug("[DataUploader] 上传器未启用，跳过上传")
             return false
         end
         
         -- 防止重复上传
         if self.isUploading then
-            warn("[DataUploader] 正在上传中，跳过重复调用")
+            PlutoX.debug("[DataUploader] 正在上传中，跳过重复调用")
             return false
         end
         
         -- 检查是否到达上传间隔
         local currentTime = os.time()
         local timeSinceLastUpload = currentTime - self.lastUploadTime
-        warn("[DataUploader] 距离上次上传: " .. timeSinceLastUpload .. " 秒，间隔要求: " .. self.uploadInterval .. " 秒")
+        PlutoX.debug("[DataUploader] 距离上次上传: " .. timeSinceLastUpload .. " 秒，间隔要求: " .. self.uploadInterval .. " 秒")
         
         if timeSinceLastUpload < self.uploadInterval then
-            warn("[DataUploader] 未到达上传间隔，跳过上传")
+            PlutoX.debug("[DataUploader] 未到达上传间隔，跳过上传")
             return false
         end
         
         -- 标记为正在上传
         self.isUploading = true
         
-        warn("[DataUploader] 开始收集数据...")
+        PlutoX.debug("[DataUploader] 开始收集数据...")
         
         -- 收集所有数据
         local data = self.dataMonitor:collectData()
         if not data or next(data) == nil then
-            warn("[DataUploader] 无数据可上传")
+            PlutoX.debug("[DataUploader] 无数据可上传")
             self.isUploading = false -- 重置上传标志
             return false
         end
@@ -2221,7 +2222,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 validDataCount = validDataCount + 1
             end
         end
-        warn("[DataUploader] 数据收集完成，有效数据类型数量: " .. tostring(validDataCount))
+        PlutoX.debug("[DataUploader] 数据收集完成，有效数据类型数量: " .. tostring(validDataCount))
         
         -- 构建数据对象（JSONB 格式）
         local dataObject = {}
@@ -2323,6 +2324,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         end
 
         local uploadData = {
+            game_user_id = self.gameUserId,
             game_name = self.gameName,
             username = self.username,
             is_active = self.enabled,
@@ -2335,13 +2337,13 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         -- 发送上传请求
         local requestFunc = syn and syn.request or http and http.request or request
         if not requestFunc then
-            warn("[DataUploader] 无可用请求函数")
+            PlutoX.debug("[DataUploader] 无可用请求函数")
             self.isUploading = false -- 重置上传标志
             return false
         end
         
-        warn("[DataUploader] 准备上传数据到: " .. self.uploadUrl)
-        warn("[DataUploader] 上传数据: game_name=" .. self.gameName .. ", username=" .. self.username)
+        PlutoX.debug("[DataUploader] 准备上传数据到: " .. self.uploadUrl)
+        PlutoX.debug("[DataUploader] 上传数据: game_user_id=" .. tostring(self.gameUserId) .. ", game_name=" .. self.gameName .. ", username=" .. self.username)
         
         -- 异步上传
         -- 创建局部变量以在 spawn 中保持引用
@@ -2352,7 +2354,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         
         -- 执行上传的内部函数
         local function performUpload()
-            warn("[DataUploader] 正在发送 HTTP 请求...")
+            PlutoX.debug("[DataUploader] 正在发送 HTTP 请求...")
             local reqSuccess, res = pcall(function()
                 return requestFunc({
                     Url = uploadUrlRef,
@@ -2364,26 +2366,25 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 })
             end)
             
-            warn("[DataUploader] HTTP 请求完成，reqSuccess=" .. tostring(reqSuccess))
+            PlutoX.debug("[DataUploader] HTTP 请求完成，reqSuccess=" .. tostring(reqSuccess))
             
             if reqSuccess then
                 local statusCode = res.StatusCode or res.statusCode or 0
-                warn("[DataUploader] HTTP 响应状态码: " .. tostring(statusCode))
+                PlutoX.debug("[DataUploader] HTTP 响应状态码: " .. tostring(statusCode))
                 if statusCode == 200 or statusCode == 201 then
                     uploaderRef.lastUploadTime = currentTimeRef
                     uploaderRef.retryCount = 0 -- 重置重试计数
                     uploaderRef.isRetrying = false
                     uploaderRef.isUploading = false -- 重置上传标志
-                    warn("[DataUploader] ✓ 数据上传成功！")
-                    PlutoX.debug("[DataUploader] 数据上传成功")
+                    PlutoX.debug("[DataUploader] ✓ 数据上传成功！")
                 else
                     -- 处理非 200/201 状态码
-                    warn("[DataUploader] ✗ 上传失败，状态码: " .. statusCode)
+                    PlutoX.debug("[DataUploader] ✗ 上传失败，状态码: " .. statusCode)
                     uploaderRef:handleUploadFailure("状态码: " .. statusCode)
                 end
             else
                 -- 处理网络错误
-                warn("[DataUploader] ✗ 上传失败，错误: " .. tostring(res))
+                PlutoX.debug("[DataUploader] ✗ 上传失败，错误: " .. tostring(res))
                 uploaderRef:handleUploadFailure(tostring(res))
             end
             
@@ -2411,18 +2412,18 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     -- 处理上传失败
     function uploader:handleUploadFailure(errorMsg)
         self.retryCount = self.retryCount + 1
-        warn("[DataUploader] 上传失败（第 " .. self.retryCount .. " 次重试），错误: " .. errorMsg)
+        PlutoX.debug("[DataUploader] 上传失败（第 " .. self.retryCount .. " 次重试），错误: " .. errorMsg)
         
         if self.retryCount >= self.maxRetries then
             -- 达到最大重试次数，延长下次上传间隔
-            warn("[DataUploader] 上传失败，已达到最大重试次数（" .. self.maxRetries .. " 次），错误: " .. errorMsg)
+            PlutoX.debug("[DataUploader] 上传失败，已达到最大重试次数（" .. self.maxRetries .. " 次），错误: " .. errorMsg)
             self.lastUploadTime = os.time() - self.uploadInterval + self.retryDelay * 4 -- 延长4倍重试延迟
             self.retryCount = 0 -- 重置计数器
             self.isUploading = false -- 重置上传标志
         else
             -- 还可以重试，等待后重试
             local retryDelay = self.retryDelay * math.pow(2, self.retryCount - 1)
-            warn("[DataUploader] 等待 " .. retryDelay .. " 秒后重试...")
+            PlutoX.debug("[DataUploader] 等待 " .. retryDelay .. " 秒后重试...")
             spawn(function()
                 wait(retryDelay)
                 self.isUploading = false -- 重置上传标志，允许重试
@@ -2433,7 +2434,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 启动上传定时器
     function uploader:start()
-        warn("[DataUploader] 正在启动上传定时器...")
+        PlutoX.debug("[DataUploader] 正在启动上传定时器...")
         -- 立即上传一次初始数据
         self:uploadData()
         
@@ -2447,7 +2448,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             end
         end)
         
-        warn("[DataUploader] 数据上传定时器已启动")
+        PlutoX.debug("[DataUploader] 数据上传定时器已启动")
         PlutoX.debug("[DataUploader] 数据上传已启动，每 5 分钟上传一次")
     end
     
