@@ -2158,22 +2158,33 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 发送数据上传请求
     function uploader:uploadData()
+        warn("[DataUploader] uploadData 函数被调用，enabled=" .. tostring(self.enabled))
+        
         if not self.enabled then
+            warn("[DataUploader] 上传器未启用，跳过上传")
             return false
         end
         
         -- 检查是否到达上传间隔
         local currentTime = os.time()
-        if currentTime - self.lastUploadTime < self.uploadInterval then
+        local timeSinceLastUpload = currentTime - self.lastUploadTime
+        warn("[DataUploader] 距离上次上传: " .. timeSinceLastUpload .. " 秒，间隔要求: " .. self.uploadInterval .. " 秒")
+        
+        if timeSinceLastUpload < self.uploadInterval then
+            warn("[DataUploader] 未到达上传间隔，跳过上传")
             return false
         end
+        
+        warn("[DataUploader] 开始收集数据...")
         
         -- 收集所有数据
         local data = self.dataMonitor:collectData()
         if not data or next(data) == nil then
-            PlutoX.debug("[DataUploader] 无数据可上传")
+            warn("[DataUploader] 无数据可上传")
             return false
         end
+        
+        warn("[DataUploader] 数据收集完成，数据类型数量: " .. tostring(#(data or {})))
         
         -- 构建数据对象（JSONB 格式）
         local dataObject = {}
@@ -2244,6 +2255,9 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             return false
         end
         
+        warn("[DataUploader] 准备上传数据到: " .. self.uploadUrl)
+        warn("[DataUploader] 上传数据: game_name=" .. self.gameName .. ", username=" .. self.username)
+        
         -- 异步上传
         -- 创建局部变量以在 spawn 中保持引用
         local uploaderRef = self
@@ -2253,6 +2267,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         
         -- 执行上传的内部函数
         local function performUpload()
+            warn("[DataUploader] 正在发送 HTTP 请求...")
             local reqSuccess, res = pcall(function()
                 return requestFunc({
                     Url = uploadUrlRef,
@@ -2264,19 +2279,25 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 })
             end)
             
+            warn("[DataUploader] HTTP 请求完成，reqSuccess=" .. tostring(reqSuccess))
+            
             if reqSuccess then
                 local statusCode = res.StatusCode or res.statusCode or 0
+                warn("[DataUploader] HTTP 响应状态码: " .. tostring(statusCode))
                 if statusCode == 200 or statusCode == 201 then
                     uploaderRef.lastUploadTime = currentTimeRef
                     uploaderRef.retryCount = 0 -- 重置重试计数
                     uploaderRef.isRetrying = false
+                    warn("[DataUploader] ✓ 数据上传成功！")
                     PlutoX.debug("[DataUploader] 数据上传成功")
                 else
                     -- 处理非 200/201 状态码
+                    warn("[DataUploader] ✗ 上传失败，状态码: " .. statusCode)
                     uploaderRef:handleUploadFailure("状态码: " .. statusCode)
                 end
             else
                 -- 处理网络错误
+                warn("[DataUploader] ✗ 上传失败，错误: " .. tostring(res))
                 uploaderRef:handleUploadFailure(tostring(res))
             end
         end
