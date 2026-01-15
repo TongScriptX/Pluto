@@ -1114,7 +1114,9 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     -- 收集所有数据
     function monitor:collectData()
         local data = {}
-        for _, dataType in ipairs(self.dataTypes) do
+        warn("[DataMonitor] collectData 被调用，self.dataTypes 数量: " .. tostring(#self.dataTypes))
+        for idx, dataType in ipairs(self.dataTypes) do
+            warn("[DataMonitor] 处理数据类型 " .. idx .. ": " .. dataType.id .. " (" .. dataType.name .. ")")
             data[dataType.id] = {
                 type = dataType,
                 current = self:fetchValue(dataType),
