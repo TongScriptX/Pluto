@@ -2351,16 +2351,23 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     -- 处理上传失败
     function uploader:handleUploadFailure(errorMsg)
         self.retryCount = self.retryCount + 1
+        warn("[DataUploader] 上传失败（第 " .. self.retryCount .. " 次重试），错误: " .. errorMsg)
         
         if self.retryCount >= self.maxRetries then
             -- 达到最大重试次数，延长下次上传间隔
             warn("[DataUploader] 上传失败，已达到最大重试次数（" .. self.maxRetries .. " 次），错误: " .. errorMsg)
             self.lastUploadTime = os.time() - self.uploadInterval + self.retryDelay * 4 -- 延长4倍重试延迟
             self.retryCount = 0 -- 重置计数器
+            self.isUploading = false -- 重置上传标志
         else
-            -- 还可以重试
-            PlutoX.debug("[DataUploader] 上传失败（第 " .. self.retryCount .. " 次），错误: " .. errorMsg)
-            -- 不更新 lastUploadTime，允许立即重试
+            -- 还可以重试，等待后重试
+            local retryDelay = self.retryDelay * math.pow(2, self.retryCount - 1)
+            warn("[DataUploader] 等待 " .. retryDelay .. " 秒后重试...")
+            spawn(function()
+                wait(retryDelay)
+                self.isUploading = false -- 重置上传标志，允许重试
+                self:uploadData()
+            end)
         end
     end
     
