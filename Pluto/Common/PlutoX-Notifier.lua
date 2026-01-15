@@ -2234,6 +2234,8 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 local keyUpper = dataType.id:gsub("^%l", string.upper)
                 local notifyEnabled = self.config["notify" .. keyUpper]
 
+                PlutoX.debug("[DataUploader] 处理数据类型: " .. id .. ", current=" .. tostring(dataInfo.current) .. ", notifyEnabled=" .. tostring(notifyEnabled))
+
                 -- 排行榜数据特殊处理：总是上传（即使未上榜），用于记录状态
                 if dataType.id == "leaderboard" then
                     dataObject[id] = {
@@ -2241,6 +2243,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                         is_on_leaderboard = dataInfo.current ~= nil,
                         notify_enabled = notifyEnabled
                     }
+                    PlutoX.debug("[DataUploader] 排行榜数据已添加: " .. id)
                 elseif dataInfo.current ~= nil then
                     -- 获取目标值和基准值（来自配置文件）
                     local targetValue = self.config["target" .. keyUpper] or 0
@@ -2293,9 +2296,17 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                         target_completed = targetCompleted,
                         notify_enabled = notifyEnabled
                     }
+                    PlutoX.debug("[DataUploader] 数据已添加: " .. id)
                 end
             end
         end
+        
+        -- 输出最终上传的数据类型
+        local dataTypesList = {}
+        for id, _ in pairs(dataObject) do
+            table.insert(dataTypesList, id)
+        end
+        PlutoX.debug("[DataUploader] 最终上传的数据类型: " .. table.concat(dataTypesList, ", "))
         
         if next(dataObject) == nil then
             PlutoX.debug("[DataUploader] 无有效数据可上传")
