@@ -1068,7 +1068,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         if dataType.fetchFunc then
             local success, value = pcall(dataType.fetchFunc)
             if success then
+                warn("[DataMonitor] fetchValue " .. dataType.id .. " 成功，value: " .. tostring(value))
                 return value
+            else
+                warn("[DataMonitor] fetchValue " .. dataType.id .. " 失败，error: " .. tostring(value))
             end
         end
         return nil
