@@ -982,26 +982,27 @@ end
 
 -- 通用数据监测管理器
 
-function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
+function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector)
     local monitor = {}
-    
+
     monitor.config = config
     monitor.UILibrary = UILibrary
     monitor.webhookManager = webhookManager
     monitor.dataTypes = dataTypes or PlutoX.getAllDataTypes()
-    
+    monitor.disconnectDetector = disconnectDetector
+
     -- 保存数据上传器需要的参数（独立于 webhook）
     -- 添加更安全的 nil 检查
     local webhookHttpService = nil
     local webhookGameName = nil
     local webhookUsername = nil
-    
+
     if webhookManager and type(webhookManager) == "table" then
         webhookHttpService = webhookManager.HttpService
         webhookGameName = webhookManager.gameName
         webhookUsername = webhookManager.username
     end
-    
+
     monitor.HttpService = PlutoX.uploaderHttpService or webhookHttpService
     monitor.gameName = PlutoX.gameName or webhookGameName
     monitor.username = PlutoX.username or webhookUsername
@@ -1559,6 +1560,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     -- 自动创建并启动数据上传器（完全独立运行）
     -- 创建局部变量以在 spawn 中保持引用
     local monitorRef = monitor
+    local disconnectDetectorRef = monitor.disconnectDetector
     spawn(function()
         wait(2) -- 延迟启动，确保初始化完成
         if monitorRef.HttpService and monitorRef.gameName and monitorRef.username then
@@ -1568,7 +1570,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
                 monitorRef.HttpService,
                 monitorRef.gameName,
                 monitorRef.username,
-                monitorRef
+                monitorRef,
+                disconnectDetectorRef
             )
             warn("[DataUploader] 数据上传器已启动，每 5 分钟上传一次")
             PlutoX.debug("[DataMonitor] 数据上传器已自动启动")
@@ -2149,21 +2152,22 @@ end
 
 -- 数据上传管理器（Dashboard 数据上传）
 
-function PlutoX.createDataUploader(config, HttpService, gameName, username, dataMonitor)
+function PlutoX.createDataUploader(config, HttpService, gameName, username, dataMonitor, disconnectDetector)
     local uploader = {}
-    
+
     uploader.config = config
     uploader.HttpService = HttpService
     uploader.gameName = gameName
     uploader.username = username
     uploader.dataMonitor = dataMonitor
+    uploader.disconnectDetector = disconnectDetector
     uploader.lastUploadTime = 0
     uploader.uploadInterval = 5 * 60 -- 5 分钟
     uploader.enabled = true
     uploader.uploadUrl = "https://pluto-x.pages.dev/api/dashboard/upload"
     uploader.sessionStartTime = os.time() -- 会话开始时间
     uploader.isUploading = false -- 防止重复上传的标志
-    
+
     -- 重试机制
     uploader.retryCount = 0
     uploader.maxRetries = 3 -- 最大重试次数
@@ -2221,46 +2225,61 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         -- 构建数据对象（JSONB 格式）
         local dataObject = {}
         local elapsedTime = currentTime - self.sessionStartTime
-        
+
         for id, dataInfo in pairs(data) do
             if dataInfo.current ~= nil then
                 local dataType = dataInfo.type
-                
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+
+                -- 获取目标值和基准值（来自配置文件）
+                local targetValue = self.config["target" .. keyUpper] or 0
+                local baseValue = self.config["base" .. keyUpper] or 0
+
+                -- 计算总赚取金额（自配置生成以来）
+                local totalEarned = 0
+                if baseValue > 0 then
+                    totalEarned = dataInfo.current - baseValue
+                end
+
                 -- 计算平均速度（每小时）
                 local avgPerHour = 0
-                if dataType.calculateAvg and elapsedTime > 0 and dataInfo.totalEarned ~= 0 then
-                    avgPerHour = math.floor(dataInfo.totalEarned / (elapsedTime / 3600) + 0.5)
+                if dataType.calculateAvg and elapsedTime > 0 and totalEarned ~= 0 then
+                    avgPerHour = math.floor(totalEarned / (elapsedTime / 3600) + 0.5)
                 end
-                
+
                 -- 计算预计完成时间
                 local estimatedCompletion = nil
-                if dataType.supportTarget then
-                    local keyUpper = dataType.id:gsub("^%l", string.upper)
-                    local targetValue = self.config["target" .. keyUpper]
-                    
-                    if targetValue and targetValue > 0 and avgPerHour > 0 then
-                        local remaining = targetValue - dataInfo.current
-                        if remaining > 0 then
-                            local hoursNeeded = remaining / avgPerHour
-                            local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
-                            
-                            estimatedCompletion = {
-                                days = math.floor(hoursNeeded / 24),
-                                hours = math.floor((hoursNeeded % 24)),
-                                minutes = math.floor((hoursNeeded * 60) % 60),
-                                timestamp = completionTimestamp
-                            }
-                        end
+                if dataType.supportTarget and targetValue > 0 and avgPerHour > 0 then
+                    local remaining = targetValue - dataInfo.current
+                    if remaining > 0 then
+                        local hoursNeeded = remaining / avgPerHour
+                        local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
+
+                        estimatedCompletion = {
+                            days = math.floor(hoursNeeded / 24),
+                            hours = math.floor((hoursNeeded % 24)),
+                            minutes = math.floor((hoursNeeded * 60) % 60),
+                            timestamp = completionTimestamp
+                        }
                     end
                 end
-                
+
+                -- 检查目标是否完成
+                local targetCompleted = false
+                if dataType.supportTarget and targetValue > 0 then
+                    targetCompleted = dataInfo.current >= targetValue
+                end
+
                 dataObject[id] = {
                     current = dataInfo.current,
                     change = dataInfo.change or 0,
-                    total_earned = dataInfo.totalEarned or 0,
+                    total_earned = totalEarned,
                     avg_per_hour = avgPerHour,
                     session_start = self.sessionStartTime,
-                    estimated_completion = estimatedCompletion
+                    estimated_completion = estimatedCompletion,
+                    target_value = targetValue,
+                    base_value = baseValue,
+                    target_completed = targetCompleted
                 }
             end
         end
@@ -2272,13 +2291,20 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         end
         
         -- 构建上传数据
+        -- 获取掉线状态
+        local disconnectStatus = false
+        if self.disconnectDetector and self.disconnectDetector.disconnected then
+            disconnectStatus = true
+        end
+
         local uploadData = {
             game_name = self.gameName,
             username = self.username,
             is_active = self.enabled,
             data = dataObject,
             session_start = os.date("!%Y-%m-%dT%H:%M:%SZ", self.sessionStartTime),
-            elapsed_time = elapsedTime
+            elapsed_time = elapsedTime,
+            disconnect_status = disconnectStatus
         }
         
         -- 发送上传请求

@@ -1703,8 +1703,8 @@ local function performAutoRobATMs()
 end
 
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
-local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
+local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector)
 disconnectDetector:init()
 
 -- 设置数据监测器的发送前回调，用于添加排行榜信息
