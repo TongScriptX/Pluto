@@ -2216,7 +2216,8 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         -- 计算实际有数据的数据类型数量
         local validDataCount = 0
         for id, dataInfo in pairs(data) do
-            if dataInfo.current ~= nil then
+            -- 排行榜数据即使current为nil也是有效的（表示未上榜）
+            if dataInfo.current ~= nil or dataInfo.type.id == "leaderboard" then
                 validDataCount = validDataCount + 1
             end
         end
