@@ -1021,18 +1021,24 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     -- 初始化所有数据类型
     function monitor:init()
         local initInfo = {}
+        warn("[DataMonitor] 开始初始化数据类型...")
         for _, dataType in ipairs(self.dataTypes) do
             if dataType.fetchFunc then
                 local success, value = pcall(dataType.fetchFunc)
+                warn("[DataMonitor] fetchFunc " .. dataType.id .. ": success=" .. tostring(success) .. ", value=" .. tostring(value))
                 if success and value then
                     local keyUpper = dataType.id:gsub("^%l", string.upper)
                     self.config["total" .. keyUpper .. "Base"] = value
                     self.config["lastNotify" .. keyUpper] = value
                     self.lastValues[dataType.id] = value
+                    warn("[DataMonitor] 设置 " .. keyUpper .. "Base=" .. tostring(value))
                     table.insert(initInfo, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+                else
+                    warn("[DataMonitor] fetchFunc " .. dataType.id .. " 失败: " .. tostring(value))
                 end
             end
         end
+        warn("[DataMonitor] 初始化完成，初始化信息: " .. table.concat(initInfo, " | "))
         
         -- 启动时检查目标踢出功能
         for _, dataType in ipairs(self.dataTypes) do
@@ -1084,9 +1090,12 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         local keyUpper = dataType.id:gsub("^%l", string.upper)
         local baseValue = self.config["total" .. keyUpper .. "Base"] or 0
         
+        PlutoX.debug("[DataMonitor] calculateTotalEarned " .. dataType.id .. ": current=" .. tostring(currentValue) .. ", baseValue=" .. tostring(baseValue))
+        
         if baseValue > 0 then
             return currentValue - baseValue
         end
+        PlutoX.debug("[DataMonitor] calculateTotalEarned " .. dataType.id .. ": baseValue <= 0, returning 0")
         return 0
     end
     
