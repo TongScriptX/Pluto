@@ -1068,10 +1068,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
         if dataType.fetchFunc then
             local success, value = pcall(dataType.fetchFunc)
             if success then
-                warn("[DataMonitor] fetchValue " .. dataType.id .. " 成功，value: " .. tostring(value))
+                PlutoX.debug("[DataMonitor] fetchValue " .. dataType.id .. " 成功，value: " .. tostring(value))
                 return value
             else
-                warn("[DataMonitor] fetchValue " .. dataType.id .. " 失败，error: " .. tostring(value))
+                PlutoX.debug("[DataMonitor] fetchValue " .. dataType.id .. " 失败，error: " .. tostring(value))
             end
         end
         return nil
@@ -1117,9 +1117,9 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
     -- 收集所有数据
     function monitor:collectData()
         local data = {}
-        warn("[DataMonitor] collectData 被调用，self.dataTypes 数量: " .. tostring(#self.dataTypes))
+        PlutoX.debug("[DataMonitor] collectData 被调用，self.dataTypes 数量: " .. tostring(#self.dataTypes))
         for idx, dataType in ipairs(self.dataTypes) do
-            warn("[DataMonitor] 处理数据类型 " .. idx .. ": " .. dataType.id .. " (" .. dataType.name .. ")")
+            PlutoX.debug("[DataMonitor] 处理数据类型 " .. idx .. ": " .. dataType.id .. " (" .. dataType.name .. ")")
             data[dataType.id] = {
                 type = dataType,
                 current = self:fetchValue(dataType),
