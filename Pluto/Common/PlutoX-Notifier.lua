@@ -2555,6 +2555,30 @@ function PlutoX.createAboutPage(parent, UILibrary)
             end
         end,
     })
+    
+    -- 复制 UUID 按钮
+    local gameUserId = _G.PLUTO_GAME_USER_ID
+    if gameUserId then
+        UILibrary:CreateButton(parent, {
+            Text = "复制 UUID",
+            Callback = function()
+                if setclipboard then
+                    setclipboard(gameUserId)
+                    UILibrary:Notify({
+                        Title = "已复制",
+                        Text = "UUID 已复制",
+                        Duration = 2,
+                    })
+                else
+                    UILibrary:Notify({
+                        Title = "复制失败",
+                        Text = "无法访问剪贴板",
+                        Duration = 2,
+                    })
+                end
+            end,
+        })
+    end
 end
 
 -- 导出
