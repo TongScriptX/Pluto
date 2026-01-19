@@ -210,23 +210,32 @@ local function parseContents(contents)
     local rank = 1
     local leaderboardList = {}
     
-    -- 输出完整榜单
-    PlutoX.debug("[排行榜] ========== 完整榜单 ==========")
-    for _, child in ipairs(contents:GetChildren()) do
-        -- 跳过模板元素
-        if tonumber(child.Name) then
-            local placement = child:FindFirstChild("Placement")
-            local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-            table.insert(leaderboardList, string.format("#%d: %s", foundRank, child.Name))
-            rank = rank + 1
+    -- 输出完整榜单（仅在首次检测时输出）
+    if not leaderboardConfig.hasFetched then
+        PlutoX.debug("[排行榜] ========== 完整榜单 ==========")
+        for _, child in ipairs(contents:GetChildren()) do
+            -- 跳过模板元素
+            if tonumber(child.Name) then
+                local placement = child:FindFirstChild("Placement")
+                local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
+                table.insert(leaderboardList, string.format("#%d: %s", foundRank, child.Name))
+                rank = rank + 1
+            end
+        end
+        
+        -- 输出榜单列表
+        for _, entry in ipairs(leaderboardList) do
+            PlutoX.debug("[排行榜] " .. entry)
+        end
+        PlutoX.debug("[排行榜] ==========================")
+    else
+        -- 已缓存，只收集数据不输出
+        for _, child in ipairs(contents:GetChildren()) do
+            if tonumber(child.Name) then
+                rank = rank + 1
+            end
         end
     end
-    
-    -- 输出榜单列表
-    for _, entry in ipairs(leaderboardList) do
-        PlutoX.debug("[排行榜] " .. entry)
-    end
-    PlutoX.debug("[排行榜] ==========================")
     
     -- 查找玩家排名
     rank = 1
@@ -314,7 +323,8 @@ local function fetchPlayerRank()
             leaderboardConfig.isFetching = false
             return rank, isOnLeaderboard
         end
-        PlutoX.debug("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
+        -- 减少轮询日志输出
+        -- PlutoX.debug("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
     end
     
     PlutoX.debug("[排行榜] ========== 远程加载失败 (超时) ==========")
