@@ -2264,6 +2264,9 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     local totalEarned = 0
                     if baseValue > 0 then
                         totalEarned = dataInfo.current - baseValue
+                    else
+                        -- 如果没有设置基准值，总收益就是当前值
+                        totalEarned = dataInfo.current
                     end
 
                     -- 计算本次运行获取的金额（用于计算平均速度）
