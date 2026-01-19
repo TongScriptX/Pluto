@@ -2181,13 +2181,11 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         PlutoX.debug("[DataUploader] uploadData 函数被调用，enabled=" .. tostring(self.enabled) .. ", isUploading=" .. tostring(self.isUploading))
         
         if not self.enabled then
-            PlutoX.debug("[DataUploader] 上传器未启用，跳过上传")
             return false
         end
         
         -- 防止重复上传
         if self.isUploading then
-            PlutoX.debug("[DataUploader] 正在上传中，跳过重复调用")
             return false
         end
         
@@ -2197,7 +2195,6 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         PlutoX.debug("[DataUploader] 距离上次上传: " .. timeSinceLastUpload .. " 秒，间隔要求: " .. self.uploadInterval .. " 秒")
         
         if timeSinceLastUpload < self.uploadInterval then
-            PlutoX.debug("[DataUploader] 未到达上传间隔，跳过上传")
             return false
         end
         
