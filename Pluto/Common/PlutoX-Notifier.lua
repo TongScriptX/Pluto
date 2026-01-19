@@ -2169,6 +2169,8 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     uploader.isUploading = false -- 防止重复上传的标志
     -- 从全局变量读取 game_user_id（由 loader 设置）
     uploader.gameUserId = _G.PLUTO_GAME_USER_ID or nil
+    -- 保存会话开始时每个数据类型的初始值（用于计算本次运行获取的金额）
+    uploader.sessionStartValues = {}
     -- 重试机制
     uploader.retryCount = 0
     uploader.maxRetries = 3 -- 最大重试次数
@@ -2210,7 +2212,17 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             self.isUploading = false -- 重置上传标志
             return false
         end
-        
+
+        -- 第一次上传时保存初始值
+        if self.lastUploadTime == 0 then
+            for id, dataInfo in pairs(data) do
+                if dataInfo.current ~= nil and dataInfo.type.id ~= "leaderboard" then
+                    self.sessionStartValues[id] = dataInfo.current
+                    PlutoX.debug("[DataUploader] 保存初始值: " .. id .. " = " .. tostring(dataInfo.current))
+                end
+            end
+        end
+
         -- 计算实际有数据的数据类型数量
         local validDataCount = 0
         for id, dataInfo in pairs(data) do
@@ -2220,7 +2232,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             end
         end
         PlutoX.debug("[DataUploader] 数据收集完成，有效数据类型数量: " .. tostring(validDataCount))
-        
+
         -- 构建数据对象（JSONB 格式）
         local dataObject = {}
         local elapsedTime = currentTime - self.sessionStartTime
@@ -2254,10 +2266,16 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                         totalEarned = dataInfo.current - baseValue
                     end
 
-                    -- 计算平均速度（每小时）
+                    -- 计算本次运行获取的金额（用于计算平均速度）
+                    local sessionEarned = 0
+                    if self.sessionStartValues[id] then
+                        sessionEarned = dataInfo.current - self.sessionStartValues[id]
+                    end
+
+                    -- 计算平均速度（每小时）- 使用本次运行获取的金额
                     local avgPerHour = 0
-                    if dataType.calculateAvg and elapsedTime > 0 and totalEarned ~= 0 then
-                        avgPerHour = math.floor(totalEarned / (elapsedTime / 3600) + 0.5)
+                    if dataType.calculateAvg and elapsedTime > 0 and sessionEarned ~= 0 then
+                        avgPerHour = math.floor(sessionEarned / (elapsedTime / 3600) + 0.5)
                     end
 
                     -- 计算预计完成时间
