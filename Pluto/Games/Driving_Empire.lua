@@ -8,7 +8,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
-local DEBUG_MODE = false
+local DEBUG_MODE = true
 local lastSendTime = os.time()
 local sendingWelcome = false
 local isAutoRobActive = false
