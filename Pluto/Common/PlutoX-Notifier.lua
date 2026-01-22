@@ -2560,7 +2560,7 @@ function PlutoX.createAboutPage(parent, UILibrary)
     UILibrary:CreateButton(parent, {
         Text = "复制 Discord",
         Callback = function()
-            local link = "https://discord.gg/j20v0eWU8u"
+            local link = "https://discord.gg/6G2UfBgEZJ"
             if setclipboard then
                 setclipboard(link)
                 UILibrary:Notify({

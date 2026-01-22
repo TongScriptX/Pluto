@@ -300,31 +300,7 @@ local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage
     Text = "关于"
 })
 
-UILibrary:CreateAuthorInfo(aboutContent, {
-    Text = "作者: tongblx",
-    SocialText = "感谢使用"
-})
-
-UILibrary:CreateButton(aboutContent, {
-    Text = "复制 Discord",
-    Callback = function()
-        local link = "https://discord.gg/j20v0eWU8u"
-        if setclipboard then
-            setclipboard(link)
-            UILibrary:Notify({
-                Title = "已复制",
-                Text = "Discord 链接已复制",
-                Duration = 2,
-            })
-        else
-            UILibrary:Notify({
-                Title = "复制失败",
-                Text = "无法访问剪贴板",
-                Duration = 2,
-            })
-        end
-    end,
-})
+PlutoX.createAboutPage(aboutContent, UILibrary)
 
 -- 掉线检测
 local disconnected = false
