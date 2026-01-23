@@ -322,6 +322,8 @@ function PlutoX.generateDataTypeConfigs(dataTypes)
         configs["total" .. keyUpper .. "Base"] = 0
         -- 上次通知值
         configs["lastNotify" .. keyUpper] = 0
+        -- 脚本启动时的初始值（用于计算本次运行的总收益）
+        configs["sessionStart" .. keyUpper] = 0
         
         -- 如果支持目标检测，生成目标相关配置
         if dataType.supportTarget then
@@ -1046,6 +1048,13 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
             if dataType.supportTarget then
                 local keyUpper = dataType.id:gsub("^%l", string.upper)
                 local kickConfigKey = "enable" .. keyUpper .. "Kick"
+                
+                -- 从配置文件加载脚本启动时的初始值
+                local sessionStartValue = self.config["sessionStart" .. keyUpper] or 0
+                if sessionStartValue > 0 then
+                    self.sessionStartValues[dataType.id] = sessionStartValue
+                    PlutoX.debug("[启动检查] 从配置加载 " .. dataType.name .. " 初始值: " .. tostring(sessionStartValue))
+                end
                 
                 -- 检查是否开启了目标踢出功能
                 if self.config[kickConfigKey] then
@@ -2213,13 +2222,20 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             return false
         end
 
-        -- 第一次上传时保存初始值
+        -- 第一次上传时保存初始值到配置文件
         if self.lastUploadTime == 0 then
             for id, dataInfo in pairs(data) do
                 if dataInfo.current ~= nil and dataInfo.type.id ~= "leaderboard" then
+                    local keyUpper = dataInfo.type.id:gsub("^%l", string.upper)
+                    -- 保存脚本启动时的初始值
                     self.sessionStartValues[id] = dataInfo.current
-                    PlutoX.debug("[DataUploader] 保存初始值: " .. id .. " = " .. tostring(dataInfo.current))
+                    self.config["sessionStart" .. keyUpper] = dataInfo.current
+                    PlutoX.debug("[DataUploader] 保存脚本启动初始值到配置: " .. id .. " = " .. tostring(dataInfo.current))
                 end
+            end
+            -- 保存配置
+            if self.saveConfig then
+                self.saveConfig()
             end
         end
 
@@ -2260,16 +2276,39 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     local targetValue = self.config["target" .. keyUpper] or 0
                     local baseValue = self.config["base" .. keyUpper] or 0
 
-                    -- 计算总赚取金额（自配置生成以来）
+                    -- 计算总赚取金额
                     local totalEarned = 0
-                    if baseValue > 0 then
-                        totalEarned = dataInfo.current - baseValue
-                    else
-                        -- 如果没有设置基准值，总收益就是本次运行获取的金额
-                        if self.sessionStartValues[id] then
-                            totalEarned = dataInfo.current - self.sessionStartValues[id]
+                    if targetValue > 0 then
+                        -- 设置了目标，显示本次运行期间赚的金额（使用脚本启动时的初始值）
+                        local sessionStartValue = self.config["sessionStart" .. keyUpper] or 0
+                        if sessionStartValue > 0 then
+                            totalEarned = dataInfo.current - sessionStartValue
+                            -- 如果当前值小于启动值，显示为0
+                            if totalEarned < 0 then
+                                totalEarned = 0
+                            end
                         else
                             totalEarned = 0
+                        end
+                    else
+                        -- 没有设置目标，显示自配置生成以来的总赚取金额
+                        local totalBaseValue = self.config["total" .. keyUpper .. "Base"] or 0
+                        if totalBaseValue > 0 then
+                            totalEarned = dataInfo.current - totalBaseValue
+                            if totalEarned < 0 then
+                                totalEarned = 0
+                            end
+                        else
+                            -- 如果连totalBase都没有，使用会话开始值
+                            local sessionStartValue = self.config["sessionStart" .. keyUpper] or 0
+                            if sessionStartValue > 0 then
+                                totalEarned = dataInfo.current - sessionStartValue
+                                if totalEarned < 0 then
+                                    totalEarned = 0
+                                end
+                            else
+                                totalEarned = 0
+                            end
                         end
                     end
 
