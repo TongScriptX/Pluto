@@ -934,7 +934,12 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             for id, value in pairs(dataTable) do
                 local dataType = PlutoX.getDataType(id)
                 if dataType then
-                    table.insert(dataText, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+                    -- 检查value是否是table对象（来自dataMonitor:collectData）
+                    local actualValue = value
+                    if type(value) == "table" and value.current ~= nil then
+                        actualValue = value.current
+                    end
+                    table.insert(dataText, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(actualValue)))
                 end
             end
         else
