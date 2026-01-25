@@ -1015,6 +1015,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
     monitor.unchangedCount = 0
     monitor.webhookDisabled = false
     monitor.lastValues = {}
+    monitor.sessionStartValues = {}
     monitor.checkInterval = 1
     monitor.beforeSendCallback = nil -- 发送前的回调函数
     
