@@ -4,7 +4,7 @@
 local PlutoX = {}
 
 -- Debug 功能
-PlutoX.debugEnabled = false
+PlutoX.debugEnabled = true
 PlutoX.logFile = nil -- 当前日志文件句柄
 PlutoX.currentLogFile = nil -- 当前日志文件路径
 PlutoX.originalPrint = nil -- 保存原始 print 函数
@@ -905,6 +905,8 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                         self.config["base" .. keyUpper] = 0
                         self.config["lastSaved" .. keyUpper] = 0
                         PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
+                        -- 保存配置
+                        self:saveConfig()
                     end
                 end
             else
