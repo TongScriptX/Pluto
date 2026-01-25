@@ -16,6 +16,7 @@ PlutoX.isInitialized = false -- 是否已初始化
 PlutoX.uploaderConfig = nil
 PlutoX.uploaderHttpService = nil
 PlutoX.uploaderDataMonitor = nil
+PlutoX.uploader = nil  -- 全局上传器引用
 
 -- 设置游戏信息（用于日志文件命名和数据上传）
 function PlutoX.setGameInfo(gameName, username, HttpService)
@@ -874,6 +875,14 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             -- 无论是否成功都退出游戏
             if success then
                 PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
+                
+                -- 立即上传数据，确保目标完成状态被保存
+                if PlutoX.uploader and PlutoX.uploader.forceUpload then
+                    PlutoX.debug("[目标达成] 立即上传数据...")
+                    PlutoX.uploader:forceUpload()
+                    -- 等待上传完成
+                    task.wait(2)
+                end
                 
                 -- 检查当前值是否高于目标值
                 if currentValue > targetAmount then
@@ -2581,6 +2590,9 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 自动启动上传
     uploader:start()
+    
+    -- 保存全局引用
+    PlutoX.uploader = uploader
     
     return uploader
 end
