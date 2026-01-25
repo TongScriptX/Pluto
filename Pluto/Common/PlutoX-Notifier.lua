@@ -1226,7 +1226,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                                 
                                 if days > 0 then
                                     estimatedTimeText = string.format("\n**预计完成**: %d天%d小时%d分钟\n**完成时间**: %s", days, hours, minutes, countdownT)
-                                elseif hours > 0 then
+                                elseif hours > 0 or minutes > 0 then
                                     estimatedTimeText = string.format("\n**预计完成**: %d小时%d分钟\n**完成时间**: %s", hours, minutes, countdownT)
                                 else
                                     estimatedTimeText = string.format("\n**预计完成**: 小于一分钟\n**完成时间**: %s", countdownT)
