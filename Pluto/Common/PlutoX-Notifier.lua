@@ -331,6 +331,7 @@ function PlutoX.generateDataTypeConfigs(dataTypes)
             configs["enable" .. keyUpper .. "Kick"] = false
             configs["base" .. keyUpper] = 0
             configs["lastSaved" .. keyUpper] = 0
+            configs["targetStart" .. keyUpper] = 0  -- 目标设置时的金额
         end
     end
     return configs
@@ -2004,6 +2005,7 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
             
             config["target" .. keyUpper] = newTarget
             config["lastSaved" .. keyUpper] = currentValue
+            config["targetStart" .. keyUpper] = currentValue  -- 保存目标设置时的金额
             
             targetValueLabel.Text = "目标值: " .. PlutoX.formatNumber(newTarget)
             
@@ -2115,6 +2117,7 @@ function PlutoX.recalculateAllTargetValues(config, UILibrary, dataMonitor, dataT
                 if newTarget > currentValue then
                     config["target" .. keyUpper] = newTarget
                     config["lastSaved" .. keyUpper] = currentValue
+                    config["targetStart" .. keyUpper] = currentValue  -- 保存目标设置时的金额
                     
                     -- 更新标签显示
                     if getTargetValueLabels and getTargetValueLabels[dataType.id] then
@@ -2279,35 +2282,22 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
 
                     -- 计算总赚取金额
                     local totalEarned = 0
-                    if targetValue > 0 then
-                        -- 设置了目标，显示本次运行期间赚的金额（使用脚本启动时的初始值）
+                    local kickEnabled = self.config["enable" .. keyUpper .. "Kick"] or false
+                    if targetValue > 0 and kickEnabled then
+                        -- 目标踢出功能开启，显示目标设置以来的收入
+                        local targetStartValue = self.config["targetStart" .. keyUpper] or 0
+                        if targetStartValue > 0 then
+                            totalEarned = dataInfo.current - targetStartValue
+                            if totalEarned < 0 then
+                                totalEarned = 0
+                            end
+                        end
+                    else
+                        -- 目标踢出功能未开启，显示本次运行的收入
                         local sessionStartValue = self.config["sessionStart" .. keyUpper] or 0
                         if sessionStartValue > 0 then
                             totalEarned = dataInfo.current - sessionStartValue
-                            -- 如果当前值小于启动值，显示为0
                             if totalEarned < 0 then
-                                totalEarned = 0
-                            end
-                        else
-                            totalEarned = 0
-                        end
-                    else
-                        -- 没有设置目标，显示自配置生成以来的总赚取金额
-                        local totalBaseValue = self.config["total" .. keyUpper .. "Base"] or 0
-                        if totalBaseValue > 0 then
-                            totalEarned = dataInfo.current - totalBaseValue
-                            if totalEarned < 0 then
-                                totalEarned = 0
-                            end
-                        else
-                            -- 如果连totalBase都没有，使用会话开始值
-                            local sessionStartValue = self.config["sessionStart" .. keyUpper] or 0
-                            if sessionStartValue > 0 then
-                                totalEarned = dataInfo.current - sessionStartValue
-                                if totalEarned < 0 then
-                                    totalEarned = 0
-                                end
-                            else
                                 totalEarned = 0
                             end
                         end
