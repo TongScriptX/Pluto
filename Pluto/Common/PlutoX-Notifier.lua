@@ -4,7 +4,7 @@
 local PlutoX = {}
 
 -- Debug 功能
-PlutoX.debugEnabled = false
+PlutoX.debugEnabled = true
 PlutoX.logFile = nil -- 当前日志文件句柄
 PlutoX.currentLogFile = nil -- 当前日志文件路径
 PlutoX.originalPrint = nil -- 保存原始 print 函数
@@ -16,6 +16,7 @@ PlutoX.isInitialized = false -- 是否已初始化
 PlutoX.uploaderConfig = nil
 PlutoX.uploaderHttpService = nil
 PlutoX.uploaderDataMonitor = nil
+PlutoX.uploader = nil  -- 全局上传器引用
 
 -- 设置游戏信息（用于日志文件命名和数据上传）
 function PlutoX.setGameInfo(gameName, username, HttpService)
@@ -875,6 +876,14 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             if success then
                 PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
                 
+                -- 立即上传数据，确保目标完成状态被保存
+                if PlutoX.uploader and PlutoX.uploader.forceUpload then
+                    PlutoX.debug("[目标达成] 立即上传数据...")
+                    PlutoX.uploader:forceUpload()
+                    -- 等待上传完成
+                    task.wait(2)
+                end
+                
                 -- 检查当前值是否高于目标值
                 if currentValue > targetAmount then
                     PlutoX.debug("[目标达成] 当前" .. (dataTypeName or "值") .. "(" .. PlutoX.formatNumber(currentValue) .. ")高于目标(" .. PlutoX.formatNumber(targetAmount) .. ")")
@@ -896,6 +905,8 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                         self.config["base" .. keyUpper] = 0
                         self.config["lastSaved" .. keyUpper] = 0
                         PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
+                        -- 保存配置
+                        self:saveConfig()
                     end
                 end
             else
@@ -2581,6 +2592,9 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 自动启动上传
     uploader:start()
+    
+    -- 保存全局引用
+    PlutoX.uploader = uploader
     
     return uploader
 end
