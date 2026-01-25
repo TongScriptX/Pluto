@@ -2177,7 +2177,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     uploader.lastUploadTime = 0
     uploader.uploadInterval = 5 * 60 -- 5 分钟
     uploader.enabled = true
-    uploader.uploadUrl = "https://pluto-x.pages.dev/api/dashboard/upload"
+    uploader.uploadUrl = "https://api.959966.xyz/api/dashboard/upload"
     uploader.sessionStartTime = os.time() -- 会话开始时间
     uploader.isUploading = false -- 防止重复上传的标志
     -- 从全局变量读取 game_user_id（由 loader 设置）
