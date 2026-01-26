@@ -2189,12 +2189,6 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
     local targetValueLabel = UILibrary:CreateLabel(card, {
         Text = "目标值: " .. (config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
     })
-        end
-    })
-    
-    local targetValueLabel = UILibrary:CreateLabel(card, {
-        Text = "目标值: " .. (config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
-    })
     
     return card, targetValueLabel, function(suppress, toggle) suppressTargetToggleCallback = suppress; targetValueToggle = toggle end
 end
