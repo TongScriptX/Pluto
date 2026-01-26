@@ -875,7 +875,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             -- 无论是否成功都退出游戏
             if success then
                 PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
-                
+
                 -- 立即上传数据，确保目标完成状态被保存
                 if PlutoX.uploader and PlutoX.uploader.forceUpload then
                     PlutoX.debug("[目标达成] 立即上传数据...")
@@ -883,45 +883,61 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                     -- 等待上传完成
                     task.wait(2)
                 end
-                
-                -- 检查当前值是否高于目标值
-                if currentValue > targetAmount then
-                    PlutoX.debug("[目标达成] 当前" .. (dataTypeName or "值") .. "(" .. PlutoX.formatNumber(currentValue) .. ")高于目标(" .. PlutoX.formatNumber(targetAmount) .. ")")
-                    
+
+                -- 清除目标配置（只要达到目标就清除，不管是否高于）
+                if dataTypeName then
+                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
+                    local kickConfigKey = "enable" .. keyUpper .. "Kick"
+
                     -- 关闭目标踢出功能
-                    if dataTypeName then
-                        local keyUpper = dataTypeName:gsub("^%l", string.upper)
-                        local kickConfigKey = "enable" .. keyUpper .. "Kick"
-                        if self.config[kickConfigKey] then
-                            self.config[kickConfigKey] = false
-                            PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
-                        end
+                    if self.config[kickConfigKey] then
+                        self.config[kickConfigKey] = false
+                        PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
                     end
-                    
+
                     -- 清除目标
-                    if dataTypeName then
-                        local keyUpper = dataTypeName:gsub("^%l", string.upper)
-                        self.config["target" .. keyUpper] = 0
-                        self.config["base" .. keyUpper] = 0
-                        self.config["lastSaved" .. keyUpper] = 0
-                        PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
-                        -- 保存配置
-                        self:saveConfig()
-                    end
+                    self.config["target" .. keyUpper] = 0
+                    self.config["base" .. keyUpper] = 0
+                    self.config["lastSaved" .. keyUpper] = 0
+                    PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
+                    -- 保存配置
+                    self:saveConfig()
                 end
             else
                 warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
             end
-            
-            task.wait(1)
-            
+
             -- 注销脚本实例
             PlutoX.unregisterScriptInstance(self.gameName, self.username)
-            
-            -- 关闭游戏
-            pcall(function()
+
+            -- 强制退出游戏（多重保障）
+            task.wait(0.5)
+
+            -- 方法1: 使用 game:Shutdown()
+            local shutdownSuccess = pcall(function()
                 game:Shutdown()
             end)
+
+            if not shutdownSuccess then
+                warn("[目标达成] game:Shutdown() 失败，尝试其他方法...")
+
+                -- 方法2: 踢出玩家
+                local localPlayer = game:GetService("Players").LocalPlayer
+                if localPlayer then
+                    pcall(function()
+                        localPlayer:Kick("目标达成，自动退出")
+                    end)
+                end
+
+                -- 方法3: 强制关闭
+                task.wait(0.5)
+                pcall(function()
+                    while true do
+                        task.wait()
+                        error("强制退出")
+                    end
+                end)
+            end
         end)
         
         return true
@@ -1507,20 +1523,27 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         
         local keyUpper = dataType.id:gsub("^%l", string.upper)
         
+        PlutoX.debug("[目标检测] 检查 " .. dataType.id .. ": enable" .. keyUpper .. "Kick=" .. tostring(self.config["enable" .. keyUpper .. "Kick"]))
+        
         if not self.config["enable" .. keyUpper .. "Kick"] then
             return false
         end
         
         local currentValue = self:fetchValue(dataType)
         if not currentValue then
+            PlutoX.debug("[目标检测] " .. dataType.id .. ": 无法获取当前值")
             return false
         end
         
-        if currentValue >= self.config["target" .. keyUpper] then
+        local targetValue = self.config["target" .. keyUpper] or 0
+        PlutoX.debug("[目标检测] " .. dataType.id .. ": 当前值=" .. tostring(currentValue) .. ", 目标值=" .. tostring(targetValue))
+        
+        if currentValue >= targetValue then
+            PlutoX.debug("[目标检测] " .. dataType.id .. ": 已达成目标！")
             return {
                 dataType = dataType,
                 value = currentValue,
-                targetValue = self.config["target" .. keyUpper],
+                targetValue = targetValue,
                 baseValue = self.config["base" .. keyUpper]
             }
         end
