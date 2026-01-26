@@ -715,8 +715,9 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         end
         
         if self.config.webhookUrl == "" then
-            warn("[Webhook] 未设置 webhookUrl")
-            return false
+            warn("[Webhook] 未设置 webhookUrl，跳过发送但继续执行")
+            -- 返回true，让调用方认为发送成功，继续执行后续逻辑（如退出游戏）
+            return true
         end
         
         local requestFunc = syn and syn.request or http and http.request or request
@@ -1987,12 +1988,8 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
                 PlutoX.debug("[目标踢出] webhookUrl = " .. tostring(config.webhookUrl))
                 PlutoX.debug("[目标踢出] target" .. keyUpper .. " = " .. tostring(config["target" .. keyUpper]))
 
-                if state and config.webhookUrl == "" then
-                    targetValueToggle:Set(false)
-                    UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-                    PlutoX.debug("[目标踢出] Webhook地址未设置")
-                    return
-                end
+                -- 移除对webhook的强制要求，即使没有webhook也可以开启目标踢出
+                -- 注意：没有webhook时，目标达成时无法发送webhook通知，但仍然会退出游戏
 
                 if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
                     targetValueToggle:Set(false)
@@ -2133,18 +2130,8 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
                 PlutoX.debug("[目标踢出] target" .. keyUpper .. " = " .. tostring(config["target" .. keyUpper]))
                 PlutoX.debug("[目标踢出] targetValueToggle = " .. tostring(targetValueToggle))
 
-                if state and config.webhookUrl == "" then
-                    PlutoX.debug("[目标踢出] Webhook地址为空，尝试设置toggle为false")
-                    if targetValueToggle then
-                        targetValueToggle:Set(false)
-                        PlutoX.debug("[目标踢出] toggle已设置为false")
-                    else
-                        PlutoX.debug("[目标踢出] targetValueToggle为nil，无法设置")
-                    end
-                    UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-                    PlutoX.debug("[目标踢出] Webhook地址未设置")
-                    return
-                end
+                -- 移除对webhook的强制要求，即使没有webhook也可以开启目标踢出
+                -- 注意：没有webhook时，目标达成时无法发送webhook通知，但仍然会退出游戏
 
                 if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
                     if targetValueToggle then
