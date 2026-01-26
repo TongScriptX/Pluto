@@ -851,12 +851,19 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     
     -- 发送目标达成通知（异步执行，避免阻塞主循环）
     function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime, dataTypeName)
+        -- 立即设置退出标志，防止重复调用
+        if self.exiting then
+            PlutoX.debug("[目标达成] 已经在退出流程中，跳过重复调用")
+            return
+        end
+        self.exiting = true
+
         -- 使用 spawn 异步执行，避免阻塞主循环
         spawn(function()
             local maxRetries = 3
             local retryDelay = 2
             local success = false
-            
+
             -- 检查是否设置了webhook
             if self.config.webhookUrl == "" then
                 PlutoX.debug("[目标达成] 未设置webhook，跳过发送")
