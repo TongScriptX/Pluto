@@ -2657,10 +2657,151 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         PlutoX.debug("[DataUploader] 数据上传已停止")
     end
     
-    -- 手动触发上传
+    -- 手动触发上传（跳过时间间隔检查）
     function uploader:forceUpload()
-        self.lastUploadTime = 0
-        return self:uploadData()
+        -- 临时保存当前时间，用于后续更新
+        local currentTime = os.time()
+
+        -- 标记为正在上传
+        self.isUploading = true
+
+        PlutoX.debug("[DataUploader] forceUpload: 开始强制上传数据...")
+
+        -- 收集所有数据
+        local data = self.dataMonitor:collectData()
+        if not data or next(data) == nil then
+            PlutoX.debug("[DataUploader] forceUpload: 无数据可上传")
+            self.isUploading = false
+            return false
+        end
+
+        -- 第一次上传时保存初始值到配置文件
+        if self.lastUploadTime == 0 then
+            for id, dataInfo in pairs(data) do
+                if dataInfo.current ~= nil and dataInfo.type.id ~= "leaderboard" then
+                    local keyUpper = dataInfo.type.id:gsub("^%l", string.upper)
+                    self.sessionStartValues[id] = dataInfo.current
+                    self.config["sessionStart" .. keyUpper] = dataInfo.current
+                    PlutoX.debug("[DataUploader] forceUpload: 保存脚本启动初始值到配置: " .. id .. " = " .. tostring(dataInfo.current))
+                end
+            end
+            if self.saveConfig then
+                self.saveConfig()
+            end
+        end
+
+        -- 计算实际有数据的数据类型数量
+        local validDataCount = 0
+        for id, dataInfo in pairs(data) do
+            if dataInfo.current ~= nil or dataInfo.type.id == "leaderboard" then
+                validDataCount = validDataCount + 1
+            end
+        end
+        PlutoX.debug("[DataUploader] forceUpload: 数据收集完成，有效数据类型数量: " .. tostring(validDataCount))
+
+        -- 构建数据对象（JSONB 格式）
+        local dataObject = {}
+        local elapsedTime = currentTime - self.sessionStartTime
+
+        for id, dataInfo in pairs(data) do
+            if dataInfo.current ~= nil or dataInfo.type.id == "leaderboard" then
+                local dataType = dataInfo.type
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                local notifyEnabled = self.config["notify" .. keyUpper]
+
+                PlutoX.debug("[DataUploader] forceUpload: 处理数据类型: " .. id .. ", current=" .. tostring(dataInfo.current) .. ", notifyEnabled=" .. tostring(notifyEnabled))
+
+                if dataType.id == "leaderboard" then
+                    dataObject[id] = {
+                        current = dataInfo.current,
+                        is_on_leaderboard = dataInfo.current ~= nil,
+                        notify_enabled = notifyEnabled
+                    }
+                    PlutoX.debug("[DataUploader] forceUpload: 排行榜数据已添加: " .. id)
+                elseif dataInfo.current ~= nil then
+                    local targetValue = self.config["target" .. keyUpper] or 0
+                    local baseValue = self.config["base" .. keyUpper] or 0
+                    local sessionStart = self.config["sessionStart" .. keyUpper] or dataInfo.current
+
+                    dataObject[id] = {
+                        current = dataInfo.current,
+                        target_value = targetValue,
+                        base_value = baseValue,
+                        session_start = sessionStart,
+                        gained = dataInfo.current - sessionStart,
+                        elapsed_time = elapsedTime,
+                        notify_enabled = notifyEnabled
+                    }
+                    PlutoX.debug("[DataUploader] forceUpload: 数据已添加: " .. id)
+                end
+            end
+        end
+
+        if next(dataObject) == nil then
+            PlutoX.debug("[DataUploader] forceUpload: 最终数据对象为空")
+            self.isUploading = false
+            return false
+        end
+
+        PlutoX.debug("[DataUploader] forceUpload: 最终上传的数据类型: " .. table.concat(self:getKeys(dataObject), ", "))
+
+        -- 构建 HTTP 请求
+        local requestBody = {
+            game_user_id = self.gameUserId,
+            game_name = self.gameName,
+            username = self.username,
+            data = dataObject,
+            elapsed_time = elapsedTime
+        }
+
+        PlutoX.debug("[DataUploader] forceUpload: 准备上传数据到: " .. self.uploadUrl)
+        PlutoX.debug("[DataUploader] forceUpload: 上传数据: game_user_id=" .. tostring(self.gameUserId) .. ", game_name=" .. self.gameName .. ", username=" .. self.username)
+
+        -- 发送 HTTP 请求
+        local reqSuccess, response = pcall(function()
+            return self.HttpService:RequestAsync({
+                Url = self.uploadUrl,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = self.HttpService:JSONEncode(requestBody)
+            })
+        end)
+
+        PlutoX.debug("[DataUploader] forceUpload: HTTP 请求完成，reqSuccess=" .. tostring(reqSuccess))
+
+        if reqSuccess then
+            local statusCode = response.Success and response.StatusCode or response.StatusCode
+            local responseBody = response.Body
+
+            PlutoX.debug("[DataUploader] forceUpload: HTTP 响应状态码: " .. tostring(statusCode))
+
+            if statusCode == 200 or statusCode == 201 then
+                PlutoX.debug("[DataUploader] forceUpload: ✓ 上传成功")
+
+                -- 更新最后上传时间
+                self.lastUploadTime = currentTime
+                self.retryCount = 0
+
+                return true
+            else
+                PlutoX.debug("[DataUploader] forceUpload: ✗ 上传失败，状态码: " .. tostring(statusCode))
+                return false
+            end
+        else
+            PlutoX.debug("[DataUploader] forceUpload: ✗ HTTP 请求失败: " .. tostring(response))
+            return false
+        end
+    end
+
+    -- 辅助函数：获取表的所有键
+    function uploader:getKeys(tbl)
+        local keys = {}
+        for k, v in pairs(tbl) do
+            table.insert(keys, k)
+        end
+        return keys
     end
     
     -- 自动启动上传
