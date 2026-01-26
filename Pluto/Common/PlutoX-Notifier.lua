@@ -2131,16 +2131,25 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
                 PlutoX.debug("[目标踢出] 尝试设置状态: " .. tostring(state) .. ", 当前配置: " .. tostring(config["enable" .. keyUpper .. "Kick"]))
                 PlutoX.debug("[目标踢出] webhookUrl = " .. tostring(config.webhookUrl))
                 PlutoX.debug("[目标踢出] target" .. keyUpper .. " = " .. tostring(config["target" .. keyUpper]))
+                PlutoX.debug("[目标踢出] targetValueToggle = " .. tostring(targetValueToggle))
 
                 if state and config.webhookUrl == "" then
-                    targetValueToggle:Set(false)
+                    PlutoX.debug("[目标踢出] Webhook地址为空，尝试设置toggle为false")
+                    if targetValueToggle then
+                        targetValueToggle:Set(false)
+                        PlutoX.debug("[目标踢出] toggle已设置为false")
+                    else
+                        PlutoX.debug("[目标踢出] targetValueToggle为nil，无法设置")
+                    end
                     UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
                     PlutoX.debug("[目标踢出] Webhook地址未设置")
                     return
                 end
 
                 if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
-                    targetValueToggle:Set(false)
+                    if targetValueToggle then
+                        targetValueToggle:Set(false)
+                    end
                     UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
                     PlutoX.debug("[目标踢出] 目标值未设置: " .. tostring(config["target" .. keyUpper]))
                     return
@@ -2154,7 +2163,9 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
                 PlutoX.debug("[目标踢出] 当前值: " .. tostring(currentValue) .. ", 目标值: " .. tostring(config["target" .. keyUpper]))
 
                 if state and currentValue and currentValue >= config["target" .. keyUpper] then
-                    targetValueToggle:Set(false)
+                    if targetValueToggle then
+                        targetValueToggle:Set(false)
+                    end
                     UILibrary:Notify({
                         Title = "配置警告",
                         Text = string.format("当前值(%s)已超过目标(%s)",
@@ -2185,6 +2196,8 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
             end
         end
     })
+    
+    PlutoX.debug("[createTargetValueCardSimple] targetValueToggle创建完成: " .. tostring(targetValueToggle))
     
     local targetValueLabel = UILibrary:CreateLabel(card, {
         Text = "目标值: " .. (config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
