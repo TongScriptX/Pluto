@@ -647,7 +647,7 @@ end
 
 -- Webhook 管理
 
-function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
     local manager = {}
     
     manager.config = config
@@ -656,11 +656,31 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     manager.gameName = gameName
     manager.username = username
     manager.sendingWelcome = false
+    manager.configFile = configFile or "PlutoX/" .. gameName .. "_config.json"
     
     -- 保存上传器需要的参数
     PlutoX.uploaderConfig = config
     PlutoX.uploaderHttpService = HttpService
     PlutoX.uploaderUILibrary = UILibrary
+    
+    -- 保存配置的方法
+    function manager:saveConfig()
+        PlutoX.debug("[WebhookManager] saveConfig 被调用")
+        local allConfigs = {}
+        
+        if isfile(self.configFile) then
+            local ok, content = pcall(function()
+                return self.HttpService:JSONDecode(readfile(self.configFile))
+            end)
+            if ok and type(content) == "table" then
+                allConfigs = content
+            end
+        end
+        
+        allConfigs[self.username] = self.config
+        writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
+        PlutoX.debug("[WebhookManager] 配置已写入文件: " .. self.configFile)
+    end
     
     -- 自动注册脚本实例
     local instanceId = gameName .. ":" .. username
@@ -907,6 +927,13 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             else
                 warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
             end
+
+            -- 设置标志，防止重复退出
+            if self.exiting then
+                PlutoX.debug("[目标达成] 已经在退出流程中，跳过重复退出")
+                return
+            end
+            self.exiting = true
 
             -- 注销脚本实例
             PlutoX.unregisterScriptInstance(self.gameName, self.username)

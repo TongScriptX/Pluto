@@ -1712,7 +1712,7 @@ local function performAutoRobATMs()
     end)
 end
 
-local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
 local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector)
 disconnectDetector:init()
