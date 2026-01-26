@@ -1994,7 +1994,11 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
                 return
             end
 
-            local currentValue = fetchValue()
+            local fetchSuccess, currentValue = pcall(fetchValue)
+            if not fetchSuccess then
+                PlutoX.debug("[目标踢出] fetchValue 调用失败: " .. tostring(currentValue))
+                currentValue = nil
+            end
             PlutoX.debug("[目标踢出] 当前值: " .. tostring(currentValue) .. ", 目标值: " .. tostring(config["target" .. keyUpper]))
 
             if state and currentValue and currentValue >= config["target" .. keyUpper] then
@@ -2121,7 +2125,11 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
                 return
             end
 
-            local currentValue = fetchValue()
+            local fetchSuccess, currentValue = pcall(fetchValue)
+            if not fetchSuccess then
+                PlutoX.debug("[目标踢出] fetchValue 调用失败: " .. tostring(currentValue))
+                currentValue = nil
+            end
             PlutoX.debug("[目标踢出] 当前值: " .. tostring(currentValue) .. ", 目标值: " .. tostring(config["target" .. keyUpper]))
 
             if state and currentValue and currentValue >= config["target" .. keyUpper] then
