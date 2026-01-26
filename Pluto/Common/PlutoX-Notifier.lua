@@ -1974,22 +1974,29 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
             
             -- 检查状态是否与当前配置相同，避免重复处理
             if state == config["enable" .. keyUpper .. "Kick"] then
+                PlutoX.debug("[目标踢出] 状态未变化，跳过: " .. tostring(state))
                 return
             end
-            
+
+            PlutoX.debug("[目标踢出] 尝试设置状态: " .. tostring(state) .. ", 当前配置: " .. tostring(config["enable" .. keyUpper .. "Kick"]))
+
             if state and config.webhookUrl == "" then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
+                PlutoX.debug("[目标踢出] Webhook地址未设置")
                 return
             end
-            
+
             if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
+                PlutoX.debug("[目标踢出] 目标值未设置: " .. tostring(config["target" .. keyUpper]))
                 return
             end
-            
+
             local currentValue = fetchValue()
+            PlutoX.debug("[目标踢出] 当前值: " .. tostring(currentValue) .. ", 目标值: " .. tostring(config["target" .. keyUpper]))
+
             if state and currentValue and currentValue >= config["target" .. keyUpper] then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({
@@ -1999,10 +2006,12 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
                         PlutoX.formatNumber(config["target" .. keyUpper])),
                     Duration = 6
                 })
+                PlutoX.debug("[目标踢出] 当前值已达到或超过目标，阻止开启")
                 return
             end
-            
+
             config["enable" .. keyUpper .. "Kick"] = state
+            PlutoX.debug("[目标踢出] 已更新配置: enable" .. keyUpper .. "Kick = " .. tostring(state))
             UILibrary:Notify({
                 Title = "配置更新",
                 Text = string.format("目标踢出: %s\n目标: %s",
@@ -2092,22 +2101,29 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
             
             -- 检查状态是否与当前配置相同，避免重复处理
             if state == config["enable" .. keyUpper .. "Kick"] then
+                PlutoX.debug("[目标踢出] 状态未变化，跳过: " .. tostring(state))
                 return
             end
-            
+
+            PlutoX.debug("[目标踢出] 尝试设置状态: " .. tostring(state) .. ", 当前配置: " .. tostring(config["enable" .. keyUpper .. "Kick"]))
+
             if state and config.webhookUrl == "" then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
+                PlutoX.debug("[目标踢出] Webhook地址未设置")
                 return
             end
-            
+
             if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
+                PlutoX.debug("[目标踢出] 目标值未设置: " .. tostring(config["target" .. keyUpper]))
                 return
             end
-            
+
             local currentValue = fetchValue()
+            PlutoX.debug("[目标踢出] 当前值: " .. tostring(currentValue) .. ", 目标值: " .. tostring(config["target" .. keyUpper]))
+
             if state and currentValue and currentValue >= config["target" .. keyUpper] then
                 targetValueToggle:Set(false)
                 UILibrary:Notify({
@@ -2117,10 +2133,12 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
                         PlutoX.formatNumber(config["target" .. keyUpper])),
                     Duration = 6
                 })
+                PlutoX.debug("[目标踢出] 当前值已达到或超过目标，阻止开启")
                 return
             end
-            
+
             config["enable" .. keyUpper .. "Kick"] = state
+            PlutoX.debug("[目标踢出] 已更新配置: enable" .. keyUpper .. "Kick = " .. tostring(state))
             UILibrary:Notify({
                 Title = "配置更新",
                 Text = string.format("目标踢出: %s\n目标: %s",
