@@ -2263,7 +2263,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     uploader.username = username
     uploader.dataMonitor = dataMonitor
     uploader.disconnectDetector = disconnectDetector
-    uploader.lastUploadTime = 0
+    uploader.lastUploadTime = os.time() -- 初始化为当前时间，避免第一次上传时的时间差过大
     uploader.uploadInterval = 5 * 60 -- 5 分钟
     uploader.enabled = true
     uploader.uploadUrl = "https://api.959966.xyz/api/dashboard/upload"

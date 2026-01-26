@@ -2834,9 +2834,10 @@ PlutoX.createAboutPage(aboutContent, UILibrary)
 local checkInterval = 1
 local lastRobbedAmount = 0
 local lastSendTime = os.time()
+local shouldExit = false -- 标记是否应该退出主循环
 
 spawn(function()
-    while true do
+    while not shouldExit do
         local currentTime = os.time()
 
         -- 更新所有数据类型的显示
@@ -2863,9 +2864,13 @@ spawn(function()
             end
         end
 
-        -- 目标值达成检测（异步执行，避免阻塞主循环）
+        -- 目标值达成检测
         local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
         if achieved then
+            -- 标记应该退出
+            shouldExit = true
+            
+            -- 目标达成，发送通知并退出
             webhookManager:sendTargetAchieved(
                 achieved.value,
                 achieved.targetValue,
@@ -2873,8 +2878,12 @@ spawn(function()
                 os.time() - dataMonitor.startTime,
                 achieved.dataType.name
             )
-            -- 注意：sendTargetAchieved 现在是异步执行的，不会阻塞主循环
-            -- 所以不需要 return，主循环会继续运行
+            
+            -- 等待异步操作完成（webhook发送、数据上传、配置保存）
+            task.wait(3)
+            
+            -- 退出主循环
+            break
         end
 
         -- 排行榜踢出检测（异步执行，避免阻塞主循环）
