@@ -2710,6 +2710,13 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 手动触发上传（跳过时间间隔检查）
     function uploader:forceUpload()
+        -- 检查HttpService是否存在
+        if not self.HttpService then
+            PlutoX.warn("[DataUploader] forceUpload: HttpService为nil，无法上传数据")
+            self.isUploading = false
+            return false
+        end
+
         -- 使用pcall包装整个函数，确保错误时重置isUploading
         local success, result = pcall(function()
             -- 临时保存当前时间，用于后续更新
