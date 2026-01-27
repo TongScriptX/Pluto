@@ -46,6 +46,17 @@ local function safePositionUpdate(targetCFrame)
     end
 end
 
+-- PlutoX 模块加载（必须在UILibrary加载之前）
+local plutoSuccess, PlutoX = pcall(function()
+    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
+end)
+
+if not plutoSuccess or not PlutoX then
+    error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
+end
+
 -- UI 库加载
 local UILibrary
 local success, result = pcall(function()
@@ -63,17 +74,6 @@ if success and result then
     UILibrary = result
 else
     error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
-end
-
--- PlutoX 模块加载
-local success, PlutoX = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
-    local source = game:HttpGet(url)
-    return loadstring(source)()
-end)
-
-if not success or not PlutoX then
-    error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
 
 -- 玩家和游戏信息
