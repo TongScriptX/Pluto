@@ -190,12 +190,12 @@ function PlutoX.debug(...)
     if not PlutoX.debugEnabled then
         return
     end
-    
+
     local timestamp = os.date("%H:%M:%S")
     local info = debug.getinfo(2, "Sl")
     local source = info and info.short_src or "unknown"
     local line = info and info.currentline or 0
-    
+
     -- 格式化输出
     local args = {...}
     local formatted = {}
@@ -206,9 +206,33 @@ function PlutoX.debug(...)
             formatted[i] = tostring(arg)
         end
     end
-    
+
     local logMessage = string.format("[%s][DEBUG][%s:%d] %s\n", timestamp, source, line, table.concat(formatted, " "))
-    
+
+    -- 输出到控制台（通过重写的 print 函数）
+    print(logMessage:gsub("\n$", ""))
+end
+
+-- 警告函数（始终输出）
+function PlutoX.warn(...)
+    local timestamp = os.date("%H:%M:%S")
+    local info = debug.getinfo(2, "Sl")
+    local source = info and info.short_src or "unknown"
+    local line = info and info.currentline or 0
+
+    -- 格式化输出
+    local args = {...}
+    local formatted = {}
+    for i, arg in ipairs(args) do
+        if type(arg) == "table" then
+            formatted[i] = "{...}"
+        else
+            formatted[i] = tostring(arg)
+        end
+    end
+
+    local logMessage = string.format("[%s][WARNING][%s:%d] %s\n", timestamp, source, line, table.concat(formatted, " "))
+
     -- 输出到控制台（通过重写的 print 函数）
     print(logMessage:gsub("\n$", ""))
 end
