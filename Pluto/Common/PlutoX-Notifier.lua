@@ -2728,14 +2728,15 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 elseif dataInfo.current ~= nil then
                     local targetValue = self.config["target" .. keyUpper] or 0
                     local baseValue = self.config["base" .. keyUpper] or 0
-                    local sessionStart = self.config["sessionStart" .. keyUpper] or dataInfo.current
+                    local initial_value = self.config["sessionStart" .. keyUpper] or dataInfo.current
 
                     dataObject[id] = {
                         current = dataInfo.current,
                         target_value = targetValue,
                         base_value = baseValue,
-                        session_start = sessionStart,
-                        gained = dataInfo.current - sessionStart,
+                        session_start = self.sessionStartTime,  -- 使用会话开始时间戳
+                        initial_value = initial_value,  -- 游戏数据初始值
+                        gained = dataInfo.current - initial_value,
                         elapsed_time = elapsedTime,
                         notify_enabled = notifyEnabled
                     }
