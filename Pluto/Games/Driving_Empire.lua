@@ -2870,8 +2870,8 @@ spawn(function()
             -- 标记应该退出
             shouldExit = true
 
-            -- 目标达成，发送通知并退出
-            webhookManager:sendTargetAchieved(
+            -- 目标达成，发送通知（同步执行，等待所有操作完成）
+            local allSuccess = webhookManager:sendTargetAchieved(
                 achieved.value,
                 achieved.targetValue,
                 achieved.baseValue,
@@ -2879,14 +2879,14 @@ spawn(function()
                 achieved.dataType.name
             )
 
-            -- 等待异步操作完成（webhook发送、数据上传、配置保存）
-            task.wait(3)
+            -- 输出最终结果
+            if allSuccess then
+                PlutoX.debug("[主循环] 目标达成：所有操作成功完成，已退出游戏")
+            else
+                warn("[主循环] 目标达成：部分操作失败，但已退出游戏")
+            end
 
-            -- 直接执行退出逻辑，确保游戏一定会退出
-            pcall(function() game:Shutdown() end)
-            pcall(function() localPlayer:Kick(string.format("%s目标值已达成", achieved.dataType.name)) end)
-
-            -- 退出主循环
+            -- 退出主循环（sendTargetAchieved已包含游戏退出逻辑）
             break
         end
 

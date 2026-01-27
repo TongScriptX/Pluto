@@ -849,137 +849,174 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         return true
     end
     
-    -- 发送目标达成通知（异步执行，避免阻塞主循环）
+    -- 发送目标达成通知（同步执行，确保所有操作完成）
     function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime, dataTypeName)
         -- 立即设置退出标志，防止重复调用
         if self.exiting then
             PlutoX.debug("[目标达成] 已经在退出流程中，跳过重复调用")
-            return
+            return false
         end
         self.exiting = true
 
-        -- 使用 spawn 异步执行，避免阻塞主循环
-        spawn(function()
+        -- 记录每个步骤的结果
+        local steps = {
+            webhook = { name = "Webhook发送", success = false, message = "" },
+            upload = { name = "数据上传", success = false, message = "" },
+            config = { name = "配置保存", success = false, message = "" }
+        }
+
+        -- 步骤1: 发送Webhook
+        if self.config.webhookUrl == "" then
+            steps.webhook.success = true
+            steps.webhook.message = "未设置webhook，跳过发送"
+            PlutoX.debug("[目标达成] " .. steps.webhook.message)
+        else
             local maxRetries = 3
             local retryDelay = 2
-            local success = false
+            for attempt = 1, maxRetries do
+                local success = self:dispatchWebhook({
+                    embeds = {{
+                        title = "🎯 目标达成",
+                        description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
+                        fields = {
+                            {
+                                name = "📊 达成信息",
+                                value = string.format(
+                                    "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
+                                    dataTypeName or "未知",
+                                    PlutoX.formatNumber(currentValue),
+                                    PlutoX.formatNumber(targetAmount),
+                                    PlutoX.formatNumber(baseAmount),
+                                    PlutoX.formatElapsedTime(runTime)),
+                                inline = false
+                            }
+                        },
+                        color = _G.PRIMARY_COLOR or 5793266,
+                        timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
+                        footer = { text = "桐 · TStudioX" }
+                    }}
+                })
 
-            -- 检查是否设置了webhook
-            if self.config.webhookUrl == "" then
-                PlutoX.debug("[目标达成] 未设置webhook，跳过发送")
-                success = true
-            else
-                -- 有webhook，尝试发送
-                for attempt = 1, maxRetries do
-                    success = self:dispatchWebhook({
-                        embeds = {{
-                            title = "🎯 目标达成",
-                            description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
-                            fields = {
-                                {
-                                    name = "📊 达成信息",
-                                    value = string.format(
-                                        "**数据类型**: %s\n**当前值**: %s\n**目标值**: %s\n**基准值**: %s\n**运行时长**: %s",
-                                        dataTypeName or "未知",
-                                        PlutoX.formatNumber(currentValue),
-                                        PlutoX.formatNumber(targetAmount),
-                                        PlutoX.formatNumber(baseAmount),
-                                        PlutoX.formatElapsedTime(runTime)),
-                                    inline = false
-                                }
-                            },
-                            color = _G.PRIMARY_COLOR or 5793266,
-                            timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
-                            footer = { text = "桐 · TStudioX" }
-                        }}
-                    })
-                    
-                    if success then
-                        PlutoX.debug("[目标达成] Webhook发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）")
-                        break
-                    else
-                        warn("[目标达成] Webhook发送失败，尝试 " .. attempt .. "/" .. maxRetries)
-                        if attempt < maxRetries then
-                            task.wait(retryDelay)
-                        end
+                if success then
+                    steps.webhook.success = true
+                    steps.webhook.message = "发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）"
+                    PlutoX.debug("[目标达成] " .. steps.webhook.message)
+                    break
+                else
+                    steps.webhook.message = "发送失败（尝试 " .. attempt .. "/" .. maxRetries .. "）"
+                    warn("[目标达成] " .. steps.webhook.message)
+                    if attempt < maxRetries then
+                        task.wait(retryDelay)
                     end
                 end
             end
-            
-            -- 无论是否成功都退出游戏
-            if success then
-                -- 立即上传数据，确保目标完成状态被保存
-                if PlutoX.uploader and PlutoX.uploader.forceUpload then
-                    PlutoX.debug("[目标达成] 立即上传数据...")
-                    PlutoX.uploader:forceUpload()
-                    -- 等待上传完成
-                    task.wait(2)
-                end
+        end
 
-                -- 清除目标配置（只要达到目标就清除，不管是否高于）
-                if dataTypeName then
-                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
-                    local kickConfigKey = "enable" .. keyUpper .. "Kick"
-
-                    -- 关闭目标踢出功能
-                    if self.config[kickConfigKey] then
-                        self.config[kickConfigKey] = false
-                        PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
-                    end
-
-                    -- 清除目标
-                    self.config["target" .. keyUpper] = 0
-                    self.config["base" .. keyUpper] = 0
-                    self.config["lastSaved" .. keyUpper] = 0
-                    PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
-                    -- 保存配置
-                    self:saveConfig()
-                end
+        -- 步骤2: 上传数据
+        if PlutoX.uploader and PlutoX.uploader.forceUpload then
+            PlutoX.debug("[目标达成] 开始上传数据...")
+            local uploadSuccess = PlutoX.uploader:forceUpload()
+            if uploadSuccess then
+                steps.upload.success = true
+                steps.upload.message = "上传成功"
+                PlutoX.debug("[目标达成] " .. steps.upload.message)
             else
-                warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
+                steps.upload.message = "上传失败"
+                warn("[目标达成] " .. steps.upload.message)
+            end
+        else
+            steps.upload.success = true
+            steps.upload.message = "未设置上传器，跳过上传"
+            PlutoX.debug("[目标达成] " .. steps.upload.message)
+        end
+
+        -- 步骤3: 保存配置
+        if dataTypeName then
+            local keyUpper = dataTypeName:gsub("^%l", string.upper)
+            local kickConfigKey = "enable" .. keyUpper .. "Kick"
+
+            -- 关闭目标踢出功能
+            if self.config[kickConfigKey] then
+                self.config[kickConfigKey] = false
+                PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
             end
 
-            -- 设置标志，防止重复退出
-            if self.exiting then
-                PlutoX.debug("[目标达成] 已经在退出流程中，跳过重复退出")
-                return
-            end
-            self.exiting = true
+            -- 清除目标
+            self.config["target" .. keyUpper] = 0
+            self.config["base" .. keyUpper] = 0
+            self.config["lastSaved" .. keyUpper] = 0
 
-            -- 注销脚本实例
-            PlutoX.unregisterScriptInstance(self.gameName, self.username)
-
-            -- 强制退出游戏（多重保障）
-            task.wait(0.5)
-
-            -- 方法1: 使用 game:Shutdown()
-            local shutdownSuccess = pcall(function()
-                game:Shutdown()
+            -- 保存配置
+            local saveSuccess = pcall(function()
+                self:saveConfig()
             end)
 
-            if not shutdownSuccess then
-                warn("[目标达成] game:Shutdown() 失败，尝试其他方法...")
+            if saveSuccess then
+                steps.config.success = true
+                steps.config.message = "配置已保存并清除目标值"
+                PlutoX.debug("[目标达成] " .. steps.config.message)
+            else
+                steps.config.message = "配置保存失败"
+                warn("[目标达成] " .. steps.config.message)
+            end
+        else
+            steps.config.success = true
+            steps.config.message = "未指定数据类型，跳过配置保存"
+            PlutoX.debug("[目标达成] " .. steps.config.message)
+        end
 
-                -- 方法2: 踢出玩家
-                local localPlayer = game:GetService("Players").LocalPlayer
-                if localPlayer then
-                    pcall(function()
-                        localPlayer:Kick("目标达成，自动退出")
-                    end)
-                end
+        -- 汇总所有步骤的结果
+        local allSuccess = true
+        local logMessage = "[目标达成] 操作完成状态：\n"
+        for _, step in pairs(steps) do
+            local status = step.success and "✓" or "✗"
+            logMessage = logMessage .. string.format("  %s %s: %s\n", status, step.name, step.message)
+            if not step.success then
+                allSuccess = false
+            end
+        end
 
-                -- 方法3: 强制关闭
-                task.wait(0.5)
+        if allSuccess then
+            logMessage = logMessage .. "所有操作成功完成，准备退出游戏..."
+            PlutoX.debug(logMessage)
+        else
+            logMessage = logMessage .. "部分操作失败，但仍将退出游戏..."
+            warn(logMessage)
+        end
+
+        -- 注销脚本实例
+        PlutoX.unregisterScriptInstance(self.gameName, self.username)
+
+        -- 强制退出游戏（多重保障）
+        task.wait(0.5)
+
+        -- 方法1: 使用 game:Shutdown()
+        local shutdownSuccess = pcall(function()
+            game:Shutdown()
+        end)
+
+        if not shutdownSuccess then
+            warn("[目标达成] game:Shutdown() 失败，尝试其他方法...")
+
+            -- 方法2: 踢出玩家
+            local localPlayer = game:GetService("Players").LocalPlayer
+            if localPlayer then
                 pcall(function()
-                    while true do
-                        task.wait()
-                        error("强制退出")
-                    end
+                    localPlayer:Kick("目标达成，自动退出")
                 end)
             end
-        end)
-        
-        return true
+
+            -- 方法3: 强制关闭
+            task.wait(0.5)
+            pcall(function()
+                while true do
+                    task.wait()
+                    error("强制退出")
+                end
+            end)
+        end
+
+        return allSuccess
     end
     
     -- 发送掉线通知
