@@ -2308,6 +2308,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     uploader.dataMonitor = dataMonitor
     uploader.disconnectDetector = disconnectDetector
     uploader.lastUploadTime = os.time() -- 初始化为当前时间，避免第一次上传时的时间差过大
+    uploader.hasInitialized = false -- 标记是否已初始化（保存sessionStartValues）
     uploader.uploadInterval = 5 * 60 -- 5 分钟
     uploader.enabled = true
     uploader.uploadUrl = "https://api.959966.xyz/api/dashboard/upload"
@@ -2360,7 +2361,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         end
 
         -- 第一次上传时保存初始值到配置文件
-        if self.lastUploadTime == 0 then
+        if not self.hasInitialized then
             for id, dataInfo in pairs(data) do
                 if dataInfo.current ~= nil and dataInfo.type.id ~= "leaderboard" then
                     local keyUpper = dataInfo.type.id:gsub("^%l", string.upper)
@@ -2374,6 +2375,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             if self.saveConfig then
                 self.saveConfig()
             end
+            self.hasInitialized = true
         end
 
         -- 计算实际有数据的数据类型数量
@@ -2620,8 +2622,8 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     -- 启动上传定时器
     function uploader:start()
         PlutoX.debug("[DataUploader] 正在启动上传定时器...")
-        -- 立即上传一次初始数据
-        self:uploadData()
+        -- 立即上传一次初始数据（使用forceUpload跳过时间间隔检查）
+        self:forceUpload()
         
         -- 每 5 分钟上传一次
         -- 创建局部变量以在 spawn 中保持引用
@@ -2720,7 +2722,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         end
 
         -- 第一次上传时保存初始值到配置文件
-        if self.lastUploadTime == 0 then
+        if not self.hasInitialized then
             for id, dataInfo in pairs(data) do
                 if dataInfo.current ~= nil and dataInfo.type.id ~= "leaderboard" then
                     local keyUpper = dataInfo.type.id:gsub("^%l", string.upper)
@@ -2732,6 +2734,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             if self.saveConfig then
                 self.saveConfig()
             end
+            self.hasInitialized = true
         end
 
         -- 计算实际有数据的数据类型数量
