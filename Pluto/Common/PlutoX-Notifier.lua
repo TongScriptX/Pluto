@@ -4,7 +4,7 @@
 local PlutoX = {}
 
 -- Debug 功能
-PlutoX.debugEnabled = false
+PlutoX.debugEnabled = true
 PlutoX.logFile = nil -- 当前日志文件句柄
 PlutoX.currentLogFile = nil -- 当前日志文件路径
 PlutoX.originalPrint = nil -- 保存原始 print 函数
