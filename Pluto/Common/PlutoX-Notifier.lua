@@ -25,6 +25,11 @@ function PlutoX.setGameInfo(gameName, username, HttpService)
     if HttpService then
         PlutoX.uploaderHttpService = HttpService
     end
+
+    -- 自动初始化调试系统（如果调试模式开启）
+    if PlutoX.debugEnabled and not PlutoX.isInitialized then
+        PlutoX.initDebugSystem()
+    end
 end
 
 -- 获取日志文件路径
@@ -2705,21 +2710,23 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     
     -- 手动触发上传（跳过时间间隔检查）
     function uploader:forceUpload()
-        -- 临时保存当前时间，用于后续更新
-        local currentTime = os.time()
+        -- 使用pcall包装整个函数，确保错误时重置isUploading
+        local success, result = pcall(function()
+            -- 临时保存当前时间，用于后续更新
+            local currentTime = os.time()
 
-        -- 标记为正在上传
-        self.isUploading = true
+            -- 标记为正在上传
+            self.isUploading = true
 
-        PlutoX.debug("[DataUploader] forceUpload: 开始强制上传数据...")
+            PlutoX.debug("[DataUploader] forceUpload: 开始强制上传数据...")
 
-        -- 收集所有数据
-        local data = self.dataMonitor:collectData()
-        if not data or next(data) == nil then
-            PlutoX.debug("[DataUploader] forceUpload: 无数据可上传")
-            self.isUploading = false
-            return false
-        end
+            -- 收集所有数据
+            local data = self.dataMonitor:collectData()
+            if not data or next(data) == nil then
+                PlutoX.debug("[DataUploader] forceUpload: 无数据可上传")
+                self.isUploading = false
+                return false
+            end
 
         -- 第一次上传时保存初始值到配置文件
         if not self.hasInitialized then
@@ -2798,7 +2805,12 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
             return false
         end
 
-        PlutoX.debug("[DataUploader] forceUpload: 最终上传的数据类型: " .. table.concat(self:getKeys(dataObject), ", "))
+        -- 获取数据类型的键（内联实现，避免调用self:getKeys）
+        local keys = {}
+        for k, v in pairs(dataObject) do
+            table.insert(keys, k)
+        end
+        PlutoX.debug("[DataUploader] forceUpload: 最终上传的数据类型: " .. table.concat(keys, ", "))
 
         -- 构建 HTTP 请求
         local requestBody = {
@@ -2826,28 +2838,38 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
 
         PlutoX.debug("[DataUploader] forceUpload: HTTP 请求完成，reqSuccess=" .. tostring(reqSuccess))
 
-        if reqSuccess then
-            local statusCode = response.Success and response.StatusCode or response.StatusCode
-            local responseBody = response.Body
+            if reqSuccess then
+                local statusCode = response.Success and response.StatusCode or response.StatusCode
+                local responseBody = response.Body
 
-            PlutoX.debug("[DataUploader] forceUpload: HTTP 响应状态码: " .. tostring(statusCode))
+                PlutoX.debug("[DataUploader] forceUpload: HTTP 响应状态码: " .. tostring(statusCode))
 
-            if statusCode == 200 or statusCode == 201 then
-                PlutoX.debug("[DataUploader] forceUpload: ✓ 上传成功")
+                if statusCode == 200 or statusCode == 201 then
+                    PlutoX.debug("[DataUploader] forceUpload: ✓ 上传成功")
 
-                -- 更新最后上传时间
-                self.lastUploadTime = currentTime
-                self.retryCount = 0
+                    -- 更新最后上传时间
+                    self.lastUploadTime = currentTime
+                    self.retryCount = 0
 
-                return true
+                    return true
+                else
+                    PlutoX.debug("[DataUploader] forceUpload: ✗ 上传失败，状态码: " .. tostring(statusCode))
+                    return false
+                end
             else
-                PlutoX.debug("[DataUploader] forceUpload: ✗ 上传失败，状态码: " .. tostring(statusCode))
+                PlutoX.debug("[DataUploader] forceUpload: ✗ HTTP 请求失败: " .. tostring(response))
                 return false
             end
-        else
-            PlutoX.debug("[DataUploader] forceUpload: ✗ HTTP 请求失败: " .. tostring(response))
+        end)
+
+        -- 如果出错，确保重置isUploading标志
+        if not success then
+            PlutoX.warn("[DataUploader] forceUpload: 发生错误: " .. tostring(result))
+            self.isUploading = false
             return false
         end
+
+        return result
     end
 
     -- 辅助函数：获取表的所有键
