@@ -2767,6 +2767,13 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     local baseValue = self.config["base" .. keyUpper] or 0
                     local initial_value = self.config["sessionStart" .. keyUpper] or dataInfo.current
 
+                    -- 调试：记录目标值
+                    if targetValue > 0 then
+                        PlutoX.warn("[DataUploader] forceUpload: " .. id .. " 目标值=" .. tostring(targetValue) .. ", 当前值=" .. tostring(dataInfo.current))
+                    else
+                        PlutoX.debug("[DataUploader] forceUpload: " .. id .. " 未设置目标值")
+                    end
+
                     dataObject[id] = {
                         current = dataInfo.current,
                         target_value = targetValue,
