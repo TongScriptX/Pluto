@@ -4,7 +4,7 @@
 local PlutoX = {}
 
 -- Debug 功能
-PlutoX.debugEnabled = true
+PlutoX.debugEnabled = false
 PlutoX.logFile = nil -- 当前日志文件句柄
 PlutoX.currentLogFile = nil -- 当前日志文件路径
 PlutoX.originalPrint = nil -- 保存原始 print 函数
@@ -647,7 +647,7 @@ end
 
 -- Webhook 管理
 
-function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
     local manager = {}
     
     manager.config = config
@@ -656,11 +656,31 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     manager.gameName = gameName
     manager.username = username
     manager.sendingWelcome = false
+    manager.configFile = configFile or "PlutoX/" .. gameName .. "_config.json"
     
     -- 保存上传器需要的参数
     PlutoX.uploaderConfig = config
     PlutoX.uploaderHttpService = HttpService
     PlutoX.uploaderUILibrary = UILibrary
+    
+    -- 保存配置的方法
+    function manager:saveConfig()
+        PlutoX.debug("[WebhookManager] saveConfig 被调用")
+        local allConfigs = {}
+        
+        if isfile(self.configFile) then
+            local ok, content = pcall(function()
+                return self.HttpService:JSONDecode(readfile(self.configFile))
+            end)
+            if ok and type(content) == "table" then
+                allConfigs = content
+            end
+        end
+        
+        allConfigs[self.username] = self.config
+        writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
+        PlutoX.debug("[WebhookManager] 配置已写入文件: " .. self.configFile)
+    end
     
     -- 自动注册脚本实例
     local instanceId = gameName .. ":" .. username
@@ -715,7 +735,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         end
         
         if self.config.webhookUrl == "" then
-            warn("[Webhook] 未设置 webhookUrl")
+            -- 未设置webhook，返回false让调用方处理
             return false
         end
         
@@ -829,16 +849,32 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         return true
     end
     
-    -- 发送目标达成通知（异步执行，避免阻塞主循环）
+    -- 发送目标达成通知（同步执行，确保所有操作完成）
     function manager:sendTargetAchieved(currentValue, targetAmount, baseAmount, runTime, dataTypeName)
-        -- 使用 spawn 异步执行，避免阻塞主循环
-        spawn(function()
+        -- 立即设置退出标志，防止重复调用
+        if self.exiting then
+            PlutoX.debug("[目标达成] 已经在退出流程中，跳过重复调用")
+            return false
+        end
+        self.exiting = true
+
+        -- 记录每个步骤的结果
+        local steps = {
+            webhook = { name = "Webhook发送", success = false, message = "" },
+            upload = { name = "数据上传", success = false, message = "" },
+            config = { name = "配置保存", success = false, message = "" }
+        }
+
+        -- 步骤1: 发送Webhook
+        if self.config.webhookUrl == "" then
+            steps.webhook.success = true
+            steps.webhook.message = "未设置webhook，跳过发送"
+            PlutoX.debug("[目标达成] " .. steps.webhook.message)
+        else
             local maxRetries = 3
             local retryDelay = 2
-            local success = false
-            
             for attempt = 1, maxRetries do
-                success = self:dispatchWebhook({
+                local success = self:dispatchWebhook({
                     embeds = {{
                         title = "🎯 目标达成",
                         description = string.format("**游戏**: %s\n**用户**: %s", self.gameName, self.username),
@@ -860,87 +896,127 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                         footer = { text = "桐 · TStudioX" }
                     }}
                 })
-                
+
                 if success then
-                    PlutoX.debug("[目标达成] Webhook发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）")
+                    steps.webhook.success = true
+                    steps.webhook.message = "发送成功（尝试 " .. attempt .. "/" .. maxRetries .. "）"
+                    PlutoX.debug("[目标达成] " .. steps.webhook.message)
                     break
                 else
-                    warn("[目标达成] Webhook发送失败，尝试 " .. attempt .. "/" .. maxRetries)
+                    steps.webhook.message = "发送失败（尝试 " .. attempt .. "/" .. maxRetries .. "）"
+                    warn("[目标达成] " .. steps.webhook.message)
                     if attempt < maxRetries then
                         task.wait(retryDelay)
                     end
                 end
             end
-            
-            -- 无论是否成功都退出游戏
-            if success then
-                PlutoX.debug("[目标达成] Webhook发送成功，准备退出游戏...")
+        end
 
-                -- 立即上传数据，确保目标完成状态被保存
-                if PlutoX.uploader and PlutoX.uploader.forceUpload then
-                    PlutoX.debug("[目标达成] 立即上传数据...")
-                    PlutoX.uploader:forceUpload()
-                    -- 等待上传完成
-                    task.wait(2)
-                end
-
-                -- 清除目标配置（只要达到目标就清除，不管是否高于）
-                if dataTypeName then
-                    local keyUpper = dataTypeName:gsub("^%l", string.upper)
-                    local kickConfigKey = "enable" .. keyUpper .. "Kick"
-
-                    -- 关闭目标踢出功能
-                    if self.config[kickConfigKey] then
-                        self.config[kickConfigKey] = false
-                        PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
-                    end
-
-                    -- 清除目标
-                    self.config["target" .. keyUpper] = 0
-                    self.config["base" .. keyUpper] = 0
-                    self.config["lastSaved" .. keyUpper] = 0
-                    PlutoX.debug("[目标达成] 已清除" .. dataTypeName .. "的目标值")
-                    -- 保存配置
-                    self:saveConfig()
-                end
+        -- 步骤2: 上传数据
+        if PlutoX.uploader and PlutoX.uploader.forceUpload then
+            PlutoX.debug("[目标达成] 开始上传数据...")
+            local uploadSuccess = PlutoX.uploader:forceUpload()
+            if uploadSuccess then
+                steps.upload.success = true
+                steps.upload.message = "上传成功"
+                PlutoX.debug("[目标达成] " .. steps.upload.message)
             else
-                warn("[目标达成] Webhook发送失败，已达到最大重试次数，强制退出游戏...")
+                steps.upload.message = "上传失败"
+                warn("[目标达成] " .. steps.upload.message)
+            end
+        else
+            steps.upload.success = true
+            steps.upload.message = "未设置上传器，跳过上传"
+            PlutoX.debug("[目标达成] " .. steps.upload.message)
+        end
+
+        -- 步骤3: 保存配置
+        if dataTypeName then
+            local keyUpper = dataTypeName:gsub("^%l", string.upper)
+            local kickConfigKey = "enable" .. keyUpper .. "Kick"
+
+            -- 关闭目标踢出功能
+            if self.config[kickConfigKey] then
+                self.config[kickConfigKey] = false
+                PlutoX.debug("[目标达成] 已关闭" .. dataTypeName .. "的目标踢出功能")
             end
 
-            -- 注销脚本实例
-            PlutoX.unregisterScriptInstance(self.gameName, self.username)
+            -- 清除目标
+            self.config["target" .. keyUpper] = 0
+            self.config["base" .. keyUpper] = 0
+            self.config["lastSaved" .. keyUpper] = 0
 
-            -- 强制退出游戏（多重保障）
-            task.wait(0.5)
-
-            -- 方法1: 使用 game:Shutdown()
-            local shutdownSuccess = pcall(function()
-                game:Shutdown()
+            -- 保存配置
+            local saveSuccess = pcall(function()
+                self:saveConfig()
             end)
 
-            if not shutdownSuccess then
-                warn("[目标达成] game:Shutdown() 失败，尝试其他方法...")
+            if saveSuccess then
+                steps.config.success = true
+                steps.config.message = "配置已保存并清除目标值"
+                PlutoX.debug("[目标达成] " .. steps.config.message)
+            else
+                steps.config.message = "配置保存失败"
+                warn("[目标达成] " .. steps.config.message)
+            end
+        else
+            steps.config.success = true
+            steps.config.message = "未指定数据类型，跳过配置保存"
+            PlutoX.debug("[目标达成] " .. steps.config.message)
+        end
 
-                -- 方法2: 踢出玩家
-                local localPlayer = game:GetService("Players").LocalPlayer
-                if localPlayer then
-                    pcall(function()
-                        localPlayer:Kick("目标达成，自动退出")
-                    end)
-                end
+        -- 汇总所有步骤的结果
+        local allSuccess = true
+        local logMessage = "[目标达成] 操作完成状态：\n"
+        for _, step in pairs(steps) do
+            local status = step.success and "✓" or "✗"
+            logMessage = logMessage .. string.format("  %s %s: %s\n", status, step.name, step.message)
+            if not step.success then
+                allSuccess = false
+            end
+        end
 
-                -- 方法3: 强制关闭
-                task.wait(0.5)
+        if allSuccess then
+            logMessage = logMessage .. "所有操作成功完成，准备退出游戏..."
+            PlutoX.debug(logMessage)
+        else
+            logMessage = logMessage .. "部分操作失败，但仍将退出游戏..."
+            warn(logMessage)
+        end
+
+        -- 注销脚本实例
+        PlutoX.unregisterScriptInstance(self.gameName, self.username)
+
+        -- 强制退出游戏（多重保障）
+        task.wait(0.5)
+
+        -- 方法1: 使用 game:Shutdown()
+        local shutdownSuccess = pcall(function()
+            game:Shutdown()
+        end)
+
+        if not shutdownSuccess then
+            warn("[目标达成] game:Shutdown() 失败，尝试其他方法...")
+
+            -- 方法2: 踢出玩家
+            local localPlayer = game:GetService("Players").LocalPlayer
+            if localPlayer then
                 pcall(function()
-                    while true do
-                        task.wait()
-                        error("强制退出")
-                    end
+                    localPlayer:Kick("目标达成，自动退出")
                 end)
             end
-        end)
-        
-        return true
+
+            -- 方法3: 强制关闭
+            task.wait(0.5)
+            pcall(function()
+                while true do
+                    task.wait()
+                    error("强制退出")
+                end
+            end)
+        end
+
+        return allSuccess
     end
     
     -- 发送掉线通知
@@ -1523,23 +1599,19 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         
         local keyUpper = dataType.id:gsub("^%l", string.upper)
         
-        PlutoX.debug("[目标检测] 检查 " .. dataType.id .. ": enable" .. keyUpper .. "Kick=" .. tostring(self.config["enable" .. keyUpper .. "Kick"]))
-        
         if not self.config["enable" .. keyUpper .. "Kick"] then
             return false
         end
         
         local currentValue = self:fetchValue(dataType)
         if not currentValue then
-            PlutoX.debug("[目标检测] " .. dataType.id .. ": 无法获取当前值")
             return false
         end
         
         local targetValue = self.config["target" .. keyUpper] or 0
-        PlutoX.debug("[目标检测] " .. dataType.id .. ": 当前值=" .. tostring(currentValue) .. ", 目标值=" .. tostring(targetValue))
         
         if currentValue >= targetValue then
-            PlutoX.debug("[目标检测] " .. dataType.id .. ": 已达成目标！")
+            PlutoX.debug("[目标检测] " .. dataType.id .. ": 已达成目标！当前=" .. PlutoX.formatNumber(currentValue) .. ", 目标=" .. PlutoX.formatNumber(targetValue))
             return {
                 dataType = dataType,
                 value = currentValue,
@@ -1967,50 +2039,58 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
         Text = "目标值踢出",
         DefaultState = config["enable" .. keyUpper .. "Kick"] or false,
         Callback = function(state)
-            if suppressTargetToggleCallback then
-                suppressTargetToggleCallback = false
-                return
-            end
-            
-            -- 检查状态是否与当前配置相同，避免重复处理
-            if state == config["enable" .. keyUpper .. "Kick"] then
-                return
-            end
-            
-            if state and config.webhookUrl == "" then
-                targetValueToggle:Set(false)
-                UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-                return
-            end
-            
-            if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
-                targetValueToggle:Set(false)
-                UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
-                return
-            end
-            
-            local currentValue = fetchValue()
-            if state and currentValue and currentValue >= config["target" .. keyUpper] then
-                targetValueToggle:Set(false)
+            -- 包裹整个回调函数，捕获所有错误
+            local success, err = pcall(function()
+                if suppressTargetToggleCallback then
+                    suppressTargetToggleCallback = false
+                    return
+                end
+                
+                -- 检查状态是否与当前配置相同，避免重复处理
+                if state == config["enable" .. keyUpper .. "Kick"] then
+                    return
+                end
+
+                -- 移除对webhook的强制要求，即使没有webhook也可以开启目标踢出
+                -- 注意：没有webhook时，目标达成时无法发送webhook通知，但仍然会退出游戏
+
+                if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
+                    targetValueToggle:Set(false)
+                    UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
+                    return
+                end
+
+                local fetchSuccess, currentValue = pcall(fetchValue)
+                if not fetchSuccess then
+                    currentValue = nil
+                end
+
+                if state and currentValue and currentValue >= config["target" .. keyUpper] then
+                    targetValueToggle:Set(false)
+                    UILibrary:Notify({
+                        Title = "配置警告",
+                        Text = string.format("当前值(%s)已超过目标(%s)",
+                            PlutoX.formatNumber(currentValue),
+                            PlutoX.formatNumber(config["target" .. keyUpper])),
+                        Duration = 6
+                    })
+                    return
+                end
+
+                config["enable" .. keyUpper .. "Kick"] = state
                 UILibrary:Notify({
-                    Title = "配置警告",
-                    Text = string.format("当前值(%s)已超过目标(%s)",
-                        PlutoX.formatNumber(currentValue),
-                        PlutoX.formatNumber(config["target" .. keyUpper])),
-                    Duration = 6
+                    Title = "配置更新",
+                    Text = string.format("目标踢出: %s\n目标: %s",
+                        (state and "开启" or "关闭"),
+                        config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
+                    Duration = 5
                 })
-                return
+                if saveConfig then saveConfig() end
+            end)
+
+            if not success then
+                warn("[目标踢出] 回调函数出错: " .. tostring(err))
             end
-            
-            config["enable" .. keyUpper .. "Kick"] = state
-            UILibrary:Notify({
-                Title = "配置更新",
-                Text = string.format("目标踢出: %s\n目标: %s",
-                    (state and "开启" or "关闭"),
-                    config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
-                Duration = 5
-            })
-            if saveConfig then saveConfig() end
         end
     })
     
@@ -2085,52 +2165,66 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
         Text = "目标值踢出",
         DefaultState = config["enable" .. keyUpper .. "Kick"] or false,
         Callback = function(state)
-            if suppressTargetToggleCallback then
-                suppressTargetToggleCallback = false
-                return
-            end
-            
-            -- 检查状态是否与当前配置相同，避免重复处理
-            if state == config["enable" .. keyUpper .. "Kick"] then
-                return
-            end
-            
-            if state and config.webhookUrl == "" then
-                targetValueToggle:Set(false)
-                UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
-                return
-            end
-            
-            if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
-                targetValueToggle:Set(false)
-                UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
-                return
-            end
-            
-            local currentValue = fetchValue()
-            if state and currentValue and currentValue >= config["target" .. keyUpper] then
-                targetValueToggle:Set(false)
+            -- 包裹整个回调函数，捕获所有错误
+            local success, err = pcall(function()
+                if suppressTargetToggleCallback then
+                    suppressTargetToggleCallback = false
+                    return
+                end
+                
+                -- 检查状态是否与当前配置相同，避免重复处理
+                if state == config["enable" .. keyUpper .. "Kick"] then
+                    return
+                end
+
+                -- 移除对webhook的强制要求，即使没有webhook也可以开启目标踢出
+                -- 注意：没有webhook时，目标达成时无法发送webhook通知，但仍然会退出游戏
+
+                if state and (not config["target" .. keyUpper] or config["target" .. keyUpper] <= 0) then
+                    if targetValueToggle then
+                        targetValueToggle:Set(false)
+                    end
+                    UILibrary:Notify({ Title = "配置错误", Text = "请先设置基准值", Duration = 5 })
+                    return
+                end
+
+                local fetchSuccess, currentValue = pcall(fetchValue)
+                if not fetchSuccess then
+                    currentValue = nil
+                end
+
+                if state and currentValue and currentValue >= config["target" .. keyUpper] then
+                    if targetValueToggle then
+                        targetValueToggle:Set(false)
+                    end
+                    UILibrary:Notify({
+                        Title = "配置警告",
+                        Text = string.format("当前值(%s)已超过目标(%s)",
+                            PlutoX.formatNumber(currentValue),
+                            PlutoX.formatNumber(config["target" .. keyUpper])),
+                        Duration = 6
+                    })
+                    return
+                end
+
+                config["enable" .. keyUpper .. "Kick"] = state
                 UILibrary:Notify({
-                    Title = "配置警告",
-                    Text = string.format("当前值(%s)已超过目标(%s)",
-                        PlutoX.formatNumber(currentValue),
-                        PlutoX.formatNumber(config["target" .. keyUpper])),
-                    Duration = 6
+                    Title = "配置更新",
+                    Text = string.format("目标踢出: %s\n目标: %s",
+                        (state and "开启" or "关闭"),
+                        config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
+                    Duration = 5
                 })
-                return
+                if saveConfig then saveConfig() end
+            end)
+
+            if not success then
+                warn("[目标踢出] 回调函数出错: " .. tostring(err))
             end
-            
-            config["enable" .. keyUpper .. "Kick"] = state
-            UILibrary:Notify({
-                Title = "配置更新",
-                Text = string.format("目标踢出: %s\n目标: %s",
-                    (state and "开启" or "关闭"),
-                    config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
-                Duration = 5
-            })
-            if saveConfig then saveConfig() end
         end
     })
+    
+    PlutoX.debug("[createTargetValueCardSimple] targetValueToggle创建完成: " .. tostring(targetValueToggle))
     
     local targetValueLabel = UILibrary:CreateLabel(card, {
         Text = "目标值: " .. (config["target" .. keyUpper] > 0 and PlutoX.formatNumber(config["target" .. keyUpper]) or "未设置"),
@@ -2213,7 +2307,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     uploader.username = username
     uploader.dataMonitor = dataMonitor
     uploader.disconnectDetector = disconnectDetector
-    uploader.lastUploadTime = 0
+    uploader.lastUploadTime = os.time() -- 初始化为当前时间，避免第一次上传时的时间差过大
     uploader.uploadInterval = 5 * 60 -- 5 分钟
     uploader.enabled = true
     uploader.uploadUrl = "https://api.959966.xyz/api/dashboard/upload"
@@ -2607,10 +2701,152 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         PlutoX.debug("[DataUploader] 数据上传已停止")
     end
     
-    -- 手动触发上传
+    -- 手动触发上传（跳过时间间隔检查）
     function uploader:forceUpload()
-        self.lastUploadTime = 0
-        return self:uploadData()
+        -- 临时保存当前时间，用于后续更新
+        local currentTime = os.time()
+
+        -- 标记为正在上传
+        self.isUploading = true
+
+        PlutoX.debug("[DataUploader] forceUpload: 开始强制上传数据...")
+
+        -- 收集所有数据
+        local data = self.dataMonitor:collectData()
+        if not data or next(data) == nil then
+            PlutoX.debug("[DataUploader] forceUpload: 无数据可上传")
+            self.isUploading = false
+            return false
+        end
+
+        -- 第一次上传时保存初始值到配置文件
+        if self.lastUploadTime == 0 then
+            for id, dataInfo in pairs(data) do
+                if dataInfo.current ~= nil and dataInfo.type.id ~= "leaderboard" then
+                    local keyUpper = dataInfo.type.id:gsub("^%l", string.upper)
+                    self.sessionStartValues[id] = dataInfo.current
+                    self.config["sessionStart" .. keyUpper] = dataInfo.current
+                    PlutoX.debug("[DataUploader] forceUpload: 保存脚本启动初始值到配置: " .. id .. " = " .. tostring(dataInfo.current))
+                end
+            end
+            if self.saveConfig then
+                self.saveConfig()
+            end
+        end
+
+        -- 计算实际有数据的数据类型数量
+        local validDataCount = 0
+        for id, dataInfo in pairs(data) do
+            if dataInfo.current ~= nil or dataInfo.type.id == "leaderboard" then
+                validDataCount = validDataCount + 1
+            end
+        end
+        PlutoX.debug("[DataUploader] forceUpload: 数据收集完成，有效数据类型数量: " .. tostring(validDataCount))
+
+        -- 构建数据对象（JSONB 格式）
+        local dataObject = {}
+        local elapsedTime = currentTime - self.sessionStartTime
+
+        for id, dataInfo in pairs(data) do
+            if dataInfo.current ~= nil or dataInfo.type.id == "leaderboard" then
+                local dataType = dataInfo.type
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                local notifyEnabled = self.config["notify" .. keyUpper]
+
+                PlutoX.debug("[DataUploader] forceUpload: 处理数据类型: " .. id .. ", current=" .. tostring(dataInfo.current) .. ", notifyEnabled=" .. tostring(notifyEnabled))
+
+                if dataType.id == "leaderboard" then
+                    dataObject[id] = {
+                        current = dataInfo.current,
+                        is_on_leaderboard = dataInfo.current ~= nil,
+                        notify_enabled = notifyEnabled
+                    }
+                    PlutoX.debug("[DataUploader] forceUpload: 排行榜数据已添加: " .. id)
+                elseif dataInfo.current ~= nil then
+                    local targetValue = self.config["target" .. keyUpper] or 0
+                    local baseValue = self.config["base" .. keyUpper] or 0
+                    local initial_value = self.config["sessionStart" .. keyUpper] or dataInfo.current
+
+                    dataObject[id] = {
+                        current = dataInfo.current,
+                        target_value = targetValue,
+                        base_value = baseValue,
+                        session_start = self.sessionStartTime,  -- 使用会话开始时间戳
+                        initial_value = initial_value,  -- 游戏数据初始值
+                        gained = dataInfo.current - initial_value,
+                        elapsed_time = elapsedTime,
+                        notify_enabled = notifyEnabled
+                    }
+                    PlutoX.debug("[DataUploader] forceUpload: 数据已添加: " .. id)
+                end
+            end
+        end
+
+        if next(dataObject) == nil then
+            PlutoX.debug("[DataUploader] forceUpload: 最终数据对象为空")
+            self.isUploading = false
+            return false
+        end
+
+        PlutoX.debug("[DataUploader] forceUpload: 最终上传的数据类型: " .. table.concat(self:getKeys(dataObject), ", "))
+
+        -- 构建 HTTP 请求
+        local requestBody = {
+            game_user_id = self.gameUserId,
+            game_name = self.gameName,
+            username = self.username,
+            data = dataObject,
+            elapsed_time = elapsedTime
+        }
+
+        PlutoX.debug("[DataUploader] forceUpload: 准备上传数据到: " .. self.uploadUrl)
+        PlutoX.debug("[DataUploader] forceUpload: 上传数据: game_user_id=" .. tostring(self.gameUserId) .. ", game_name=" .. self.gameName .. ", username=" .. self.username)
+
+        -- 发送 HTTP 请求
+        local reqSuccess, response = pcall(function()
+            return self.HttpService:RequestAsync({
+                Url = self.uploadUrl,
+                Method = "POST",
+                Headers = {
+                    ["Content-Type"] = "application/json"
+                },
+                Body = self.HttpService:JSONEncode(requestBody)
+            })
+        end)
+
+        PlutoX.debug("[DataUploader] forceUpload: HTTP 请求完成，reqSuccess=" .. tostring(reqSuccess))
+
+        if reqSuccess then
+            local statusCode = response.Success and response.StatusCode or response.StatusCode
+            local responseBody = response.Body
+
+            PlutoX.debug("[DataUploader] forceUpload: HTTP 响应状态码: " .. tostring(statusCode))
+
+            if statusCode == 200 or statusCode == 201 then
+                PlutoX.debug("[DataUploader] forceUpload: ✓ 上传成功")
+
+                -- 更新最后上传时间
+                self.lastUploadTime = currentTime
+                self.retryCount = 0
+
+                return true
+            else
+                PlutoX.debug("[DataUploader] forceUpload: ✗ 上传失败，状态码: " .. tostring(statusCode))
+                return false
+            end
+        else
+            PlutoX.debug("[DataUploader] forceUpload: ✗ HTTP 请求失败: " .. tostring(response))
+            return false
+        end
+    end
+
+    -- 辅助函数：获取表的所有键
+    function uploader:getKeys(tbl)
+        local keys = {}
+        for k, v in pairs(tbl) do
+            table.insert(keys, k)
+        end
+        return keys
     end
     
     -- 自动启动上传

@@ -8,7 +8,6 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
-local DEBUG_MODE = false
 local lastSendTime = os.time()
 local sendingWelcome = false
 local isAutoRobActive = false
@@ -51,7 +50,7 @@ end
 local UILibrary
 local success, result = pcall(function()
     local url
-    if DEBUG_MODE then
+    if PlutoX.debugEnabled then
         url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
     else
         url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
@@ -77,9 +76,6 @@ if not success or not PlutoX then
     error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
 
--- 启用 PlutoX 调试模式
-PlutoX.debugEnabled = DEBUG_MODE
-
 -- 玩家和游戏信息
 local player = Players.LocalPlayer
 if not player then
@@ -102,16 +98,10 @@ end
 -- 设置游戏信息（用于数据上传）
 PlutoX.setGameInfo(gameName, username, HttpService)
 
--- 初始化调试系统（如果调试模式开启）
-if DEBUG_MODE then
-    PlutoX.initDebugSystem()
-    PlutoX.debug("调试系统已初始化")
-end
-
 -- 游戏特定功能
 local function teleportCharacterTo(targetCFrame)
     if not player.Character or not player.Character.PrimaryPart then
-        warn("[Teleport] 角色或主要部件不存在")
+        PlutoX.warn("[Teleport] 角色或主要部件不存在")
         return false
     end
     
@@ -295,7 +285,7 @@ local function fetchPlayerRank()
     end)
     
     if not success then
-        warn("[排行榜] RequestStreamAroundAsync 失败: " .. tostring(err))
+        PlutoX.warn("[排行榜] RequestStreamAroundAsync 失败: " .. tostring(err))
         PlutoX.debug("[排行榜] ========== 远程加载失败 ==========")
         leaderboardConfig.hasFetched = true
         leaderboardConfig.isFetching = false
@@ -549,7 +539,7 @@ local function getRobbedAmount()
     if success then
         return amount or 0
     else
-        warn("[AutoRob] 获取已抢金额失败:", amount)
+        PlutoX.warn("[AutoRob] 获取已抢金额失败:", amount)
         return 0
     end
 end
@@ -582,7 +572,7 @@ local function checkDropOffPointEnabled()
         PlutoX.debug("[DropOff] 交付点enabled状态: " .. tostring(enabled))
         return enabled
     else
-        warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
+        PlutoX.warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
         return false
     end
 end
@@ -695,7 +685,7 @@ local function forceDeliverRobbedAmount(isShutdown)
     local dropOffSpawners = workspace.Game.Jobs.CriminalDropOffSpawners
     
     if not dropOffSpawners or not dropOffSpawners.CriminalDropOffSpawnerPermanent then
-        warn("[AutoRob] 结束位置未找到!")
+        PlutoX.warn("[AutoRob] 结束位置未找到!")
         isDeliveryInProgress = false
         return false
     end
@@ -871,9 +861,9 @@ local function forceDeliverRobbedAmount(isShutdown)
     if deliverySuccess then
         PlutoX.debug("[AutoRob] ✓ 强制投放完成，共尝试 " .. deliveryAttempts .. " 次")
     elseif isShutdown then
-        warn("[AutoRob] ✗ 关闭时投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
+        PlutoX.warn("[AutoRob] ✗ 关闭时投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
     else
-        warn("[AutoRob] ✗ 强制投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
+        PlutoX.warn("[AutoRob] ✗ 强制投放失败，达到最大尝试次数(" .. maxDeliveryAttempts .. ")")
     end
     
     PlutoX.debug("[AutoRob] === 强制投放流程结束 ===")
@@ -913,7 +903,7 @@ local function checkAndForceDelivery(tempTarget)
             task.wait(2)
             return true
         else
-            warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
+            PlutoX.warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
             return false, attempts, 0
         end
     end
@@ -976,7 +966,7 @@ local function claimPlaytimeRewards()
             local rewardsRoot = findRewardsRoot()
 
             if not rewardsRoot then
-                warn("[PlaytimeRewards] 未找到奖励界面")
+                PlutoX.warn("[PlaytimeRewards] 未找到奖励界面")
                 task.wait(rewardCheckInterval)
                 continue
             end
@@ -990,7 +980,7 @@ local function claimPlaytimeRewards()
             end
 
             if not statsGui then
-                warn("[PlaytimeRewards] 未找到玩家 Stats")
+                PlutoX.warn("[PlaytimeRewards] 未找到玩家 Stats")
                 task.wait(rewardCheckInterval)
                 continue
             end
@@ -1027,7 +1017,7 @@ local function claimPlaytimeRewards()
             local playRewards = remotes and remotes:FindFirstChild("PlayRewards")
 
             if not uiInteraction or not playRewards then
-                warn("[PlaytimeRewards] 未找到远程事件")
+                PlutoX.warn("[PlaytimeRewards] 未找到远程事件")
                 task.wait(rewardCheckInterval)
                 continue
             end
@@ -1070,38 +1060,38 @@ local function performAutoSpawnVehicle()
 
     local localPlayer = Players.LocalPlayer
     if not localPlayer or not ReplicatedStorage then
-        warn("[AutoSpawnVehicle] 无法获取必要服务")
+        PlutoX.warn("[AutoSpawnVehicle] 无法获取必要服务")
         return
     end
 
     local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
     if not remotesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
+        PlutoX.warn("[AutoSpawnVehicle] 未找到 Remotes 文件夹")
         return
     end
 
     local GetVehicleStats = remotesFolder:FindFirstChild("GetVehicleStats")
     local VehicleEvent = remotesFolder:FindFirstChild("VehicleEvent")
     if not GetVehicleStats or not VehicleEvent then
-        warn("[AutoSpawnVehicle] 未找到必要的远程事件")
+        PlutoX.warn("[AutoSpawnVehicle] 未找到必要的远程事件")
         return
     end
 
     local playerGui = localPlayer.PlayerGui or localPlayer:WaitForChild("PlayerGui", 5)
     if not playerGui then
-        warn("[AutoSpawnVehicle] PlayerGui 获取失败")
+        PlutoX.warn("[AutoSpawnVehicle] PlayerGui 获取失败")
         return
     end
 
     local statsPanel = playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
     if not statsPanel then
-        warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
+        PlutoX.warn("[AutoSpawnVehicle] 未找到玩家 Stats 面板")
         return
     end
 
     local vehiclesFolder = statsPanel:FindFirstChild("Vehicles")
     if not vehiclesFolder then
-        warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
+        PlutoX.warn("[AutoSpawnVehicle] 未找到 Vehicles 文件夹")
         return
     end
 
@@ -1123,10 +1113,10 @@ local function performAutoSpawnVehicle()
                 Duration = 5
             })
         else
-            warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
+            PlutoX.warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
         end
     else
-        warn("[AutoSpawnVehicle] 未找到有效车辆数据")
+        PlutoX.warn("[AutoSpawnVehicle] 未找到有效车辆数据")
     end
 end
 
@@ -1361,7 +1351,7 @@ local function performAutoRobATMs()
                     PlutoX.debug("[AutoRobATMs] 未找到可用ATM，计数: " .. noATMFoundCount .. "/" .. maxNoATMFoundCount)
 
                     if noATMFoundCount >= maxNoATMFoundCount then
-                        warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行搜索重置")
+                        PlutoX.warn("[AutoRobATMs] 连续" .. maxNoATMFoundCount .. "次未找到ATM，执行搜索重置")
 
                         PlutoX.debug("[AutoRobATMs] 重置状态...")
                         getfenv().atmloadercooldown = false
@@ -1481,7 +1471,7 @@ local function performAutoRobATMs()
                                 task.wait(0.2)
                             end
                         else
-                            warn("[AutoRobATMs] 无法找到CriminalATMSpawners文件夹")
+                            PlutoX.warn("[AutoRobATMs] 无法找到CriminalATMSpawners文件夹")
                         end
 
                         local searchSuccess = false
@@ -1489,7 +1479,7 @@ local function performAutoRobATMs()
                             PlutoX.debug("[AutoRobATMs] 第1步：传送到中心点搜索")
                             character:PivotTo(CFrame.new(0, 50, 0))
                         else
-                            warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
+                            PlutoX.warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
                         end
                         task.wait(1)
                         localPlayer.ReplicationFocus = nil
@@ -1556,7 +1546,7 @@ local function performAutoRobATMs()
                                     end
                                 end
                             else
-                                warn("[AutoRobATMs] 无法找到CriminalArea")
+                                PlutoX.warn("[AutoRobATMs] 无法找到CriminalArea")
                             end
                         end
 
@@ -1619,7 +1609,7 @@ local function performAutoRobATMs()
                                 end
                             end
                         else
-                            warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
+                            PlutoX.warn("[AutoRobATMs] 无法传送，角色或主要部件不存在")
                         end
                         task.wait(1)
                         localPlayer.ReplicationFocus = nil
@@ -1641,7 +1631,7 @@ local function performAutoRobATMs()
                     spawn(function()
                         local spawners = workspace.Game.Jobs.CriminalATMSpawners
                         if not spawners then
-                            warn("[AutoRobATMs] 无法找到CriminalATMSpawners")
+                            PlutoX.warn("[AutoRobATMs] 无法找到CriminalATMSpawners")
                         else
                             local spawnerList = spawners:GetChildren()
                             local totalSpawners = #spawnerList
@@ -1692,7 +1682,7 @@ local function performAutoRobATMs()
             end)
             
             if not success then
-                warn("AutoRobATMs Error:", err)
+                PlutoX.warn("AutoRobATMs Error:", err)
                 noATMFoundCount = 0
                 getfenv().atmloadercooldown = false
                 localPlayer.ReplicationFocus = nil
@@ -1712,7 +1702,7 @@ local function performAutoRobATMs()
     end)
 end
 
-local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
 local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector)
 disconnectDetector:init()
@@ -2040,7 +2030,7 @@ function purchaseFunctions.enterDealership()
     end)
     
     if not success then
-        warn("[Purchase] 进入车店失败:", err)
+        PlutoX.warn("[Purchase] 进入车店失败:", err)
         return false
     end
     
@@ -2057,7 +2047,7 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.debug("[Purchase] 步骤1: 获取 PlayerGui")
         local playerGui = player:WaitForChild("PlayerGui", 10)
         if not playerGui then
-            warn("[Purchase] PlayerGui 获取超时")
+            PlutoX.warn("[Purchase] PlayerGui 获取超时")
             return vehicles
         end
         PlutoX.debug("[Purchase] PlayerGui 获取成功")
@@ -2067,7 +2057,7 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.debug("[Purchase] 步骤2: 查找 DealershipHolder")
         local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
         if not dealershipHolder then
-            warn("[Purchase] 未找到 DealershipHolder")
+            PlutoX.warn("[Purchase] 未找到 DealershipHolder")
             return vehicles
         end
         PlutoX.debug("[Purchase] DealershipHolder 找到")
@@ -2077,7 +2067,7 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.debug("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
         if not dealership then
-            warn("[Purchase] 未找到 Dealership")
+            PlutoX.warn("[Purchase] 未找到 Dealership")
             return vehicles
         end
         PlutoX.debug("[Purchase] Dealership 找到")
@@ -2087,7 +2077,7 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.debug("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
         if not selector then
-            warn("[Purchase] 未找到 Selector")
+            PlutoX.warn("[Purchase] 未找到 Selector")
             return vehicles
         end
         PlutoX.debug("[Purchase] Selector 找到")
@@ -2097,7 +2087,7 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.debug("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
         if not view then
-            warn("[Purchase] 未找到 View")
+            PlutoX.warn("[Purchase] 未找到 View")
             return vehicles
         end
         PlutoX.debug("[Purchase] View 找到")
@@ -2107,7 +2097,7 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.debug("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
         if not allView then
-            warn("[Purchase] 未找到 All")
+            PlutoX.warn("[Purchase] 未找到 All")
             return vehicles
         end
         PlutoX.debug("[Purchase] All 找到")
@@ -2117,7 +2107,7 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.debug("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
         if not container then
-            warn("[Purchase] 未找到 Container")
+            PlutoX.warn("[Purchase] 未找到 Container")
             return vehicles
         end
         PlutoX.debug("[Purchase] Container 找到")
@@ -2160,7 +2150,7 @@ function purchaseFunctions.getAllVehicles()
     end)
     
     if not success then
-        warn("[Purchase] 获取车辆数据失败:", err)
+        PlutoX.warn("[Purchase] 获取车辆数据失败:", err)
     end
     
     PlutoX.debug("[Purchase] 获取到", #vehicles, "辆车辆")
@@ -2235,7 +2225,7 @@ function purchaseFunctions.buyVehicle(frameName)
         PlutoX.debug("[Purchase] ========== 购买完成 ==========")
         return true, result
     else
-        warn("[Purchase] pcall失败，错误:", result)
+        PlutoX.warn("[Purchase] pcall失败，错误:", result)
         PlutoX.debug("[Purchase] ========== 购买失败 ==========")
         return false, result
     end
@@ -2305,7 +2295,7 @@ function purchaseFunctions.sellVehicle(vehicle)
         end
         return true
     else
-        warn("[Sell] 卖车失败:", err)
+        PlutoX.warn("[Sell] 卖车失败:", err)
         PlutoX.debug("[Sell] ========== 卖车失败 ==========")
         return false, err
     end
@@ -2834,9 +2824,10 @@ PlutoX.createAboutPage(aboutContent, UILibrary)
 local checkInterval = 1
 local lastRobbedAmount = 0
 local lastSendTime = os.time()
+local shouldExit = false -- 标记是否应该退出主循环
 
 spawn(function()
-    while true do
+    while not shouldExit do
         local currentTime = os.time()
 
         -- 更新所有数据类型的显示
@@ -2863,18 +2854,30 @@ spawn(function()
             end
         end
 
-        -- 目标值达成检测（异步执行，避免阻塞主循环）
+        -- 目标值达成检测
         local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
         if achieved then
-            webhookManager:sendTargetAchieved(
+            -- 标记应该退出
+            shouldExit = true
+
+            -- 目标达成，发送通知（同步执行，等待所有操作完成）
+            local allSuccess = webhookManager:sendTargetAchieved(
                 achieved.value,
                 achieved.targetValue,
                 achieved.baseValue,
                 os.time() - dataMonitor.startTime,
                 achieved.dataType.name
             )
-            -- 注意：sendTargetAchieved 现在是异步执行的，不会阻塞主循环
-            -- 所以不需要 return，主循环会继续运行
+
+            -- 输出最终结果
+            if allSuccess then
+                PlutoX.debug("[主循环] 目标达成：所有操作成功完成，已退出游戏")
+            else
+                PlutoX.warn("[主循环] 目标达成：部分操作失败，但已退出游戏")
+            end
+
+            -- 退出主循环（sendTargetAchieved已包含游戏退出逻辑）
+            break
         end
 
         -- 排行榜踢出检测（异步执行，避免阻塞主循环）
