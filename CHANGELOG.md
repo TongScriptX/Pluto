@@ -1,6 +1,26 @@
 # Changelog
 
-## [Driving Empire] - 2026-01-02
+## [Driving Empire] - 2026-01-27
+
+### Fixed
+- 修复数据上传时session_start字段错误（将其设置为会话开始时间戳，而不是游戏数据初始值）
+- 修复目标达成后游戏未退出的问题（直接在主循环中执行退出逻辑）
+- 确保目标达成后所有操作（webhook、数据上传、配置保存）完成再退出
+- 防止目标达成后重复发送webhook（添加exiting标志）
+- 修复forceUpload函数重置lastUploadTime导致的时间差计算错误（显示约56年）
+
+### Refactor
+- 删除Driving_Empire.lua的DEBUG_MODE变量，统一使用模块debug系统
+- 将所有warn()改为PlutoX.warn()，统一使用模块日志系统
+- 优化sendTargetAchieved函数为同步执行，确保所有操作完成
+- 添加步骤状态记录，记录webhook、数据上传、配置保存的执行结果
+
+### Chores
+- 关闭DEBUG模式（DEBUG_MODE设置为false）
+- 清理不必要的debug日志输出
+
+### Documentation
+- 更新Dashboard：添加无效时间戳检查，防止显示错误的运行时长（超过10年或负数）
 
 ### Added
 - 日志系统增强：使用LogService捕获所有类型的输出（包括错误和警告）
