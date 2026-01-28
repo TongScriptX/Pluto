@@ -2581,9 +2581,9 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     Body = httpServiceRef:JSONEncode(uploadData)
                 })
             end)
-            
+
             PlutoX.debug("[DataUploader] HTTP 请求完成，reqSuccess=" .. tostring(reqSuccess))
-            
+
             if reqSuccess then
                 local statusCode = res.StatusCode or res.statusCode or 0
                 PlutoX.debug("[DataUploader] HTTP 响应状态码: " .. tostring(statusCode))
@@ -2591,7 +2591,6 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     uploaderRef.lastUploadTime = currentTimeRef
                     uploaderRef.retryCount = 0 -- 重置重试计数
                     uploaderRef.isRetrying = false
-                    uploaderRef.isUploading = false -- 重置上传标志
                     PlutoX.debug("[DataUploader] ✓ 数据上传成功！")
                 else
                     -- 处理非 200/201 状态码
@@ -2603,7 +2602,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 PlutoX.debug("[DataUploader] ✗ 上传失败，错误: " .. tostring(res))
                 uploaderRef:handleUploadFailure(tostring(res))
             end
-            
+
             -- 无论成功失败，都重置上传标志
             uploaderRef.isUploading = false
         end
@@ -2882,13 +2881,18 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     self.lastUploadTime = currentTime
                     self.retryCount = 0
 
+                    -- 重置isUploading标志
+                    self.isUploading = false
+
                     return true
                 else
                     PlutoX.debug("[DataUploader] forceUpload: ✗ 上传失败，状态码: " .. tostring(statusCode))
+                    self.isUploading = false
                     return false
                 end
             else
                 PlutoX.debug("[DataUploader] forceUpload: ✗ HTTP 请求失败: " .. tostring(response))
+                self.isUploading = false
                 return false
             end
         end)
