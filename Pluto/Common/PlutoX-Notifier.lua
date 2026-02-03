@@ -2807,9 +2807,15 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     local baseValue = self.config["base" .. keyUpper] or 0
                     local initial_value = self.config["sessionStart" .. keyUpper] or dataInfo.current
 
+                    -- 检查目标是否完成
+                    local targetCompleted = false
+                    if dataType.supportTarget and targetValue > 0 then
+                        targetCompleted = dataInfo.current >= targetValue
+                    end
+
                     -- 调试：记录目标值
                     if targetValue > 0 then
-                        PlutoX.warn("[DataUploader] forceUpload: " .. id .. " 目标值=" .. tostring(targetValue) .. ", 当前值=" .. tostring(dataInfo.current))
+                        PlutoX.warn("[DataUploader] forceUpload: " .. id .. " 目标值=" .. tostring(targetValue) .. ", 当前值=" .. tostring(dataInfo.current) .. ", 目标完成=" .. tostring(targetCompleted))
                     else
                         PlutoX.debug("[DataUploader] forceUpload: " .. id .. " 未设置目标值")
                     end
@@ -2822,6 +2828,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                         initial_value = initial_value,  -- 游戏数据初始值
                         gained = dataInfo.current - initial_value,
                         elapsed_time = elapsedTime,
+                        target_completed = targetCompleted,  -- 目标完成状态
                         notify_enabled = notifyEnabled
                     }
                     PlutoX.debug("[DataUploader] forceUpload: 数据已添加: " .. id)
