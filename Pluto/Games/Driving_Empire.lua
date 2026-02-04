@@ -444,15 +444,55 @@ local function fetchPlayerRank()
     
     PlutoX.debug("[排行榜] 保存原始位置，准备传送...")
     
+    -- 保存所有部件的速度状态
+    local savedVelocities = {}
+    if originalVehicle then
+        for _, part in ipairs(originalVehicle:GetDescendants()) do
+            if part:IsA("BasePart") then
+                savedVelocities[part] = {
+                    velocity = part.Velocity,
+                    rotVelocity = part.RotVelocity
+                }
+            end
+        end
+        PlutoX.debug("[排行榜] 已保存 " .. #savedVelocities .. " 个部件的速度状态")
+    elseif character and character.PrimaryPart then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") then
+                savedVelocities[part] = {
+                    velocity = part.Velocity,
+                    rotVelocity = part.RotVelocity
+                }
+            end
+        end
+        PlutoX.debug("[排行榜] 已保存角色速度状态")
+    end
+    
+    -- 传送函数
+    local function teleport(position)
+        if originalVehicle then
+            originalVehicle:PivotTo(position)
+            PlutoX.debug("[排行榜] 传送车辆")
+        else
+            character:PivotTo(position)
+            PlutoX.debug("[排行榜] 传送角色")
+        end
+    end
+    
+    -- 恢复速度函数
+    local function restoreVelocities()
+        for part, state in pairs(savedVelocities) do
+            if part and part:IsA("BasePart") then
+                part.Velocity = state.velocity
+                part.RotVelocity = state.rotVelocity
+            end
+        end
+        PlutoX.debug("[排行榜] 已恢复速度状态")
+    end
+    
     -- 传送到排行榜位置
     local targetCFrame = CFrame.new(leaderboardConfig.position)
-    if originalVehicle then
-        PlutoX.debug("[排行榜] 传送车辆到排行榜位置")
-        originalVehicle:PivotTo(targetCFrame)
-    else
-        PlutoX.debug("[排行榜] 传送角色到排行榜位置")
-        character:PivotTo(targetCFrame)
-    end
+    teleport(targetCFrame)
     
     -- 等待排行榜 UI 加载
     task.wait(1)
@@ -464,14 +504,10 @@ local function fetchPlayerRank()
         PlutoX.debug("[排行榜] ✅ 传送后成功获取排行榜，子元素数量: " .. childrenCount)
         local rank, isOnLeaderboard = parseContents(contents)
         
-        -- 立即传送回原位置
-        if originalVehicle then
-            originalVehicle:PivotTo(originalPosition)
-            PlutoX.debug("[排行榜] 车辆已传送回原位置")
-        else
-            character:PivotTo(originalPosition)
-            PlutoX.debug("[排行榜] 角色已传送回原位置")
-        end
+        -- 立即传送回原位置并恢复速度
+        teleport(originalPosition)
+        restoreVelocities()
+        PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
         
         -- 更新缓存
         leaderboardConfig.cachedRank = rank
@@ -484,14 +520,10 @@ local function fetchPlayerRank()
     else
         PlutoX.debug("[排行榜] ❌ 传送后仍无法获取排行榜")
         
-        -- 立即传送回原位置
-        if originalVehicle then
-            originalVehicle:PivotTo(originalPosition)
-            PlutoX.debug("[排行榜] 车辆已传送回原位置")
-        else
-            character:PivotTo(originalPosition)
-            PlutoX.debug("[排行榜] 角色已传送回原位置")
-        end
+        -- 立即传送回原位置并恢复速度
+        teleport(originalPosition)
+        restoreVelocities()
+        PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
         
         -- 设置较短的缓存时间（30秒），避免频繁重试
         leaderboardConfig.cachedRank = nil
