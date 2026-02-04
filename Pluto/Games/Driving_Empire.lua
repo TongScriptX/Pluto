@@ -177,9 +177,11 @@ local leaderboardConfig = {
     position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
     streamTimeout = 10,
     cacheTime = 300, -- 缓存时间（秒），5分钟
+    failCacheTime = 30, -- 失败后的缓存时间（秒），30秒
     lastFetchTime = 0,
     cachedRank = nil,
     cachedIsOnLeaderboard = false,
+    lastFetchSuccess = false, -- 上次获取是否成功
     isFetching = false, -- 是否正在获取中
     hasFetched = false, -- 是否已经获取过
 }
@@ -255,9 +257,13 @@ local function fetchPlayerRank()
     end
     
     -- 如果已经获取过且缓存未过期，直接返回缓存值
-    if leaderboardConfig.hasFetched and (currentTime - leaderboardConfig.lastFetchTime) < leaderboardConfig.cacheTime then
-        -- 移除频繁输出的缓存日志
-        return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+    if leaderboardConfig.hasFetched then
+        -- 根据上次获取是否成功决定使用哪个缓存时间
+        local cacheTime = leaderboardConfig.lastFetchSuccess and leaderboardConfig.cacheTime or leaderboardConfig.failCacheTime
+        if (currentTime - leaderboardConfig.lastFetchTime) < cacheTime then
+            -- 移除频繁输出的缓存日志
+            return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+        end
     end
     
     -- 开始新获取
@@ -273,6 +279,7 @@ local function fetchPlayerRank()
         leaderboardConfig.cachedRank = rank
         leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
         leaderboardConfig.lastFetchTime = currentTime
+        leaderboardConfig.lastFetchSuccess = true
         leaderboardConfig.hasFetched = true
         leaderboardConfig.isFetching = false
         return rank, isOnLeaderboard
@@ -287,6 +294,11 @@ local function fetchPlayerRank()
     if not success then
         PlutoX.warn("[排行榜] RequestStreamAroundAsync 失败: " .. tostring(err))
         PlutoX.debug("[排行榜] ========== 远程加载失败 ==========")
+        -- 失败时设置较短的缓存时间（30秒），避免频繁重试
+        leaderboardConfig.cachedRank = nil
+        leaderboardConfig.cachedIsOnLeaderboard = false
+        leaderboardConfig.lastFetchTime = currentTime
+        leaderboardConfig.lastFetchSuccess = false
         leaderboardConfig.hasFetched = true
         leaderboardConfig.isFetching = false
         return nil, false
@@ -309,6 +321,7 @@ local function fetchPlayerRank()
             leaderboardConfig.cachedRank = rank
             leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
             leaderboardConfig.lastFetchTime = currentTime
+            leaderboardConfig.lastFetchSuccess = true
             leaderboardConfig.hasFetched = true
             leaderboardConfig.isFetching = false
             return rank, isOnLeaderboard
@@ -318,6 +331,11 @@ local function fetchPlayerRank()
     end
     
     PlutoX.debug("[排行榜] ========== 远程加载失败 (超时) ==========")
+    -- 超时失败时设置较短的缓存时间（30秒），避免频繁重试
+    leaderboardConfig.cachedRank = nil
+    leaderboardConfig.cachedIsOnLeaderboard = false
+    leaderboardConfig.lastFetchTime = currentTime
+    leaderboardConfig.lastFetchSuccess = false
     leaderboardConfig.hasFetched = true
     leaderboardConfig.isFetching = false
     return nil, false
