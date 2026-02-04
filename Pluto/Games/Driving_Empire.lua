@@ -414,15 +414,94 @@ local function fetchPlayerRank()
         end
     end
     
-    PlutoX.debug("[排行榜] ========== 远程加载失败 (超时) ==========")
-    -- 超时失败时设置较短的缓存时间（30秒），避免频繁重试
-    leaderboardConfig.cachedRank = nil
-    leaderboardConfig.cachedIsOnLeaderboard = false
-    leaderboardConfig.lastFetchTime = currentTime
-    leaderboardConfig.lastFetchSuccess = false
-    leaderboardConfig.hasFetched = true
-    leaderboardConfig.isFetching = false
-    return nil, false
+    PlutoX.debug("[排行榜] ========== 远程加载失败 (超时)，尝试传送玩家到排行榜位置 ==========")
+    
+    -- 保存玩家当前位置
+    local character = player.Character
+    local originalPosition = nil
+    local originalVehicle = nil
+    
+    if character and character.PrimaryPart then
+        originalPosition = character.PrimaryPart.CFrame
+        
+        -- 检查玩家是否在车辆中
+        local vehicles = workspace:FindFirstChild("Vehicles")
+        if vehicles then
+            originalVehicle = vehicles:FindFirstChild(username)
+        end
+    end
+    
+    if not originalPosition then
+        PlutoX.warn("[排行榜] 无法获取玩家位置，无法传送")
+        leaderboardConfig.cachedRank = nil
+        leaderboardConfig.cachedIsOnLeaderboard = false
+        leaderboardConfig.lastFetchTime = currentTime
+        leaderboardConfig.lastFetchSuccess = false
+        leaderboardConfig.hasFetched = true
+        leaderboardConfig.isFetching = false
+        return nil, false
+    end
+    
+    PlutoX.debug("[排行榜] 保存原始位置，准备传送...")
+    
+    -- 传送到排行榜位置
+    local targetCFrame = CFrame.new(leaderboardConfig.position)
+    if originalVehicle then
+        PlutoX.debug("[排行榜] 传送车辆到排行榜位置")
+        originalVehicle:PivotTo(targetCFrame)
+    else
+        PlutoX.debug("[排行榜] 传送角色到排行榜位置")
+        character:PivotTo(targetCFrame)
+    end
+    
+    -- 等待排行榜 UI 加载
+    task.wait(1)
+    
+    -- 检查排行榜是否加载
+    contents = tryGetContents(1)
+    if contents then
+        local childrenCount = #contents:GetChildren()
+        PlutoX.debug("[排行榜] ✅ 传送后成功获取排行榜，子元素数量: " .. childrenCount)
+        local rank, isOnLeaderboard = parseContents(contents)
+        
+        -- 立即传送回原位置
+        if originalVehicle then
+            originalVehicle:PivotTo(originalPosition)
+            PlutoX.debug("[排行榜] 车辆已传送回原位置")
+        else
+            character:PivotTo(originalPosition)
+            PlutoX.debug("[排行榜] 角色已传送回原位置")
+        end
+        
+        -- 更新缓存
+        leaderboardConfig.cachedRank = rank
+        leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
+        leaderboardConfig.lastFetchTime = currentTime
+        leaderboardConfig.lastFetchSuccess = true
+        leaderboardConfig.hasFetched = true
+        leaderboardConfig.isFetching = false
+        return rank, isOnLeaderboard
+    else
+        PlutoX.debug("[排行榜] ❌ 传送后仍无法获取排行榜")
+        
+        -- 立即传送回原位置
+        if originalVehicle then
+            originalVehicle:PivotTo(originalPosition)
+            PlutoX.debug("[排行榜] 车辆已传送回原位置")
+        else
+            character:PivotTo(originalPosition)
+            PlutoX.debug("[排行榜] 角色已传送回原位置")
+        end
+        
+        -- 设置较短的缓存时间（30秒），避免频繁重试
+        leaderboardConfig.cachedRank = nil
+        leaderboardConfig.cachedIsOnLeaderboard = false
+        leaderboardConfig.lastFetchTime = currentTime
+        leaderboardConfig.lastFetchSuccess = false
+        leaderboardConfig.hasFetched = true
+        leaderboardConfig.isFetching = false
+        return nil, false
+    end
 end
 
 -- 注册排行榜数据类型
