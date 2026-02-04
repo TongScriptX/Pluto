@@ -499,6 +499,94 @@ local function fetchPlayerRank()
                     if contents then
                         PlutoX.debug("[排行榜] ✅ 远程加载成功")
                         gameRank, gameIsOnLeaderboard = parseContents(contents)
+                    else
+                        -- 远程加载也失败，尝试传送玩家到排行榜位置
+                        PlutoX.debug("[排行榜] 远程加载失败，尝试传送玩家...")
+                        
+                        -- 保存玩家当前位置
+                        local character = player.Character
+                        local originalPosition = nil
+                        local originalVehicle = nil
+                        
+                        if character and character.PrimaryPart then
+                            originalPosition = character.PrimaryPart.CFrame
+                            
+                            -- 检查玩家是否在车辆中
+                            local vehicles = workspace:FindFirstChild("Vehicles")
+                            if vehicles then
+                                originalVehicle = vehicles:FindFirstChild(username)
+                            end
+                        end
+                        
+                        if originalPosition then
+                            -- 保存速度状态
+                            local savedVelocities = {}
+                            if originalVehicle then
+                                for _, part in ipairs(originalVehicle:GetDescendants()) do
+                                    if part:IsA("BasePart") then
+                                        savedVelocities[part] = {
+                                            velocity = part.Velocity,
+                                            rotVelocity = part.RotVelocity
+                                        }
+                                    end
+                                end
+                            elseif character and character.PrimaryPart then
+                                for _, part in ipairs(character:GetDescendants()) do
+                                    if part:IsA("BasePart") then
+                                        savedVelocities[part] = {
+                                            velocity = part.Velocity,
+                                            rotVelocity = part.RotVelocity
+                                        }
+                                    end
+                                end
+                            end
+                            
+                            -- 传送函数
+                            local function teleport(position)
+                                if originalVehicle then
+                                    originalVehicle:PivotTo(position)
+                                else
+                                    character:PivotTo(position)
+                                end
+                            end
+                            
+                            -- 恢复速度函数
+                            local function restoreVelocities()
+                                for part, state in pairs(savedVelocities) do
+                                    if part and part:IsA("BasePart") then
+                                        part.Velocity = state.velocity
+                                        part.RotVelocity = state.rotVelocity
+                                    end
+                                end
+                            end
+                            
+                            -- 传送到排行榜位置
+                            local targetCFrame = CFrame.new(leaderboardConfig.position)
+                            teleport(targetCFrame)
+                            
+                            -- 等待排行榜 UI 加载
+                            task.wait(1)
+                            
+                            -- 检查排行榜是否加载
+                            contents = tryGetContents(1)
+                            if contents then
+                                local childrenCount = #contents:GetChildren()
+                                PlutoX.debug("[排行榜] ✅ 传送后成功获取排行榜，子元素数量: " .. childrenCount)
+                                gameRank, gameIsOnLeaderboard = parseContents(contents)
+                                
+                                -- 立即传送回原位置并恢复速度
+                                teleport(originalPosition)
+                                restoreVelocities()
+                                PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
+                            else
+                                -- 传送回原位置
+                                teleport(originalPosition)
+                                restoreVelocities()
+                                PlutoX.debug("[排行榜] 传送后仍无法获取排行榜")
+                            end
+                        else
+                            PlutoX.debug("[排行榜] 无法获取玩家位置，无法传送")
+                        end
                     end
                 end
                 
