@@ -354,6 +354,7 @@ local function fetchPlayerRank()
     PlutoX.debug("[排行榜] 直接获取失败，使用 RequestStreamAroundAsync 远程加载...")
     
     local success, err = pcall(function()
+        PlutoX.debug("[排行榜] RequestStreamAroundAsync 调用参数: position=" .. tostring(leaderboardConfig.position) .. ", timeout=" .. leaderboardConfig.streamTimeout)
         player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
     end)
     
@@ -370,19 +371,24 @@ local function fetchPlayerRank()
         return nil, false
     end
     
-    PlutoX.debug("[排行榜] 已请求流式传输，开始轮询检测...")
+    PlutoX.debug("[排行榜] ✅ RequestStreamAroundAsync 调用成功，开始轮询检测...")
     
     -- 轮询检测排行榜是否加载完成
     local checkStartTime = tick()
     local maxCheckTime = leaderboardConfig.streamTimeout
     local checkInterval = 0.5
+    local pollCount = 0
     
     while (tick() - checkStartTime) < maxCheckTime do
+        pollCount = pollCount + 1
         wait(checkInterval)
+        local elapsed = tick() - checkStartTime
+        PlutoX.debug("[排行榜] 轮询 #" .. pollCount .. " (已等待: " .. string.format("%.1f", elapsed) .. "秒)")
+        
         contents = tryGetContents(1)
         if contents then
             local childrenCount = #contents:GetChildren()
-            PlutoX.debug("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒), 子元素数量: " .. childrenCount)
+            PlutoX.debug("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", elapsed) .. "秒, 轮询次数: " .. pollCount .. "), 子元素数量: " .. childrenCount)
             local rank, isOnLeaderboard = parseContents(contents)
             -- 更新缓存
             leaderboardConfig.cachedRank = rank
@@ -393,8 +399,6 @@ local function fetchPlayerRank()
             leaderboardConfig.isFetching = false
             return rank, isOnLeaderboard
         end
-        -- 减少轮询日志输出
-        -- PlutoX.debug("[排行榜] 轮询中... (已等待: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
     end
     
     PlutoX.debug("[排行榜] ========== 远程加载失败 (超时) ==========")
