@@ -188,19 +188,82 @@ local leaderboardConfig = {
 
 local function tryGetContents(timeout)
     local ok, result = pcall(function()
-        local root = workspace:WaitForChild("Game", timeout or 2)
-            :WaitForChild("Leaderboards", timeout or 2)
-            :WaitForChild("weekly_money", timeout or 2)
-            :WaitForChild("Screen", timeout or 2)
-            :WaitForChild("Leaderboard", timeout or 2)
-        return root:WaitForChild("Contents", timeout or 2)
+        PlutoX.debug("[排行榜] tryGetContents: 开始查找UI元素...")
+        
+        local Game = workspace:FindFirstChild("Game")
+        if not Game then
+            PlutoX.debug("[排行榜] tryGetContents: ❌ Game 不存在")
+            return nil
+        end
+        
+        local Leaderboards = Game:FindFirstChild("Leaderboards")
+        if not Leaderboards then
+            PlutoX.debug("[排行榜] tryGetContents: ❌ Leaderboards 不存在")
+            return nil
+        end
+        
+        local LeaderboardsChildren = {}
+        for _, child in ipairs(Leaderboards:GetChildren()) do
+            table.insert(LeaderboardsChildren, child.Name)
+        end
+        PlutoX.debug("[排行榜] tryGetContents: Leaderboards 子元素: " .. table.concat(LeaderboardsChildren, ", "))
+        
+        local weekly_money = Leaderboards:FindFirstChild("weekly_money")
+        if not weekly_money then
+            PlutoX.debug("[排行榜] tryGetContents: ❌ weekly_money 不存在")
+            return nil
+        end
+        
+        local Screen = weekly_money:FindFirstChild("Screen")
+        if not Screen then
+            PlutoX.debug("[排行榜] tryGetContents: ❌ Screen 不存在")
+            return nil
+        end
+        
+        local Leaderboard = Screen:FindFirstChild("Leaderboard")
+        if not Leaderboard then
+            PlutoX.debug("[排行榜] tryGetContents: ❌ Leaderboard 不存在")
+            return nil
+        end
+        
+        local Contents = Leaderboard:FindFirstChild("Contents")
+        if not Contents then
+            PlutoX.debug("[排行榜] tryGetContents: ❌ Contents 不存在")
+            return nil
+        end
+        
+        local childrenCount = #Contents:GetChildren()
+        PlutoX.debug("[排行榜] tryGetContents: ✅ 找到Contents，子元素数量: " .. childrenCount)
+        
+        -- 输出前5个子元素名称
+        local sampleChildren = {}
+        for i, child in ipairs(Contents:GetChildren()) do
+            if i <= 5 then
+                table.insert(sampleChildren, child.Name)
+            else
+                break
+            end
+        end
+        if #sampleChildren > 0 then
+            PlutoX.debug("[排行榜] tryGetContents: 前5个子元素: " .. table.concat(sampleChildren, ", "))
+        end
+        
+        return Contents
     end)
+    
+    if not ok then
+        PlutoX.debug("[排行榜] tryGetContents: ❌ 发生错误: " .. tostring(result))
+    end
+    
     return ok and result or nil
 end
 
 local function parseContents(contents)
     local rank = 1
     local leaderboardList = {}
+    local childrenCount = #contents:GetChildren()
+    
+    PlutoX.debug("[排行榜] parseContents: Contents子元素数量: " .. childrenCount)
     
     -- 输出完整榜单（仅在首次检测时输出）
     if not leaderboardConfig.hasFetched then
@@ -231,19 +294,21 @@ local function parseContents(contents)
     
     -- 查找玩家排名
     rank = 1
+    local foundEntries = 0
     for _, child in ipairs(contents:GetChildren()) do
         -- 跳过模板元素
         if tonumber(child.Name) then
+            foundEntries = foundEntries + 1
             if tonumber(child.Name) == userId or child.Name == username then
                 local placement = child:FindFirstChild("Placement")
                 local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-                PlutoX.debug("[排行榜] ✅ 找到玩家，排名: #" .. foundRank)
+                PlutoX.debug("[排行榜] ✅ 找到玩家，排名: #" .. foundRank .. " (扫描了 " .. foundEntries .. " 个有效条目)")
                 return foundRank, true
             end
             rank = rank + 1
         end
     end
-    PlutoX.debug("[排行榜] ❌ 未在排行榜中找到玩家")
+    PlutoX.debug("[排行榜] ❌ 未在排行榜中找到玩家 (扫描了 " .. foundEntries .. " 个有效条目)")
     return nil, false
 end
 
@@ -315,7 +380,8 @@ local function fetchPlayerRank()
         wait(checkInterval)
         contents = tryGetContents(1)
         if contents then
-            PlutoX.debug("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒)")
+            local childrenCount = #contents:GetChildren()
+            PlutoX.debug("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", tick() - checkStartTime) .. "秒), 子元素数量: " .. childrenCount)
             local rank, isOnLeaderboard = parseContents(contents)
             -- 更新缓存
             leaderboardConfig.cachedRank = rank
