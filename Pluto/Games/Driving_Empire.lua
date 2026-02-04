@@ -172,18 +172,136 @@ PlutoX.registerDataType({
     supportTarget = true
 })
 
+-- 从API获取排行榜数据
+local function fetchLeaderboardFromAPI()
+    if not PlutoX.uploaderHttpService then
+        return nil, false
+    end
+    
+    local success, result = pcall(function()
+        local apiUrl = "https://api.959966.xyz/api/dashboard/leaderboard"
+        local queryParams = string.format("?game_name=%s&username=%s", 
+            PlutoX.uploaderHttpService:URLEncode(gameName), 
+            PlutoX.uploaderHttpService:URLEncode(username))
+        
+        local response = game:HttpGet(apiUrl .. queryParams, false)
+        local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
+        
+        if responseJson.success and responseJson.data then
+            PlutoX.debug("[排行榜] 从API获取排行榜数据成功，共 " .. #responseJson.data .. " 条")
+            return responseJson.data, true
+        else
+            PlutoX.debug("[排行榜] API返回错误: " .. tostring(responseJson.error))
+            return nil, false
+        end
+    end)
+    
+    if success then
+        return result, true
+    else
+        PlutoX.debug("[排行榜] API请求失败: " .. tostring(result))
+        return nil, false
+    end
+end
+
+-- 从排行榜数据中查找玩家排名
+local function findPlayerRankInLeaderboard(leaderboardData)
+    if not leaderboardData or type(leaderboardData) ~= "table" then
+        return nil, false
+    end
+    
+    for _, entry in ipairs(leaderboardData) do
+        if entry.user_id == userId then
+            PlutoX.debug("[排行榜] ✅ 从API数据中找到玩家ID: " .. userId .. ", 排名: #" .. entry.rank)
+            return entry.rank, true
+        end
+    end
+    
+    PlutoX.debug("[排行榜] ❌ 未在API数据中找到玩家ID: " .. userId)
+    return nil, false
+end
+
+-- 上传排行榜数据到网站
+local function uploadLeaderboardToWebsite()
+    if not PlutoX.uploaderHttpService then
+        PlutoX.debug("[排行榜] HttpService 不可用，无法上传排行榜数据")
+        return false
+    end
+    
+    local leaderboardEntries = {}
+    local contents = tryGetContents(2)
+    if not contents then
+        PlutoX.debug("[排行榜] 无法获取排行榜数据，取消上传")
+        return false
+    end
+    
+    -- 遍历排行榜，提取所有玩家的数据
+    for _, child in ipairs(contents:GetChildren()) do
+        local childId = tonumber(child.Name)
+        if childId then
+            local placement = child:FindFirstChild("Placement")
+            local rank = placement and placement:IsA("IntValue") and placement.Value or 0
+            table.insert(leaderboardEntries, {
+                user_id = childId,
+                rank = rank
+            })
+        end
+    end
+    
+    if #leaderboardEntries == 0 then
+        PlutoX.debug("[排行榜] 排行榜为空，取消上传")
+        return false
+    end
+    
+    PlutoX.debug("[排行榜] 准备上传 " .. #leaderboardEntries .. " 条排行榜数据到网站")
+    
+    local success, result = pcall(function()
+        local uploadUrl = "https://api.959966.xyz/api/dashboard/leaderboard"
+        local requestBody = {
+            game_user_id = "ee9aecb5-ab12-48c4-83c9-892b49b27e0d",
+            game_name = gameName,
+            username = username,
+            leaderboard_data = leaderboardEntries
+        }
+        
+        local response = game:HttpPost(uploadUrl, PlutoX.uploaderHttpService:JSONEncode(requestBody), false)
+        local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
+        
+        if responseJson.success then
+            PlutoX.debug("[排行榜] ✅ 排行榜数据上传成功，共 " .. #leaderboardEntries .. " 条")
+            return true
+        else
+            PlutoX.warn("[排行榜] 排行榜数据上传失败: " .. tostring(responseJson.error))
+            return false
+        end
+    end)
+    
+    if success then
+        leaderboardConfig.lastUploadTime = tick()
+        return result
+    else
+        PlutoX.warn("[排行榜] 排行榜数据上传出错: " .. tostring(result))
+        return false
+    end
+end
+
 -- 排行榜配置
 local leaderboardConfig = {
     position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
     streamTimeout = 10,
     cacheTime = 300, -- 缓存时间（秒），5分钟
     failCacheTime = 30, -- 失败后的缓存时间（秒），30秒
+    websiteCacheTime = 1800, -- 网站缓存时间（秒），30分钟
     lastFetchTime = 0,
+    lastUploadTime = 0, -- 上次上传到网站的时间
     cachedRank = nil,
     cachedIsOnLeaderboard = false,
     lastFetchSuccess = false, -- 上次获取是否成功
     isFetching = false, -- 是否正在获取中
     hasFetched = false, -- 是否已经获取过
+    uploadCooldown = 1800, -- 上传冷却时间（30分钟）
+    lastAPICheckTime = 0, -- 上次API检查时间
+    apiCheckInterval = 60, -- API检查间隔（60秒）
 }
 
 local function tryGetContents(timeout)
@@ -335,6 +453,49 @@ local function fetchPlayerRank()
         return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
     end
     
+    -- 首先尝试从API获取排行榜数据（优先使用网站数据）
+    if (currentTime - (leaderboardConfig.lastAPICheckTime or 0)) >= leaderboardConfig.apiCheckInterval then
+        leaderboardConfig.isFetching = true
+        leaderboardConfig.lastAPICheckTime = currentTime
+        
+        spawn(function()
+            local apiData, apiSuccess = fetchLeaderboardFromAPI()
+            if apiSuccess and apiData then
+                local rank, isOnLeaderboard = findPlayerRankInLeaderboard(apiData)
+                leaderboardConfig.cachedRank = rank
+                leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
+                leaderboardConfig.lastFetchTime = currentTime
+                leaderboardConfig.lastFetchSuccess = true
+                leaderboardConfig.hasFetched = true
+                leaderboardConfig.isFetching = false
+                
+                PlutoX.debug("[排行榜] ✅ 使用API数据，排名: " .. (rank or "未上榜"))
+            else
+                -- API获取失败，继续从游戏中获取
+                PlutoX.debug("[排行榜] API获取失败，继续从游戏中获取...")
+                -- 在这里调用游戏内获取逻辑（不使用spawn避免异步问题）
+                local rank, isOnLeaderboard = fetchPlayerRankFromGame(currentTime)
+                leaderboardConfig.isFetching = false
+            end
+        end)
+        
+        -- 等待API检查完成（最多1秒）
+        local startTime = tick()
+        while leaderboardConfig.isFetching and (tick() - startTime) < 1 do
+            wait(0.1)
+        end
+        
+        return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+    end
+    
+    -- API检查间隔内，直接返回缓存值
+    return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
+end
+
+-- 从游戏中获取排行榜（原有逻辑）
+local function fetchPlayerRankFromGame(currentTime)
+    local currentTime = currentTime or tick()
+    
     -- 如果已经获取过且缓存未过期，直接返回缓存值
     if leaderboardConfig.hasFetched then
         -- 根据上次获取是否成功决定使用哪个缓存时间
@@ -361,6 +522,19 @@ local function fetchPlayerRank()
         leaderboardConfig.lastFetchSuccess = true
         leaderboardConfig.hasFetched = true
         leaderboardConfig.isFetching = false
+        
+        -- 立即上传排行榜数据到网站
+        if PlutoX.uploader then
+            spawn(function()
+                pcall(function()
+                    PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
+                    PlutoX.uploader:forceUpload()
+                    leaderboardConfig.lastUploadTime = tick()
+                    PlutoX.debug("[排行榜] 排行榜数据已上传到网站")
+                end)
+            end)
+        end
+        
         return rank, isOnLeaderboard
     end
     
@@ -410,6 +584,20 @@ local function fetchPlayerRank()
             leaderboardConfig.lastFetchSuccess = true
             leaderboardConfig.hasFetched = true
             leaderboardConfig.isFetching = false
+            
+            -- 立即上传排行榜数据到网站
+            if PlutoX.uploader and (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
+                spawn(function()
+                    pcall(function()
+                        PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
+                        uploadLeaderboardToWebsite()
+                        PlutoX.debug("[排行榜] 排行榜数据上传完成")
+                    end)
+                end)
+            else
+                PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
+            end
+            
             return rank, isOnLeaderboard
         end
     end
@@ -509,15 +697,18 @@ local function fetchPlayerRank()
         restoreVelocities()
         PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
         
-        -- 更新缓存
-        leaderboardConfig.cachedRank = rank
-        leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
-        leaderboardConfig.lastFetchTime = currentTime
-        leaderboardConfig.lastFetchSuccess = true
-        leaderboardConfig.hasFetched = true
-        leaderboardConfig.isFetching = false
-        return rank, isOnLeaderboard
-    else
+-- 立即上传排行榜数据到网站
+        if PlutoX.uploader and (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
+            spawn(function()
+                pcall(function()
+                    PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
+                    uploadLeaderboardToWebsite()
+                    PlutoX.debug("[排行榜] 排行榜数据上传完成")
+                end)
+            end)
+        else
+            PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
+        end
         PlutoX.debug("[排行榜] ❌ 传送后仍无法获取排行榜")
         
         -- 立即传送回原位置并恢复速度
