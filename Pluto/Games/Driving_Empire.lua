@@ -296,19 +296,20 @@ local function parseContents(contents)
     rank = 1
     local foundEntries = 0
     for _, child in ipairs(contents:GetChildren()) do
-        -- 跳过模板元素
-        if tonumber(child.Name) then
+        -- 跳过模板元素（只检查数字ID）
+        local childId = tonumber(child.Name)
+        if childId then
             foundEntries = foundEntries + 1
-            if tonumber(child.Name) == userId or child.Name == username then
+            if childId == userId then
                 local placement = child:FindFirstChild("Placement")
                 local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-                PlutoX.debug("[排行榜] ✅ 找到玩家，排名: #" .. foundRank .. " (扫描了 " .. foundEntries .. " 个有效条目)")
+                PlutoX.debug("[排行榜] ✅ 找到玩家ID: " .. childId .. ", 排名: #" .. foundRank .. " (扫描了 " .. foundEntries .. " 个有效条目)")
                 return foundRank, true
             end
             rank = rank + 1
         end
-    end
-    PlutoX.debug("[排行榜] ❌ 未在排行榜中找到玩家 (扫描了 " .. foundEntries .. " 个有效条目)")
+    }
+    PlutoX.debug("[排行榜] ❌ 未在排行榜中找到玩家ID: " .. userId .. " (扫描了 " .. foundEntries .. " 个有效条目)")
     return nil, false
 end
 
