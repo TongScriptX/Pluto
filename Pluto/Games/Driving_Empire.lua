@@ -244,16 +244,27 @@ local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
             leaderboard_data = leaderboardEntries
         }
         
-        local response = game:HttpPost(uploadUrl, PlutoX.uploaderHttpService:JSONEncode(requestBody), false)
-        local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
+        local maxRetries = 3
+        local retryDelay = 2
         
-        if responseJson.success then
-            PlutoX.debug("[排行榜] ✅ 排行榜数据上传成功，共 " .. #leaderboardEntries .. " 条")
-            return true
-        else
-            PlutoX.warn("[排行榜] 排行榜数据上传失败: " .. tostring(responseJson.error))
-            return false
+        for attempt = 1, maxRetries do
+            local response = game:HttpPost(uploadUrl, PlutoX.uploaderHttpService:JSONEncode(requestBody), false)
+            local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
+            
+            if responseJson.success then
+                PlutoX.debug("[排行榜] ✅ 排行榜数据上传成功，共 " .. #leaderboardEntries .. " 条")
+                return true
+            elseif attempt < maxRetries then
+                PlutoX.warn("[排行榜] 上传失败（尝试 " .. attempt .. "/" .. maxRetries .. "），" .. retryDelay .. "秒后重试: " .. tostring(responseJson.error))
+                task.wait(retryDelay)
+                retryDelay = retryDelay * 2
+            else
+                PlutoX.warn("[排行榜] 排行榜数据上传失败: " .. tostring(responseJson.error))
+                return false
+            end
         end
+        
+        return false
     end)
     
     if success then
