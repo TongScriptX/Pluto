@@ -505,12 +505,30 @@ local function fetchPlayerRank()
                 
                 -- 直接从游戏中获取
                 local gameRank, gameIsOnLeaderboard = nil, false
+                local leaderboardEntries = nil
                 
                 -- 尝试直接获取
                 local contents = tryGetContents(2)
                 if contents then
                     PlutoX.debug("[排行榜] ✅ 直接获取成功")
                     gameRank, gameIsOnLeaderboard = parseContents(contents)
+                    
+                    -- 提取排行榜数据用于上传
+                    if apiSuccess and apiData and #apiData == 0 then
+                        -- API返回0条数据，需要上传游戏内获取的数据
+                        leaderboardEntries = {}
+                        for _, child in ipairs(contents:GetChildren()) do
+                            local childId = tonumber(child.Name)
+                            if childId then
+                                local placement = child:FindFirstChild("Placement")
+                                local rank = placement and placement:IsA("IntValue") and placement.Value or 0
+                                table.insert(leaderboardEntries, {
+                                    user_id = childId,
+                                    rank = rank
+                                })
+                            end
+                        end
+                    end
                 else
                     -- 尝试远程加载
                     PlutoX.debug("[排行榜] 直接获取失败，使用远程加载...")
@@ -651,6 +669,17 @@ local function fetchPlayerRank()
                 leaderboardConfig.isFetching = false
                 
                 PlutoX.debug("[排行榜] 游戏内获取完成，排名: " .. (gameRank or "未上榜"))
+                
+                -- 如果API返回0条数据且成功提取了排行榜条目，立即上传
+                if apiSuccess and apiData and #apiData == 0 and leaderboardEntries and #leaderboardEntries > 0 then
+                    spawn(function()
+                        pcall(function()
+                            PlutoX.debug("[排行榜] API无数据，开始上传游戏内排行榜数据到网站...")
+                            uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
+                            PlutoX.debug("[排行榜] 排行榜数据上传完成")
+                        end)
+                    end)
+                end
             end
         end)
         
@@ -909,7 +938,7 @@ PlutoX.registerDataType({
     icon = "🏆",
     fetchFunc = function()
         -- 异步获取排行榜数据，避免阻塞主循环
-        local result = nil
+        local result = "未上榜"
         local completed = false
 
         spawn(function()
@@ -931,10 +960,10 @@ PlutoX.registerDataType({
     calculateAvg = false,
     supportTarget = false,
     formatFunc = function(value)
-        if value then
+        if type(value) == "number" then
             return "#" .. tostring(value)
         end
-        return "未上榜"
+        return value or "未上榜"
     end
 })
 
