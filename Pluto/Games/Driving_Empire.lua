@@ -298,43 +298,6 @@ local function uploadLeaderboardToWebsite(contents)
     
     return uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
 end
-    
-    if #leaderboardEntries == 0 then
-        PlutoX.debug("[排行榜] 排行榜为空，取消上传")
-        return false
-    end
-    
-    PlutoX.debug("[排行榜] 准备上传 " .. #leaderboardEntries .. " 条排行榜数据到网站")
-    
-    local success, result = pcall(function()
-        local uploadUrl = "https://api.959966.xyz/api/dashboard/leaderboard"
-        local requestBody = {
-            game_user_id = "ee9aecb5-ab12-48c4-83c9-892b49b27e0d",
-            game_name = gameName,
-            username = username,
-            leaderboard_data = leaderboardEntries
-        }
-        
-        local response = game:HttpPost(uploadUrl, PlutoX.uploaderHttpService:JSONEncode(requestBody), false)
-        local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
-        
-        if responseJson.success then
-            PlutoX.debug("[排行榜] ✅ 排行榜数据上传成功，共 " .. #leaderboardEntries .. " 条")
-            return true
-        else
-            PlutoX.warn("[排行榜] 排行榜数据上传失败: " .. tostring(responseJson.error))
-            return false
-        end
-    end)
-    
-    if success then
-        leaderboardConfig.lastUploadTime = tick()
-        return result
-    else
-        PlutoX.warn("[排行榜] 排行榜数据上传出错: " .. tostring(result))
-        return false
-    end
-end
 
 -- 排行榜配置
 local leaderboardConfig = {
