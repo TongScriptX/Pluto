@@ -578,6 +578,19 @@ local function fetchPlayerRank()
                                 teleport(originalPosition)
                                 restoreVelocities()
                                 PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
+                                
+                                -- 上传排行榜数据到网站
+                                if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
+                                    spawn(function()
+                                        pcall(function()
+                                            PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
+                                            uploadLeaderboardToWebsite()
+                                            PlutoX.debug("[排行榜] 排行榜数据上传完成")
+                                        end)
+                                    end)
+                                else
+                                    PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
+                                end
                             else
                                 -- 传送回原位置
                                 teleport(originalPosition)
@@ -710,7 +723,7 @@ local function fetchPlayerRankFromGame(currentTime)
             leaderboardConfig.isFetching = false
             
             -- 立即上传排行榜数据到网站
-            if PlutoX.uploader and (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
+            if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
                 spawn(function()
                     pcall(function()
                         PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
