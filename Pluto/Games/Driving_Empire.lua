@@ -181,8 +181,8 @@ local function fetchLeaderboardFromAPI()
     local success, result = pcall(function()
         local apiUrl = "https://api.959966.xyz/api/dashboard/leaderboard"
         local queryParams = string.format("?game_name=%s&username=%s", 
-            PlutoX.uploaderHttpService:URLEncode(gameName), 
-            PlutoX.uploaderHttpService:URLEncode(username))
+            PlutoX.uploaderHttpService:UrlEncode(gameName), 
+            PlutoX.uploaderHttpService:UrlEncode(username))
         
         local response = game:HttpGet(apiUrl .. queryParams, false)
         local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
@@ -473,9 +473,43 @@ local function fetchPlayerRank()
             else
                 -- API获取失败，继续从游戏中获取
                 PlutoX.debug("[排行榜] API获取失败，继续从游戏中获取...")
-                -- 在这里调用游戏内获取逻辑（不使用spawn避免异步问题）
-                local rank, isOnLeaderboard = fetchPlayerRankFromGame(currentTime)
+                -- 临时保存isFetching状态，因为fetchPlayerRankFromGame会修改它
+                local wasFetching = leaderboardConfig.isFetching
+                leaderboardConfig.isFetching = true
+                
+                -- 直接从游戏中获取
+                local gameRank, gameIsOnLeaderboard = nil, false
+                
+                -- 尝试直接获取
+                local contents = tryGetContents(2)
+                if contents then
+                    PlutoX.debug("[排行榜] ✅ 直接获取成功")
+                    gameRank, gameIsOnLeaderboard = parseContents(contents)
+                else
+                    -- 尝试远程加载
+                    PlutoX.debug("[排行榜] 直接获取失败，使用远程加载...")
+                    pcall(function()
+                        player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
+                    end)
+                    
+                    -- 等待加载
+                    wait(1)
+                    contents = tryGetContents(1)
+                    if contents then
+                        PlutoX.debug("[排行榜] ✅ 远程加载成功")
+                        gameRank, gameIsOnLeaderboard = parseContents(contents)
+                    end
+                end
+                
+                -- 更新缓存
+                leaderboardConfig.cachedRank = gameRank
+                leaderboardConfig.cachedIsOnLeaderboard = gameIsOnLeaderboard
+                leaderboardConfig.lastFetchTime = currentTime
+                leaderboardConfig.lastFetchSuccess = (gameRank ~= nil)
+                leaderboardConfig.hasFetched = true
                 leaderboardConfig.isFetching = false
+                
+                PlutoX.debug("[排行榜] 游戏内获取完成，排名: " .. (gameRank or "未上榜"))
             end
         end)
         
