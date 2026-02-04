@@ -460,7 +460,8 @@ local function fetchPlayerRank()
         
         spawn(function()
             local apiData, apiSuccess = fetchLeaderboardFromAPI()
-            if apiSuccess and apiData then
+            -- 只有API返回非空数据时才使用API数据
+            if apiSuccess and apiData and #apiData > 0 then
                 local rank, isOnLeaderboard = findPlayerRankInLeaderboard(apiData)
                 leaderboardConfig.cachedRank = rank
                 leaderboardConfig.cachedIsOnLeaderboard = isOnLeaderboard
@@ -471,8 +472,8 @@ local function fetchPlayerRank()
                 
                 PlutoX.debug("[排行榜] ✅ 使用API数据，排名: " .. (rank or "未上榜"))
             else
-                -- API获取失败，继续从游戏中获取
-                PlutoX.debug("[排行榜] API获取失败，继续从游戏中获取...")
+                -- API没有数据或调用失败，继续从游戏中获取
+                PlutoX.debug("[排行榜] API无数据或获取失败，继续从游戏中获取...")
                 -- 临时保存isFetching状态，因为fetchPlayerRankFromGame会修改它
                 local wasFetching = leaderboardConfig.isFetching
                 leaderboardConfig.isFetching = true
