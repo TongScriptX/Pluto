@@ -1193,6 +1193,14 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                 if sessionStartValue > 0 then
                     self.sessionStartValues[dataType.id] = sessionStartValue
                     PlutoX.debug("[启动检查] 从配置加载 " .. dataType.name .. " 初始值: " .. tostring(sessionStartValue))
+                    
+                    -- 初始化 lastSaved 值为 sessionStart，以便启动时可以检测减少
+                    self.config["lastSaved" .. keyUpper] = sessionStartValue
+                end
+                
+                -- 启动时调整目标值（检测金额减少并相应调整）
+                if self.config["target" .. keyUpper] and self.config["target" .. keyUpper] > 0 then
+                    self:adjustTargetValue(function() end, dataType.id)
                 end
                 
                 -- 检查是否开启了目标踢出功能
