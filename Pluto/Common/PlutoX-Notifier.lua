@@ -1066,12 +1066,36 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             for id, value in pairs(dataTable) do
                 local dataType = PlutoX.getDataType(id)
                 if dataType then
-                    -- 检查value是否是table对象（来自dataMonitor:collectData）
                     local actualValue = value
-                    if type(value) == "table" and value.current ~= nil then
-                        actualValue = value.current
+                    local skipValue = false
+                    
+                    -- 检查value是否是table对象
+                    if type(value) == "table" then
+                        -- 处理 dataMonitor:collectData 格式: {current: value, ...}
+                        if value.current ~= nil then
+                            actualValue = value.current
+                        -- 处理其他 table 格式（如排行榜详细信息）
+                        -- 如果是 table 但没有 current 字段，尝试找到第一个数字值
+                        elseif next(value) ~= nil then
+                            for k, v in pairs(value) do
+                                if type(v) == "number" then
+                                    actualValue = v
+                                    break
+                                end
+                            end
+                            -- 如果找不到数字值，跳过这个数据
+                            if type(actualValue) == "table" then
+                                skipValue = true
+                            end
+                        else
+                            skipValue = true
+                        end
                     end
-                    table.insert(dataText, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(actualValue)))
+                    
+                    -- 如果值有效，格式化显示
+                    if not skipValue and actualValue ~= nil then
+                        table.insert(dataText, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(actualValue)))
+                    end
                 end
             end
         else
