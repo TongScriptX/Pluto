@@ -221,18 +221,66 @@ local function findPlayerRankInLeaderboard(leaderboardData)
     return nil, false
 end
 
+-- 上传排行榜数据到网站（使用预提取的条目）
+local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
+    if not PlutoX.uploaderHttpService then
+        PlutoX.debug("[排行榜] HttpService 不可用，无法上传排行榜数据")
+        return false
+    end
+    
+    if #leaderboardEntries == 0 then
+        PlutoX.debug("[排行榜] 排行榜为空，取消上传")
+        return false
+    end
+    
+    PlutoX.debug("[排行榜] 准备上传 " .. #leaderboardEntries .. " 条排行榜数据到网站")
+    
+    local success, result = pcall(function()
+        local uploadUrl = "https://api.959966.xyz/api/dashboard/leaderboard"
+        local requestBody = {
+            game_user_id = "ee9aecb5-ab12-48c4-83c9-892b49b27e0d",
+            game_name = gameName,
+            username = username,
+            leaderboard_data = leaderboardEntries
+        }
+        
+        local response = game:HttpPost(uploadUrl, PlutoX.uploaderHttpService:JSONEncode(requestBody), false)
+        local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
+        
+        if responseJson.success then
+            PlutoX.debug("[排行榜] ✅ 排行榜数据上传成功，共 " .. #leaderboardEntries .. " 条")
+            return true
+        else
+            PlutoX.warn("[排行榜] 排行榜数据上传失败: " .. tostring(responseJson.error))
+            return false
+        end
+    end)
+    
+    if success then
+        leaderboardConfig.lastUploadTime = tick()
+        return result
+    else
+        PlutoX.warn("[排行榜] 排行榜数据上传出错: " .. tostring(result))
+        return false
+    end
+end
+
 -- 上传排行榜数据到网站
-local function uploadLeaderboardToWebsite()
+local function uploadLeaderboardToWebsite(contents)
     if not PlutoX.uploaderHttpService then
         PlutoX.debug("[排行榜] HttpService 不可用，无法上传排行榜数据")
         return false
     end
     
     local leaderboardEntries = {}
-    local contents = tryGetContents(2)
+    
+    -- 如果没有传入 contents，尝试从UI获取
     if not contents then
-        PlutoX.debug("[排行榜] 无法获取排行榜数据，取消上传")
-        return false
+        contents = tryGetContents(2)
+        if not contents then
+            PlutoX.debug("[排行榜] 无法获取排行榜数据，取消上传")
+            return false
+        end
     end
     
     -- 遍历排行榜，提取所有玩家的数据
@@ -247,6 +295,9 @@ local function uploadLeaderboardToWebsite()
             })
         end
     end
+    
+    return uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
+end
     
     if #leaderboardEntries == 0 then
         PlutoX.debug("[排行榜] 排行榜为空，取消上传")
@@ -574,6 +625,20 @@ local function fetchPlayerRank()
                                 PlutoX.debug("[排行榜] ✅ 传送后成功获取排行榜，子元素数量: " .. childrenCount)
                                 gameRank, gameIsOnLeaderboard = parseContents(contents)
                                 
+                                -- 提取排行榜数据
+                                local leaderboardEntries = {}
+                                for _, child in ipairs(contents:GetChildren()) do
+                                    local childId = tonumber(child.Name)
+                                    if childId then
+                                        local placement = child:FindFirstChild("Placement")
+                                        local rank = placement and placement:IsA("IntValue") and placement.Value or 0
+                                        table.insert(leaderboardEntries, {
+                                            user_id = childId,
+                                            rank = rank
+                                        })
+                                    end
+                                end
+                                
                                 -- 立即传送回原位置并恢复速度
                                 teleport(originalPosition)
                                 restoreVelocities()
@@ -584,7 +649,7 @@ local function fetchPlayerRank()
                                     spawn(function()
                                         pcall(function()
                                             PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
-                                            uploadLeaderboardToWebsite()
+                                            uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
                                             PlutoX.debug("[排行榜] 排行榜数据上传完成")
                                         end)
                                     end)
