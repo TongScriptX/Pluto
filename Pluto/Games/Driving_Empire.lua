@@ -214,6 +214,19 @@ local function tryGetContents(timeout)
             return nil
         end
         
+        -- 输出 weekly_money 的所有子元素详情
+        local weeklyChildren = weekly_money:GetChildren()
+        if #weeklyChildren > 0 then
+            local childrenInfo = {}
+            for _, child in ipairs(weeklyChildren) do
+                local className = child.ClassName or "Unknown"
+                table.insert(childrenInfo, child.Name .. "(" .. className .. ")")
+            end
+            PlutoX.debug("[排行榜] tryGetContents: weekly_money 子元素: " .. table.concat(childrenInfo, ", "))
+        else
+            PlutoX.debug("[排行榜] tryGetContents: weekly_money 没有子元素")
+        end
+        
         local Screen = weekly_money:FindFirstChild("Screen")
         if not Screen then
             PlutoX.debug("[排行榜] tryGetContents: ❌ Screen 不存在")
