@@ -1382,6 +1382,11 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
             local dataType = dataInfo.type
             local keyUpper = dataType.id:gsub("^%l", string.upper)
             
+            -- 跳过排行榜数据类型的完整通知（简单排名信息通过 beforeSendCallback 添加）
+            if dataType.id == "leaderboard" then
+                continue
+            end
+            
             if self.config["notify" .. keyUpper] and dataInfo.current ~= nil then
                 -- 计算平均速度（时间加权平均：总变化量/总时间）
                 local avg = "0"
