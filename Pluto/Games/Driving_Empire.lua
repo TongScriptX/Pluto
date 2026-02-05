@@ -705,17 +705,6 @@ local function fetchPlayerRank()
                 leaderboardConfig.isFetching = false
                 
                 PlutoX.debug("[排行榜] 游戏内获取完成，排名: " .. (gameRank or "未上榜"))
-                
-                -- 如果API返回0条数据且成功提取了排行榜条目，立即上传
-                if apiSuccess and apiData and #apiData == 0 and leaderboardEntries and #leaderboardEntries > 0 then
-                    spawn(function()
-                        pcall(function()
-                            PlutoX.debug("[排行榜] API无数据，开始上传游戏内排行榜数据到网站...")
-                            uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
-                            PlutoX.debug("[排行榜] 排行榜数据上传完成")
-                        end)
-                    end)
-                end
             end
         end)
         
