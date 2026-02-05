@@ -1498,7 +1498,8 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         end
         local dataTable = {}
         for id, dataInfo in pairs(data) do
-            if dataInfo.current ~= nil then
+            -- 跳过排行榜数据
+            if dataInfo.type.id ~= "leaderboard" and dataInfo.current ~= nil then
                 dataTable[id] = dataInfo.current
             end
         end
