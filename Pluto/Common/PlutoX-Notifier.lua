@@ -1194,11 +1194,21 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                 warn("[DataMonitor] fetchFunc " .. dataType.id .. ": success=" .. tostring(success) .. ", value=" .. tostring(value))
                 if success and value then
                     local keyUpper = dataType.id:gsub("^%l", string.upper)
-                    self.config["total" .. keyUpper .. "Base"] = value
-                    self.config["lastNotify" .. keyUpper] = value
-                    self.lastValues[dataType.id] = value
-                    warn("[DataMonitor] 设置 " .. keyUpper .. "Base=" .. tostring(value))
-                    table.insert(initInfo, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+                    -- 只有数值类型才设置基准值，避免存储字符串导致比较错误
+                    if type(value) == "number" then
+                        self.config["total" .. keyUpper .. "Base"] = value
+                        self.config["lastNotify" .. keyUpper] = value
+                        self.lastValues[dataType.id] = value
+                        warn("[DataMonitor] 设置 " .. keyUpper .. "Base=" .. tostring(value))
+                        table.insert(initInfo, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+                    else
+                        -- 非数值类型（如排行榜的"未上榜"），设置默认值0
+                        self.config["total" .. keyUpper .. "Base"] = 0
+                        self.config["lastNotify" .. keyUpper] = 0
+                        self.lastValues[dataType.id] = value
+                        warn("[DataMonitor] " .. dataType.id .. " 返回非数值类型，设置默认值0，当前值: " .. tostring(value))
+                        table.insert(initInfo, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
+                    end
                 else
                     warn("[DataMonitor] fetchFunc " .. dataType.id .. " 失败: " .. tostring(value))
                 end
@@ -1273,6 +1283,11 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         
         -- PlutoX.debug("[DataMonitor] calculateTotalEarned " .. dataType.id .. ": current=" .. tostring(currentValue) .. ", baseValue=" .. tostring(baseValue))
         
+        -- 只对数值类型进行计算
+        if type(baseValue) ~= "number" or type(currentValue) ~= "number" then
+            return 0
+        end
+        
         if baseValue > 0 then
             return currentValue - baseValue
         end
@@ -1287,7 +1302,13 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         local keyUpper = dataType.id:gsub("^%l", string.upper)
         local lastNotifyValue = self.config["lastNotify" .. keyUpper] or 0
         
-        if lastNotifyValue > 0 then
+        -- 确保 currentValue 是数值类型
+        if type(currentValue) ~= "number" then
+            return 0
+        end
+        
+        -- 确保 lastNotifyValue 是数值类型后再比较
+        if type(lastNotifyValue) == "number" and lastNotifyValue > 0 then
             return currentValue - lastNotifyValue
         end
         return self:calculateTotalEarned(dataType, currentValue)
