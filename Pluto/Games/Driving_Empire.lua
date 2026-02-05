@@ -636,16 +636,22 @@ local function fetchPlayerRank()
                                 PlutoX.debug("[排行榜] ✅ 传送后成功获取排行榜，子元素数量: " .. childrenCount)
                                 gameRank, gameIsOnLeaderboard = parseContents(contents)
                                 
-                                -- 提取排行榜数据
+                                -- 提取排行榜数据（确保rank为正数）
+                                local rankCounter = 1
                                 for _, child in ipairs(contents:GetChildren()) do
                                     local childId = tonumber(child.Name)
                                     if childId then
                                         local placement = child:FindFirstChild("Placement")
-                                        local rank = placement and placement:IsA("IntValue") and placement.Value or 0
+                                        local rank = placement and placement:IsA("IntValue") and placement.Value or rankCounter
+                                        -- 确保rank为正数（rankCounter从1开始）
+                                        if rank <= 0 then
+                                            rank = rankCounter
+                                        end
                                         table.insert(leaderboardEntries, {
                                             user_id = childId,
                                             rank = rank
                                         })
+                                        rankCounter = rankCounter + 1
                                     end
                                 end
                                 PlutoX.debug("[排行榜] 传送后提取到 " .. #leaderboardEntries .. " 条排行榜数据")
