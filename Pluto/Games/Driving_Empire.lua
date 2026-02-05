@@ -542,6 +542,23 @@ local function fetchPlayerRank()
                     if contents then
                         PlutoX.debug("[排行榜] ✅ 远程加载成功")
                         gameRank, gameIsOnLeaderboard = parseContents(contents)
+                        
+                        -- 提取排行榜数据用于上传（如果 API 返回 0 条数据）
+                        if apiSuccess and apiData and #apiData == 0 then
+                            leaderboardEntries = {}
+                            for _, child in ipairs(contents:GetChildren()) do
+                                local childId = tonumber(child.Name)
+                                if childId then
+                                    local placement = child:FindFirstChild("Placement")
+                                    local rank = placement and placement:IsA("IntValue") and placement.Value or 0
+                                    table.insert(leaderboardEntries, {
+                                        user_id = childId,
+                                        rank = rank
+                                    })
+                                end
+                            end
+                            PlutoX.debug("[排行榜] 远程加载提取到 " .. #leaderboardEntries .. " 条排行榜数据")
+                        end
                     else
                         -- 远程加载也失败，尝试传送玩家到排行榜位置
                         PlutoX.debug("[排行榜] 远程加载失败，尝试传送玩家...")
@@ -610,7 +627,9 @@ local function fetchPlayerRank()
                             -- 等待排行榜 UI 加载
                             task.wait(1)
                             
-                            -- 检查排行榜是否加载
+                            -- 传送前初始化 leaderboardEntries
+                            leaderboardEntries = leaderboardEntries or {}
+                            
                             contents = tryGetContents(1)
                             if contents then
                                 local childrenCount = #contents:GetChildren()
@@ -618,7 +637,6 @@ local function fetchPlayerRank()
                                 gameRank, gameIsOnLeaderboard = parseContents(contents)
                                 
                                 -- 提取排行榜数据
-                                local leaderboardEntries = {}
                                 for _, child in ipairs(contents:GetChildren()) do
                                     local childId = tonumber(child.Name)
                                     if childId then
@@ -630,6 +648,7 @@ local function fetchPlayerRank()
                                         })
                                     end
                                 end
+                                PlutoX.debug("[排行榜] 传送后提取到 " .. #leaderboardEntries .. " 条排行榜数据")
                                 
                                 -- 立即传送回原位置并恢复速度
                                 teleport(originalPosition)
@@ -637,7 +656,20 @@ local function fetchPlayerRank()
                                 PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
                                 
                                 -- 上传排行榜数据到网站
-                                if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
+                                local shouldUpload = false
+                                if apiSuccess and apiData and #apiData == 0 then
+                                    -- API返回0条数据，立即上传
+                                    shouldUpload = true
+                                    PlutoX.debug("[排行榜] API返回0条数据，准备立即上传")
+                                elseif (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
+                                    -- 冷却时间已到，允许上传
+                                    shouldUpload = true
+                                    PlutoX.debug("[排行榜] 冷却时间已到，准备上传")
+                                else
+                                    PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
+                                end
+                                
+                                if shouldUpload and leaderboardEntries and #leaderboardEntries > 0 then
                                     spawn(function()
                                         pcall(function()
                                             PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
@@ -645,8 +677,6 @@ local function fetchPlayerRank()
                                             PlutoX.debug("[排行榜] 排行榜数据上传完成")
                                         end)
                                     end)
-                                else
-                                    PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
                                 end
                             else
                                 -- 传送回原位置
