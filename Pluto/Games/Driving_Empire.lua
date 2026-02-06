@@ -1057,7 +1057,7 @@ PlutoX.registerDataType({
     icon = "🏆",
     fetchFunc = function()
         -- 异步获取排行榜数据，避免阻塞主循环
-        local result = "未上榜"
+        local result = nil  -- 未上榜时返回 nil
         local completed = false
 
         spawn(function()
