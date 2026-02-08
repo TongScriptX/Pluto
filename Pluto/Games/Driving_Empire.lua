@@ -618,6 +618,17 @@ local function fetchPlayerRank()
                                 })
                             end
                         end
+                        
+                        -- 立即上传排行榜数据（API返回0条时）
+                        if leaderboardEntries and #leaderboardEntries > 0 then
+                            spawn(function()
+                                pcall(function()
+                                    PlutoX.debug("[排行榜] API返回0条数据，直接获取成功后立即上传...")
+                                    uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
+                                    PlutoX.debug("[排行榜] 排行榜数据上传完成")
+                                end)
+                            end)
+                        end
                     end
                 else
                     -- 尝试远程加载
@@ -648,6 +659,17 @@ local function fetchPlayerRank()
                                 end
                             end
                             PlutoX.debug("[排行榜] 远程加载提取到 " .. #leaderboardEntries .. " 条排行榜数据")
+                            
+                            -- 立即上传排行榜数据（API返回0条时）
+                            if leaderboardEntries and #leaderboardEntries > 0 then
+                                spawn(function()
+                                    pcall(function()
+                                        PlutoX.debug("[排行榜] API返回0条数据，远程加载成功后立即上传...")
+                                        uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
+                                        PlutoX.debug("[排行榜] 排行榜数据上传完成")
+                                    end)
+                                end)
+                            end
                         end
                     else
                         -- 远程加载也失败，尝试传送玩家到排行榜位置
