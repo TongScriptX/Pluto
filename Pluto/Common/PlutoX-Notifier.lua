@@ -797,11 +797,11 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             
             if reqSuccess then
                 if not res then
-                    print("[Webhook] 执行器返回 nil，假定发送成功")
+                    PlutoX.debug("[Webhook] 执行器返回 nil，假定发送成功")
                 else
                     local statusCode = res.StatusCode or res.statusCode or 0
                     if statusCode == 204 or statusCode == 200 or statusCode == 0 then
-                        print("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
+                        PlutoX.debug("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
                     else
                         warn("[Webhook 错误] 状态码: " .. tostring(statusCode))
                     end

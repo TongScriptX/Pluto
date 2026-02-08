@@ -68,7 +68,7 @@ local function InstallEarlyHook()
     
     if success then
         HookInstalled = true
-        print("[BYPASS] Hook 安装成功")
+        PlutoX.debug("[BYPASS] Hook 安装成功")
     else
         warn("[BYPASS] 关键错误: " .. tostring(err))
     end

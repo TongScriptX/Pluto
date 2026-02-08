@@ -294,7 +294,7 @@ local function sitInDriveSeat(humanoid, seat)
         end, 5, 0.1)
 
         if satDown then
-            print("[Info] 成功坐上驾驶座")
+            PlutoX.debug("[Info] 成功坐上驾驶座")
             return true
         else
             warn("[Warn] 坐上驾驶座尝试失败，重试中")
@@ -380,7 +380,7 @@ local function loadCoal(carName)
         end, 10, 0.3)
 
         if coalLoaded then
-            print("[Info] 装煤成功")
+            PlutoX.debug("[Info] 装煤成功")
             return true
         else
             warn("[Warn] 未检测到煤炭，重试中")
@@ -398,7 +398,7 @@ local function unloadCoal()
         warn("[Warn] 卸煤请求失败:", err)
         return false
     end
-    print("[Info] 卸煤请求已发送，无需等待完成")
+    PlutoX.debug("[Info] 卸煤请求已发送，无需等待完成")
     return true
 end
 
@@ -493,7 +493,7 @@ local function autofarmLoop()
                 return false
             end
 
-            print("[Info] 本轮任务完成，已切回 Civilian。")
+            PlutoX.debug("[Info] 本轮任务完成，已切回 Civilian。")
             return true
         end)
         
@@ -501,11 +501,11 @@ local function autofarmLoop()
             warn("[Warn] 本轮任务失败，5 秒后重试")
             task.wait(5)
         else
-            print("[Info] 等待 3 秒开始下一轮任务")
+            PlutoX.debug("[Info] 等待 3 秒开始下一轮任务")
             task.wait(3)
         end
     end
-    print("[Info] Autofarm 已停止")
+    PlutoX.debug("[Info] Autofarm 已停止")
 end
 
 -- UI 创建
