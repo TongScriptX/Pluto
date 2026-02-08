@@ -51,14 +51,6 @@ local username = player.Name
 
 local gameName = "未知游戏"
 
--- 初始化调试系统（如果调试模式开启）
-PlutoX.setGameInfo(gameName, username, HttpService)
-
--- 初始化调试系统（如果调试模式开启）
-if DEBUG_MODE then
-    PlutoX.initDebugSystem()
-    PlutoX.debug("调试系统已初始化")
-end
 do
     local success, info = pcall(function()
         return MarketplaceService:GetProductInfo(game.PlaceId)
@@ -66,6 +58,15 @@ do
     if success and info then
         gameName = info.Name
     end
+end
+
+-- 初始化调试系统（如果调试模式开启）
+PlutoX.setGameInfo(gameName, username, HttpService)
+
+-- 初始化调试系统（如果调试模式开启）
+if DEBUG_MODE then
+    PlutoX.initDebugSystem()
+    PlutoX.debug("调试系统已初始化")
 end
 
 -- 注册 Cash 数据类型
