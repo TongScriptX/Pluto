@@ -2492,9 +2492,11 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
 
                 -- 排行榜数据特殊处理：总是上传（即使未上榜），用于记录状态
                 if dataType.id == "leaderboard" then
+                    -- 判断是否在榜上：current 不为 nil 且不是 "未上榜" 才表示在榜上
+                    local isOnLeaderboard = dataInfo.current ~= nil and dataInfo.current ~= "未上榜"
                     dataObject[id] = {
-                        current = dataInfo.current,  -- nil表示未上榜
-                        is_on_leaderboard = dataInfo.current ~= nil,
+                        current = dataInfo.current,  -- nil或"未上榜"表示未上榜
+                        is_on_leaderboard = isOnLeaderboard,
                         notify_enabled = notifyEnabled
                     }
                     PlutoX.debug("[DataUploader] 排行榜数据已添加: " .. id)
@@ -2855,9 +2857,11 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 PlutoX.debug("[DataUploader] forceUpload: 处理数据类型: " .. id .. ", current=" .. tostring(dataInfo.current) .. ", notifyEnabled=" .. tostring(notifyEnabled))
 
                 if dataType.id == "leaderboard" then
+                    -- 判断是否在榜上：current 不为 nil 且不是 "未上榜" 才表示在榜上
+                    local isOnLeaderboard = dataInfo.current ~= nil and dataInfo.current ~= "未上榜"
                     dataObject[id] = {
                         current = dataInfo.current,
-                        is_on_leaderboard = dataInfo.current ~= nil,
+                        is_on_leaderboard = isOnLeaderboard,
                         notify_enabled = notifyEnabled
                     }
                     PlutoX.debug("[DataUploader] forceUpload: 排行榜数据已添加: " .. id)
