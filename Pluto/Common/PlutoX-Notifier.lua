@@ -797,11 +797,11 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             
             if reqSuccess then
                 if not res then
-                    print("[Webhook] 执行器返回 nil，假定发送成功")
+                    PlutoX.debug("[Webhook] 执行器返回 nil，假定发送成功")
                 else
                     local statusCode = res.StatusCode or res.statusCode or 0
                     if statusCode == 204 or statusCode == 200 or statusCode == 0 then
-                        print("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
+                        PlutoX.debug("[Webhook] 发送成功，状态码: " .. (statusCode == 0 and "未知(假定成功)" or statusCode))
                     else
                         warn("[Webhook 错误] 状态码: " .. tostring(statusCode))
                     end
@@ -1381,6 +1381,11 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         for id, dataInfo in pairs(data) do
             local dataType = dataInfo.type
             local keyUpper = dataType.id:gsub("^%l", string.upper)
+            
+            -- 跳过排行榜数据类型的完整通知（简单排名信息通过 beforeSendCallback 添加）
+            if dataType.id == "leaderboard" then
+                continue
+            end
             
             if self.config["notify" .. keyUpper] and dataInfo.current ~= nil then
                 -- 计算平均速度（时间加权平均：总变化量/总时间）
@@ -2487,9 +2492,11 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
 
                 -- 排行榜数据特殊处理：总是上传（即使未上榜），用于记录状态
                 if dataType.id == "leaderboard" then
+                    -- 判断是否在榜上：current 不为 nil 且不是 "未上榜" 才表示在榜上
+                    local isOnLeaderboard = dataInfo.current ~= nil and dataInfo.current ~= "未上榜"
                     dataObject[id] = {
-                        current = dataInfo.current,  -- nil表示未上榜
-                        is_on_leaderboard = dataInfo.current ~= nil,
+                        current = dataInfo.current,  -- nil或"未上榜"表示未上榜
+                        is_on_leaderboard = isOnLeaderboard,
                         notify_enabled = notifyEnabled
                     }
                     PlutoX.debug("[DataUploader] 排行榜数据已添加: " .. id)
@@ -2850,9 +2857,11 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                 PlutoX.debug("[DataUploader] forceUpload: 处理数据类型: " .. id .. ", current=" .. tostring(dataInfo.current) .. ", notifyEnabled=" .. tostring(notifyEnabled))
 
                 if dataType.id == "leaderboard" then
+                    -- 判断是否在榜上：current 不为 nil 且不是 "未上榜" 才表示在榜上
+                    local isOnLeaderboard = dataInfo.current ~= nil and dataInfo.current ~= "未上榜"
                     dataObject[id] = {
                         current = dataInfo.current,
-                        is_on_leaderboard = dataInfo.current ~= nil,
+                        is_on_leaderboard = isOnLeaderboard,
                         notify_enabled = notifyEnabled
                     }
                     PlutoX.debug("[DataUploader] forceUpload: 排行榜数据已添加: " .. id)

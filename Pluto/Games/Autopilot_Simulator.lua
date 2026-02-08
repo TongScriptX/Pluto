@@ -128,7 +128,7 @@ local config = configManager:loadConfig()
 
 -- Webhook 管理
 
-local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
+local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
 
 -- 数据监测管理器
 

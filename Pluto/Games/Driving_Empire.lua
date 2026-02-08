@@ -7,6 +7,96 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 
+-- ============================================
+-- Bypass 反检测系统（默认开启）
+-- ============================================
+local BypassActive = true
+local HookInstalled = false
+local BlockCount = 0
+
+-- 目标远程事件黑名单
+local TargetRemotes = {
+    ["StarwatchClientEventIngestor"] = true, ["_network"] = true,
+    ["rsp"] = true, ["rps"] = true, ["rsi"] = true, ["rs"] = true, ["rsw"] = true,
+    ["ptsstop"] = true, ["ptsstart"] = true, ["SdkTelemetryRemote"] = true,
+    ["TeleportInfo"] = true, ["SendLogString"] = true, ["GetClientLogs"] = true,
+    ["GetClientFPS"] = true, ["GetClientPing"] = true, ["GetClientMemoryUsage"] = true,
+    ["GetClientPerformanceStats"] = true, ["GetClientReport"] = true,
+    ["RepBL"] = true, ["UnauthorizedTeleport"] = true, ["ClientDetectedSoftlock"] = true,
+    ["loadTime"] = true, ["InformLoadingEventFunnel"] = true, ["InformGeneralEventFunnel"] = true
+}
+
+-- 立即安装钩子（Early Hook）
+local function InstallEarlyHook()
+    if HookInstalled then return end
+    
+    local success, err = pcall(function()
+        local oldNamecall
+        oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+            local method = getnamecallmethod()
+            local args = {...}
+            
+            if BypassActive and (method == "FireServer" or method == "InvokeServer") then
+                local remoteName = tostring(self)
+                local shouldBlock = false
+                
+                -- A. 检查黑名单名称
+                if TargetRemotes[remoteName] then
+                    shouldBlock = true
+                end
+                
+                -- B. 检查动态ID (8位十六进制 + 连字符)
+                if not shouldBlock and string.match(remoteName, "^%x%x%x%x%x%x%x%x%-") then
+                    shouldBlock = true
+                end
+                
+                -- C. 特定阻断: Location -> Boats
+                if not shouldBlock and remoteName == "Location" and args[1] == "Enter" and args[2] == "Boats" then
+                    shouldBlock = true
+                end
+
+                -- 执行阻断
+                if shouldBlock then
+                    BlockCount = BlockCount + 1
+                    return nil 
+                end
+            end
+            
+            return oldNamecall(self, ...)
+        end)
+    end)
+    
+    if success then
+        HookInstalled = true
+        -- 使用 print 因为此时 PlutoX 还未加载（Early Hook）
+        print("[BYPASS] Hook 安装成功")
+    else
+        warn("[BYPASS] 关键错误: " .. tostring(err))
+    end
+end
+
+InstallEarlyHook()
+
+-- 监控和同步循环
+task.spawn(function()
+    while true do
+        if BypassActive then
+            local remotesFolder = ReplicatedStorage:FindFirstChild("Remotes")
+            if remotesFolder then
+                local children = remotesFolder:GetChildren()
+                for _, remote in ipairs(children) do
+                    local n = remote.Name
+                    -- 自动添加新的GUID到列表
+                    if string.match(n, "^%x%x%x%x%x%x%x%x%-") and not TargetRemotes[n] then
+                        TargetRemotes[n] = true
+                    end
+                end
+            end
+        end
+        task.wait(2)
+    end
+end)
+
 _G.PRIMARY_COLOR = 5793266
 local lastSendTime = os.time()
 local sendingWelcome = false
@@ -963,7 +1053,7 @@ PlutoX.registerDataType({
     icon = "🏆",
     fetchFunc = function()
         -- 异步获取排行榜数据，避免阻塞主循环
-        local result = "未上榜"
+        local result = nil  -- 未上榜时返回 nil
         local completed = false
 
         spawn(function()
