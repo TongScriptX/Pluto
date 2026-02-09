@@ -936,6 +936,152 @@ function UILibrary:CreateDropdown(parent, options)
     return dropdownFrame
 end
 
+-- 滑块模块
+function UILibrary:CreateSlider(parent, options)
+    if not parent then
+        warn("[Slider]: Creation failed: Parent is nil")
+        return nil
+    end
+
+    options = options or {}
+    local minValue = options.Min or 0
+    local maxValue = options.Max or 100
+    local defaultValue = options.Default or minValue
+    local suffix = options.Suffix or ""
+    local sliderHeight = options.Height or 24
+
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.Name = "Slider_" .. (options.Text or "Unnamed")
+    sliderFrame.Size = UDim2.new(1, -12, 0, sliderHeight)
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Parent = parent
+    sliderFrame.ZIndex = 2
+
+    -- 标签（左侧）
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Size = UDim2.new(0, 50, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = options.Text or ""
+    label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+    label.TextSize = 11
+    label.Font = THEME.Font
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = sliderFrame
+    label.ZIndex = 3
+
+    -- 值标签（右侧）
+    local valueLabel = Instance.new("TextLabel")
+    valueLabel.Name = "ValueLabel"
+    valueLabel.Size = UDim2.new(0, 40, 1, 0)
+    valueLabel.Position = UDim2.new(1, -40, 0, 0)
+    valueLabel.BackgroundTransparency = 1
+    valueLabel.Text = tostring(defaultValue) .. suffix
+    valueLabel.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+    valueLabel.TextSize = 11
+    valueLabel.Font = THEME.Font
+    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
+    valueLabel.Parent = sliderFrame
+    valueLabel.ZIndex = 3
+
+    -- 轨道容器（中间）
+    local trackContainer = Instance.new("Frame")
+    trackContainer.Name = "TrackContainer"
+    trackContainer.Size = UDim2.new(1, -95, 0, 12)
+    trackContainer.Position = UDim2.new(0, 55, 0.5, -6)
+    trackContainer.BackgroundTransparency = 1
+    trackContainer.Parent = sliderFrame
+    trackContainer.ZIndex = 3
+
+    -- 滑块轨道
+    local track = Instance.new("Frame")
+    track.Name = "Track"
+    track.Size = UDim2.new(1, 0, 0, 4)
+    track.Position = UDim2.new(0, 0, 0.5, -2)
+    track.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    track.BorderSizePixel = 0
+    track.Parent = trackContainer
+    track.ZIndex = 3
+
+    local trackCorner = Instance.new("UICorner")
+    trackCorner.CornerRadius = UDim.new(0, 2)
+    trackCorner.Parent = track
+
+    -- 滑块填充
+    local fill = Instance.new("Frame")
+    fill.Name = "Fill"
+    fill.Size = UDim2.new((defaultValue - minValue) / (maxValue - minValue), 0, 1, 0)
+    fill.BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent
+    fill.BorderSizePixel = 0
+    fill.Parent = track
+    fill.ZIndex = 4
+
+    local fillCorner = Instance.new("UICorner")
+    fillCorner.CornerRadius = UDim.new(0, 2)
+    fillCorner.Parent = fill
+
+    -- 滑块按钮
+    local thumb = Instance.new("TextButton")
+    thumb.Name = "Thumb"
+    thumb.Size = UDim2.new(0, 10, 0, 10)
+    thumb.Position = UDim2.new((defaultValue - minValue) / (maxValue - minValue), -5, 0.5, -5)
+    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.Text = ""
+    thumb.Parent = track
+    thumb.ZIndex = 5
+
+    local thumbCorner = Instance.new("UICorner")
+    thumbCorner.CornerRadius = UDim.new(0.5, 0)
+    thumbCorner.Parent = thumb
+
+    local currentValue = defaultValue
+    local isDragging = false
+
+    local function updateSlider(inputPosition)
+        local trackAbsolutePos = track.AbsolutePosition
+        local trackAbsoluteSize = track.AbsoluteSize
+        local relativeX = inputPosition.X - trackAbsolutePos.X
+        local percent = math.clamp(relativeX / trackAbsoluteSize.X, 0, 1)
+        local value = math.floor(minValue + (maxValue - minValue) * percent)
+
+        currentValue = value
+        fill.Size = UDim2.new(percent, 0, 1, 0)
+        thumb.Position = UDim2.new(percent, -5, 0.5, -5)
+        valueLabel.Text = tostring(value) .. suffix
+
+        if options.Callback then
+            pcall(options.Callback, value)
+        end
+    end
+
+    thumb.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = true
+        end
+    end)
+
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            updateSlider(input.Position)
+            isDragging = true
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(input.Position)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            isDragging = false
+        end
+    end)
+
+    return sliderFrame, function() return currentValue end
+end
+
 -- 拖拽模块
 local developmentMode = false
 

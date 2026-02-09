@@ -1816,6 +1816,9 @@ local function performAutoFarm()
     local endPos = Vector3.new(-18135, 35, -444)
     local moveDuration = 10 -- 移动10秒
 
+    -- 计算移动方向（两个坐标确定方向）
+    local direction = (endPos - startPos).Unit
+
     spawn(function()
         while isAutoFarmActive and config.autoFarmEnabled do
             pcall(function()
@@ -1838,18 +1841,18 @@ local function performAutoFarm()
 
                 -- 保存原始位置
                 if not autoFarmOriginalPosition then
-                    autoFarmOriginalPosition = vehicle:GetPrimaryPartCFrame()
-                    PlutoX.debug("[AutoFarm] 保存原始位置")
+                    autoFarmOriginalPosition = CFrame.new(startPos)
+                    PlutoX.debug("[AutoFarm] 保存起始位置")
                 end
-
-                -- 计算移动方向和距离
-                local direction = (endPos - startPos).Unit
-                local distance = (endPos - startPos).Magnitude
 
                 -- 获取速度配置
                 local speed = config.autoFarmSpeed or 300
 
-                PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed)
+                -- 计算目标位置：从起点沿着方向移动 (速度 * 10秒) 的距离
+                local moveDistance = speed * moveDuration
+                local targetPos = startPos + direction * moveDistance
+
+                PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed .. ", 目标距离: " .. moveDistance)
 
                 -- 使用 TweenService 移动车辆（参考自动比赛代码）
                 local TweenService = game:GetService("TweenService")
@@ -1870,7 +1873,7 @@ local function performAutoFarm()
 
                 -- 创建并播放 Tween
                 local tween = TweenService:Create(cframeValue, tweenInfo, {
-                    Value = CFrame.new(endPos)
+                    Value = CFrame.new(targetPos)
                 })
 
                 tween:Play()
@@ -2673,102 +2676,18 @@ UILibrary:CreateLabel(autoFarmCard, {
     Text = "Auto Farm (-18121,35,-418 → -18135,35,-444)",
 })
 
--- 速度显示和调节
-local autoFarmSpeedFrame = Instance.new("Frame")
-autoFarmSpeedFrame.Size = UDim2.new(1, -16, 0, 50)
-autoFarmSpeedFrame.BackgroundTransparency = 1
-autoFarmSpeedFrame.Parent = autoFarmCard
-
-local autoFarmSpeedLabel = UILibrary:CreateLabel(autoFarmSpeedFrame, {
-    Text = "速度: " .. (config.autoFarmSpeed or 300),
-    Size = UDim2.new(0.3, 0, 0, 20),
-    Position = UDim2.new(0, 0, 0, 0),
+-- 速度滑块（使用 UILibrary CreateSlider）
+UILibrary:CreateSlider(autoFarmCard, {
+    Text = "速度",
+    Min = 0,
+    Max = 700,
+    Default = config.autoFarmSpeed or 300,
+    Suffix = "",
+    Callback = function(value)
+        config.autoFarmSpeed = value
+        configManager:saveConfig()
+    end
 })
-
--- 创建滑块轨道
-local sliderTrack = Instance.new("Frame")
-sliderTrack.Name = "SliderTrack"
-sliderTrack.Size = UDim2.new(0.7, -8, 0, 6)
-sliderTrack.Position = UDim2.new(0.3, 4, 0, 7)
-sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-sliderTrack.BorderSizePixel = 0
-sliderTrack.Parent = autoFarmSpeedFrame
-
-local trackCorner = Instance.new("UICorner")
-trackCorner.CornerRadius = UDim.new(0, 3)
-trackCorner.Parent = sliderTrack
-
--- 创建滑块填充
-local sliderFill = Instance.new("Frame")
-sliderFill.Name = "SliderFill"
-sliderFill.Size = UDim2.new((config.autoFarmSpeed or 300) / 700, 0, 1, 0)
-sliderFill.BackgroundColor3 = Color3.fromRGB(92, 107, 192)
-sliderFill.BorderSizePixel = 0
-sliderFill.Parent = sliderTrack
-
-local fillCorner = Instance.new("UICorner")
-fillCorner.CornerRadius = UDim.new(0, 3)
-fillCorner.Parent = sliderFill
-
--- 创建滑块按钮
-local sliderThumb = Instance.new("TextButton")
-sliderThumb.Name = "SliderThumb"
-sliderThumb.Size = UDim2.new(0, 16, 0, 16)
-sliderThumb.Position = UDim2.new((config.autoFarmSpeed or 300) / 700, -8, 0.5, -8)
-sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-sliderThumb.Text = ""
-sliderThumb.Parent = sliderTrack
-
-local thumbCorner = Instance.new("UICorner")
-thumbCorner.CornerRadius = UDim.new(0.5, 0)
-thumbCorner.Parent = sliderThumb
-
--- 速度值范围 0-700
-local minSpeed = 0
-local maxSpeed = 700
-
--- 滑块拖动逻辑
-local isDragging = false
-
-local function updateSlider(inputPosition)
-    local trackAbsolutePos = sliderTrack.AbsolutePosition
-    local trackAbsoluteSize = sliderTrack.AbsoluteSize
-    local relativeX = inputPosition.X - trackAbsolutePos.X
-    local percent = math.clamp(relativeX / trackAbsoluteSize.X, 0, 1)
-    local speed = math.floor(minSpeed + (maxSpeed - minSpeed) * percent)
-
-    config.autoFarmSpeed = speed
-    configManager:saveConfig()
-
-    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
-    sliderThumb.Position = UDim2.new(percent, -8, 0.5, -8)
-    autoFarmSpeedLabel.Text = "速度: " .. speed
-end
-
-sliderThumb.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isDragging = true
-    end
-end)
-
-sliderTrack.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        updateSlider(input.Position)
-        isDragging = true
-    end
-end)
-
-UserInputService.InputChanged:Connect(function(input)
-    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        updateSlider(input.Position)
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        isDragging = false
-    end
-end)
 
 -- AutoFarm 开关
 UILibrary:CreateToggle(autoFarmCard, {
