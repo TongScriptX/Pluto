@@ -6,6 +6,7 @@ local VirtualUser = game:GetService("VirtualUser")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
+local UserInputService = game:GetService("UserInputService")
 
 -- ============================================
 -- Bypass 反检测系统（默认开启）
