@@ -1817,9 +1817,9 @@ local function performAutoFarm()
     local loopPos = Vector3.new(-25453.49, 34.09, -14927.61)
     local moveDuration = 10 -- 移动10秒
 
-    -- 获取最近的 Road Marker 及其方向（只在 200 范围内搜索）
+    -- 获取最近的 Road Marker 及其方向（在 1000 范围内搜索）
     local function getNearestRoadMarker(position, maxDistance)
-        maxDistance = maxDistance or 200
+        maxDistance = maxDistance or 1000
         local roads = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Roads")
         if not roads then return nil end
 
