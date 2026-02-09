@@ -1874,20 +1874,13 @@ local function performAutoFarm()
                     local elapsed = tick() - startTime
                     local progress = elapsed / moveDuration
 
-                    -- 计算当前位置（线性插值）
-                    local currentPos = startPos + direction * (moveDistance * progress)
-
-                    -- 设置车辆位置（使用简单 CFrame，不强制设置朝向，让物理系统处理）
-                    local newCFrame = CFrame.new(currentPos)
-                    vehicle:PivotTo(newCFrame)
-
-                    -- 给车辆所有 BasePart 设置速度（与检测到的脚本一致）
+                    -- 纯物理模式：只给速度，不强制位置和朝向
+                    -- 让车辆自然受物理引擎控制（重力、摩擦力、转向）
                     local targetVelocity = direction * speed
                     for _, part in ipairs(vehicle:GetDescendants()) do
                         if part:IsA("BasePart") then
                             part.AssemblyLinearVelocity = targetVelocity
-                            -- 同时设置角速度为0，防止旋转
-                            part.AssemblyAngularVelocity = Vector3.zero
+                            -- 不设置角速度，让物理系统自然处理转向
                         end
                     end
 
@@ -1895,7 +1888,7 @@ local function performAutoFarm()
 
                     -- 每0.5秒输出一次详细 debug 信息（记录过程位置）
                     if tick() - lastDebugTime >= 0.5 then
-                        local currentRealPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or currentPos
+                        local currentRealPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or startPos
                         local distanceMoved = (currentRealPos - lastPos).Magnitude
                         local yPos = currentRealPos.Y
 
@@ -1904,21 +1897,13 @@ local function performAutoFarm()
 
                         PlutoX.debug("[AutoFarm] 帧:" .. frameCount .. " 时间:" .. string.format("%.1f", elapsed) .. "s " ..
                             "进度:" .. string.format("%.1f", progress * 100) .. "% " ..
-                            "计算位置:[" .. string.format("%.1f", currentPos.X) .. "," .. string.format("%.1f", currentPos.Y) .. "," .. string.format("%.1f", currentPos.Z) .. "] " ..
                             "实际位置:[" .. string.format("%.1f", currentRealPos.X) .. "," .. string.format("%.1f", yPos) .. "," .. string.format("%.1f", currentRealPos.Z) .. "] " ..
                             "车头朝向:[" .. string.format("%.2f", vehicleLook.X) .. "," .. string.format("%.2f", vehicleLook.Y) .. "," .. string.format("%.2f", vehicleLook.Z) .. "] " ..
                             "移动:" .. string.format("%.1f", distanceMoved))
 
-                        -- 检测异常情况（Y坐标过低或过高，或移动距离异常）
+                        -- 检测异常情况（Y坐标过低或过高）
                         if yPos < -100 or yPos > 1000 then
                             PlutoX.warn("[AutoFarm] 车辆Y坐标异常: " .. string.format("%.1f", yPos) .. "，停止移动")
-                            break
-                        end
-
-                        -- 检测车辆是否飞走（与计算位置偏差过大）
-                        local deviation = (currentRealPos - currentPos).Magnitude
-                        if deviation > 50 then
-                            PlutoX.warn("[AutoFarm] 车辆偏离计算位置: " .. string.format("%.1f", deviation) .. "，停止移动")
                             break
                         end
 
