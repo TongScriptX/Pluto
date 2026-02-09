@@ -1817,8 +1817,9 @@ local function performAutoFarm()
     local loopPos = Vector3.new(-25453.49, 34.09, -14927.61)
     local moveDuration = 10 -- 移动10秒
 
-    -- 获取最近的 Road Marker 及其方向
-    local function getNearestRoadMarker(position)
+    -- 获取最近的 Road Marker 及其方向（只在 200 范围内搜索）
+    local function getNearestRoadMarker(position, maxDistance)
+        maxDistance = maxDistance or 200
         local roads = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Roads")
         if not roads then return nil end
 
@@ -1829,7 +1830,7 @@ local function performAutoFarm()
             for _, marker in ipairs(roadGroup:GetChildren()) do
                 if marker:IsA("BasePart") and marker.Name == "Road Marker" then
                     local distance = (marker.Position - position).Magnitude
-                    if distance < minDistance then
+                    if distance < minDistance and distance <= maxDistance then
                         minDistance = distance
                         nearestMarker = marker
                     end
@@ -1880,10 +1881,13 @@ local function performAutoFarm()
                     PlutoX.debug("[AutoFarm] 找到 Road Marker，方向: " .. tostring(direction))
 
                     -- 让车头朝向与 Marker 平行
-                    -- 车头朝向 = direction，车顶上 = Vector3.yAxis
+                    -- 使用 Marker 的 CFrame 旋转，但位置使用车辆当前位置
                     local vehiclePos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
-                    local newCFrame = CFrame.lookAt(vehiclePos, vehiclePos + direction)
+                    local markerCFrame = nearestMarker.CFrame
+                    -- 保持 Marker 的旋转，但位置设为 vehiclePos
+                    local newCFrame = CFrame.new(vehiclePos) * (markerCFrame - markerCFrame.Position)
                     vehicle:PivotTo(newCFrame)
+                    PlutoX.debug("[AutoFarm] 车头已对齐 Marker，朝向: " .. tostring(newCFrame.LookVector))
                 else
                     -- 未找到 Marker，使用默认方向
                     direction = Vector3.new(-0.45, 0, -0.89).Unit
