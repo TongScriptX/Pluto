@@ -1876,18 +1876,16 @@ local function performAutoFarm()
                 local direction
 
                 if nearestMarker then
-                    -- 获取 Marker 方向（右向量）
+                    -- 获取 Marker 方向（右向量 = 道路延伸方向）
                     direction = getMarkerDirection(nearestMarker)
                     PlutoX.debug("[AutoFarm] 找到 Road Marker，方向: " .. tostring(direction))
 
-                    -- 让车头朝向与 Marker 平行
-                    -- 使用 Marker 的 CFrame 旋转，但位置使用车辆当前位置
+                    -- 让车头朝向与道路平行（车头朝向 = direction）
                     local vehiclePos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
-                    local markerCFrame = nearestMarker.CFrame
-                    -- 保持 Marker 的旋转，但位置设为 vehiclePos
-                    local newCFrame = CFrame.new(vehiclePos) * (markerCFrame - markerCFrame.Position)
+                    -- CFrame.lookAt 让车头朝向 direction 方向
+                    local newCFrame = CFrame.lookAt(vehiclePos, vehiclePos + direction)
                     vehicle:PivotTo(newCFrame)
-                    PlutoX.debug("[AutoFarm] 车头已对齐 Marker，朝向: " .. tostring(newCFrame.LookVector))
+                    PlutoX.debug("[AutoFarm] 车头已对齐道路，朝向: " .. tostring(newCFrame.LookVector))
                 else
                     -- 未找到 Marker，使用默认方向
                     direction = Vector3.new(-0.45, 0, -0.89).Unit
@@ -1933,13 +1931,19 @@ local function performAutoFarm()
                     local elapsed = tick() - startTime
                     local progress = elapsed / moveDuration
 
-                    -- 纯物理模式：只给速度，不强制位置和朝向
-                    -- 让车辆自然受物理引擎控制（重力、摩擦力、转向）
+                    -- 获取车辆当前位置
+                    local currentPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
+
+                    -- 强制对齐车头朝向（保持与 Marker 平行）
+                    -- 使用 direction 作为车头朝向，保持当前位置
+                    local targetCFrame = CFrame.lookAt(currentPos, currentPos + direction)
+                    vehicle:PivotTo(targetCFrame)
+
+                    -- 给速度移动
                     local targetVelocity = direction * speed
                     for _, part in ipairs(vehicle:GetDescendants()) do
                         if part:IsA("BasePart") then
                             part.AssemblyLinearVelocity = targetVelocity
-                            -- 不设置角速度，让物理系统自然处理转向
                         end
                     end
 
