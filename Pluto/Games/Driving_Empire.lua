@@ -1798,7 +1798,7 @@ local function claimPlaytimeRewards()
     end)
 end
 
--- AutoFarm 自动刷金功能
+-- AutoFarm功能
 local isAutoFarmActive = false
 local autoFarmOriginalPosition = nil
 
@@ -1808,16 +1808,16 @@ local function performAutoFarm()
         return
     end
 
-    PlutoX.debug("[AutoFarm] 开始执行自动刷金...")
+    PlutoX.debug("[AutoFarm] 开始autofarm...")
     isAutoFarmActive = true
 
-    -- 移动位置配置（斜向直线移动）
-    local startPos = Vector3.new(-18121, 35, -418)
-    local endPos = Vector3.new(-18135, 35, -444)  -- 斜向：X和Z同时变化
+    -- 循环刷金位置配置（基于日志分析）
+    -- 起点/返回点：10秒后传送回的位置（日志 #62）
+    local loopPos = Vector3.new(-25453.49, 34.09, -14927.61)
     local moveDuration = 10 -- 移动10秒
 
-    -- 计算移动方向（斜向方向向量）
-    local direction = (endPos - startPos).Unit
+    -- 移动方向（基于日志速度向量 [-311.59, -13.68, -614.61] 归一化）
+    local direction = Vector3.new(-0.45, 0, -0.89).Unit
 
     spawn(function()
         while isAutoFarmActive and config.autoFarmEnabled do
@@ -1839,15 +1839,9 @@ local function performAutoFarm()
                     return
                 end
 
-                -- 保存原始位置（用于传送回去）
-                if not autoFarmOriginalPosition then
-                    autoFarmOriginalPosition = vehicle.PrimaryPart and vehicle.PrimaryPart.CFrame or CFrame.new(startPos)
-                    PlutoX.debug("[AutoFarm] 保存原始位置")
-                end
-
-                -- 传送到起始位置
-                PlutoX.debug("[AutoFarm] 传送到起始位置: " .. tostring(startPos))
-                local startCFrame = CFrame.new(startPos)
+                -- 传送到循环起点位置
+                PlutoX.debug("[AutoFarm] 传送到循环起点: " .. tostring(loopPos))
+                local startCFrame = CFrame.new(loopPos)
                 vehicle:PivotTo(startCFrame)
                 -- 清除速度，确保从静止开始
                 for _, part in ipairs(vehicle:GetDescendants()) do
@@ -1863,16 +1857,16 @@ local function performAutoFarm()
 
                 -- 计算目标位置：从起点沿着方向移动 (速度 * 10秒) 的距离
                 local moveDistance = speed * moveDuration
-                local targetPos = startPos + direction * moveDistance
+                local targetPos = loopPos + direction * moveDistance
 
                 PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed .. ", 目标距离: " .. moveDistance)
-                PlutoX.debug("[AutoFarm] 起点: " .. tostring(startPos) .. ", 目标: " .. tostring(targetPos))
+                PlutoX.debug("[AutoFarm] 起点: " .. tostring(loopPos) .. ", 目标: " .. tostring(targetPos))
 
                 -- 使用物理方式移动车辆（不使用 TweenService）
                 local RunService = game:GetService("RunService")
                 local startTime = tick()
                 local lastDebugTime = startTime
-                local lastPos = startPos
+                local lastPos = loopPos
                 local frameCount = 0
 
                 PlutoX.debug("[AutoFarm] 方向向量: " .. tostring(direction) .. ", 目标点: " .. tostring(targetPos))
@@ -1901,7 +1895,7 @@ local function performAutoFarm()
 
                     -- 每0.5秒输出一次详细 debug 信息（记录过程位置）
                     if tick() - lastDebugTime >= 0.5 then
-                        local currentRealPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or startPos
+                        local currentRealPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
                         local distanceMoved = (currentRealPos - lastPos).Magnitude
                         local yPos = currentRealPos.Y
 
@@ -1927,24 +1921,27 @@ local function performAutoFarm()
                     RunService.Heartbeat:Wait()
                 end
 
-                -- 停止车辆速度
-                if vehicle and vehicle.Parent and vehicle.PrimaryPart then
-                    vehicle.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
+                -- 停止车辆速度（所有部件）
+                if vehicle and vehicle.Parent then
+                    for _, part in ipairs(vehicle:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.AssemblyLinearVelocity = Vector3.zero
+                            part.AssemblyAngularVelocity = Vector3.zero
+                        end
+                    end
                 end
 
-                PlutoX.debug("[AutoFarm] 移动完成，传送回原位置")
+                PlutoX.debug("[AutoFarm] 移动完成，传送回循环起点")
 
-                -- 传送回原位置
-                if autoFarmOriginalPosition then
-                    vehicle:PivotTo(autoFarmOriginalPosition)
-                    task.wait(0.5)
-                end
+                -- 传送回循环起点
+                vehicle:PivotTo(CFrame.new(loopPos))
+                task.wait(0.5)
             end)
 
             task.wait(1) -- 循环间隔
         end
 
-        PlutoX.debug("[AutoFarm] 自动刷金已停止")
+        PlutoX.debug("[AutoFarm] autofarm已停止")
     end)
 end
 
@@ -2719,10 +2716,10 @@ UILibrary:CreateToggle(autoSpawnCard, {
     end
 })
 
--- AutoFarm 自动刷金
+-- AutoFarm
 local autoFarmCard = UILibrary:CreateCard(featuresContent, { IsMultiElement = true })
 UILibrary:CreateLabel(autoFarmCard, {
-    Text = "Auto Farm (-18121,35,-418 → -18135,35,-444)",
+    Text = "Auto Farm",
 })
 
 -- 速度滑块（使用 UILibrary CreateSlider）
@@ -2740,7 +2737,7 @@ UILibrary:CreateSlider(autoFarmCard, {
 
 -- AutoFarm 开关
 UILibrary:CreateToggle(autoFarmCard, {
-    Text = "启用自动刷金",
+    Text = "启用autofarm",
     DefaultState = config.autoFarmEnabled or false,
     Callback = function(state)
         config.autoFarmEnabled = state
@@ -2756,7 +2753,7 @@ UILibrary:CreateToggle(autoFarmCard, {
             isAutoFarmActive = false
             UILibrary:Notify({
                 Title = "AutoFarm 已停止",
-                Text = "自动刷金已关闭",
+                Text = "autofarm已关闭",
                 Duration = 3
             })
         end
