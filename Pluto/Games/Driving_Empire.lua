@@ -1850,7 +1850,7 @@ local function performAutoFarm()
                         part.AssemblyAngularVelocity = Vector3.zero
                     end
                 end
-                task.wait(0.5)  -- 等待传送完成
+                -- 无停顿，立即开始移动
 
                 -- 获取速度配置
                 local speed = config.autoFarmSpeed or 300
@@ -1933,12 +1933,11 @@ local function performAutoFarm()
 
                 PlutoX.debug("[AutoFarm] 移动完成，传送回循环起点")
 
-                -- 传送回循环起点
+                -- 传送回循环起点（无停顿，立即开始下一轮）
                 vehicle:PivotTo(CFrame.new(loopPos))
-                task.wait(0.5)
             end)
 
-            task.wait(1) -- 循环间隔
+            -- 无停顿，立即开始下一轮循环
         end
 
         PlutoX.debug("[AutoFarm] autofarm已停止")
