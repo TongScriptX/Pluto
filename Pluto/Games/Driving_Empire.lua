@@ -1410,13 +1410,15 @@ local defaultConfig = {
     notificationInterval = 30,
     onlineRewardEnabled = false,
     autoSpawnVehicleEnabled = false,
-    autoFarmEnabled = false,
     autoFarmSpeed = 300,
     robTargetAmount = 0,
     notifyCash = false,
     notifyLeaderboard = false,
     leaderboardKick = false,
 }
+
+-- AutoFarm 状态不保存到配置（每次加载默认为 false）
+local autoFarmEnabled = false
 
 for key, value in pairs(dataTypeConfigs) do
     defaultConfig[key] = value
@@ -1803,7 +1805,7 @@ local isAutoFarmActive = false
 local autoFarmOriginalPosition = nil
 
 local function performAutoFarm()
-    if not config.autoFarmEnabled then
+    if not autoFarmEnabled then
         PlutoX.debug("[AutoFarm] 功能未启用")
         return
     end
@@ -1846,7 +1848,7 @@ local function performAutoFarm()
     end
 
     spawn(function()
-        while isAutoFarmActive and config.autoFarmEnabled do
+        while isAutoFarmActive and autoFarmEnabled do
             pcall(function()
                 local localPlayer = Players.LocalPlayer
                 if not localPlayer then return end
@@ -2780,13 +2782,13 @@ UILibrary:CreateSlider(autoFarmCard, {
     end
 })
 
--- AutoFarm 开关
+-- AutoFarm 开关（状态不保存到配置）
 UILibrary:CreateToggle(autoFarmCard, {
     Text = "启用autofarm",
-    DefaultState = config.autoFarmEnabled or false,
+    DefaultState = autoFarmEnabled,
     Callback = function(state)
-        config.autoFarmEnabled = state
-        configManager:saveConfig()
+        autoFarmEnabled = state
+        -- 不保存到配置文件
         if state then
             spawn(performAutoFarm)
             UILibrary:Notify({
