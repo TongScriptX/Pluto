@@ -965,11 +965,11 @@ function UILibrary:CreateSlider(parent, options)
     })
     label.ZIndex = 3
 
-    -- 值输入框（右侧，可点击编辑）
+    -- 值输入框（右侧固定宽度，可点击编辑）
     local valueInput = Instance.new("TextBox")
     valueInput.Name = "ValueInput"
-    valueInput.Size = UDim2.new(0, 50, 0, 20)
-    valueInput.Position = UDim2.new(1, -50, 0.5, -10)
+    valueInput.Size = UDim2.new(0, 45, 0, 20)
+    valueInput.Position = UDim2.new(1, -45, 0.5, -10)
     valueInput.BackgroundTransparency = 0.8
     valueInput.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     valueInput.BorderSizePixel = 0
@@ -986,23 +986,14 @@ function UILibrary:CreateSlider(parent, options)
     valueInputCorner.CornerRadius = UDim.new(0, 4)
     valueInputCorner.Parent = valueInput
 
-    -- 轨道容器（中间，与Toggle的轨道位置一致）
-    local trackContainer = Instance.new("Frame")
-    trackContainer.Name = "TrackContainer"
-    trackContainer.Size = UDim2.new(0.5, -tgPad, 0, 12)
-    trackContainer.Position = UDim2.new(0.4, 0, 0.5, -6)
-    trackContainer.BackgroundTransparency = 1
-    trackContainer.Parent = sliderFrame
-    trackContainer.ZIndex = 3
-
-    -- 滑块轨道（使用主题背景色）
+    -- 滑块轨道（直接放在sliderFrame中，左侧是标签，右侧是数值框）
     local track = Instance.new("Frame")
     track.Name = "Track"
-    track.Size = UDim2.new(1, 0, 0, 6)
-    track.Position = UDim2.new(0, 0, 0.5, -3)
+    track.Size = UDim2.new(1, -110, 0, 6)
+    track.Position = UDim2.new(0, 70, 0.5, -3)
     track.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     track.BorderSizePixel = 0
-    track.Parent = trackContainer
+    track.Parent = sliderFrame
     track.ZIndex = 3
 
     local trackCorner = Instance.new("UICorner")
