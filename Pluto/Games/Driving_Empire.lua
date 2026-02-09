@@ -1811,13 +1811,39 @@ local function performAutoFarm()
     PlutoX.debug("[AutoFarm] 开始autofarm...")
     isAutoFarmActive = true
 
-    -- 循环刷金位置配置（基于日志分析）
-    -- 起点/返回点：10秒后传送回的位置（日志 #62）
+    -- 循环刷金位置配置
     local loopPos = Vector3.new(-25453.49, 34.09, -14927.61)
     local moveDuration = 10 -- 移动10秒
 
-    -- 移动方向（基于日志速度向量 [-311.59, -13.68, -614.61] 归一化）
-    local direction = Vector3.new(-0.45, 0, -0.89).Unit
+    -- 获取最近的 Road Marker 及其方向
+    local function getNearestRoadMarker(position)
+        local roads = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Roads")
+        if not roads then return nil end
+
+        local nearestMarker = nil
+        local minDistance = math.huge
+
+        for _, roadGroup in ipairs(roads:GetChildren()) do
+            for _, marker in ipairs(roadGroup:GetChildren()) do
+                if marker:IsA("BasePart") and marker.Name == "Road Marker" then
+                    local distance = (marker.Position - position).Magnitude
+                    if distance < minDistance then
+                        minDistance = distance
+                        nearestMarker = marker
+                    end
+                end
+            end
+        end
+
+        return nearestMarker
+    end
+
+    -- 从 Marker 获取右向量（道路延伸方向）
+    local function getMarkerDirection(marker)
+        local components = {marker.CFrame:GetComponents()}
+        -- 右向量 (X轴) = (R00, R10, R20) = components[4, 7, 10]
+        return Vector3.new(components[4], components[7], components[10]).Unit
+    end
 
     spawn(function()
         while isAutoFarmActive and config.autoFarmEnabled do
@@ -1841,8 +1867,28 @@ local function performAutoFarm()
 
                 -- 传送到循环起点位置
                 PlutoX.debug("[AutoFarm] 传送到循环起点: " .. tostring(loopPos))
-                local startCFrame = CFrame.new(loopPos)
-                vehicle:PivotTo(startCFrame)
+
+                -- 寻找最近的 Road Marker
+                local nearestMarker = getNearestRoadMarker(loopPos)
+                local direction
+
+                if nearestMarker then
+                    -- 获取 Marker 方向（右向量）
+                    direction = getMarkerDirection(nearestMarker)
+                    PlutoX.debug("[AutoFarm] 找到 Road Marker，方向: " .. tostring(direction))
+
+                    -- 让车头朝向与 Marker 平行
+                    -- 车头朝向 = direction，车顶上 = Vector3.yAxis
+                    local vehiclePos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
+                    local newCFrame = CFrame.lookAt(vehiclePos, vehiclePos + direction)
+                    vehicle:PivotTo(newCFrame)
+                else
+                    -- 未找到 Marker，使用默认方向
+                    direction = Vector3.new(-0.45, 0, -0.89).Unit
+                    PlutoX.warn("[AutoFarm] 未找到 Road Marker，使用默认方向")
+                    vehicle:PivotTo(CFrame.new(loopPos))
+                end
+
                 -- 清除速度，确保从静止开始
                 for _, part in ipairs(vehicle:GetDescendants()) do
                     if part:IsA("BasePart") then
