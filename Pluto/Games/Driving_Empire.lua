@@ -8,9 +8,7 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 local UserInputService = game:GetService("UserInputService")
 
--- ============================================
--- Bypass 反检测系统（默认开启）
--- ============================================
+-- Bypass 反检测系统
 local BypassActive = true
 local HookInstalled = false
 local BlockCount = 0
@@ -69,7 +67,6 @@ local function InstallEarlyHook()
     
     if success then
         HookInstalled = true
-        -- 使用 print 因为此时 PlutoX 还未加载（Early Hook）
         print("[BYPASS] Hook 安装成功")
     else
         warn("[BYPASS] 关键错误: " .. tostring(err))
@@ -87,7 +84,6 @@ task.spawn(function()
                 local children = remotesFolder:GetChildren()
                 for _, remote in ipairs(children) do
                     local n = remote.Name
-                    -- 自动添加新的GUID到列表
                     if string.match(n, "^%x%x%x%x%x%x%x%x%-") and not TargetRemotes[n] then
                         TargetRemotes[n] = true
                     end
@@ -312,7 +308,7 @@ local function findPlayerRankInLeaderboard(leaderboardData)
     return nil, false
 end
 
--- 上传排行榜数据到网站（使用预提取的条目）
+-- 上传排行榜数据到网站
 local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
     if not PlutoX.uploaderHttpService then
         PlutoX.debug("[排行榜] HttpService 不可用，无法上传排行榜数据")
@@ -405,19 +401,19 @@ end
 local leaderboardConfig = {
     position = Vector3.new(-895.0263671875, 202.07171630859375, -1630.81689453125),
     streamTimeout = 10,
-    cacheTime = 300, -- 缓存时间（秒），5分钟
-    failCacheTime = 30, -- 失败后的缓存时间（秒），30秒
-    websiteCacheTime = 1800, -- 网站缓存时间（秒），30分钟
+    cacheTime = 300,
+    failCacheTime = 30,
+    websiteCacheTime = 1800,
     lastFetchTime = 0,
-    lastUploadTime = 0, -- 上次上传到网站的时间
+    lastUploadTime = 0,
     cachedRank = nil,
     cachedIsOnLeaderboard = false,
-    lastFetchSuccess = false, -- 上次获取是否成功
-    isFetching = false, -- 是否正在获取中
-    hasFetched = false, -- 是否已经获取过
-    uploadCooldown = 1800, -- 上传冷却时间（30分钟）
-    lastAPICheckTime = 0, -- 上次API检查时间
-    apiCheckInterval = 60, -- API检查间隔（60秒）
+    lastFetchSuccess = false,
+    isFetching = false,
+    hasFetched = false,
+    uploadCooldown = 1800,
+    lastAPICheckTime = 0,
+    apiCheckInterval = 60,
 }
 
 local function tryGetContents(timeout)
@@ -448,7 +444,6 @@ local function tryGetContents(timeout)
             return nil
         end
         
-        -- 输出 weekly_money 的所有子元素详情
         local weeklyChildren = weekly_money:GetChildren()
         if #weeklyChildren > 0 then
             local childrenInfo = {}
@@ -640,7 +635,6 @@ local function fetchPlayerRank()
                         player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
                     end)
                     
-                    -- 等待加载
                     wait(1)
                     contents = tryGetContents(1)
                     if contents then
@@ -1815,7 +1809,8 @@ local function performAutoFarm()
 
     -- 循环刷金位置配置
     local loopPos = Vector3.new(-25453.49, 34.09, -14927.61)
-    local moveDuration = 10 -- 移动10秒
+    local moveDuration = 20 -- 移动20秒
+    local returnDuration = 20 -- 返回20秒
 
     -- 获取最近的 Road Marker 及其方向（在 1000 范围内搜索）
     local function getNearestRoadMarker(position, maxDistance)
@@ -1906,79 +1901,66 @@ local function performAutoFarm()
                 -- 获取速度配置
                 local speed = config.autoFarmSpeed or 300
 
-                -- 计算目标位置：从起点沿着方向移动 (速度 * 10秒) 的距离
+                -- 计算目标位置：从起点沿着方向移动 (速度 * 20秒) 的距离
                 local moveDistance = speed * moveDuration
                 local targetPos = loopPos + direction * moveDistance
 
                 PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed .. ", 目标距离: " .. moveDistance)
-                PlutoX.debug("[AutoFarm] 起点: " .. tostring(loopPos) .. ", 目标: " .. tostring(targetPos))
 
                 -- 使用物理方式移动车辆（不使用 TweenService）
                 local RunService = game:GetService("RunService")
+
+                -- 阶段1：向前移动20秒
                 local startTime = tick()
                 local lastDebugTime = startTime
                 local lastPos = loopPos
                 local frameCount = 0
 
-                PlutoX.debug("[AutoFarm] 方向向量: " .. tostring(direction) .. ", 目标点: " .. tostring(targetPos))
-
                 while tick() - startTime < moveDuration and isAutoFarmActive do
-                    -- 检查车辆是否还存在
-                    if not vehicle or not vehicle.Parent then
-                        PlutoX.warn("[AutoFarm] 车辆已消失，停止移动")
-                        break
-                    end
+                    if not vehicle or not vehicle.Parent then break end
 
                     local elapsed = tick() - startTime
-                    local progress = elapsed / moveDuration
-
-                    -- 获取车辆当前位置
                     local currentPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
 
-                    -- 强制对齐车头朝向（保持与 Marker 平行）
-                    -- 使用 direction 作为车头朝向，保持当前位置
+                    -- 强制对齐车头朝向
                     local targetCFrame = CFrame.lookAt(currentPos, currentPos + direction)
                     vehicle:PivotTo(targetCFrame)
 
                     -- 给速度移动
-                    local targetVelocity = direction * speed
                     for _, part in ipairs(vehicle:GetDescendants()) do
                         if part:IsA("BasePart") then
-                            part.AssemblyLinearVelocity = targetVelocity
+                            part.AssemblyLinearVelocity = direction * speed
                         end
                     end
 
                     frameCount = frameCount + 1
+                    RunService.Heartbeat:Wait()
+                end
 
-                    -- 每0.5秒输出一次详细 debug 信息（记录过程位置）
-                    if tick() - lastDebugTime >= 0.5 then
-                        local currentRealPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
-                        local distanceMoved = (currentRealPos - lastPos).Magnitude
-                        local yPos = currentRealPos.Y
+                -- 阶段2：往回移动20秒（不传送）
+                local returnStartTime = tick()
+                local returnDirection = -direction -- 相反方向
 
-                        -- 获取车辆朝向
-                        local vehicleLook = vehicle.PrimaryPart and vehicle.PrimaryPart.CFrame.LookVector or Vector3.zero
+                while tick() - returnStartTime < returnDuration and isAutoFarmActive do
+                    if not vehicle or not vehicle.Parent then break end
 
-                        PlutoX.debug("[AutoFarm] 帧:" .. frameCount .. " 时间:" .. string.format("%.1f", elapsed) .. "s " ..
-                            "进度:" .. string.format("%.1f", progress * 100) .. "% " ..
-                            "实际位置:[" .. string.format("%.1f", currentRealPos.X) .. "," .. string.format("%.1f", yPos) .. "," .. string.format("%.1f", currentRealPos.Z) .. "] " ..
-                            "车头朝向:[" .. string.format("%.2f", vehicleLook.X) .. "," .. string.format("%.2f", vehicleLook.Y) .. "," .. string.format("%.2f", vehicleLook.Z) .. "] " ..
-                            "移动:" .. string.format("%.1f", distanceMoved))
+                    local currentPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
 
-                        -- 检测异常情况（Y坐标过低或过高）
-                        if yPos < -100 or yPos > 1000 then
-                            PlutoX.warn("[AutoFarm] 车辆Y坐标异常: " .. string.format("%.1f", yPos) .. "，停止移动")
-                            break
+                    -- 强制对齐车头朝向（往回）
+                    local targetCFrame = CFrame.lookAt(currentPos, currentPos + returnDirection)
+                    vehicle:PivotTo(targetCFrame)
+
+                    -- 给速度往回移动
+                    for _, part in ipairs(vehicle:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.AssemblyLinearVelocity = returnDirection * speed
                         end
-
-                        lastDebugTime = tick()
-                        lastPos = currentRealPos
                     end
 
                     RunService.Heartbeat:Wait()
                 end
 
-                -- 停止车辆速度（所有部件）
+                -- 停止车辆速度
                 if vehicle and vehicle.Parent then
                     for _, part in ipairs(vehicle:GetDescendants()) do
                         if part:IsA("BasePart") then
@@ -1988,10 +1970,7 @@ local function performAutoFarm()
                     end
                 end
 
-                PlutoX.debug("[AutoFarm] 移动完成，传送回循环起点")
-
-                -- 传送回循环起点（无停顿，立即开始下一轮）
-                vehicle:PivotTo(CFrame.new(loopPos))
+                PlutoX.debug("[AutoFarm] 往返移动完成")
             end)
 
             -- 无停顿，立即开始下一轮循环
