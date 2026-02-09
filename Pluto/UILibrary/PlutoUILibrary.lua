@@ -35,7 +35,7 @@ local DEFAULT_THEME = {
     Text = Color3.fromRGB(255, 255, 255),  
     Success = Color3.fromRGB(76, 175, 80),  
     Error = Color3.fromRGB(244, 67, 54),  
-    Font = Enum.Font.Roboto  
+    Font = Enum.Font.GothamBold  
 }  
 
 -- UI 样式常量（调整为 4pt 网格）
@@ -47,7 +47,7 @@ local UI_STYLES = {
     TabButtonHeight    = 32,
     Padding            = 8,
     YPadding           = 8,
-    CornerRadius       = 6,
+    CornerRadius       = 12,
     WindowWidth        = 400,
     WindowHeight       = 300,
     SidebarWidth       = 80,
@@ -58,9 +58,15 @@ local UI_STYLES = {
     NotificationMargin = 10
 }
 
--- 备选字体
+-- 备选字体（优先粗体）
 local function getAvailableFont()
-    local fonts = {Enum.Font.Roboto, Enum.Font.Arial, Enum.Font.SourceSans}
+    local fonts = {
+        Enum.Font.GothamBold,
+        Enum.Font.BuilderSansBold,
+        Enum.Font.SourceSansBold,
+        Enum.Font.Roboto,
+        Enum.Font.Gotham
+    }
     for _, font in ipairs(fonts) do
         local success = pcall(function()
             local label = Instance.new("TextLabel")
@@ -72,7 +78,7 @@ local function getAvailableFont()
             return font
         end
     end
-    return Enum.Font.SourceSans
+    return Enum.Font.SourceSansBold
 end
 
 -- 当前主题  
@@ -546,8 +552,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.Visible = true
     button.ZIndex = 15
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 15)
-    corner.Parent = button
+            corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    corner.Parent = button
 
     if not button.Parent then
         warn("[FloatingButton]: Button has no parent after creation")
@@ -711,8 +716,7 @@ function UILibrary:CreateToggle(parent, options)
                               or (THEME.Error or DEFAULT_THEME.Error))
     track.ZIndex = 3
     local trackCorner = Instance.new("UICorner", track)
-    trackCorner.CornerRadius = UDim.new(0, 4)
-
+            trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     local thumb = Instance.new("TextButton", track)
     thumb.Name = "Thumb"
     thumb.Size = UDim2.new(0, 15, 0, 15)
@@ -721,8 +725,7 @@ function UILibrary:CreateToggle(parent, options)
     thumb.Text = ""
     thumb.ZIndex = 4
     local thumbCorner = Instance.new("UICorner", thumb)
-    thumbCorner.CornerRadius = UDim.new(0, 8)
-
+            thumbCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
     local state = options.DefaultState or false
     thumb.MouseButton1Click:Connect(function()
         state = not state
@@ -856,7 +859,7 @@ function UILibrary:CreateDropdown(parent, options)
             optionButton.ZIndex = 1001
 
             local optionCorner = Instance.new("UICorner", optionButton)
-            optionCorner.CornerRadius = UDim.new(0, 4)
+            optionCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
 
             optionButton.MouseEnter:Connect(function()
                 TweenService:Create(optionButton, self.TWEEN_INFO_BUTTON, {
@@ -983,8 +986,7 @@ function UILibrary:CreateSlider(parent, options)
     valueInput.ZIndex = 3
     
     local valueInputCorner = Instance.new("UICorner")
-    valueInputCorner.CornerRadius = UDim.new(0, 4)
-    valueInputCorner.Parent = valueInput
+            valueInputCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    valueInputCorner.Parent = valueInput
 
     -- 滑块轨道（直接放在sliderFrame中，左侧是标签，右侧是数值框）
     local track = Instance.new("Frame")
@@ -997,8 +999,7 @@ function UILibrary:CreateSlider(parent, options)
     track.ZIndex = 3
 
     local trackCorner = Instance.new("UICorner")
-    trackCorner.CornerRadius = UDim.new(0, 3)
-    trackCorner.Parent = track
+            trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    trackCorner.Parent = track
 
     -- 滑块填充（使用主题强调色）
     local fill = Instance.new("Frame")
@@ -1010,8 +1011,7 @@ function UILibrary:CreateSlider(parent, options)
     fill.ZIndex = 4
 
     local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(0, 3)
-    fillCorner.Parent = fill
+            fillCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    fillCorner.Parent = fill
 
     -- 滑块按钮（与Toggle的thumb一致）
     local thumb = Instance.new("TextButton")
