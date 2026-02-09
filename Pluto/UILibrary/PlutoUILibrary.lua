@@ -944,30 +944,25 @@ function UILibrary:CreateSlider(parent, options)
     end
 
     options = options or {}
+    local tgPad = UI_STYLES.Padding or 6
     local minValue = options.Min or 0
     local maxValue = options.Max or 100
     local defaultValue = options.Default or minValue
     local suffix = options.Suffix or ""
-    local sliderHeight = options.Height or 24
 
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Name = "Slider_" .. (options.Text or "Unnamed")
-    sliderFrame.Size = UDim2.new(1, -12, 0, sliderHeight)
+    sliderFrame.Size = UDim2.new(1, -2 * tgPad, 0, UI_STYLES.ButtonHeight)
     sliderFrame.BackgroundTransparency = 1
     sliderFrame.Parent = parent
     sliderFrame.ZIndex = 2
 
-    -- 标签（左侧）
-    local label = Instance.new("TextLabel")
-    label.Name = "Label"
-    label.Size = UDim2.new(0, 50, 1, 0)
-    label.BackgroundTransparency = 1
-    label.Text = options.Text or ""
-    label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    label.TextSize = 11
-    label.Font = THEME.Font
-    label.TextXAlignment = Enum.TextXAlignment.Left
-    label.Parent = sliderFrame
+    -- 标签（左侧，使用CreateLabel保持一致）
+    local label = self:CreateLabel(sliderFrame, {
+        Text = options.Text or "",
+        Size = UDim2.new(0.35, -tgPad, 1, 0),
+        TextSize = 12
+    })
     label.ZIndex = 3
 
     -- 值标签（右侧）
@@ -984,30 +979,30 @@ function UILibrary:CreateSlider(parent, options)
     valueLabel.Parent = sliderFrame
     valueLabel.ZIndex = 3
 
-    -- 轨道容器（中间）
+    -- 轨道容器（中间，与Toggle的轨道位置一致）
     local trackContainer = Instance.new("Frame")
     trackContainer.Name = "TrackContainer"
-    trackContainer.Size = UDim2.new(1, -95, 0, 12)
-    trackContainer.Position = UDim2.new(0, 55, 0.5, -6)
+    trackContainer.Size = UDim2.new(0.5, -tgPad, 0, 12)
+    trackContainer.Position = UDim2.new(0.4, 0, 0.5, -6)
     trackContainer.BackgroundTransparency = 1
     trackContainer.Parent = sliderFrame
     trackContainer.ZIndex = 3
 
-    -- 滑块轨道
+    -- 滑块轨道（使用主题背景色）
     local track = Instance.new("Frame")
     track.Name = "Track"
-    track.Size = UDim2.new(1, 0, 0, 4)
-    track.Position = UDim2.new(0, 0, 0.5, -2)
-    track.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    track.Size = UDim2.new(1, 0, 0, 6)
+    track.Position = UDim2.new(0, 0, 0.5, -3)
+    track.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     track.BorderSizePixel = 0
     track.Parent = trackContainer
     track.ZIndex = 3
 
     local trackCorner = Instance.new("UICorner")
-    trackCorner.CornerRadius = UDim.new(0, 2)
+    trackCorner.CornerRadius = UDim.new(0, 3)
     trackCorner.Parent = track
 
-    -- 滑块填充
+    -- 滑块填充（使用主题强调色）
     local fill = Instance.new("Frame")
     fill.Name = "Fill"
     fill.Size = UDim2.new((defaultValue - minValue) / (maxValue - minValue), 0, 1, 0)
@@ -1017,15 +1012,15 @@ function UILibrary:CreateSlider(parent, options)
     fill.ZIndex = 4
 
     local fillCorner = Instance.new("UICorner")
-    fillCorner.CornerRadius = UDim.new(0, 2)
+    fillCorner.CornerRadius = UDim.new(0, 3)
     fillCorner.Parent = fill
 
-    -- 滑块按钮
+    -- 滑块按钮（与Toggle的thumb一致）
     local thumb = Instance.new("TextButton")
     thumb.Name = "Thumb"
-    thumb.Size = UDim2.new(0, 10, 0, 10)
-    thumb.Position = UDim2.new((defaultValue - minValue) / (maxValue - minValue), -5, 0.5, -5)
-    thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    thumb.Size = UDim2.new(0, 12, 0, 12)
+    thumb.Position = UDim2.new((defaultValue - minValue) / (maxValue - minValue), -6, 0.5, -6)
+    thumb.BackgroundColor3 = Color3.new(1, 1, 1)
     thumb.Text = ""
     thumb.Parent = track
     thumb.ZIndex = 5
