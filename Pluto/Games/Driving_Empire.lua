@@ -1409,6 +1409,8 @@ local defaultConfig = {
     notificationInterval = 30,
     onlineRewardEnabled = false,
     autoSpawnVehicleEnabled = false,
+    autoFarmEnabled = false,
+    autoFarmSpeed = 300,
     robTargetAmount = 0,
     notifyCash = false,
     notifyLeaderboard = false,
@@ -1794,6 +1796,105 @@ local function claimPlaytimeRewards()
         end
     end)
 end
+
+-- AutoFarm 自动刷金功能
+local isAutoFarmActive = false
+local autoFarmOriginalPosition = nil
+
+local function performAutoFarm()
+    if not config.autoFarmEnabled then
+        PlutoX.debug("[AutoFarm] 功能未启用")
+        return
+    end
+
+    PlutoX.debug("[AutoFarm] 开始执行自动刷金...")
+    isAutoFarmActive = true
+
+    -- 移动位置配置
+    local startPos = Vector3.new(-18121, 35, -418)
+    local endPos = Vector3.new(-18135, 35, -444)
+    local moveDuration = 10 -- 移动10秒
+
+    spawn(function()
+        while isAutoFarmActive and config.autoFarmEnabled do
+            pcall(function()
+                local localPlayer = Players.LocalPlayer
+                if not localPlayer then return end
+
+                local character = localPlayer.Character
+                if not character then return end
+
+                -- 获取玩家车辆
+                local vehicles = workspace:FindFirstChild("Vehicles")
+                if not vehicles then return end
+
+                local vehicle = vehicles:FindFirstChild(localPlayer.Name)
+                if not vehicle then
+                    PlutoX.debug("[AutoFarm] 未找到车辆，等待生成...")
+                    task.wait(3)
+                    return
+                end
+
+                -- 保存原始位置
+                if not autoFarmOriginalPosition then
+                    autoFarmOriginalPosition = vehicle:GetPrimaryPartCFrame()
+                    PlutoX.debug("[AutoFarm] 保存原始位置")
+                end
+
+                -- 计算移动方向和距离
+                local direction = (endPos - startPos).Unit
+                local distance = (endPos - startPos).Magnitude
+
+                -- 获取速度配置
+                local speed = config.autoFarmSpeed or 300
+
+                PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed)
+
+                -- 使用 TweenService 移动车辆（参考自动比赛代码）
+                local TweenService = game:GetService("TweenService")
+                local tweenInfo = TweenInfo.new(moveDuration, Enum.EasingStyle.Linear)
+
+                -- 创建 CFrameValue 用于平滑移动
+                local cframeValue = Instance.new("CFrameValue")
+                cframeValue.Value = CFrame.new(startPos)
+
+                -- 监听位置变化
+                local connection = cframeValue.Changed:Connect(function()
+                    vehicle:PivotTo(cframeValue.Value)
+                    if vehicle.PrimaryPart then
+                        -- 设置速度向量（参考自动比赛代码）
+                        vehicle.PrimaryPart.AssemblyLinearVelocity = direction * speed
+                    end
+                end)
+
+                -- 创建并播放 Tween
+                local tween = TweenService:Create(cframeValue, tweenInfo, {
+                    Value = CFrame.new(endPos)
+                })
+
+                tween:Play()
+                tween.Completed:Wait()
+
+                -- 断开连接
+                connection:Disconnect()
+                cframeValue:Destroy()
+
+                PlutoX.debug("[AutoFarm] 移动完成，传送回原位置")
+
+                -- 传送回原位置
+                if autoFarmOriginalPosition then
+                    vehicle:PivotTo(autoFarmOriginalPosition)
+                    task.wait(0.5)
+                end
+            end)
+
+            task.wait(1) -- 循环间隔
+        end
+
+        PlutoX.debug("[AutoFarm] 自动刷金已停止")
+    end)
+end
+
 local function performAutoSpawnVehicle()
     if not config.autoSpawnVehicleEnabled then
         PlutoX.debug("[AutoSpawnVehicle] 功能未启用")
@@ -2561,6 +2662,134 @@ UILibrary:CreateToggle(autoSpawnCard, {
         configManager:saveConfig()
         if state then
             spawn(performAutoSpawnVehicle)
+        end
+    end
+})
+
+-- AutoFarm 自动刷金
+local autoFarmCard = UILibrary:CreateCard(featuresContent, { IsMultiElement = true })
+UILibrary:CreateLabel(autoFarmCard, {
+    Text = "Auto Farm (-18121,35,-418 → -18135,35,-444)",
+})
+
+-- 速度显示和调节
+local autoFarmSpeedFrame = Instance.new("Frame")
+autoFarmSpeedFrame.Size = UDim2.new(1, -16, 0, 50)
+autoFarmSpeedFrame.BackgroundTransparency = 1
+autoFarmSpeedFrame.Parent = autoFarmCard
+
+local autoFarmSpeedLabel = UILibrary:CreateLabel(autoFarmSpeedFrame, {
+    Text = "速度: " .. (config.autoFarmSpeed or 300),
+    Size = UDim2.new(0.3, 0, 0, 20),
+    Position = UDim2.new(0, 0, 0, 0),
+})
+
+-- 创建滑块轨道
+local sliderTrack = Instance.new("Frame")
+sliderTrack.Name = "SliderTrack"
+sliderTrack.Size = UDim2.new(0.7, -8, 0, 6)
+sliderTrack.Position = UDim2.new(0.3, 4, 0, 7)
+sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+sliderTrack.BorderSizePixel = 0
+sliderTrack.Parent = autoFarmSpeedFrame
+
+local trackCorner = Instance.new("UICorner")
+trackCorner.CornerRadius = UDim.new(0, 3)
+trackCorner.Parent = sliderTrack
+
+-- 创建滑块填充
+local sliderFill = Instance.new("Frame")
+sliderFill.Name = "SliderFill"
+sliderFill.Size = UDim2.new((config.autoFarmSpeed or 300) / 700, 0, 1, 0)
+sliderFill.BackgroundColor3 = Color3.fromRGB(92, 107, 192)
+sliderFill.BorderSizePixel = 0
+sliderFill.Parent = sliderTrack
+
+local fillCorner = Instance.new("UICorner")
+fillCorner.CornerRadius = UDim.new(0, 3)
+fillCorner.Parent = sliderFill
+
+-- 创建滑块按钮
+local sliderThumb = Instance.new("TextButton")
+sliderThumb.Name = "SliderThumb"
+sliderThumb.Size = UDim2.new(0, 16, 0, 16)
+sliderThumb.Position = UDim2.new((config.autoFarmSpeed or 300) / 700, -8, 0.5, -8)
+sliderThumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+sliderThumb.Text = ""
+sliderThumb.Parent = sliderTrack
+
+local thumbCorner = Instance.new("UICorner")
+thumbCorner.CornerRadius = UDim.new(0.5, 0)
+thumbCorner.Parent = sliderThumb
+
+-- 速度值范围 0-700
+local minSpeed = 0
+local maxSpeed = 700
+
+-- 滑块拖动逻辑
+local isDragging = false
+
+local function updateSlider(inputPosition)
+    local trackAbsolutePos = sliderTrack.AbsolutePosition
+    local trackAbsoluteSize = sliderTrack.AbsoluteSize
+    local relativeX = inputPosition.X - trackAbsolutePos.X
+    local percent = math.clamp(relativeX / trackAbsoluteSize.X, 0, 1)
+    local speed = math.floor(minSpeed + (maxSpeed - minSpeed) * percent)
+
+    config.autoFarmSpeed = speed
+    configManager:saveConfig()
+
+    sliderFill.Size = UDim2.new(percent, 0, 1, 0)
+    sliderThumb.Position = UDim2.new(percent, -8, 0.5, -8)
+    autoFarmSpeedLabel.Text = "速度: " .. speed
+end
+
+sliderThumb.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = true
+    end
+end)
+
+sliderTrack.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        updateSlider(input.Position)
+        isDragging = true
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        updateSlider(input.Position)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        isDragging = false
+    end
+end)
+
+-- AutoFarm 开关
+UILibrary:CreateToggle(autoFarmCard, {
+    Text = "启用自动刷金",
+    DefaultState = config.autoFarmEnabled or false,
+    Callback = function(state)
+        config.autoFarmEnabled = state
+        configManager:saveConfig()
+        if state then
+            spawn(performAutoFarm)
+            UILibrary:Notify({
+                Title = "AutoFarm 已启动",
+                Text = "速度: " .. (config.autoFarmSpeed or 300) .. ", 移动10秒后返回",
+                Duration = 5
+            })
+        else
+            isAutoFarmActive = false
+            UILibrary:Notify({
+                Title = "AutoFarm 已停止",
+                Text = "自动刷金已关闭",
+                Duration = 3
+            })
         end
     end
 })
