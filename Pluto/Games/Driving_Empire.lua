@@ -1868,29 +1868,30 @@ local function performAutoFarm()
                     return
                 end
 
-                -- 传送到循环起点位置
-                PlutoX.debug("[AutoFarm] 传送到循环起点: " .. tostring(loopPos))
-
                 -- 寻找最近的 Road Marker
                 local nearestMarker = getNearestRoadMarker(loopPos)
                 local direction
+                local targetPos = loopPos
 
                 if nearestMarker then
                     -- 获取 Marker 方向（右向量 = 道路延伸方向）
                     direction = getMarkerDirection(nearestMarker)
                     PlutoX.debug("[AutoFarm] 找到 Road Marker，方向: " .. tostring(direction))
 
+                    -- 使用 Marker 的高度，保持 XZ 位置
+                    targetPos = Vector3.new(loopPos.X, nearestMarker.Position.Y, loopPos.Z)
+                    PlutoX.debug("[AutoFarm] 传送到: " .. tostring(targetPos) .. " (高度: " .. tostring(nearestMarker.Position.Y) .. ")")
+
                     -- 让车头朝向与道路平行（车头朝向 = direction）
-                    local vehiclePos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
-                    -- CFrame.lookAt 让车头朝向 direction 方向
-                    local newCFrame = CFrame.lookAt(vehiclePos, vehiclePos + direction)
+                    -- 使用 CFrame.lookAt 设置位置和朝向
+                    local newCFrame = CFrame.lookAt(targetPos, targetPos + direction)
                     vehicle:PivotTo(newCFrame)
                     PlutoX.debug("[AutoFarm] 车头已对齐道路，朝向: " .. tostring(newCFrame.LookVector))
                 else
-                    -- 未找到 Marker，使用默认方向
+                    -- 未找到 Marker，使用默认方向和高度
                     direction = Vector3.new(-0.45, 0, -0.89).Unit
                     PlutoX.warn("[AutoFarm] 未找到 Road Marker，使用默认方向")
-                    vehicle:PivotTo(CFrame.new(loopPos))
+                    vehicle:PivotTo(CFrame.lookAt(loopPos, loopPos + direction))
                 end
 
                 -- 清除速度，确保从静止开始
