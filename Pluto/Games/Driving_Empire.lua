@@ -1853,16 +1853,21 @@ local function performAutoFarm()
                 local targetPos = startPos + direction * moveDistance
 
                 PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed .. ", 目标距离: " .. moveDistance)
+                PlutoX.debug("[AutoFarm] 起点: " .. tostring(startPos) .. ", 目标: " .. tostring(targetPos))
 
                 -- 使用物理方式移动车辆（不使用 TweenService）
                 local RunService = game:GetService("RunService")
                 local startTime = tick()
-                local moved = false
-
-                -- 车头朝向目标方向（CFrame.lookAt）
-                local lookAtPos = targetPos  -- 车头对准目标位置
+                local lastDebugTime = startTime
+                local lastPos = startPos
 
                 while tick() - startTime < moveDuration and isAutoFarmActive do
+                    -- 检查车辆是否还存在
+                    if not vehicle or not vehicle.Parent then
+                        PlutoX.warn("[AutoFarm] 车辆已消失，停止移动")
+                        break
+                    end
+
                     local elapsed = tick() - startTime
                     local progress = elapsed / moveDuration
 
@@ -1870,22 +1875,44 @@ local function performAutoFarm()
                     local currentPos = startPos + direction * (moveDistance * progress)
 
                     -- 设置车辆位置和朝向（车头对准移动方向）
-                    local newCFrame = CFrame.lookAt(currentPos, lookAtPos)
+                    -- 使用 CFrame.new(pos, lookAt) 让车头朝向移动方向
+                    local newCFrame = CFrame.new(currentPos, currentPos + direction)
                     vehicle:PivotTo(newCFrame)
 
-                    -- 设置车辆速度
+                    -- 只给 PrimaryPart 设置速度（避免物理冲突）
                     if vehicle.PrimaryPart then
                         vehicle.PrimaryPart.AssemblyLinearVelocity = direction * speed
                     end
 
-                    -- 给所有部件设置速度（确保车辆整体移动）
-                    for _, part in ipairs(vehicle:GetDescendants()) do
-                        if part:IsA("BasePart") then
-                            part.AssemblyLinearVelocity = direction * speed
+                    -- 每秒输出一次 debug 信息
+                    if tick() - lastDebugTime >= 1 then
+                        local currentRealPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or currentPos
+                        local distanceMoved = (currentRealPos - lastPos).Magnitude
+                        local yPos = currentRealPos.Y
+
+                        PlutoX.debug("[AutoFarm] 时间: " .. string.format("%.1f", elapsed) .. "s, " ..
+                            "进度: " .. string.format("%.1f", progress * 100) .. "%, " ..
+                            "位置: " .. string.format("%.1f", currentRealPos.X) .. ", " ..
+                            string.format("%.1f", yPos) .. ", " ..
+                            string.format("%.1f", currentRealPos.Z) .. ", " ..
+                            "移动距离: " .. string.format("%.1f", distanceMoved))
+
+                        -- 检测异常情况（Y坐标过低或过高，或移动距离异常）
+                        if yPos < -100 or yPos > 1000 then
+                            PlutoX.warn("[AutoFarm] 车辆Y坐标异常: " .. string.format("%.1f", yPos) .. "，停止移动")
+                            break
                         end
+
+                        lastDebugTime = tick()
+                        lastPos = currentRealPos
                     end
 
                     RunService.Heartbeat:Wait()
+                end
+
+                -- 停止车辆速度
+                if vehicle and vehicle.Parent and vehicle.PrimaryPart then
+                    vehicle.PrimaryPart.AssemblyLinearVelocity = Vector3.zero
                 end
 
                 PlutoX.debug("[AutoFarm] 移动完成，传送回原位置")
