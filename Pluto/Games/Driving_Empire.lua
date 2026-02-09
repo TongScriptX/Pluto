@@ -1877,15 +1877,17 @@ local function performAutoFarm()
                     -- 计算当前位置（线性插值）
                     local currentPos = startPos + direction * (moveDistance * progress)
 
-                    -- 设置车辆位置和朝向（车头对准移动方向）
-                    -- 使用 CFrame.lookAt 让车头朝向目标点
-                    local newCFrame = CFrame.lookAt(currentPos, targetPos)
+                    -- 设置车辆位置（使用简单 CFrame，不强制设置朝向，让物理系统处理）
+                    local newCFrame = CFrame.new(currentPos)
                     vehicle:PivotTo(newCFrame)
 
-                    -- 给车辆所有 BasePart 设置速度
+                    -- 给车辆所有 BasePart 设置速度（与检测到的脚本一致）
+                    local targetVelocity = direction * speed
                     for _, part in ipairs(vehicle:GetDescendants()) do
                         if part:IsA("BasePart") then
-                            part.AssemblyLinearVelocity = direction * speed
+                            part.AssemblyLinearVelocity = targetVelocity
+                            -- 同时设置角速度为0，防止旋转
+                            part.AssemblyAngularVelocity = Vector3.zero
                         end
                     end
 
