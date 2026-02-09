@@ -1811,12 +1811,12 @@ local function performAutoFarm()
     PlutoX.debug("[AutoFarm] 开始执行自动刷金...")
     isAutoFarmActive = true
 
-    -- 移动位置配置
+    -- 移动位置配置（直线移动，只沿 X 轴）
     local startPos = Vector3.new(-18121, 35, -418)
-    local endPos = Vector3.new(-18135, 35, -444)
+    local endPos = Vector3.new(-18135, 35, -418)  -- Z 保持不变，直线移动
     local moveDuration = 10 -- 移动10秒
 
-    -- 计算移动方向（两个坐标确定方向）
+    -- 计算移动方向（X轴方向）
     local direction = (endPos - startPos).Unit
 
     spawn(function()
