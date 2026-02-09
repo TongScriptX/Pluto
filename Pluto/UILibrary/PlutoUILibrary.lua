@@ -965,19 +965,26 @@ function UILibrary:CreateSlider(parent, options)
     })
     label.ZIndex = 3
 
-    -- 值标签（右侧）
-    local valueLabel = Instance.new("TextLabel")
-    valueLabel.Name = "ValueLabel"
-    valueLabel.Size = UDim2.new(0, 40, 1, 0)
-    valueLabel.Position = UDim2.new(1, -40, 0, 0)
-    valueLabel.BackgroundTransparency = 1
-    valueLabel.Text = tostring(defaultValue) .. suffix
-    valueLabel.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    valueLabel.TextSize = 11
-    valueLabel.Font = THEME.Font
-    valueLabel.TextXAlignment = Enum.TextXAlignment.Right
-    valueLabel.Parent = sliderFrame
-    valueLabel.ZIndex = 3
+    -- 值输入框（右侧，可点击编辑）
+    local valueInput = Instance.new("TextBox")
+    valueInput.Name = "ValueInput"
+    valueInput.Size = UDim2.new(0, 50, 0, 20)
+    valueInput.Position = UDim2.new(1, -50, 0.5, -10)
+    valueInput.BackgroundTransparency = 0.8
+    valueInput.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    valueInput.BorderSizePixel = 0
+    valueInput.Text = tostring(defaultValue) .. suffix
+    valueInput.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+    valueInput.TextSize = 11
+    valueInput.Font = THEME.Font
+    valueInput.TextXAlignment = Enum.TextXAlignment.Center
+    valueInput.ClearTextOnFocus = true
+    valueInput.Parent = sliderFrame
+    valueInput.ZIndex = 3
+    
+    local valueInputCorner = Instance.new("UICorner")
+    valueInputCorner.CornerRadius = UDim.new(0, 4)
+    valueInputCorner.Parent = valueInput
 
     -- 轨道容器（中间，与Toggle的轨道位置一致）
     local trackContainer = Instance.new("Frame")
@@ -1032,22 +1039,44 @@ function UILibrary:CreateSlider(parent, options)
     local currentValue = defaultValue
     local isDragging = false
 
+    local function updateSliderVisuals(value)
+        local percent = (value - minValue) / (maxValue - minValue)
+        fill.Size = UDim2.new(percent, 0, 1, 0)
+        thumb.Position = UDim2.new(percent, -6, 0.5, -6)
+        valueInput.Text = tostring(value) .. suffix
+    end
+
+    local function setValue(value)
+        value = math.clamp(math.floor(value), minValue, maxValue)
+        if value ~= currentValue then
+            currentValue = value
+            updateSliderVisuals(value)
+            if options.Callback then
+                pcall(options.Callback, value)
+            end
+        end
+    end
+
     local function updateSlider(inputPosition)
         local trackAbsolutePos = track.AbsolutePosition
         local trackAbsoluteSize = track.AbsoluteSize
         local relativeX = inputPosition.X - trackAbsolutePos.X
         local percent = math.clamp(relativeX / trackAbsoluteSize.X, 0, 1)
         local value = math.floor(minValue + (maxValue - minValue) * percent)
-
-        currentValue = value
-        fill.Size = UDim2.new(percent, 0, 1, 0)
-        thumb.Position = UDim2.new(percent, -5, 0.5, -5)
-        valueLabel.Text = tostring(value) .. suffix
-
-        if options.Callback then
-            pcall(options.Callback, value)
-        end
+        setValue(value)
     end
+    
+    -- 输入框失去焦点时更新值
+    valueInput.FocusLost:Connect(function()
+        local text = valueInput.Text:gsub(suffix, ""):match("%d+")
+        local num = tonumber(text)
+        if num then
+            setValue(num)
+        else
+            -- 输入无效，恢复原值
+            valueInput.Text = tostring(currentValue) .. suffix
+        end
+    end)
 
     thumb.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1074,7 +1103,7 @@ function UILibrary:CreateSlider(parent, options)
         end
     end)
 
-    return sliderFrame, function() return currentValue end
+    return sliderFrame, function() return currentValue end, setValue
 end
 
 -- 拖拽模块

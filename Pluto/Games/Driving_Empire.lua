@@ -1839,11 +1839,24 @@ local function performAutoFarm()
                     return
                 end
 
-                -- 保存原始位置
+                -- 保存原始位置（用于传送回去）
                 if not autoFarmOriginalPosition then
-                    autoFarmOriginalPosition = CFrame.new(startPos)
-                    PlutoX.debug("[AutoFarm] 保存起始位置")
+                    autoFarmOriginalPosition = vehicle.PrimaryPart and vehicle.PrimaryPart.CFrame or CFrame.new(startPos)
+                    PlutoX.debug("[AutoFarm] 保存原始位置")
                 end
+
+                -- 传送到起始位置
+                PlutoX.debug("[AutoFarm] 传送到起始位置: " .. tostring(startPos))
+                local startCFrame = CFrame.new(startPos)
+                vehicle:PivotTo(startCFrame)
+                -- 清除速度，确保从静止开始
+                for _, part in ipairs(vehicle:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.AssemblyLinearVelocity = Vector3.zero
+                        part.AssemblyAngularVelocity = Vector3.zero
+                    end
+                end
+                task.wait(0.5)  -- 等待传送完成
 
                 -- 获取速度配置
                 local speed = config.autoFarmSpeed or 300
