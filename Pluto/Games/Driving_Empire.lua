@@ -607,15 +607,17 @@ local function fetchPlayerRank()
                     if apiSuccess and apiData and #apiData == 0 then
                         -- API返回0条数据，需要上传游戏内获取的数据
                         leaderboardEntries = {}
+                        local entryRank = 1
                         for _, child in ipairs(contents:GetChildren()) do
                             local childId = tonumber(child.Name)
                             if childId then
                                 local placement = child:FindFirstChild("Placement")
-                                local rank = placement and placement:IsA("IntValue") and placement.Value or 0
+                                local rank = placement and placement:IsA("IntValue") and placement.Value or entryRank
                                 table.insert(leaderboardEntries, {
                                     user_id = childId,
                                     rank = rank
                                 })
+                                entryRank = entryRank + 1
                             end
                         end
                         
@@ -647,15 +649,17 @@ local function fetchPlayerRank()
                         -- 提取排行榜数据用于上传（如果 API 返回 0 条数据）
                         if apiSuccess and apiData and #apiData == 0 then
                             leaderboardEntries = {}
+                            local entryRank = 1
                             for _, child in ipairs(contents:GetChildren()) do
                                 local childId = tonumber(child.Name)
                                 if childId then
                                     local placement = child:FindFirstChild("Placement")
-                                    local rank = placement and placement:IsA("IntValue") and placement.Value or 0
+                                    local rank = placement and placement:IsA("IntValue") and placement.Value or entryRank
                                     table.insert(leaderboardEntries, {
                                         user_id = childId,
                                         rank = rank
                                     })
+                                    entryRank = entryRank + 1
                                 end
                             end
                             PlutoX.debug("[排行榜] 远程加载提取到 " .. #leaderboardEntries .. " 条排行榜数据")
