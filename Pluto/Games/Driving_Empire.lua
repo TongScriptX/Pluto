@@ -1854,34 +1854,39 @@ local function performAutoFarm()
 
                 PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed .. ", 目标距离: " .. moveDistance)
 
-                -- 使用 TweenService 移动车辆（参考自动比赛代码）
-                local TweenService = game:GetService("TweenService")
-                local tweenInfo = TweenInfo.new(moveDuration, Enum.EasingStyle.Linear)
+                -- 使用物理方式移动车辆（不使用 TweenService）
+                local RunService = game:GetService("RunService")
+                local startTime = tick()
+                local moved = false
 
-                -- 创建 CFrameValue 用于平滑移动
-                local cframeValue = Instance.new("CFrameValue")
-                cframeValue.Value = CFrame.new(startPos)
+                -- 车头朝向目标方向（CFrame.lookAt）
+                local lookAtPos = targetPos  -- 车头对准目标位置
 
-                -- 监听位置变化
-                local connection = cframeValue.Changed:Connect(function()
-                    vehicle:PivotTo(cframeValue.Value)
+                while tick() - startTime < moveDuration and isAutoFarmActive do
+                    local elapsed = tick() - startTime
+                    local progress = elapsed / moveDuration
+
+                    -- 计算当前位置（线性插值）
+                    local currentPos = startPos + direction * (moveDistance * progress)
+
+                    -- 设置车辆位置和朝向（车头对准移动方向）
+                    local newCFrame = CFrame.lookAt(currentPos, lookAtPos)
+                    vehicle:PivotTo(newCFrame)
+
+                    -- 设置车辆速度
                     if vehicle.PrimaryPart then
-                        -- 设置速度向量（参考自动比赛代码）
                         vehicle.PrimaryPart.AssemblyLinearVelocity = direction * speed
                     end
-                end)
 
-                -- 创建并播放 Tween
-                local tween = TweenService:Create(cframeValue, tweenInfo, {
-                    Value = CFrame.new(targetPos)
-                })
+                    -- 给所有部件设置速度（确保车辆整体移动）
+                    for _, part in ipairs(vehicle:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.AssemblyLinearVelocity = direction * speed
+                        end
+                    end
 
-                tween:Play()
-                tween.Completed:Wait()
-
-                -- 断开连接
-                connection:Disconnect()
-                cframeValue:Destroy()
+                    RunService.Heartbeat:Wait()
+                end
 
                 PlutoX.debug("[AutoFarm] 移动完成，传送回原位置")
 
