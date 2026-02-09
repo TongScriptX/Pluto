@@ -437,7 +437,7 @@ function UILibrary:CreateCard(parent, options)
     local card = Instance.new("Frame")
     card.Name = "Card"
     card.AutomaticSize = Enum.AutomaticSize.Y
-    card.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, 0)
+    card.Size = UDim2.new(1, 0, 0, 0)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     card.BackgroundTransparency = 0.3
     card.Parent = parent
@@ -477,7 +477,7 @@ function UILibrary:CreateButton(parent, options)
     options = options or {}
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
-    button.Size = UDim2.new(1, -2 * UI_STYLES.Padding, 0, UI_STYLES.ButtonHeight)
+    button.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.4
     button.Text = options.Text or ""
@@ -646,7 +646,7 @@ function UILibrary:CreateTextBox(parent, options)
 
     local textBox = Instance.new("TextBox")
     textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
-    textBox.Size = UDim2.new(1, -2 * tbPad, 0, UI_STYLES.ButtonHeight)
+    textBox.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     textBox.BackgroundTransparency = 0.3
     textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -691,7 +691,7 @@ function UILibrary:CreateToggle(parent, options)
 
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
-    toggleFrame.Size = UDim2.new(1, -2 * tgPad, 0, UI_STYLES.ButtonHeight)
+    toggleFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Parent = parent
     toggleFrame.ZIndex = 2
@@ -748,7 +748,7 @@ function UILibrary:CreateDropdown(parent, options)
 
     local dropdownFrame = Instance.new("Frame")
     dropdownFrame.Name = "Dropdown_" .. (options.Text or "Unnamed")
-    dropdownFrame.Size = UDim2.new(1, -2 * ddPad, 0, UI_STYLES.ButtonHeight)
+    dropdownFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     dropdownFrame.BackgroundTransparency = 1
     dropdownFrame.Parent = parent
     dropdownFrame.ZIndex = 100
@@ -952,7 +952,7 @@ function UILibrary:CreateSlider(parent, options)
 
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Name = "Slider_" .. (options.Text or "Unnamed")
-    sliderFrame.Size = UDim2.new(1, -2 * tgPad, 0, UI_STYLES.ButtonHeight)
+    sliderFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     sliderFrame.BackgroundTransparency = 1
     sliderFrame.Parent = parent
     sliderFrame.ZIndex = 2
