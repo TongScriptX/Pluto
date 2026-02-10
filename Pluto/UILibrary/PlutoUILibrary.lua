@@ -38,7 +38,7 @@ local DEFAULT_THEME = {
     Font = Enum.Font.GothamBold  
 }  
 
--- UI 样式常量（调整为 4pt 网格）
+-- UI 样式常量（层级化圆角系统）
 local UI_STYLES = {
     CardHeightSingle   = 60,
     CardHeightMulti    = 88,
@@ -47,7 +47,11 @@ local UI_STYLES = {
     TabButtonHeight    = 32,
     Padding            = 8,
     YPadding           = 8,
-    CornerRadius       = 12,
+    -- 层级化圆角：小元素4px，中元素6px，大元素10px，容器14px
+    CornerRadiusSmall  = 4,   -- 滑块轨道、输入框
+    CornerRadiusMedium = 6,   -- 按钮、开关
+    CornerRadiusLarge  = 10,  -- 卡片
+    CornerRadiusXLarge = 14,  -- 窗口、主面板
     WindowWidth        = 400,
     WindowHeight       = 300,
     SidebarWidth       = 80,
@@ -321,7 +325,7 @@ function UILibrary:Notify(options)
     notification.ZIndex = 21
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
     corner.Parent = notification
 
     local padding = Instance.new("UIPadding")
@@ -451,7 +455,7 @@ function UILibrary:CreateCard(parent, options)
     card.ZIndex = 2
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusLarge)
     corner.Parent = card
 
     local layout = Instance.new("UIListLayout")
@@ -495,7 +499,7 @@ function UILibrary:CreateButton(parent, options)
     button.ZIndex = 3
 
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
     corner.Parent = button
 
     if options.Callback then
@@ -552,9 +556,10 @@ function UILibrary:CreateFloatingButton(parent, options)
     button.Visible = true
     button.ZIndex = 15
     local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    corner.Parent = button
-
-    if not button.Parent then
+            corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
+                corner.Parent = button
+            
+                if not button.Parent then
         warn("[FloatingButton]: Button has no parent after creation")
         button:Destroy()
         return nil
@@ -667,7 +672,7 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.ZIndex = 3
 
     local corner = Instance.new("UICorner", textBox)
-    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
 
     textBox.Focused:Connect(function()
         TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {
@@ -716,8 +721,9 @@ function UILibrary:CreateToggle(parent, options)
                               or (THEME.Error or DEFAULT_THEME.Error))
     track.ZIndex = 3
     local trackCorner = Instance.new("UICorner", track)
-            trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
-    local thumb = Instance.new("TextButton", track)
+            trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+            
+                local thumb = Instance.new("TextButton", track)
     thumb.Name = "Thumb"
     thumb.Size = UDim2.new(0, 15, 0, 15)
     thumb.Position = options.DefaultState and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
@@ -725,8 +731,9 @@ function UILibrary:CreateToggle(parent, options)
     thumb.Text = ""
     thumb.ZIndex = 4
     local thumbCorner = Instance.new("UICorner", thumb)
-            thumbCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
-    local state = options.DefaultState or false
+            thumbCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
+            
+                local state = options.DefaultState or false
     thumb.MouseButton1Click:Connect(function()
         state = not state
         local targetPos = state and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
@@ -780,7 +787,7 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.ZIndex = 101
 
     local buttonCorner = Instance.new("UICorner", dropdownButton)
-    buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
 
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.Name = "Arrow"
@@ -818,7 +825,7 @@ function UILibrary:CreateDropdown(parent, options)
     end
 
     local optionsListCorner = Instance.new("UICorner", optionsList)
-    optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusLarge)
 
     local optionsListLayout = Instance.new("UIListLayout")
     optionsListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -859,7 +866,7 @@ function UILibrary:CreateDropdown(parent, options)
             optionButton.ZIndex = 1001
 
             local optionCorner = Instance.new("UICorner", optionButton)
-            optionCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+            optionCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
 
             optionButton.MouseEnter:Connect(function()
                 TweenService:Create(optionButton, self.TWEEN_INFO_BUTTON, {
@@ -986,7 +993,8 @@ function UILibrary:CreateSlider(parent, options)
     valueInput.ZIndex = 3
     
     local valueInputCorner = Instance.new("UICorner")
-            valueInputCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    valueInputCorner.Parent = valueInput
+            valueInputCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+    valueInputCorner.Parent = valueInput
 
     -- 滑块轨道（直接放在sliderFrame中，左侧是标签，右侧是数值框）
     local track = Instance.new("Frame")
@@ -999,7 +1007,8 @@ function UILibrary:CreateSlider(parent, options)
     track.ZIndex = 3
 
     local trackCorner = Instance.new("UICorner")
-            trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    trackCorner.Parent = track
+            trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+    trackCorner.Parent = track
 
     -- 滑块填充（使用主题强调色）
     local fill = Instance.new("Frame")
@@ -1011,7 +1020,8 @@ function UILibrary:CreateSlider(parent, options)
     fill.ZIndex = 4
 
     local fillCorner = Instance.new("UICorner")
-            fillCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)    fillCorner.Parent = fill
+            fillCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+    fillCorner.Parent = fill
 
     -- 滑块按钮（与Toggle的thumb一致）
     local thumb = Instance.new("TextButton")
@@ -1219,7 +1229,7 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.ZIndex = 5
     mainFrame.ClipsDescendants = true
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusXLarge)
     corner.Parent = mainFrame
 
     local sidebar = Instance.new("Frame")
@@ -1231,7 +1241,7 @@ function UILibrary:CreateUIWindow(options)
     sidebar.Visible = true
     sidebar.ZIndex = 6
     local sidebarCorner = Instance.new("UICorner")
-    sidebarCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    sidebarCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusXLarge)
     sidebarCorner.Parent = sidebar
 
     local sidebarLayout = Instance.new("UIListLayout")
@@ -1254,7 +1264,7 @@ function UILibrary:CreateUIWindow(options)
     titleBar.Visible = true
     titleBar.ZIndex = 6
     local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    titleCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusXLarge)
     titleCorner.Parent = titleBar
 
     local titleLabel = self:CreateLabel(titleBar, {
@@ -1277,7 +1287,7 @@ function UILibrary:CreateUIWindow(options)
     mainPage.ZIndex = 6
     mainPage.ClipsDescendants = true
     local pageCorner = Instance.new("UICorner")
-    pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadius)
+    pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusXLarge)
     pageCorner.Parent = mainPage
 
     self:MakeDraggable(titleBar, mainFrame)
