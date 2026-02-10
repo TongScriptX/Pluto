@@ -670,22 +670,30 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.Text = options.Text or ""
     textBox.TextWrapped = true
     textBox.TextTruncate = Enum.TextTruncate.AtEnd
-    textBox.BorderSizePixel = 1
-    textBox.BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+    textBox.BorderSizePixel = 0  -- 使用 UIStroke 替代
     textBox.Parent = parent
     textBox.ZIndex = 3
 
     local corner = Instance.new("UICorner", textBox)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+    
+    -- 添加与卡片一致的边框
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Transparency = 0.85
+    stroke.Thickness = 1
+    stroke.Parent = textBox
 
     textBox.Focused:Connect(function()
-        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {
-            BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary
+        TweenService:Create(stroke, self.TWEEN_INFO_BUTTON, {
+            Color = THEME.Primary or DEFAULT_THEME.Primary,
+            Transparency = 0.5
         }):Play()
     end)
     textBox.FocusLost:Connect(function()
-        TweenService:Create(textBox, self.TWEEN_INFO_BUTTON, {
-            BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+        TweenService:Create(stroke, self.TWEEN_INFO_BUTTON, {
+            Color = Color3.fromRGB(255, 255, 255),
+            Transparency = 0.85
         }):Play()
         if options.OnFocusLost then pcall(options.OnFocusLost, textBox.Text) end
     end)
