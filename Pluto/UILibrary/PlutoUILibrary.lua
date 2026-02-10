@@ -680,20 +680,20 @@ function UILibrary:CreateTextBox(parent, options)
     -- 添加与卡片一致的边框
     local stroke = Instance.new("UIStroke")
     stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Transparency = 0.85
+    stroke.Transparency = 0.6
     stroke.Thickness = 1
     stroke.Parent = textBox
 
     textBox.Focused:Connect(function()
         TweenService:Create(stroke, self.TWEEN_INFO_BUTTON, {
             Color = THEME.Primary or DEFAULT_THEME.Primary,
-            Transparency = 0.5
+            Transparency = 0.3
         }):Play()
     end)
     textBox.FocusLost:Connect(function()
         TweenService:Create(stroke, self.TWEEN_INFO_BUTTON, {
             Color = Color3.fromRGB(255, 255, 255),
-            Transparency = 0.85
+            Transparency = 0.6
         }):Play()
         if options.OnFocusLost then pcall(options.OnFocusLost, textBox.Text) end
     end)
