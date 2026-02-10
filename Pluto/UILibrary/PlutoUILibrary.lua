@@ -582,8 +582,9 @@ function UILibrary:CreateFloatingButton(parent, options)
             mainFrame.ZIndex = isVisible and 5 or 1
             
             if isVisible then
-                -- 打开窗口：淡入
-                mainFrame.Position = lastKnownPos or firstOpenPos
+                -- 打开窗口：从中心位置淡入
+                mainFrame.Position = firstOpenPos
+                lastKnownPos = firstOpenPos  -- 重置位置记录
                 local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)
                 for _, t in ipairs(tweens) do
                     t:Play()
@@ -593,7 +594,6 @@ function UILibrary:CreateFloatingButton(parent, options)
                 }):Play()
             else
                 -- 关闭窗口：先补间动画移动到中心，再淡出
-                local currentPos = mainFrame.Position
                 -- 第一步：补间动画移动到屏幕中心
                 local moveTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
                     Position = firstOpenPos
@@ -612,7 +612,7 @@ function UILibrary:CreateFloatingButton(parent, options)
                     fadeTween:Play()
                     fadeTween.Completed:Connect(function()
                         mainFrame.Visible = false
-                        lastKnownPos = currentPos  -- 保存关闭前的位置
+                        lastKnownPos = firstOpenPos  -- 关闭后重置位置到中心
                     end)
                 end)
             end
