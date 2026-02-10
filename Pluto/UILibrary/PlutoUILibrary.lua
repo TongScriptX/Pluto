@@ -26,15 +26,15 @@ elseif PRIMARY_COLOR == nil then
     PRIMARY_COLOR = Color3.fromRGB(63, 81, 181) -- 默认颜色
 end
 
--- 默认主题（增强层级感）
+-- 默认主题（浅色毛玻璃效果）
 local DEFAULT_THEME = {
-    Primary = Color3.fromRGB(63, 81, 181),
-    Background = Color3.fromRGB(22, 22, 26),
-    SecondaryBackground = Color3.fromRGB(45, 48, 58),
-    Accent = Color3.fromRGB(92, 107, 192),
-    Text = Color3.fromRGB(255, 255, 255),
-    Success = Color3.fromRGB(76, 175, 80),
-    Error = Color3.fromRGB(244, 67, 54),
+    Primary = Color3.fromRGB(59, 130, 246),      -- 蓝色主色
+    Background = Color3.fromRGB(248, 250, 252),  -- 极浅灰背景
+    SecondaryBackground = Color3.fromRGB(255, 255, 255), -- 纯白卡片
+    Accent = Color3.fromRGB(96, 165, 250),       -- 浅蓝强调
+    Text = Color3.fromRGB(31, 41, 55),           -- 深灰文字
+    Success = Color3.fromRGB(34, 197, 94),       -- 翠绿
+    Error = Color3.fromRGB(239, 68, 68),         -- 红色
     Font = Enum.Font.GothamBold
 }  
 
@@ -459,10 +459,10 @@ function UILibrary:CreateCard(parent, options)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusLarge)
     corner.Parent = card
 
-    -- 添加微妙边框增强层级感
+    -- 毛玻璃边框效果
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Transparency = 0.9
+    stroke.Color = Color3.fromRGB(226, 232, 240)  -- 浅灰蓝边框
+    stroke.Transparency = 0.5
     stroke.Thickness = 1
     stroke.Parent = card
 
@@ -1228,7 +1228,7 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
     mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = 0.5
+    mainFrame.BackgroundTransparency = 0.15  -- 毛玻璃效果：半透明
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
@@ -1240,8 +1240,8 @@ function UILibrary:CreateUIWindow(options)
     local sidebar = Instance.new("Frame")
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
-    sidebar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    sidebar.BackgroundTransparency = 0
+    sidebar.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    sidebar.BackgroundTransparency = 0.1
     sidebar.Parent = mainFrame
     sidebar.Visible = true
     sidebar.ZIndex = 6
@@ -1345,7 +1345,12 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Name = "TabContent_" .. tabText
     content.Size = UDim2.new(1, 0, 1, 0)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
-    content.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
+    -- 确保使用有效的背景色，避免默认灰色
+    local bgColor = THEME.Background or DEFAULT_THEME.Background
+    if not bgColor then
+        bgColor = Color3.fromRGB(22, 22, 26)
+    end
+    content.BackgroundColor3 = bgColor
     content.BackgroundTransparency = isActive and 0.5 or 1
     content.ScrollBarThickness = 4
     content.ScrollingEnabled = true
