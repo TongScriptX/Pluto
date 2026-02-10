@@ -706,10 +706,21 @@ function UILibrary:CreateToggle(parent, options)
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
     toggleFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    toggleFrame.BackgroundTransparency = 0.999  -- 接近完全透明但避免默认值问题
+    toggleFrame.BackgroundTransparency = 1  -- 父级完全透明
     toggleFrame.BorderSizePixel = 0
     toggleFrame.Parent = parent
     toggleFrame.ZIndex = 2
+    
+    -- 使用 ImageLabel 作为透明背景层，避免 Roblox 默认灰色
+    local bg = Instance.new("ImageLabel")
+    bg.Name = "BG"
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.Image = ""  -- 空图片
+    bg.ImageColor3 = Color3.fromRGB(40, 42, 50)
+    bg.ImageTransparency = 0.99  -- 几乎完全透明
+    bg.BackgroundTransparency = 1
+    bg.Parent = toggleFrame
+    bg.ZIndex = 2
 
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "",
