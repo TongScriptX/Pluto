@@ -26,16 +26,16 @@ elseif PRIMARY_COLOR == nil then
     PRIMARY_COLOR = Color3.fromRGB(63, 81, 181) -- 默认颜色
 end
 
--- 默认主题  
-local DEFAULT_THEME = {  
-    Primary = Color3.fromRGB(63, 81, 181),  
-    Background = Color3.fromRGB(30, 30, 30),  
-    SecondaryBackground = Color3.fromRGB(46, 46, 46),  
-    Accent = Color3.fromRGB(92, 107, 192),  
-    Text = Color3.fromRGB(255, 255, 255),  
-    Success = Color3.fromRGB(76, 175, 80),  
-    Error = Color3.fromRGB(244, 67, 54),  
-    Font = Enum.Font.GothamBold  
+-- 默认主题（增强层级感）
+local DEFAULT_THEME = {
+    Primary = Color3.fromRGB(63, 81, 181),
+    Background = Color3.fromRGB(22, 22, 26),
+    SecondaryBackground = Color3.fromRGB(45, 48, 58),
+    Accent = Color3.fromRGB(92, 107, 192),
+    Text = Color3.fromRGB(255, 255, 255),
+    Success = Color3.fromRGB(76, 175, 80),
+    Error = Color3.fromRGB(244, 67, 54),
+    Font = Enum.Font.GothamBold
 }  
 
 -- UI 样式常量（层级化圆角系统）
@@ -449,7 +449,8 @@ function UILibrary:CreateCard(parent, options)
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.Size = UDim2.new(1, 0, 0, 0)
     card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    card.BackgroundTransparency = 0.3
+    card.BackgroundTransparency = 0.1
+    card.BorderSizePixel = 0
     card.Parent = parent
     card.Visible = true
     card.ZIndex = 2
@@ -457,6 +458,13 @@ function UILibrary:CreateCard(parent, options)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusLarge)
     corner.Parent = card
+
+    -- 添加微妙边框增强层级感
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Transparency = 0.9
+    stroke.Thickness = 1
+    stroke.Parent = card
 
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
