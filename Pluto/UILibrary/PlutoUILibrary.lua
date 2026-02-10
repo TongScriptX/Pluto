@@ -448,7 +448,12 @@ function UILibrary:CreateCard(parent, options)
     card.Name = "Card"
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.Size = UDim2.new(1, 0, 0, 0)
-    card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    -- 确保背景色有效，避免默认灰色
+    local cardBg = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    if not cardBg then
+        cardBg = Color3.fromRGB(40, 42, 50)
+    end
+    card.BackgroundColor3 = cardBg
     card.BackgroundTransparency = 0.1
     card.BorderSizePixel = 0
     card.Parent = parent
