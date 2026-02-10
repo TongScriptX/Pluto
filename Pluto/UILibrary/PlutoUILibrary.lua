@@ -706,21 +706,16 @@ function UILibrary:CreateToggle(parent, options)
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
     toggleFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    toggleFrame.BackgroundTransparency = 1  -- 父级完全透明
     toggleFrame.BorderSizePixel = 0
     toggleFrame.Parent = parent
     toggleFrame.ZIndex = 2
     
-    -- 使用 ImageLabel 作为透明背景层，避免 Roblox 默认灰色
-    local bg = Instance.new("ImageLabel")
-    bg.Name = "BG"
-    bg.Size = UDim2.new(1, 0, 1, 0)
-    bg.Image = ""  -- 空图片
-    bg.ImageColor3 = Color3.fromRGB(40, 42, 50)
-    bg.ImageTransparency = 0.99  -- 几乎完全透明
-    bg.BackgroundTransparency = 1
-    bg.Parent = toggleFrame
-    bg.ZIndex = 2
+    -- 延迟设置避免默认灰色
+    task.spawn(function()
+        game:GetService("RunService").Heartbeat:Wait()
+        toggleFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        toggleFrame.BackgroundTransparency = 0.999
+    end)
 
     local label = self:CreateLabel(toggleFrame, {
         Text = options.Text or "",
@@ -981,9 +976,15 @@ function UILibrary:CreateSlider(parent, options)
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Name = "Slider_" .. (options.Text or "Unnamed")
     sliderFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    sliderFrame.BackgroundTransparency = 0.999
     sliderFrame.Parent = parent
     sliderFrame.ZIndex = 2
+    
+    -- 延迟设置避免默认灰色
+    task.spawn(function()
+        game:GetService("RunService").Heartbeat:Wait()
+        sliderFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        sliderFrame.BackgroundTransparency = 0.999
+    end)
 
     -- 标签（左侧，使用CreateLabel保持一致）
     local label = self:CreateLabel(sliderFrame, {
