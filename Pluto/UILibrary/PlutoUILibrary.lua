@@ -706,7 +706,7 @@ function UILibrary:CreateToggle(parent, options)
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
     toggleFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    toggleFrame.BackgroundTransparency = 1  -- 完全透明
+    toggleFrame.BackgroundTransparency = 0.999  -- 接近完全透明但避免默认值问题
     toggleFrame.BorderSizePixel = 0
     toggleFrame.Parent = parent
     toggleFrame.ZIndex = 2
@@ -970,7 +970,7 @@ function UILibrary:CreateSlider(parent, options)
     local sliderFrame = Instance.new("Frame")
     sliderFrame.Name = "Slider_" .. (options.Text or "Unnamed")
     sliderFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.BackgroundTransparency = 0.999
     sliderFrame.Parent = parent
     sliderFrame.ZIndex = 2
 
