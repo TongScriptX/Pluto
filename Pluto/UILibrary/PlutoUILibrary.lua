@@ -579,23 +579,46 @@ function UILibrary:CreateFloatingButton(parent, options)
             local isVisible = not mainFrame.Visible
             button.Text = isVisible and "L" or "T"
             mainFrame.Visible = true
-            mainFrame.Position = isVisible and (lastKnownPos or firstOpenPos) or firstOpenPos
             mainFrame.ZIndex = isVisible and 5 or 1
-            local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, isVisible)
-            for _, t in ipairs(tweens) do
-                t:Play()
-            end
-            local tween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
-                BackgroundTransparency = isVisible and 0.5 or 1
-            })
-            tween:Play()
-            tween.Completed:Connect(function()
-                if not isVisible then
-                    mainFrame.Visible = false
-                    lastKnownPos = mainFrame.Position
+            
+            if isVisible then
+                -- 打开窗口：直接设置位置并淡入
+                mainFrame.Position = lastKnownPos or firstOpenPos
+                local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)
+                for _, t in ipairs(tweens) do
+                    t:Play()
                 end
+                TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
+                    BackgroundTransparency = 0.5
+                }):Play()
                 button.Active = true
-            end)
+            else
+                -- 关闭窗口：先动画回到中心，再淡出隐藏
+                local currentPos = mainFrame.Position
+                -- 位置复位动画（回到屏幕中心）
+                local posTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Position = firstOpenPos
+                })
+                posTween:Play()
+                
+                posTween.Completed:Connect(function()
+                    -- 复位完成后淡出
+                    local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, false)
+                    for _, t in ipairs(tweens) do
+                        t:Play()
+                    end
+                    local fadeTween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
+                        BackgroundTransparency = 1
+                    })
+                    fadeTween:Play()
+                    fadeTween.Completed:Connect(function()
+                        mainFrame.Visible = false
+                        lastKnownPos = currentPos
+                        button.Active = true
+                    end)
+                end)
+            end
+            
             TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Rotation = isVisible and 45 or 0}):Play()
         end)
     end
@@ -1260,9 +1283,11 @@ function UILibrary:CreateUIWindow(options)
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
-    mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
+    -- 初始位置：从屏幕上方偏移（用于入场动画）
+    local targetPos = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
+    mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.3, -windowHeight / 2)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
-    mainFrame.BackgroundTransparency = 0.15  -- 毛玻璃效果：半透明
+    mainFrame.BackgroundTransparency = 1  -- 初始透明
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
@@ -1340,7 +1365,21 @@ function UILibrary:CreateUIWindow(options)
     self:MakeDraggable(titleBar, mainFrame)
     self:MakeDraggable(sidebar, mainFrame)
 
+    -- 入场动画：从上方滑入 + 淡入 + 轻微缩放
     task.delay(0.05, function()
+        -- 位置移动动画
+        local positionTween = TweenService:Create(mainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+            Position = targetPos
+        })
+        positionTween:Play()
+        
+        -- 透明度渐变
+        local transparencyTween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
+            BackgroundTransparency = 0.15
+        })
+        transparencyTween:Play()
+        
+        -- 子元素淡入
         for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)) do
             t:Play()
         end
