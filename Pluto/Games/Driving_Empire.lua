@@ -1799,12 +1799,7 @@ local isAutoFarmActive = false
 local autoFarmOriginalPosition = nil
 
 local function performAutoFarm()
-    if not autoFarmEnabled then
-        PlutoX.debug("[AutoFarm] 功能未启用")
-        return
-    end
-
-    PlutoX.debug("[AutoFarm] 开始autofarm...")
+    if not autoFarmEnabled then return end
     isAutoFarmActive = true
 
     -- 循环刷金位置配置
@@ -1858,7 +1853,6 @@ local function performAutoFarm()
 
                 local vehicle = vehicles:FindFirstChild(localPlayer.Name)
                 if not vehicle then
-                    PlutoX.debug("[AutoFarm] 未找到车辆，等待生成...")
                     task.wait(3)
                     return
                 end
@@ -1869,23 +1863,12 @@ local function performAutoFarm()
                 local targetPos = loopPos
 
                 if nearestMarker then
-                    -- 获取 Marker 方向（右向量 = 道路延伸方向）
                     direction = getMarkerDirection(nearestMarker)
-                    PlutoX.debug("[AutoFarm] 找到 Road Marker，方向: " .. tostring(direction))
-
-                    -- 使用 Marker 的高度，保持 XZ 位置
                     targetPos = Vector3.new(loopPos.X, nearestMarker.Position.Y, loopPos.Z)
-                    PlutoX.debug("[AutoFarm] 传送到: " .. tostring(targetPos) .. " (高度: " .. tostring(nearestMarker.Position.Y) .. ")")
-
-                    -- 让车头朝向与道路平行（车头朝向 = direction）
-                    -- 使用 CFrame.lookAt 设置位置和朝向
                     local newCFrame = CFrame.lookAt(targetPos, targetPos + direction)
                     vehicle:PivotTo(newCFrame)
-                    PlutoX.debug("[AutoFarm] 车头已对齐道路，朝向: " .. tostring(newCFrame.LookVector))
                 else
-                    -- 未找到 Marker，使用默认方向和高度
                     direction = Vector3.new(-0.45, 0, -0.89).Unit
-                    PlutoX.warn("[AutoFarm] 未找到 Road Marker，使用默认方向")
                     vehicle:PivotTo(CFrame.lookAt(loopPos, loopPos + direction))
                 end
 
@@ -1904,8 +1887,6 @@ local function performAutoFarm()
                 -- 计算目标位置：从起点沿着方向移动 (速度 * 20秒) 的距离
                 local moveDistance = speed * moveDuration
                 local targetPos = loopPos + direction * moveDistance
-
-                PlutoX.debug("[AutoFarm] 开始移动，速度: " .. speed .. ", 目标距离: " .. moveDistance)
 
                 -- 使用物理方式移动车辆（不使用 TweenService）
                 local RunService = game:GetService("RunService")
@@ -1969,14 +1950,8 @@ local function performAutoFarm()
                         end
                     end
                 end
-
-                PlutoX.debug("[AutoFarm] 往返移动完成")
             end)
-
-            -- 无停顿，立即开始下一轮循环
         end
-
-        PlutoX.debug("[AutoFarm] autofarm已停止")
     end)
 end
 
