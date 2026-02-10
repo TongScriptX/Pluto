@@ -2756,7 +2756,7 @@ UILibrary:CreateToggle(autoFarmCard, {
             spawn(performAutoFarm)
             UILibrary:Notify({
                 Title = "AutoFarm 已启动",
-                Text = "速度: " .. (config.autoFarmSpeed or 300) .. ", 移动10秒后返回",
+                Text = "速度: " .. (config.autoFarmSpeed or 300),
                 Duration = 5
             })
         else
