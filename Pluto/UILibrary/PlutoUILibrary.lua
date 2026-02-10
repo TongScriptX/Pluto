@@ -26,15 +26,15 @@ elseif PRIMARY_COLOR == nil then
     PRIMARY_COLOR = Color3.fromRGB(63, 81, 181) -- 默认颜色
 end
 
--- 默认主题（浅色毛玻璃效果）
+-- 默认主题（深色毛玻璃效果）
 local DEFAULT_THEME = {
-    Primary = Color3.fromRGB(59, 130, 246),      -- 蓝色主色
-    Background = Color3.fromRGB(248, 250, 252),  -- 极浅灰背景
-    SecondaryBackground = Color3.fromRGB(255, 255, 255), -- 纯白卡片
-    Accent = Color3.fromRGB(96, 165, 250),       -- 浅蓝强调
-    Text = Color3.fromRGB(31, 41, 55),           -- 深灰文字
-    Success = Color3.fromRGB(34, 197, 94),       -- 翠绿
-    Error = Color3.fromRGB(239, 68, 68),         -- 红色
+    Primary = Color3.fromRGB(63, 81, 181),       -- 原紫色主色
+    Background = Color3.fromRGB(20, 20, 24),     -- 深色背景（毛玻璃基底）
+    SecondaryBackground = Color3.fromRGB(40, 42, 50), -- 深灰卡片（毛玻璃效果）
+    Accent = Color3.fromRGB(92, 107, 192),       -- 紫色强调
+    Text = Color3.fromRGB(255, 255, 255),        -- 白色文字
+    Success = Color3.fromRGB(76, 175, 80),       -- 绿色
+    Error = Color3.fromRGB(244, 67, 54),         -- 红色
     Font = Enum.Font.GothamBold
 }  
 
@@ -459,10 +459,10 @@ function UILibrary:CreateCard(parent, options)
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusLarge)
     corner.Parent = card
 
-    -- 毛玻璃边框效果
+    -- 毛玻璃边框效果（深色背景下的玻璃边缘）
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(226, 232, 240)  -- 浅灰蓝边框
-    stroke.Transparency = 0.5
+    stroke.Color = Color3.fromRGB(255, 255, 255)  -- 白色边缘
+    stroke.Transparency = 0.85  -- 半透明确保深色背景可见
     stroke.Thickness = 1
     stroke.Parent = card
 
