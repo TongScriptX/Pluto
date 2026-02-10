@@ -720,20 +720,22 @@ function UILibrary:CreateToggle(parent, options)
     track.BackgroundColor3 = (options.DefaultState and (THEME.Success or DEFAULT_THEME.Success)
                               or (THEME.Error or DEFAULT_THEME.Error))
     track.ZIndex = 3
+
     local trackCorner = Instance.new("UICorner", track)
-            trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
-            
-                local thumb = Instance.new("TextButton", track)
+    trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+
+    local thumb = Instance.new("TextButton", track)
     thumb.Name = "Thumb"
     thumb.Size = UDim2.new(0, 15, 0, 15)
     thumb.Position = options.DefaultState and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
     thumb.BackgroundColor3 = Color3.new(1,1,1)
     thumb.Text = ""
     thumb.ZIndex = 4
+
     local thumbCorner = Instance.new("UICorner", thumb)
-            thumbCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
-            
-                local state = options.DefaultState or false
+    thumbCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
+
+    local state = options.DefaultState or false
     thumb.MouseButton1Click:Connect(function()
         state = not state
         local targetPos = state and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
