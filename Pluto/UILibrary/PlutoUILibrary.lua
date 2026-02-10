@@ -658,11 +658,32 @@ function UILibrary:CreateTextBox(parent, options)
     options = options or {}
     local tbPad = UI_STYLES.Padding or 6
 
+    -- 创建容器 Frame
+    local container = Instance.new("Frame")
+    container.Name = "TextBoxContainer_" .. (options.PlaceholderText or "Unnamed")
+    container.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
+    container.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    container.BackgroundTransparency = 0.3
+    container.BorderSizePixel = 0
+    container.Parent = parent
+    container.ZIndex = 3
+
+    local corner = Instance.new("UICorner", container)
+    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+    
+    -- 添加与卡片一致的边框到容器
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Transparency = 0.6
+    stroke.Thickness = 1
+    stroke.Parent = container
+
+    -- 创建 TextBox 作为子元素
     local textBox = Instance.new("TextBox")
-    textBox.Name = "TextBox_" .. (options.PlaceholderText or "Unnamed")
-    textBox.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    textBox.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    textBox.BackgroundTransparency = 0.3
+    textBox.Name = "TextBox"
+    textBox.Size = UDim2.new(1, -tbPad * 2, 1, 0)
+    textBox.Position = UDim2.new(0, tbPad, 0, 0)
+    textBox.BackgroundTransparency = 1
     textBox.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     textBox.TextSize = options.TextSize or 12
     textBox.Font = THEME.Font
@@ -670,19 +691,10 @@ function UILibrary:CreateTextBox(parent, options)
     textBox.Text = options.Text or ""
     textBox.TextWrapped = true
     textBox.TextTruncate = Enum.TextTruncate.AtEnd
-    textBox.BorderSizePixel = 0  -- 使用 UIStroke 替代
-    textBox.Parent = parent
-    textBox.ZIndex = 3
-
-    local corner = Instance.new("UICorner", textBox)
-    corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
-    
-    -- 添加与卡片一致的边框
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Transparency = 0.6
-    stroke.Thickness = 1
-    stroke.Parent = textBox
+    textBox.BorderSizePixel = 0
+    textBox.ClearTextOnFocus = options.ClearTextOnFocus or false
+    textBox.Parent = container
+    textBox.ZIndex = 4
 
     textBox.Focused:Connect(function()
         TweenService:Create(stroke, self.TWEEN_INFO_BUTTON, {
