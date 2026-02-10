@@ -1377,9 +1377,10 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
     content.ScrollBarThickness = 4
     
-    -- 延迟设置透明背景，避免默认灰色
+    -- 延迟设置透明背景，避免默认灰色（与 Toggle 一致）
     task.spawn(function()
         game:GetService("RunService").Heartbeat:Wait()
+        content.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
         content.BackgroundTransparency = 0.999
     end)
     content.ScrollingEnabled = true
