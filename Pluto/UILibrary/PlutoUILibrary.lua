@@ -448,9 +448,9 @@ function UILibrary:CreateCard(parent, options)
     card.Name = "Card"
     card.AutomaticSize = Enum.AutomaticSize.Y
     card.Size = UDim2.new(1, 0, 0, 0)
-    -- 立即设置背景色避免默认灰色
-    card.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
-    card.BackgroundTransparency = 0.1
+    -- 使用主题色或默认值，确保不透明避免灰色
+    card.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground or Color3.fromRGB(40, 42, 50)
+    card.BackgroundTransparency = 0.1  -- 毛玻璃效果
     card.BorderSizePixel = 0
     card.Parent = parent
     card.Visible = true
@@ -706,8 +706,7 @@ function UILibrary:CreateToggle(parent, options)
     local toggleFrame = Instance.new("Frame")
     toggleFrame.Name = "Toggle_" .. (options.Text or "Unnamed")
     toggleFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    toggleFrame.BackgroundTransparency = 1
-    toggleFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)  -- 明确设置背景色避免默认值
+    toggleFrame.BackgroundTransparency = 1  -- 完全透明
     toggleFrame.BorderSizePixel = 0
     toggleFrame.Parent = parent
     toggleFrame.ZIndex = 2
