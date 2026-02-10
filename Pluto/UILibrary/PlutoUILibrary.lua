@@ -1297,7 +1297,7 @@ function UILibrary:CreateUIWindow(options)
     sidebar.Name = "Sidebar"
     sidebar.Size = UDim2.new(0, UI_STYLES.SidebarWidth, 1, 0)
     sidebar.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    sidebar.BackgroundTransparency = 0.1
+    sidebar.BackgroundTransparency = 1  -- 初始透明，用于入场动画
     sidebar.Parent = mainFrame
     sidebar.Visible = true
     sidebar.ZIndex = 6
@@ -1320,7 +1320,7 @@ function UILibrary:CreateUIWindow(options)
     titleBar.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     titleBar.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, 0)
     titleBar.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    titleBar.BackgroundTransparency = 0
+    titleBar.BackgroundTransparency = 1  -- 初始透明，用于入场动画
     titleBar.Parent = mainFrame
     titleBar.Visible = true
     titleBar.ZIndex = 6
@@ -1342,7 +1342,7 @@ function UILibrary:CreateUIWindow(options)
     mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
     mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    mainPage.BackgroundTransparency = 0.5
+    mainPage.BackgroundTransparency = 1  -- 初始透明，用于入场动画
     mainPage.Parent = mainFrame
     mainPage.Visible = true
     mainPage.ZIndex = 6
@@ -1369,7 +1369,22 @@ function UILibrary:CreateUIWindow(options)
             BackgroundTransparency = 0.15
         }):Play()
         
-        -- 子元素淡入
+        -- Sidebar 淡入
+        TweenService:Create(sidebar, self.TWEEN_INFO_UI, {
+            BackgroundTransparency = 0.1
+        }):Play()
+        
+        -- TitleBar 淡入
+        TweenService:Create(titleBar, self.TWEEN_INFO_UI, {
+            BackgroundTransparency = 0
+        }):Play()
+        
+        -- MainPage 淡入
+        TweenService:Create(mainPage, self.TWEEN_INFO_UI, {
+            BackgroundTransparency = 0.5
+        }):Play()
+        
+        -- 其他子元素（文本等）淡入
         for _, t in ipairs(self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)) do
             t:Play()
         end
