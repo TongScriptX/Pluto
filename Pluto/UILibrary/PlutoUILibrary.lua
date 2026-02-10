@@ -1316,6 +1316,14 @@ function UILibrary:CreateUIWindow(options)
     local pageCorner = Instance.new("UICorner")
     pageCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusXLarge)
     pageCorner.Parent = mainPage
+    
+    -- 添加左右边距，让内容有呼吸空间
+    local pagePadding = Instance.new("UIPadding")
+    pagePadding.PaddingLeft = UDim.new(0, 16)
+    pagePadding.PaddingRight = UDim.new(0, 16)
+    pagePadding.PaddingTop = UDim.new(0, 12)
+    pagePadding.PaddingBottom = UDim.new(0, 12)
+    pagePadding.Parent = mainPage
 
     self:MakeDraggable(titleBar, mainFrame)
     self:MakeDraggable(sidebar, mainFrame)
