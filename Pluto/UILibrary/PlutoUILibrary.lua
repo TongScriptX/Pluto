@@ -478,11 +478,6 @@ function UILibrary:CreateCard(parent, options)
     padding.PaddingBottom = UDim.new(0, 2)
     padding.Parent = card
 
-    -- 动画仅用于初始位置，不再设置固定透明度
-    TweenService:Create(card, self.TWEEN_INFO_UI, {
-        BackgroundTransparency = 0.3
-    }):Play()
-
     return card
 end
 
