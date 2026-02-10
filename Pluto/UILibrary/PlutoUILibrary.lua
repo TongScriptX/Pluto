@@ -1375,14 +1375,13 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     content.Name = "TabContent_" .. tabText
     content.Size = UDim2.new(1, 0, 1, 0)
     content.Position = isActive and UDim2.new(0, 0, 0, 0) or UDim2.new(1, 0, 0, 0)
-    -- 确保使用有效的背景色，避免默认灰色
-    local bgColor = THEME.Background or DEFAULT_THEME.Background
-    if not bgColor then
-        bgColor = Color3.fromRGB(22, 22, 26)
-    end
-    content.BackgroundColor3 = bgColor
-    content.BackgroundTransparency = isActive and 0.5 or 1
     content.ScrollBarThickness = 4
+    
+    -- 延迟设置透明背景，避免默认灰色
+    task.spawn(function()
+        game:GetService("RunService").Heartbeat:Wait()
+        content.BackgroundTransparency = 0.999
+    end)
     content.ScrollingEnabled = true
     content.ClipsDescendants = true
     content.CanvasSize = UDim2.new(0, 0, 0, 100)
