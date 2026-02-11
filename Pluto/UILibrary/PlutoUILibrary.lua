@@ -496,7 +496,7 @@ function UILibrary:CreateButton(parent, options)
     button.BackgroundTransparency = options.BackgroundTransparency or 0.4
     button.Text = options.Text or ""
     button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    button.TextSize = 12
+    button.TextSize = options.TextSize or 12
     button.Font = THEME.Font
     button.Parent = parent
     button.Visible = true
@@ -1345,9 +1345,9 @@ function UILibrary:CreateUIWindow(options)
         Text = "Home",
         Size = UDim2.new(1, 0, 1, 0),
         TextXAlignment = Enum.TextXAlignment.Center,
-        TextSize = 14,
-        TextTransparency = 0
+        TextSize = 16
     })
+    titleLabel.Font = Enum.Font.GothamBold
     titleLabel.ZIndex = 7
 
     local mainPage = Instance.new("Frame")
@@ -1430,6 +1430,7 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     local tabButton = self:CreateButton(sidebar, {
         Text = tabText,
         Size = UDim2.new(1, 0, 0, UI_STYLES.TabButtonHeight),
+        TextSize = 13,
         BackgroundColor3 = isActive and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
         BackgroundTransparency = isActive and 0 or 0.5
     })
