@@ -2136,53 +2136,65 @@ local function performAutoRobATMs()
             local char = localPlayer.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local beforeAmount = getRobbedAmount() or 0
+            local targetPos = atm.WorldPivot + Vector3.new(0, 5, 0)
             
             PlutoX.debug("[AutoRob] 初始金额: " .. formatNumber(beforeAmount))
-            PlutoX.debug("[AutoRob] 传送到 spawner 位置: " .. tostring(spawner.Position))
+            PlutoX.debug("[AutoRob] 传送到 ATM 位置")
             
-            -- 步骤1：开始抢劫
-            if root then root.AssemblyLinearVelocity = Vector3.zero end
-            safeTeleport(spawner.Position)
-            task.wait(0.15)
-            
-            local startSuccess, startErr = pcall(function() 
-                remotes:WaitForChild("AttemptATMBustStart"):InvokeServer(atm) 
-            end)
-            if not startSuccess then
-                PlutoX.warn("[AutoRob] AttemptATMBustStart 调用失败: " .. tostring(startErr))
-                return false
-            end
-            PlutoX.debug("[AutoRob] AttemptATMBustStart 调用成功")
-            
-            -- 步骤2：在原地等待冷却
-            PlutoX.debug("[AutoRob] 等待 5 秒冷却")
-            task.wait(5.0)
-            
-            -- 步骤3：收取
-            PlutoX.debug("[AutoRob] 收取")
-            if root then root.AssemblyLinearVelocity = Vector3.zero end
-            safeTeleport(spawner.Position)
-            task.wait(0.15)
-            
-            local completeSuccess, completeErr = pcall(function() 
-                remotes:WaitForChild("AttemptATMBustComplete"):InvokeServer(atm) 
-            end)
-            if not completeSuccess then
-                PlutoX.warn("[AutoRob] AttemptATMBustComplete 调用失败: " .. tostring(completeErr))
-                return false
-            end
-            PlutoX.debug("[AutoRob] AttemptATMBustComplete 调用成功")
-            
-            -- 等待金额变化
-            task.wait(0.5)
-            local checkStart = tick()
-            local success = false
+            -- 步骤1：传送到 ATM 并保持位置 1 秒
+            local teleportStart = tick()
             repeat
-                success = checkRobberyCompletion(beforeAmount)
-                if not success then
-                    task.wait(0.3)
+                task.wait()
+                if root then 
+                    root.AssemblyLinearVelocity = Vector3.zero 
+                    char:PivotTo(targetPos)
                 end
-            until success or tick() - checkStart > 3
+                localPlayer.ReplicationFocus = nil
+            until tick() - teleportStart > 1 or not isAutoRobActive
+            
+            if not isAutoRobActive then return false end
+            
+            -- 调用开始抢劫
+            PlutoX.debug("[AutoRob] 调用 AttemptATMBustStart")
+            game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
+            
+            -- 步骤2：保持位置 2.5 秒
+            local progressStart = tick()
+            repeat
+                task.wait()
+                if root then 
+                    root.AssemblyLinearVelocity = Vector3.zero 
+                    char:PivotTo(targetPos)
+                end
+                localPlayer.ReplicationFocus = nil
+            until tick() - progressStart > 2.5 or not isAutoRobActive
+            
+            if not isAutoRobActive then return false end
+            
+            -- 步骤3：调用完成抢劫
+            PlutoX.debug("[AutoRob] 调用 AttemptATMBustComplete")
+            game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
+            
+            -- 步骤4：保持位置等待冷却完成（检查 ATMBustDebounce）
+            local cooldownStart = tick()
+            repeat
+                task.wait()
+                if root then 
+                    root.AssemblyLinearVelocity = Vector3.zero 
+                    char:PivotTo(targetPos)
+                end
+            until tick() - cooldownStart > 3 or char:GetAttribute("ATMBustDebounce") or not isAutoRobActive
+            
+            repeat
+                task.wait()
+                if root then 
+                    root.AssemblyLinearVelocity = Vector3.zero 
+                    char:PivotTo(targetPos)
+                end
+            until tick() - cooldownStart > 3 or not char:GetAttribute("ATMBustDebounce") or not isAutoRobActive
+            
+            -- 检测金额变化
+            local success = checkRobberyCompletion(beforeAmount)
             
             PlutoX.debug("[AutoRob] 抢劫结果: " .. (success and "成功" or "失败"))
             
