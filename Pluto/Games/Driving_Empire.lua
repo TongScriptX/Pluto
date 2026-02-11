@@ -2133,7 +2133,6 @@ local function performAutoRobATMs()
             if not isAutoRobActive then return false end
             PlutoX.debug("[AutoRob] ====== 开始抢劫 ATM ======")
             
-            local safePos = platformPositions[math.random(1, #platformPositions)]
             local char = localPlayer.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local beforeAmount = getRobbedAmount() or 0
@@ -2155,13 +2154,12 @@ local function performAutoRobATMs()
             end
             PlutoX.debug("[AutoRob] AttemptATMBustStart 调用成功")
             
-            -- 步骤2：躲到安全平台等待冷却
-            PlutoX.debug("[AutoRob] 传送到安全平台等待 5 秒冷却")
-            safeTeleport(safePos)
+            -- 步骤2：在原地等待冷却
+            PlutoX.debug("[AutoRob] 等待 5 秒冷却")
             task.wait(5.0)
             
-            -- 步骤3：返回收取
-            PlutoX.debug("[AutoRob] 返回 ATM 收取")
+            -- 步骤3：收取
+            PlutoX.debug("[AutoRob] 收取")
             if root then root.AssemblyLinearVelocity = Vector3.zero end
             safeTeleport(spawner.Position)
             task.wait(0.15)
@@ -2187,7 +2185,6 @@ local function performAutoRobATMs()
             until success or tick() - checkStart > 3
             
             PlutoX.debug("[AutoRob] 抢劫结果: " .. (success and "成功" or "失败"))
-            safeTeleport(safePos)
             
             -- 抢劫后检查是否需要出售
             sellByAmount()
