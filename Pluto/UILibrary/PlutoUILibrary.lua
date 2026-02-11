@@ -1107,6 +1107,7 @@ function UILibrary:CreateSlider(parent, options)
 
     local currentValue = defaultValue
     local isDragging = false
+    local dragFinalValue = nil
 
     local function updateSliderVisuals(value)
         local percent = (value - minValue) / (maxValue - minValue)
@@ -1115,34 +1116,32 @@ function UILibrary:CreateSlider(parent, options)
         valueInput.Text = tostring(value) .. suffix
     end
 
-    local function setValue(value)
+    local function setValue(value, callCallback)
         value = math.clamp(math.floor(value), minValue, maxValue)
         if value ~= currentValue then
             currentValue = value
             updateSliderVisuals(value)
-            if options.Callback then
+            if callCallback and options.Callback then
                 pcall(options.Callback, value)
             end
         end
     end
 
-    local function updateSlider(inputPosition)
+    local function updateSlider(inputPosition, callCallback)
         local trackAbsolutePos = track.AbsolutePosition
         local trackAbsoluteSize = track.AbsoluteSize
         local relativeX = inputPosition.X - trackAbsolutePos.X
         local percent = math.clamp(relativeX / trackAbsoluteSize.X, 0, 1)
         local value = math.floor(minValue + (maxValue - minValue) * percent)
-        setValue(value)
+        setValue(value, callCallback)
     end
     
-    -- 输入框失去焦点时更新值
     valueInput.FocusLost:Connect(function()
         local text = valueInput.Text:gsub(suffix, ""):match("%d+")
         local num = tonumber(text)
         if num then
-            setValue(num)
+            setValue(num, true)
         else
-            -- 输入无效，恢复原值
             valueInput.Text = tostring(currentValue) .. suffix
         end
     end)
@@ -1150,25 +1149,32 @@ function UILibrary:CreateSlider(parent, options)
     thumb.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             isDragging = true
+            dragFinalValue = currentValue
         end
     end)
 
     track.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            updateSlider(input.Position)
+            updateSlider(input.Position, false)
             isDragging = true
+            dragFinalValue = currentValue
         end
     end)
 
     UserInputService.InputChanged:Connect(function(input)
         if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            updateSlider(input.Position)
+            updateSlider(input.Position, false)
+            dragFinalValue = currentValue
         end
     end)
 
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) then
             isDragging = false
+            if options.Callback and dragFinalValue ~= nil then
+                pcall(options.Callback, dragFinalValue)
+            end
+            dragFinalValue = nil
         end
     end)
 
