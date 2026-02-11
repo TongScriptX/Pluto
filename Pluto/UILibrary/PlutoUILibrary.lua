@@ -771,7 +771,7 @@ function UILibrary:CreateToggle(parent, options)
     track.Name = "Track"
     -- 尺寸与 ButtonHeight(28) 协调，高度约 70%
     track.Size = UDim2.new(0, 36, 0, 20)
-    track.Position = UDim2.new(0.65, 0, 0.5, -10)
+    track.Position = UDim2.new(0.75, 0, 0.5, -10)
     track.BackgroundColor3 = (options.DefaultState and (THEME.Success or DEFAULT_THEME.Success)
                               or (THEME.Error or DEFAULT_THEME.Error))
     track.ZIndex = 3
