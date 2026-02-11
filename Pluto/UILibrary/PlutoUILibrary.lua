@@ -766,32 +766,38 @@ function UILibrary:CreateToggle(parent, options)
     })
     label.ZIndex = 3
 
+    -- 胶囊样式开关
     local track = Instance.new("Frame", toggleFrame)
     track.Name = "Track"
-    track.Size = UDim2.new(0, 30, 0, 8)
-    track.Position = UDim2.new(0.65, 0, 0.5, -4)
+    track.Size = UDim2.new(0, 44, 0, 24)
+    track.Position = UDim2.new(0.65, 0, 0.5, -12)
     track.BackgroundColor3 = (options.DefaultState and (THEME.Success or DEFAULT_THEME.Success)
                               or (THEME.Error or DEFAULT_THEME.Error))
     track.ZIndex = 3
 
+    -- 完全圆角（胶囊形状）
     local trackCorner = Instance.new("UICorner", track)
-    trackCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+    trackCorner.CornerRadius = UDim.new(0.5, 0)
 
+    -- 圆形滑块
     local thumb = Instance.new("TextButton", track)
     thumb.Name = "Thumb"
-    thumb.Size = UDim2.new(0, 15, 0, 15)
-    thumb.Position = options.DefaultState and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
+    thumb.Size = UDim2.new(0, 20, 0, 20)
+    -- 开启时靠右 (44-20-2=22)，关闭时靠左 (2)
+    thumb.Position = options.DefaultState and UDim2.new(0, 22, 0, 2) or UDim2.new(0, 2, 0, 2)
     thumb.BackgroundColor3 = Color3.new(1,1,1)
     thumb.Text = ""
     thumb.ZIndex = 4
 
+    -- 滑块圆形
     local thumbCorner = Instance.new("UICorner", thumb)
-    thumbCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
+    thumbCorner.CornerRadius = UDim.new(0.5, 0)
 
     local state = options.DefaultState or false
     thumb.MouseButton1Click:Connect(function()
         state = not state
-        local targetPos = state and UDim2.new(0, 15, 0, -4) or UDim2.new(0, 0, 0, -4)
+        -- 开启时 x=22，关闭时 x=2
+        local targetPos = state and UDim2.new(0, 22, 0, 2) or UDim2.new(0, 2, 0, 2)
         local targetColor = state and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
         TweenService:Create(thumb, self.TWEEN_INFO_BUTTON, {Position = targetPos}):Play()
         TweenService:Create(track, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = targetColor}):Play()
