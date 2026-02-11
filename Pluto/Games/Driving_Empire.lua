@@ -2094,7 +2094,8 @@ local function performAutoRobATMs()
         end
         
         local function createAllPlatforms()
-            for _, pos in ipairs(platformPositions) do
+            PlutoX.debug("[AutoRob] 创建平台，共 " .. #platformPositions .. " 个")
+            for i, pos in ipairs(platformPositions) do
                 local platform = Instance.new("Part")
                 platform.Name = "DeltaCorePlatform"
                 platform.Parent = workspace
@@ -2102,13 +2103,21 @@ local function performAutoRobATMs()
                 platform.Size = Vector3.new(50000, 3, 50000)
                 platform.Color = Color3.fromRGB(128, 128, 128)
                 platform.Anchored = true
+                PlutoX.debug("[AutoRob] 平台 " .. i .. " 创建完成: " .. tostring(pos))
             end
+            PlutoX.debug("[AutoRob] 所有平台创建完成")
         end
         
         local function removeAllPlatforms()
+            PlutoX.debug("[AutoRob] 删除所有平台")
+            local count = 0
             for _, obj in ipairs(workspace:GetChildren()) do
-                if obj.Name == "DeltaCorePlatform" then obj:Destroy() end
+                if obj.Name == "DeltaCorePlatform" then 
+                    obj:Destroy() 
+                    count = count + 1
+                end
             end
+            PlutoX.debug("[AutoRob] 已删除 " .. count .. " 个平台")
         end
         
         local function safeTeleport(pos)
@@ -2122,34 +2131,68 @@ local function performAutoRobATMs()
         
         local function smartBust(spawner, atm)
             if not isAutoRobActive then return false end
+            PlutoX.debug("[AutoRob] ====== 开始抢劫 ATM ======")
+            
             local safePos = platformPositions[math.random(1, #platformPositions)]
             local char = localPlayer.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local beforeAmount = getRobbedAmount() or 0
             
+            PlutoX.debug("[AutoRob] 初始金额: " .. formatNumber(beforeAmount))
+            PlutoX.debug("[AutoRob] 传送到 spawner 位置: " .. tostring(spawner.Position))
+            
             -- 步骤1：开始抢劫
             if root then root.AssemblyLinearVelocity = Vector3.zero end
             safeTeleport(spawner.Position)
             task.wait(0.15)
-            pcall(function() remotes:WaitForChild("AttemptATMBustStart"):InvokeServer(atm) end)
+            
+            local startSuccess, startErr = pcall(function() 
+                remotes:WaitForChild("AttemptATMBustStart"):InvokeServer(atm) 
+            end)
+            if not startSuccess then
+                PlutoX.warn("[AutoRob] AttemptATMBustStart 调用失败: " .. tostring(startErr))
+                return false
+            end
+            PlutoX.debug("[AutoRob] AttemptATMBustStart 调用成功")
             
             -- 步骤2：躲到安全平台等待冷却
+            PlutoX.debug("[AutoRob] 传送到安全平台等待 5 秒冷却")
             safeTeleport(safePos)
             task.wait(5.0)
             
             -- 步骤3：返回收取
+            PlutoX.debug("[AutoRob] 返回 ATM 收取")
             if root then root.AssemblyLinearVelocity = Vector3.zero end
             safeTeleport(spawner.Position)
             task.wait(0.15)
-            pcall(function() remotes:WaitForChild("AttemptATMBustComplete"):InvokeServer(atm) end)
             
+            local completeSuccess, completeErr = pcall(function() 
+                remotes:WaitForChild("AttemptATMBustComplete"):InvokeServer(atm) 
+            end)
+            if not completeSuccess then
+                PlutoX.warn("[AutoRob] AttemptATMBustComplete 调用失败: " .. tostring(completeErr))
+                return false
+            end
+            PlutoX.debug("[AutoRob] AttemptATMBustComplete 调用成功")
+            
+            -- 等待金额变化
             task.wait(0.5)
-            local success = checkRobberyCompletion(beforeAmount)
+            local checkStart = tick()
+            local success = false
+            repeat
+                success = checkRobberyCompletion(beforeAmount)
+                if not success then
+                    task.wait(0.3)
+                end
+            until success or tick() - checkStart > 3
+            
+            PlutoX.debug("[AutoRob] 抢劫结果: " .. (success and "成功" or "失败"))
             safeTeleport(safePos)
             
             -- 抢劫后检查是否需要出售
             sellByAmount()
             
+            PlutoX.debug("[AutoRob] ====== 抢劫结束 ======")
             return success
         end
         
@@ -2200,46 +2243,76 @@ local function performAutoRobATMs()
         
         local function getAvailableATM()
             local spawners = workspace.Game.Jobs.CriminalATMSpawners
+            local spawnerCount = #spawners:GetChildren()
+            PlutoX.debug("[AutoRob] 开始搜索可用 ATM，共 " .. spawnerCount .. " 个 spawner")
+            
             for _, spawner in ipairs(spawners:GetChildren()) do
                 local atm = spawner:FindFirstChild("CriminalATM")
-                if atm and atm:GetAttribute("State") == "Normal" then
-                    return spawner, atm
+                if atm then
+                    local state = atm:GetAttribute("State")
+                    if state == "Normal" then
+                        PlutoX.debug("[AutoRob] 找到可用 ATM，State=" .. tostring(state))
+                        return spawner, atm
+                    end
                 end
             end
+            PlutoX.debug("[AutoRob] 未找到可用 ATM")
             return nil, nil
         end
         
         local function searchAndRob()
-            if not isAutoRobActive then return false end
+            if not isAutoRobActive then 
+                PlutoX.debug("[AutoRob] searchAndRob: isAutoRobActive=false，退出")
+                return false 
+            end
             
-            for _, platformPos in ipairs(platformPositions) do
-                if not isAutoRobActive then break end
+            PlutoX.debug("[AutoRob] ====== 开始搜索和抢劫 ======")
+            
+            for i, platformPos in ipairs(platformPositions) do
+                if not isAutoRobActive then 
+                    PlutoX.debug("[AutoRob] 循环中断: isAutoRobActive=false")
+                    break 
+                end
+                
+                PlutoX.debug("[AutoRob] 前往平台 " .. i .. "/" .. #platformPositions .. ": " .. tostring(platformPos))
                 
                 -- 检查是否需要出售，出售后重新传送到平台
                 if sellByAmount() then
+                    PlutoX.debug("[AutoRob] 出售完成，重新传送到平台")
                     safeTeleport(platformPos)
                 end
                 
                 setNoclip(true)
                 safeTeleport(platformPos)
+                PlutoX.debug("[AutoRob] 已传送到平台，等待 5 秒加载 ATM")
                 task.wait(5)
                 
                 local spawner, atm = getAvailableATM()
                 if spawner and atm then
-                    smartBust(spawner, atm)
-                    -- 短暂休息
-                    task.wait(0)
-                    return true
+                    PlutoX.debug("[AutoRob] 找到 ATM，开始抢劫")
+                    local success = smartBust(spawner, atm)
+                    if success then
+                        PlutoX.debug("[AutoRob] 抢劫成功，返回 true")
+                        return true
+                    else
+                        PlutoX.debug("[AutoRob] 抢劫失败，继续搜索")
+                    end
+                else
+                    PlutoX.debug("[AutoRob] 平台 " .. i .. " 未找到 ATM")
                 end
             end
+            
+            PlutoX.debug("[AutoRob] ====== 搜索结束，未找到可用 ATM ======")
             return false
         end
 
         -- 初始化：创建平台、设置 noclip 和 weight
+        PlutoX.debug("[AutoRob] ====== 初始化 ATM 抢劫 ======")
         removeAllPlatforms()
         createAllPlatforms()
         setNoclip(true)
         setWeight(true)
+        PlutoX.debug("[AutoRob] 初始化完成，开始主循环")
         
         while isAutoRobActive do
             task.wait()
