@@ -2268,6 +2268,32 @@ local function performAutoRobATMs()
             
             PlutoX.debug("[AutoRob] ====== 开始搜索和抢劫 ======")
             
+            -- 先检查是否需要出售
+            if sellByAmount() then
+                PlutoX.debug("[AutoRob] 出售完成")
+            end
+            
+            setNoclip(true)
+            
+            -- 先尝试直接寻找 ATM（不传送平台）
+            PlutoX.debug("[AutoRob] 尝试直接寻找可用 ATM")
+            local spawner, atm = getAvailableATM()
+            if spawner and atm then
+                PlutoX.debug("[AutoRob] 直接找到 ATM，开始抢劫")
+                local success = smartBust(spawner, atm)
+                if success then
+                    PlutoX.debug("[AutoRob] 抢劫成功，传送到平台")
+                    -- 抢劫成功后传送到第一个平台
+                    safeTeleport(platformPositions[1])
+                    return true
+                else
+                    PlutoX.debug("[AutoRob] 抢劫失败，继续搜索")
+                end
+            else
+                PlutoX.debug("[AutoRob] 未直接找到 ATM，开始遍历平台")
+            end
+            
+            -- 如果没找到或抢劫失败，遍历平台
             for i, platformPos in ipairs(platformPositions) do
                 if not isAutoRobActive then 
                     PlutoX.debug("[AutoRob] 循环中断: isAutoRobActive=false")
@@ -2276,13 +2302,6 @@ local function performAutoRobATMs()
                 
                 PlutoX.debug("[AutoRob] 前往平台 " .. i .. "/" .. #platformPositions .. ": " .. tostring(platformPos))
                 
-                -- 检查是否需要出售，出售后重新传送到平台
-                if sellByAmount() then
-                    PlutoX.debug("[AutoRob] 出售完成，重新传送到平台")
-                    safeTeleport(platformPos)
-                end
-                
-                setNoclip(true)
                 safeTeleport(platformPos)
                 PlutoX.debug("[AutoRob] 已传送到平台，等待 5 秒加载 ATM")
                 task.wait(5)
