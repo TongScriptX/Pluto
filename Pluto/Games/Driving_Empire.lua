@@ -2162,40 +2162,32 @@ local function performAutoRobATMs()
             return false
         end
         
+        local function getAvailableATM()
+            local spawners = workspace.Game.Jobs.CriminalATMSpawners
+            for _, spawner in ipairs(spawners:GetChildren()) do
+                local atm = spawner:FindFirstChild("CriminalATM")
+                if atm and atm:GetAttribute("State") == "Normal" then
+                    return spawner, atm
+                end
+            end
+            return nil, nil
+        end
+        
         local function searchAndRob()
             if not isAutoRobActive then return false end
             
-            for _, atm in pairs(collectionService:GetTagged("CriminalATM")) do
-                if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
-                    return smartBust(atm)
-                end
-            end
-            
-            for _, obj in pairs(getnilinstances()) do
-                if obj.Name == "CriminalATM" and obj:GetAttribute("State") ~= "Busted" and isAutoRobActive then
-                    return smartBust(obj)
-                end
-            end
-            
-            local spawners = workspace.Game.Jobs.CriminalATMSpawners
             for _, platformPos in ipairs(platformPositions) do
                 if not isAutoRobActive then break end
+                
                 sellByAmount()
                 setNoclip(true)
                 safeTeleport(platformPos)
                 task.wait(5)
                 
-                for _, spawner in ipairs(spawners:GetChildren()) do
-                    local atm = spawner:FindFirstChild("CriminalATM")
-                    if atm and atm:GetAttribute("State") == "Normal" then
-                        if smartBust(atm) then return true end
-                    end
-                end
-                
-                for _, atm in pairs(collectionService:GetTagged("CriminalATM")) do
-                    if atm:GetAttribute("State") ~= "Busted" and isAutoRobActive then
-                        if smartBust(atm) then return true end
-                    end
+                local spawner, atm = getAvailableATM()
+                if spawner and atm then
+                    smartBust(atm)
+                    return true
                 end
             end
             return false
