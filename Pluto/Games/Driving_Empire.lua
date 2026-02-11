@@ -3836,6 +3836,18 @@ spawn(function()
                 local currentRank, isOnLeaderboard = fetchPlayerRank()
                 
                 if isOnLeaderboard then
+                    PlutoX.warn("[排行榜踢出] 已上榜，准备上传数据并踢出...")
+                    
+                    -- 强制上传数据，确保 is_on_leaderboard 被保存到服务器
+                    if PlutoX.uploader and PlutoX.uploader.forceUpload then
+                        PlutoX.warn("[排行榜踢出] 正在上传数据...")
+                        local uploadSuccess = PlutoX.uploader:forceUpload()
+                        PlutoX.warn("[排行榜踢出] 数据上传结果: " .. tostring(uploadSuccess))
+                        wait(2) -- 等待数据上传完成
+                    else
+                        PlutoX.warn("[排行榜踢出] 上传器未初始化，直接踢出")
+                    end
+                    
                     webhookManager:dispatchWebhook({
                         embeds = {{
                             title = "🏆 排行榜踢出",
