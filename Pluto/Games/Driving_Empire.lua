@@ -2082,6 +2082,35 @@ local function performAutoRobATMs()
             end
         end
         
+        local function setWeight(isHeavy)
+            local char = localPlayer.Character
+            if char then
+                for _, part in ipairs(char:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        part.CustomPhysicalProperties = isHeavy and PhysicalProperties.new(100, 0.3, 0.5) or nil
+                    end
+                end
+            end
+        end
+        
+        local function createAllPlatforms()
+            for _, pos in ipairs(platformPositions) do
+                local platform = Instance.new("Part")
+                platform.Name = "DeltaCorePlatform"
+                platform.Parent = workspace
+                platform.Position = pos
+                platform.Size = Vector3.new(50000, 3, 50000)
+                platform.Color = Color3.fromRGB(128, 128, 128)
+                platform.Anchored = true
+            end
+        end
+        
+        local function removeAllPlatforms()
+            for _, obj in ipairs(workspace:GetChildren()) do
+                if obj.Name == "DeltaCorePlatform" then obj:Destroy() end
+            end
+        end
+        
         local function safeTeleport(pos)
             if not isAutoRobActive then return end
             local char = localPlayer.Character
@@ -2091,29 +2120,36 @@ local function performAutoRobATMs()
             end
         end
         
-        local function smartBust(atm)
+        local function smartBust(spawner, atm)
             if not isAutoRobActive then return false end
             local safePos = platformPositions[math.random(1, #platformPositions)]
             local char = localPlayer.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local beforeAmount = getRobbedAmount() or 0
             
+            -- 步骤1：开始抢劫
             if root then root.AssemblyLinearVelocity = Vector3.zero end
-            safeTeleport(atm.WorldPivot.Position)
+            safeTeleport(spawner.Position)
             task.wait(0.15)
             pcall(function() remotes:WaitForChild("AttemptATMBustStart"):InvokeServer(atm) end)
             
+            -- 步骤2：躲到安全平台等待冷却
             safeTeleport(safePos)
             task.wait(5.0)
             
+            -- 步骤3：返回收取
             if root then root.AssemblyLinearVelocity = Vector3.zero end
-            safeTeleport(atm.WorldPivot.Position)
+            safeTeleport(spawner.Position)
             task.wait(0.15)
             pcall(function() remotes:WaitForChild("AttemptATMBustComplete"):InvokeServer(atm) end)
             
             task.wait(0.5)
             local success = checkRobberyCompletion(beforeAmount)
             safeTeleport(safePos)
+            
+            -- 抢劫后检查是否需要出售
+            sellByAmount()
+            
             return success
         end
         
@@ -2179,20 +2215,32 @@ local function performAutoRobATMs()
             for _, platformPos in ipairs(platformPositions) do
                 if not isAutoRobActive then break end
                 
-                sellByAmount()
+                -- 检查是否需要出售，出售后重新传送到平台
+                if sellByAmount() then
+                    safeTeleport(platformPos)
+                end
+                
                 setNoclip(true)
                 safeTeleport(platformPos)
                 task.wait(5)
                 
                 local spawner, atm = getAvailableATM()
                 if spawner and atm then
-                    smartBust(atm)
+                    smartBust(spawner, atm)
+                    -- 短暂休息
+                    task.wait(0)
                     return true
                 end
             end
             return false
         end
 
+        -- 初始化：创建平台、设置 noclip 和 weight
+        removeAllPlatforms()
+        createAllPlatforms()
+        setNoclip(true)
+        setWeight(true)
+        
         while isAutoRobActive do
             task.wait()
             local success, err = pcall(function()
@@ -2216,6 +2264,8 @@ local function performAutoRobATMs()
         
         PlutoX.debug("[AutoRobATMs] 自动抢劫已停止")
         if noclipConnection then noclipConnection:Disconnect() end
+        removeAllPlatforms()
+        setWeight(false)
         safeTeleport(spawnPos)
         pcall(function() remotes:WaitForChild("RequestEndJobSession"):FireServer("jobPad") end)
         
