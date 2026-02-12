@@ -795,14 +795,21 @@ function UILibrary:CreateToggle(parent, options)
     thumbCorner.CornerRadius = UDim.new(0.5, 0)
 
     local state = options.DefaultState or false
-    thumb.MouseButton1Click:Connect(function()
+    
+    local function toggleSwitch()
         state = not state
-        -- 开启时 x=18，关闭时 x=2
         local targetPos = state and UDim2.new(0, 18, 0, 2) or UDim2.new(0, 2, 0, 2)
         local targetColor = state and (THEME.Success or DEFAULT_THEME.Success) or (THEME.Error or DEFAULT_THEME.Error)
         TweenService:Create(thumb, self.TWEEN_INFO_BUTTON, {Position = targetPos}):Play()
         TweenService:Create(track, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = targetColor}):Play()
         if options.Callback then pcall(options.Callback, state) end
+    end
+    
+    thumb.MouseButton1Click:Connect(toggleSwitch)
+    track.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            toggleSwitch()
+        end
     end)
 
     return toggleFrame, state
