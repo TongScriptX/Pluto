@@ -1680,6 +1680,13 @@ function UILibrary:CreateSubTabs(tabContent, options)
         corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
         corner.Parent = button
         
+        -- 添加边框
+        local btnStroke = Instance.new("UIStroke")
+        btnStroke.Color = Color3.fromRGB(255, 255, 255)
+        btnStroke.Transparency = 0.9
+        btnStroke.Thickness = 1
+        btnStroke.Parent = button
+        
         -- 内边距
         local btnPadding = Instance.new("UIPadding")
         btnPadding.PaddingLeft = UDim.new(0, 12)
