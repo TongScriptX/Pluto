@@ -1723,7 +1723,6 @@ function UILibrary:CreateSubTabs(tabContent, options)
         end)
         
         local contentLayout = Instance.new("UIListLayout")
-        local contentLayout = Instance.new("UIListLayout")
         contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
         contentLayout.Padding = UDim.new(0, UI_STYLES.Padding)
         contentLayout.Parent = content
@@ -1735,13 +1734,16 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        content.CanvasSize = UDim2.new(0, 0, 0, 100)
+        content.CanvasSize = UDim2.new(0, 0, 0, 0)
         
         local paddingY = UI_STYLES.YPadding or 10
+        local lastCanvasHeight = 0
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            task.defer(function()
-                content.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + paddingY)
-            end)
+            local newHeight = contentLayout.AbsoluteContentSize.Y + paddingY
+            if math.abs(newHeight - lastCanvasHeight) > 1 then
+                lastCanvasHeight = newHeight
+                content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
+            end
         end)
         
         -- 存储数据
