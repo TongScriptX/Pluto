@@ -1617,9 +1617,14 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         if currentValue == self.config["lastSaved" .. keyUpper] then
             return false
         end
+        -- 使用 targetStart（设置目标时的金额）作为参考点
+        local targetStart = self.config["targetStart" .. keyUpper] or 0
+        if targetStart <= 0 then
+            targetStart = self.config["lastSaved" .. keyUpper] or currentValue
+        end
         
-        local valueDifference = currentValue - self.config["lastSaved" .. keyUpper]
-        local configChanged = false
+        -- 计算与设置目标时的差异（只有真正减少才调整）
+        local valueDifference = currentValue - targetStart
         
         -- 只在值减少时调整
         if valueDifference < 0 then
