@@ -1611,35 +1611,25 @@ function UILibrary:CreateSubTabs(tabContent, options)
         local targetData = subTabsData[index]
         if activeSubTab == targetData then return end
         
-        print(string.format("[SubTabSwitch] 切换到: %s, 子元素数: %d, CanvasSize: %d", 
-            targetData.name, #targetData.content:GetChildren(), targetData.content.CanvasSize.Y.Offset))
-        
-        -- 隐藏当前活动标签页（立即隐藏避免重叠）
+        -- 隐藏当前活动标签页
         if activeSubTab then
             TweenService:Create(activeSubTab.button, UILibrary.TWEEN_INFO_BUTTON, {
                 BackgroundTransparency = 0.6,
                 BackgroundColor3 = Color3.fromRGB(60, 62, 70)
             }):Play()
             activeSubTab.button.TextColor3 = Color3.fromRGB(160, 160, 170)
-            
             activeSubTab.content.Visible = false
-            activeSubTab.content.Position = UDim2.new(0.05, 0, 0, 0)
         end
         
         -- 显示目标标签页
         activeSubTab = targetData
         targetData.content.Visible = true
-        targetData.content.Position = UDim2.new(0.05, 0, 0, 0)
         
         TweenService:Create(targetData.button, UILibrary.TWEEN_INFO_BUTTON, {
             BackgroundTransparency = 0.3,
             BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
         }):Play()
         targetData.button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-        
-        TweenService:Create(targetData.content, UILibrary.TWEEN_INFO_UI, {
-            Position = UDim2.new(0, 0, 0, 0)
-        }):Play()
         
         if onSwitch then
             task.spawn(function()
@@ -1696,24 +1686,17 @@ function UILibrary:CreateSubTabs(tabContent, options)
         btnPadding.PaddingRight = UDim.new(0, 12)
         btnPadding.Parent = button
         
-        -- 创建内容区域
-        local content = Instance.new("ScrollingFrame")
+        -- 创建内容区域（使用Frame，滚动由父容器tabContent统一管理）
+        local content = Instance.new("Frame")
         content.Name = "SubTabContent_" .. subTabName
-        content.Size = UDim2.new(1, 0, 1, 0)
+        content.Size = UDim2.new(1, 0, 0, 0)
         content.Position = UDim2.new(0, 0, 0, 0)
+        content.AutomaticSize = Enum.AutomaticSize.Y
         content.BorderSizePixel = 0
-        content.ScrollBarThickness = 3
-        content.ScrollingEnabled = true
-        content.ClipsDescendants = true
+        content.BackgroundTransparency = 1
         content.Visible = i == defaultActive
         content.ZIndex = 6
         content.Parent = contentContainer
-        
-        task.spawn(function()
-            game:GetService("RunService").Heartbeat:Wait()
-            content.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
-            content.BackgroundTransparency = 0.99
-        end)
         
         local contentLayout = Instance.new("UIListLayout")
         contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1727,27 +1710,16 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        content.CanvasSize = UDim2.new(0, 0, 0, 0)
-        
-        local paddingY = UI_STYLES.YPadding or 10
-        local lastCanvasHeight = 0
-        local updateCount = 0
-        
-        local function updateCanvasSize()
-            local contentSize = contentLayout.AbsoluteContentSize
-            if contentSize and contentSize.Y > 0 then
-                local newHeight = contentSize.Y + paddingY
-                if math.abs(newHeight - lastCanvasHeight) > 2 then
-                    updateCount = updateCount + 1
-                    lastCanvasHeight = newHeight
-                    content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
-                    print(string.format("[SubTab:%s] CanvasSize更新 #%d: %d -> %d", subTabName, updateCount, lastCanvasHeight, newHeight))
-                end
-            end
-        end
-        
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            task.defer(updateCanvasSize)
+            task.defer(function()
+                local contentSize = contentLayout.AbsoluteContentSize
+                if contentSize and contentSize.Y > 0 then
+                    -- 更新父容器tabContent的CanvasSize
+                    if tabContent:IsA("ScrollingFrame") then
+                        tabContent.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 20)
+                    end
+                end
+            end)
         end)
         
         -- 初始更新
