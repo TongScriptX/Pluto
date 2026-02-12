@@ -104,6 +104,51 @@ local tabButton, tabContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage,
 })
 ```
 
+### 子标签页 (CreateSubTabs)
+
+在主标签页内创建胶囊样式的子标签页，用于细分功能区域。
+
+```lua
+local subTabs = UILibrary:CreateSubTabs(tabContent, {
+    Items = {                            -- 子标签页列表
+        { Name = "基本信息", Icon = "👤" },
+        { Name = "设置选项", Icon = "⚙️" },
+        { Name = "统计数据", Icon = "📊" }
+    },
+    DefaultActive = 1,                   -- 默认激活的子标签页索引
+    OnSwitch = function(index, name)     -- 切换回调函数
+        print("切换到:", name)
+    end
+})
+```
+
+**返回对象的方法：**
+
+| 方法 | 参数 | 返回值 | 描述 |
+|------|------|--------|------|
+| `SwitchTo(index)` | `number` | `void` | 切换到指定子标签页 |
+| `GetActiveIndex()` | 无 | `number` | 获取当前激活索引 |
+| `GetContent(index)` | `number` | `Frame` | 获取内容容器 |
+| `GetButton(index)` | `number` | `TextButton` | 获取按钮实例 |
+| `AddElement(index, element)` | `number, Instance` | `void` | 添加元素到子标签页 |
+
+**使用示例：**
+
+```lua
+-- 获取子标签页内容并添加元素
+local content1 = subTabs.GetContent(1)
+if content1 then
+    local card = UILibrary:CreateCard(content1)
+    UILibrary:CreateLabel(card, { Text = "基本信息内容" })
+end
+
+-- 程序化切换子标签页
+subTabs.SwitchTo(2)
+
+-- 获取当前激活索引
+local currentIndex = subTabs.GetActiveIndex()
+```
+
 ### 卡片 (CreateCard)
 
 创建内容卡片容器。
@@ -401,6 +446,7 @@ UILibrary:SetTheme({
 |------|------|--------|------|
 | `CreateUIWindow(options)` | `table` | `window` | 创建主窗口 |
 | `CreateTab(sidebar, titleLabel, mainPage, options)` | `Frame, Label, Frame, table` | `tabButton, tabContent` | 创建标签页 |
+| `CreateSubTabs(tabContent, options)` | `Frame, table` | `subTabs` | 创建子标签页 |
 | `CreateCard(parent, options)` | `Instance, table` | `Frame` | 创建卡片 |
 | `CreateButton(parent, options)` | `Instance, table` | `TextButton` | 创建按钮 |
 | `CreateLabel(parent, options)` | `Instance, table` | `TextLabel` | 创建标签 |
@@ -512,5 +558,20 @@ UILibrary:SetTheme({
     Success = Color3,                    -- 成功颜色
     Error = Color3,                      -- 错误颜色
     Font = Enum.Font                     -- 字体枚举
+}
+```
+
+#### SubTabs Options
+```lua
+{
+    Items = {                            -- 子标签页项目列表
+        { Name = "标签1", Icon = "📱" },  -- 带图标的标签
+        { Name = "标签2" },               -- 纯文本标签
+        "标签3"                           -- 简写形式
+    },
+    DefaultActive = 1,                   -- 默认激活的索引（数字）
+    OnSwitch = function(index, name)     -- 切换回调函数
+        print("切换到:", name)
+    end
 }
 ```

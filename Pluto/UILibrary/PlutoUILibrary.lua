@@ -45,6 +45,8 @@ local UI_STYLES = {
     ButtonHeight       = 28,
     LabelHeight        = 20,
     TabButtonHeight    = 32,
+    SubTabButtonHeight = 26,  -- 子标签页按钮高度（更紧凑）
+    SubTabBarHeight    = 36,  -- 子标签页栏高度
     Padding            = 8,
     YPadding           = 8,
     -- 层级化圆角：小元素4px，中元素6px，大元素10px，容器14px
@@ -52,6 +54,7 @@ local UI_STYLES = {
     CornerRadiusMedium = 6,   -- 按钮、开关
     CornerRadiusLarge  = 10,  -- 卡片
     CornerRadiusXLarge = 14,  -- 窗口、主面板
+    CornerRadiusPill   = 16,  -- 胶囊形状（子标签页）
     WindowWidth        = 400,
     WindowHeight       = 300,
     SidebarWidth       = 80,
@@ -1357,10 +1360,38 @@ function UILibrary:CreateUIWindow(options)
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.ZIndex = 7
 
+    -- 子标签页容器（位于标题栏下方）
+    local subTabsContainer = Instance.new("Frame")
+    subTabsContainer.Name = "SubTabsContainer"
+    subTabsContainer.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.SubTabBarHeight)
+    subTabsContainer.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
+    subTabsContainer.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    subTabsContainer.BackgroundTransparency = 1  -- 初始透明
+    subTabsContainer.BorderSizePixel = 0
+    subTabsContainer.Parent = mainFrame
+    subTabsContainer.Visible = true
+    subTabsContainer.ZIndex = 6
+    
+    -- 子标签页水平布局
+    local subTabsLayout = Instance.new("UIListLayout")
+    subTabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    subTabsLayout.FillDirection = Enum.FillDirection.Horizontal
+    subTabsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    subTabsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+    subTabsLayout.Padding = UDim.new(0, 6)
+    subTabsLayout.Parent = subTabsContainer
+    
+    local subTabsPadding = Instance.new("UIPadding")
+    subTabsPadding.PaddingLeft = UDim.new(0, 12)
+    subTabsPadding.PaddingRight = UDim.new(0, 12)
+    subTabsPadding.PaddingTop = UDim.new(0, 4)
+    subTabsPadding.PaddingBottom = UDim.new(0, 4)
+    subTabsPadding.Parent = subTabsContainer
+
     local mainPage = Instance.new("Frame")
     mainPage.Name = "MainPage"
-    mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
-    mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
+    mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight - UI_STYLES.SubTabBarHeight)
+    mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight + UI_STYLES.SubTabBarHeight)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     mainPage.BackgroundTransparency = 1  -- 初始透明，用于入场动画
     mainPage.Parent = mainFrame
@@ -1399,6 +1430,11 @@ function UILibrary:CreateUIWindow(options)
             BackgroundTransparency = 0
         }):Play()
         
+        -- SubTabsContainer 淡入
+        TweenService:Create(subTabsContainer, self.TWEEN_INFO_UI, {
+            BackgroundTransparency = 0.95  -- 非常透明的背景
+        }):Play()
+        
         -- MainPage 淡入
         TweenService:Create(mainPage, self.TWEEN_INFO_UI, {
             BackgroundTransparency = 0.5
@@ -1416,7 +1452,8 @@ function UILibrary:CreateUIWindow(options)
         ScreenGui = screenGui,
         Sidebar = sidebar,
         TitleLabel = titleLabel,
-        MainPage = mainPage
+        MainPage = mainPage,
+        SubTabsContainer = subTabsContainer
     }
     UILibrary._instances.mainWindow = windowInstance
 
@@ -1520,6 +1557,238 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     end
 
     return tabButton, content
+end
+
+-- 子标签页容器模块
+function UILibrary:CreateSubTabs(tabContent, options)
+    if not tabContent then
+        warn("[SubTabs]: 创建失败 - tabContent 为 nil")
+        return nil, nil
+    end
+
+    options = options or {}
+    local subTabItems = options.Items or {}
+    local defaultActive = options.DefaultActive or 1
+    local onSwitch = options.OnSwitch
+    
+    -- 创建子标签页按钮容器
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Name = "SubTabsButtonContainer"
+    buttonContainer.Size = UDim2.new(1, 0, 0, UI_STYLES.SubTabBarHeight)
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.BorderSizePixel = 0
+    buttonContainer.Parent = tabContent
+    buttonContainer.ZIndex = 7
+    buttonContainer.Visible = true
+    
+    -- 水平布局
+    local layout = Instance.new("UIListLayout")
+    layout.SortOrder = Enum.SortOrder.LayoutOrder
+    layout.FillDirection = Enum.FillDirection.Horizontal
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+    layout.VerticalAlignment = Enum.VerticalAlignment.Center
+    layout.Padding = UDim.new(0, 8)
+    layout.Parent = buttonContainer
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 4)
+    padding.PaddingRight = UDim.new(0, 4)
+    padding.PaddingTop = UDim.new(0, 4)
+    padding.PaddingBottom = UDim.new(0, 4)
+    padding.Parent = buttonContainer
+    
+    -- 创建内容容器（所有子标签页内容都放这里）
+    local contentContainer = Instance.new("Frame")
+    contentContainer.Name = "SubTabsContentContainer"
+    contentContainer.Size = UDim2.new(1, 0, 1, -UI_STYLES.SubTabBarHeight)
+    contentContainer.Position = UDim2.new(0, 0, 0, UI_STYLES.SubTabBarHeight)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.BorderSizePixel = 0
+    contentContainer.Parent = tabContent
+    contentContainer.ZIndex = 6
+    contentContainer.ClipsDescendants = true
+    
+    -- 存储子标签页数据
+    local subTabsData = {}
+    local activeSubTab = nil
+    
+    -- 切换子标签页函数
+    local function switchToSubTab(index)
+        if not subTabsData[index] then return end
+        
+        local targetData = subTabsData[index]
+        if activeSubTab == targetData then return end
+        
+        -- 隐藏当前活动标签页
+        if activeSubTab then
+            TweenService:Create(activeSubTab.button, UILibrary.TWEEN_INFO_BUTTON, {
+                BackgroundTransparency = 0.8,
+                BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+            }):Play()
+            activeSubTab.button.TextColor3 = Color3.fromRGB(180, 180, 190)
+            
+            -- 内容淡出
+            TweenService:Create(activeSubTab.content, UILibrary.TWEEN_INFO_UI, {
+                Position = UDim2.new(-0.05, 0, 0, 0),
+                BackgroundTransparency = 1
+            }):Play()
+            task.delay(0.15, function()
+                if activeSubTab and activeSubTab ~= targetData then
+                    activeSubTab.content.Visible = false
+                end
+            end)
+        end
+        
+        -- 显示目标标签页
+        activeSubTab = targetData
+        targetData.content.Visible = true
+        
+        -- 按钮高亮动画（胶囊样式）
+        TweenService:Create(targetData.button, UILibrary.TWEEN_INFO_BUTTON, {
+            BackgroundTransparency = 0.3,
+            BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
+        }):Play()
+        targetData.button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+        
+        -- 内容滑入动画
+        targetData.content.Position = UDim2.new(0.05, 0, 0, 0)
+        targetData.content.BackgroundTransparency = 1
+        TweenService:Create(targetData.content, UILibrary.TWEEN_INFO_UI, {
+            Position = UDim2.new(0, 0, 0, 0),
+            BackgroundTransparency = 0.99
+        }):Play()
+        
+        -- 回调
+        if onSwitch then
+            task.spawn(function()
+                onSwitch(index, targetData.name)
+            end)
+        end
+    end
+    
+    -- 创建子标签页
+    for i, item in ipairs(subTabItems) do
+        local subTabName = type(item) == "string" and item or item.Name or "SubTab" .. i
+        local subTabIcon = type(item) == "table" and item.Icon or nil
+        
+        -- 胶囊样式按钮
+        local button = Instance.new("TextButton")
+        button.Name = "SubTabButton_" .. subTabName
+        button.Size = UDim2.new(0, 0, 0, UI_STYLES.SubTabButtonHeight)
+        button.AutomaticSize = Enum.AutomaticSize.X
+        button.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+        button.BackgroundTransparency = i == defaultActive and 0.3 or 0.8
+        button.Text = subTabIcon and (subTabIcon .. " " .. subTabName) or subTabName
+        button.TextColor3 = i == defaultActive and (THEME.Text or DEFAULT_THEME.Text) or Color3.fromRGB(180, 180, 190)
+        button.TextSize = 11
+        button.Font = THEME.Font
+        button.Parent = buttonContainer
+        button.ZIndex = 8
+        button.BorderSizePixel = 0
+        
+        -- 胶囊圆角
+        local corner = Instance.new("UICorner")
+        corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
+        corner.Parent = button
+        
+        -- 内边距
+        local btnPadding = Instance.new("UIPadding")
+        btnPadding.PaddingLeft = UDim.new(0, 12)
+        btnPadding.PaddingRight = UDim.new(0, 12)
+        btnPadding.Parent = button
+        
+        -- 创建内容区域
+        local content = Instance.new("ScrollingFrame")
+        content.Name = "SubTabContent_" .. subTabName
+        content.Size = UDim2.new(1, 0, 1, 0)
+        content.Position = UDim2.new(0, 0, 0, 0)
+        content.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        content.BackgroundTransparency = 0.99
+        content.BorderSizePixel = 0
+        content.ScrollBarThickness = 3
+        content.ScrollingEnabled = true
+        content.ClipsDescendants = true
+        content.Visible = i == defaultActive
+        content.ZIndex = 6
+        content.Parent = contentContainer
+        
+        -- 内容布局
+        local contentLayout = Instance.new("UIListLayout")
+        contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+        contentLayout.Padding = UDim.new(0, UI_STYLES.Padding)
+        contentLayout.Parent = content
+        
+        local contentPadding = Instance.new("UIPadding")
+        contentPadding.PaddingLeft = UDim.new(0, UI_STYLES.Padding)
+        contentPadding.PaddingRight = UDim.new(0, UI_STYLES.Padding)
+        contentPadding.PaddingTop = UDim.new(0, UI_STYLES.Padding)
+        contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
+        contentPadding.Parent = content
+        
+        -- 自动调整CanvasSize
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            task.defer(function()
+                content.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
+            end)
+        end)
+        
+        -- 存储数据
+        table.insert(subTabsData, {
+            index = i,
+            name = subTabName,
+            button = button,
+            content = content
+        })
+        
+        -- 点击事件
+        button.MouseButton1Click:Connect(function()
+            switchToSubTab(i)
+        end)
+        
+        -- 悬停效果
+        button.MouseEnter:Connect(function()
+            if activeSubTab ~= subTabsData[i] then
+                TweenService:Create(button, UILibrary.TWEEN_INFO_BUTTON, {
+                    BackgroundTransparency = 0.6
+                }):Play()
+            end
+        end)
+        
+        button.MouseLeave:Connect(function()
+            if activeSubTab ~= subTabsData[i] then
+                TweenService:Create(button, UILibrary.TWEEN_INFO_BUTTON, {
+                    BackgroundTransparency = 0.8
+                }):Play()
+            end
+        end)
+    end
+    
+    -- 默认激活第一个
+    if #subTabsData > 0 then
+        task.delay(0.1, function()
+            switchToSubTab(defaultActive)
+        end)
+    end
+    
+    -- 返回控制接口
+    return {
+        Container = contentContainer,
+        SwitchTo = switchToSubTab,
+        GetActiveIndex = function() 
+            return activeSubTab and activeSubTab.index or nil
+        end,
+        GetContent = function(index)
+            return subTabsData[index] and subTabsData[index].content or nil
+        end,
+        GetButton = function(index)
+            return subTabsData[index] and subTabsData[index].button or nil
+        end,
+        AddElement = function(index, element)
+            if subTabsData[index] and element then
+                element.Parent = subTabsData[index].content
+            end
+        end
+    }
 end
 
 -- 作者介绍模块

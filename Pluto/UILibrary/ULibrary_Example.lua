@@ -17,19 +17,107 @@ local settingsTab, settingsContent = UILibrary:CreateTab(window.Sidebar, window.
     Text = "设置"
 })
 
--- === 主页内容 ===
--- 用户信息卡片
-local userCard = UILibrary:CreateCard(homeContent)
-UILibrary:CreateLabel(userCard, {
-    Text = "用户信息",
-    TextSize = 14
+-- === 主页内容 - 使用子标签页 ===
+local subTabs = UILibrary:CreateSubTabs(homeContent, {
+    Items = {
+        { Name = "概览", Icon = "🏠" },
+        { Name = "角色", Icon = "👤" },
+        { Name = "背包", Icon = "🎒" }
+    },
+    DefaultActive = 1,
+    OnSwitch = function(index, name)
+        print("切换到子标签页:", name)
+    end
 })
-UILibrary:CreateLabel(userCard, {
-    Text = "用户名: Player123"
-})
-UILibrary:CreateLabel(userCard, {
-    Text = "等级: 15"
-})
+
+-- 子标签页 1: 概览
+local overviewContent = subTabs.GetContent(1)
+if overviewContent then
+    -- 用户信息卡片
+    local userCard = UILibrary:CreateCard(overviewContent)
+    UILibrary:CreateLabel(userCard, {
+        Text = "用户信息",
+        TextSize = 14
+    })
+    UILibrary:CreateLabel(userCard, {
+        Text = "用户名: Player123"
+    })
+    UILibrary:CreateLabel(userCard, {
+        Text = "等级: 15"
+    })
+    
+    -- 快捷操作卡片
+    local actionCard = UILibrary:CreateCard(overviewContent)
+    UILibrary:CreateLabel(actionCard, {
+        Text = "快捷操作",
+        TextSize = 14
+    })
+    
+    UILibrary:CreateButton(actionCard, {
+        Text = "开始游戏",
+        Callback = function()
+            UILibrary:Notify({
+                Title = "游戏开始",
+                Text = "游戏即将开始，请准备！"
+            })
+        end
+    })
+    
+    UILibrary:CreateButton(actionCard, {
+        Text = "查看成就",
+        Callback = function()
+            UILibrary:Notify({
+                Title = "成就",
+                Text = "暂无新成就"
+            })
+        end
+    })
+end
+
+-- 子标签页 2: 角色
+local characterContent = subTabs.GetContent(2)
+if characterContent then
+    local charCard = UILibrary:CreateCard(characterContent)
+    UILibrary:CreateLabel(charCard, {
+        Text = "角色属性",
+        TextSize = 14
+    })
+    UILibrary:CreateLabel(charCard, { Text = "力量: 85" })
+    UILibrary:CreateLabel(charCard, { Text = "敏捷: 72" })
+    UILibrary:CreateLabel(charCard, { Text = "智力: 68" })
+    
+    -- 下拉框选择职业
+    local roleDropdown = UILibrary:CreateDropdown(charCard, {
+        Text = "职业",
+        DefaultOption = "战士",
+        Options = { "战士", "法师", "弓箭手", "刺客" },
+        Callback = function(selectedRole)
+            UILibrary:Notify({
+                Title = "职业选择",
+                Text = "你选择了: " .. selectedRole
+            })
+        end
+    })
+end
+
+-- 子标签页 3: 背包
+local backpackContent = subTabs.GetContent(3)
+if backpackContent then
+    local bagCard = UILibrary:CreateCard(backpackContent)
+    UILibrary:CreateLabel(bagCard, {
+        Text = "背包物品",
+        TextSize = 14
+    })
+    UILibrary:CreateLabel(bagCard, { Text = "生命药水 x10" })
+    UILibrary:CreateLabel(bagCard, { Text = "魔法药水 x5" })
+    UILibrary:CreateLabel(bagCard, { Text = "金币: 1,250" })
+    UILibrary:CreateButton(bagCard, {
+        Text = "整理背包",
+        Callback = function()
+            UILibrary:Notify({ Title = "背包", Text = "背包已整理" })
+        end
+    })
+end
 
 -- 操作卡片
 local actionCard = UILibrary:CreateCard(homeContent)
