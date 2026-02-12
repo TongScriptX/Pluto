@@ -1732,26 +1732,24 @@ function UILibrary:CreateSubTabs(tabContent, options)
         
         local paddingY = UI_STYLES.YPadding or 10
         local lastCanvasHeight = 0
-        local updateQueued = false
+        local updateCount = 0
         
         local function updateCanvasSize()
-            if updateQueued then return end
-            updateQueued = true
-            
-            task.defer(function()
-                updateQueued = false
-                local contentSize = contentLayout.AbsoluteContentSize
-                if contentSize and contentSize.Y > 0 then
-                    local newHeight = contentSize.Y + paddingY
-                    if math.abs(newHeight - lastCanvasHeight) > 2 then
-                        lastCanvasHeight = newHeight
-                        content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
-                    end
+            local contentSize = contentLayout.AbsoluteContentSize
+            if contentSize and contentSize.Y > 0 then
+                local newHeight = contentSize.Y + paddingY
+                if math.abs(newHeight - lastCanvasHeight) > 2 then
+                    updateCount = updateCount + 1
+                    lastCanvasHeight = newHeight
+                    content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
+                    print(string.format("[SubTab:%s] CanvasSize更新 #%d: %d -> %d", subTabName, updateCount, lastCanvasHeight, newHeight))
                 end
-            end)
+            end
         end
         
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSize)
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            task.defer(updateCanvasSize)
+        end)
         
         -- 初始更新
         task.delay(0.1, updateCanvasSize)
