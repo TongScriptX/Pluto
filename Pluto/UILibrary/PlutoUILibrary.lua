@@ -1706,21 +1706,13 @@ function UILibrary:CreateSubTabs(tabContent, options)
         content.ZIndex = 6
         content.Parent = contentContainer
         
-        -- 延迟设置避免默认灰色背景（参考Slider和Toggle的做法）
         task.spawn(function()
             game:GetService("RunService").Heartbeat:Wait()
             content.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
             content.BackgroundTransparency = 0.99
         end)
         
-        -- 添加边框（参考Card的做法）
-        local contentStroke = Instance.new("UIStroke")
-        contentStroke.Color = Color3.fromRGB(255, 255, 255)
-        contentStroke.Transparency = 0.95
-        contentStroke.Thickness = 1
-        contentStroke.Parent = content
-        
-        -- 内容布局
+        local contentLayout = Instance.new("UIListLayout")
         local contentLayout = Instance.new("UIListLayout")
         contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
         contentLayout.Padding = UDim.new(0, UI_STYLES.Padding)
@@ -1735,27 +1727,12 @@ function UILibrary:CreateSubTabs(tabContent, options)
         
         content.CanvasSize = UDim2.new(0, 0, 0, 100)
         
-        local isUpdating = false
-        local function updateCanvasSize()
-            if isUpdating then return end
-            isUpdating = true
-            
+        local paddingY = UI_STYLES.YPadding or 10
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             task.defer(function()
-                local contentSize = contentLayout.AbsoluteContentSize
-                if contentSize and contentSize.Y > 0 then
-                    local newHeight = contentSize.Y + 10
-                    local currentHeight = content.CanvasSize.Y.Offset
-                    if math.abs(newHeight - currentHeight) > 2 then
-                        content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
-                    end
-                end
-                isUpdating = false
+                content.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + paddingY)
             end)
-        end
-        
-        content.ChildAdded:Connect(updateCanvasSize)
-        content.ChildRemoved:Connect(updateCanvasSize)
-        task.delay(0.2, updateCanvasSize)
+        end)
         
         -- 存储数据
         table.insert(subTabsData, {
