@@ -1660,34 +1660,44 @@ function UILibrary:CreateSubTabs(tabContent, options)
         local subTabName = type(item) == "string" and item or item.Name or "SubTab" .. i
         local subTabIcon = type(item) == "table" and item.Icon or nil
         
-        -- 胶囊样式按钮
+        -- 外层容器（边框在这里）
+        local btnContainer = Instance.new("Frame")
+        btnContainer.Name = "SubTabContainer_" .. subTabName
+        btnContainer.Size = UDim2.new(0, 0, 0, UI_STYLES.SubTabButtonHeight)
+        btnContainer.AutomaticSize = Enum.AutomaticSize.X
+        btnContainer.BackgroundTransparency = 1
+        btnContainer.BorderSizePixel = 0
+        btnContainer.Parent = buttonContainer
+        btnContainer.ZIndex = 7
+        
+        local containerCorner = Instance.new("UICorner")
+        containerCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
+        containerCorner.Parent = btnContainer
+        
+        local containerStroke = Instance.new("UIStroke")
+        containerStroke.Color = Color3.fromRGB(255, 255, 255)
+        containerStroke.Transparency = 0.6
+        containerStroke.Thickness = 1
+        containerStroke.Parent = btnContainer
+        
+        -- 内部按钮（有颜色）
         local button = Instance.new("TextButton")
         button.Name = "SubTabButton_" .. subTabName
-        button.Size = UDim2.new(0, 0, 0, UI_STYLES.SubTabButtonHeight)
-        button.AutomaticSize = Enum.AutomaticSize.X
-        -- 未激活状态使用更深的颜色，与背景形成层次
+        button.Size = UDim2.new(1, 0, 1, 0)
         button.BackgroundColor3 = i == defaultActive and (THEME.Primary or DEFAULT_THEME.Primary) or Color3.fromRGB(60, 62, 70)
         button.BackgroundTransparency = i == defaultActive and 0.3 or 0.6
         button.Text = subTabIcon and (subTabIcon .. " " .. subTabName) or subTabName
         button.TextColor3 = i == defaultActive and (THEME.Text or DEFAULT_THEME.Text) or Color3.fromRGB(160, 160, 170)
         button.TextSize = 11
         button.Font = THEME.Font
-        button.Parent = buttonContainer
+        button.Parent = btnContainer
         button.ZIndex = 8
         button.BorderSizePixel = 0
         
-        -- 胶囊圆角
-        local corner = Instance.new("UICorner")
-        corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
-        corner.Parent = button
+        local btnCorner = Instance.new("UICorner")
+        btnCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
+        btnCorner.Parent = button
         
-        local btnStroke = Instance.new("UIStroke")
-        btnStroke.Color = Color3.fromRGB(255, 255, 255)
-        btnStroke.Transparency = 0.6
-        btnStroke.Thickness = 1
-        btnStroke.Parent = button
-        
-        -- 内边距
         local btnPadding = Instance.new("UIPadding")
         btnPadding.PaddingLeft = UDim.new(0, 12)
         btnPadding.PaddingRight = UDim.new(0, 12)
