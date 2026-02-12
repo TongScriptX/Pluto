@@ -1728,33 +1728,24 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        -- 自动调整CanvasSize（改进版）
+        -- 自动调整CanvasSize（使用绝对内容大小）
         local function updateCanvasSize()
-            local contentSize = contentLayout.AbsoluteContentSize
-            if contentSize and contentSize.Y > 0 then
-                content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + (UI_STYLES.Padding * 2))
-            end
+            task.defer(function()
+                -- 等待布局计算完成
+                game:GetService("RunService").Heartbeat:Wait()
+                local contentSize = contentLayout.AbsoluteContentSize
+                if contentSize and contentSize.Y > 0 then
+                    -- 直接使用AbsoluteContentSize，不额外添加padding
+                    content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
+                end
+            end)
         end
         
-        -- 初始设置
-        task.spawn(function()
-            game:GetService("RunService").Heartbeat:Wait()
-            updateCanvasSize()
-        end)
+        -- 只监听AbsoluteContentSize变化，这是唯一可靠的方式
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSize)
         
-        -- 监听变化
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            task.defer(updateCanvasSize)
-        end)
-        
-        -- 子元素变化时也更新
-        content.ChildAdded:Connect(function()
-            task.delay(0.1, updateCanvasSize)
-        end)
-        
-        content.ChildRemoved:Connect(function()
-            task.delay(0.1, updateCanvasSize)
-        end)
+        -- 初始设置（延迟确保布局已计算）
+        task.delay(0.2, updateCanvasSize)
         
         -- 存储数据
         table.insert(subTabsData, {
@@ -1811,14 +1802,8 @@ function UILibrary:CreateSubTabs(tabContent, options)
         AddElement = function(index, element)
             if subTabsData[index] and element then
                 element.Parent = subTabsData[index].content
-                -- 添加元素后更新CanvasSize
-                task.delay(0.1, function()
-                    local content = subTabsData[index].content
-                    local layout = content:FindFirstChildOfClass("UIListLayout")
-                    if layout then
-                        content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + (UI_STYLES.Padding * 2))
-                    end
-                end)
+                -- 添加元素后会触发ChildAdded，CanvasSize会自动更新
+                -- 不需要手动更新，避免重复计算
             end
         end
     }
