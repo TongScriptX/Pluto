@@ -1691,17 +1691,21 @@ function UILibrary:CreateSubTabs(tabContent, options)
         btnPadding.PaddingRight = UDim.new(0, 12)
         btnPadding.Parent = button
         
-        -- 创建内容区域（使用Frame，滚动由父容器tabContent统一管理）
         local content = Instance.new("Frame")
         content.Name = "SubTabContent_" .. subTabName
         content.Size = UDim2.new(1, 0, 0, 0)
         content.Position = UDim2.new(0, 0, 0, 0)
         content.AutomaticSize = Enum.AutomaticSize.Y
         content.BorderSizePixel = 0
-        content.BackgroundTransparency = 1
         content.Visible = i == defaultActive
         content.ZIndex = 6
         content.Parent = contentContainer
+        
+        task.spawn(function()
+            game:GetService("RunService").Heartbeat:Wait()
+            content.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+            content.BackgroundTransparency = 0.999
+        end)
         
         local contentLayout = Instance.new("UIListLayout")
         contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
