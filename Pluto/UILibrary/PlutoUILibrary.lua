@@ -1610,16 +1610,17 @@ function UILibrary:CreateSubTabs(tabContent, options)
         local targetData = subTabsData[index]
         if activeSubTab == targetData then return end
         
+        print(string.format("[SubTabSwitch] 切换到: %s, 子元素数: %d, CanvasSize: %d", 
+            targetData.name, #targetData.content:GetChildren(), targetData.content.CanvasSize.Y.Offset))
+        
         -- 隐藏当前活动标签页（立即隐藏避免重叠）
         if activeSubTab then
-            -- 按钮样式恢复（未激活状态）
             TweenService:Create(activeSubTab.button, UILibrary.TWEEN_INFO_BUTTON, {
                 BackgroundTransparency = 0.6,
                 BackgroundColor3 = Color3.fromRGB(60, 62, 70)
             }):Play()
             activeSubTab.button.TextColor3 = Color3.fromRGB(160, 160, 170)
             
-            -- 内容立即隐藏（避免重叠），但不改变CanvasSize
             activeSubTab.content.Visible = false
             activeSubTab.content.Position = UDim2.new(0.05, 0, 0, 0)
         end
@@ -1629,19 +1630,16 @@ function UILibrary:CreateSubTabs(tabContent, options)
         targetData.content.Visible = true
         targetData.content.Position = UDim2.new(0.05, 0, 0, 0)
         
-        -- 按钮高亮动画（激活状态）
         TweenService:Create(targetData.button, UILibrary.TWEEN_INFO_BUTTON, {
             BackgroundTransparency = 0.3,
             BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
         }):Play()
         targetData.button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
         
-        -- 内容滑入动画（只动画位置，不动画透明度，不重置CanvasSize）
         TweenService:Create(targetData.content, UILibrary.TWEEN_INFO_UI, {
             Position = UDim2.new(0, 0, 0, 0)
         }):Play()
         
-        -- 回调
         if onSwitch then
             task.spawn(function()
                 onSwitch(index, targetData.name)
