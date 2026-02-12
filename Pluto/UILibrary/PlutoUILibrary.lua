@@ -1747,23 +1747,22 @@ function UILibrary:CreateSubTabs(tabContent, options)
         -- 设置初始CanvasSize
         content.CanvasSize = UDim2.new(0, 0, 0, 100)
         
-        -- 自动调整CanvasSize（带限制防止无限增长）
-        local paddingY = UI_STYLES.YPadding or 10
-        local maxCanvasHeight = 2000  -- 设置最大高度限制
-        
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        -- 自动调整CanvasSize（只在子元素变化时更新）
+        local function updateCanvasSize()
             task.defer(function()
                 local contentSize = contentLayout.AbsoluteContentSize
                 if contentSize and contentSize.Y > 0 then
-                    local newHeight = math.min(contentSize.Y + paddingY, maxCanvasHeight)
-                    -- 只更新如果高度变化超过5像素（防止微小抖动）
-                    local currentHeight = content.CanvasSize.Y.Offset
-                    if math.abs(newHeight - currentHeight) > 5 then
-                        content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
-                    end
+                    content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 10)
                 end
             end)
-        end)
+        end
+        
+        -- 只在子元素添加/删除时更新，不监听AbsoluteContentSize持续变化
+        content.ChildAdded:Connect(updateCanvasSize)
+        content.ChildRemoved:Connect(updateCanvasSize)
+        
+        -- 初始延迟更新一次
+        task.delay(0.2, updateCanvasSize)
         
         -- 存储数据
         table.insert(subTabsData, {
