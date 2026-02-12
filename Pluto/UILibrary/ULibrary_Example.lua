@@ -119,76 +119,10 @@ if backpackContent then
     })
 end
 
--- 操作卡片
-local actionCard = UILibrary:CreateCard(homeContent)
-UILibrary:CreateLabel(actionCard, {
-    Text = "快捷操作",
-    TextSize = 14
-})
-
-UILibrary:CreateButton(actionCard, {
-    Text = "开始游戏",
-    Callback = function()
-        UILibrary:Notify({
-            Title = "游戏开始",
-            Text = "游戏即将开始，请准备！"
-        })
-    end
-})
-
-UILibrary:CreateButton(actionCard, {
-    Text = "查看成就",
-    Callback = function()
-        UILibrary:Notify({
-            Title = "成就",
-            Text = "暂无新成就"
-        })
-    end
-})
-
--- 下拉框示例
-local dropdownCard = UILibrary:CreateCard(homeContent)
-UILibrary:CreateLabel(dropdownCard, {
-    Text = "选择角色",
-    TextSize = 14
-})
-
-local roleDropdown = UILibrary:CreateDropdown(dropdownCard, {
-    Text = "角色",
-    DefaultOption = "战士",
-    Options = {
-        "战士",
-        "法师",
-        "弓箭手",
-        "刺客"
-    },
-    Callback = function(selectedRole)
-        UILibrary:Notify({
-            Title = "角色选择",
-            Text = "你选择了: " .. selectedRole
-        })
-    end
-})
-
--- 输入框示例
-local inputCard = UILibrary:CreateCard(homeContent)
-UILibrary:CreateLabel(inputCard, {
-    Text = "输入设置",
-    TextSize = 14
-})
-
-local nameInput = UILibrary:CreateTextBox(inputCard, {
-    PlaceholderText = "请输入你的名字",
-    Text = "",
-    OnFocusLost = function(text)
-        if text and text ~= "" then
-            UILibrary:Notify({
-                Title = "输入确认",
-                Text = "你的名字是: " .. text
-            })
-        end
-    end
-})
+-- 程序化切换子标签页示例
+task.delay(5, function()
+    subTabs.SwitchTo(2)  -- 5秒后自动切换到"角色"标签
+end)
 
 -- === 设置页面内容 ===
 -- 显示设置
