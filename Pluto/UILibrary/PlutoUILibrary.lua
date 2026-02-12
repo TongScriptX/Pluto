@@ -1360,38 +1360,10 @@ function UILibrary:CreateUIWindow(options)
     titleLabel.Font = Enum.Font.GothamBold
     titleLabel.ZIndex = 7
 
-    -- 子标签页容器（位于标题栏下方）
-    local subTabsContainer = Instance.new("Frame")
-    subTabsContainer.Name = "SubTabsContainer"
-    subTabsContainer.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, UI_STYLES.SubTabBarHeight)
-    subTabsContainer.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
-    subTabsContainer.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    subTabsContainer.BackgroundTransparency = 1  -- 初始透明
-    subTabsContainer.BorderSizePixel = 0
-    subTabsContainer.Parent = mainFrame
-    subTabsContainer.Visible = true
-    subTabsContainer.ZIndex = 6
-    
-    -- 子标签页水平布局
-    local subTabsLayout = Instance.new("UIListLayout")
-    subTabsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-    subTabsLayout.FillDirection = Enum.FillDirection.Horizontal
-    subTabsLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-    subTabsLayout.VerticalAlignment = Enum.VerticalAlignment.Center
-    subTabsLayout.Padding = UDim.new(0, 6)
-    subTabsLayout.Parent = subTabsContainer
-    
-    local subTabsPadding = Instance.new("UIPadding")
-    subTabsPadding.PaddingLeft = UDim.new(0, 12)
-    subTabsPadding.PaddingRight = UDim.new(0, 12)
-    subTabsPadding.PaddingTop = UDim.new(0, 4)
-    subTabsPadding.PaddingBottom = UDim.new(0, 4)
-    subTabsPadding.Parent = subTabsContainer
-
     local mainPage = Instance.new("Frame")
     mainPage.Name = "MainPage"
-    mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight - UI_STYLES.SubTabBarHeight)
-    mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight + UI_STYLES.SubTabBarHeight)
+    mainPage.Size = UDim2.new(0, windowWidth - UI_STYLES.SidebarWidth, 0, windowHeight - UI_STYLES.TitleBarHeight)
+    mainPage.Position = UDim2.new(0, UI_STYLES.SidebarWidth, 0, UI_STYLES.TitleBarHeight)
     mainPage.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     mainPage.BackgroundTransparency = 1  -- 初始透明，用于入场动画
     mainPage.Parent = mainFrame
@@ -1581,11 +1553,24 @@ function UILibrary:CreateSubTabs(tabContent, options)
     local buttonContainer = Instance.new("Frame")
     buttonContainer.Name = "SubTabsButtonContainer"
     buttonContainer.Size = UDim2.new(1, 0, 0, UI_STYLES.SubTabBarHeight)
-    buttonContainer.BackgroundTransparency = 1
     buttonContainer.BorderSizePixel = 0
     buttonContainer.Parent = tabContent
     buttonContainer.ZIndex = 7
     buttonContainer.Visible = true
+    
+    -- 延迟设置避免默认灰色（参考Toggle和Slider）
+    task.spawn(function()
+        game:GetService("RunService").Heartbeat:Wait()
+        buttonContainer.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        buttonContainer.BackgroundTransparency = 0.99
+    end)
+    
+    -- 添加边框（参考Card的做法）
+    local containerStroke = Instance.new("UIStroke")
+    containerStroke.Color = Color3.fromRGB(255, 255, 255)
+    containerStroke.Transparency = 0.95
+    containerStroke.Thickness = 1
+    containerStroke.Parent = buttonContainer
     
     -- 水平布局
     local layout = Instance.new("UIListLayout")
@@ -1608,11 +1593,17 @@ function UILibrary:CreateSubTabs(tabContent, options)
     contentContainer.Name = "SubTabsContentContainer"
     contentContainer.Size = UDim2.new(1, 0, 1, -UI_STYLES.SubTabBarHeight)
     contentContainer.Position = UDim2.new(0, 0, 0, UI_STYLES.SubTabBarHeight)
-    contentContainer.BackgroundTransparency = 1
     contentContainer.BorderSizePixel = 0
     contentContainer.Parent = tabContent
     contentContainer.ZIndex = 6
     contentContainer.ClipsDescendants = true
+    
+    -- 延迟设置避免默认灰色
+    task.spawn(function()
+        game:GetService("RunService").Heartbeat:Wait()
+        contentContainer.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        contentContainer.BackgroundTransparency = 0.99
+    end)
     
     -- 存储子标签页数据
     local subTabsData = {}
@@ -1715,6 +1706,13 @@ function UILibrary:CreateSubTabs(tabContent, options)
             content.BackgroundTransparency = 0.99
         end)
         
+        -- 添加边框（参考Card的做法）
+        local contentStroke = Instance.new("UIStroke")
+        contentStroke.Color = Color3.fromRGB(255, 255, 255)
+        contentStroke.Transparency = 0.95
+        contentStroke.Thickness = 1
+        contentStroke.Parent = content
+        
         -- 内容布局
         local contentLayout = Instance.new("UIListLayout")
         contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1728,24 +1726,29 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        -- 自动调整CanvasSize（使用绝对内容大小）
+        -- CanvasSize控制变量，防止无限增长
+        local lastCanvasSize = 0
+        
+        -- 自动调整CanvasSize（防止无限增长）
         local function updateCanvasSize()
-            task.defer(function()
-                -- 等待布局计算完成
-                game:GetService("RunService").Heartbeat:Wait()
-                local contentSize = contentLayout.AbsoluteContentSize
-                if contentSize and contentSize.Y > 0 then
-                    -- 直接使用AbsoluteContentSize，不额外添加padding
+            local contentSize = contentLayout.AbsoluteContentSize
+            if contentSize and contentSize.Y > 0 then
+                -- 如果尺寸变化很小，不更新（防止抖动导致无限增长）
+                local sizeDiff = math.abs(contentSize.Y - lastCanvasSize)
+                if sizeDiff > 1 then  -- 只有变化超过1像素才更新
+                    lastCanvasSize = contentSize.Y
                     content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
                 end
-            end)
+            end
         end
         
-        -- 只监听AbsoluteContentSize变化，这是唯一可靠的方式
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSize)
+        -- 只监听AbsoluteContentSize变化
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            task.defer(updateCanvasSize)
+        end)
         
         -- 初始设置（延迟确保布局已计算）
-        task.delay(0.2, updateCanvasSize)
+        task.delay(0.3, updateCanvasSize)
         
         -- 存储数据
         table.insert(subTabsData, {
