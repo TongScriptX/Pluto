@@ -1722,8 +1722,15 @@ function UILibrary:CreateSubTabs(tabContent, options)
             end)
         end)
         
-        -- 初始更新
-        task.delay(0.1, updateCanvasSize)
+        -- 初始延迟更新CanvasSize
+        task.delay(0.1, function()
+            local contentSize = contentLayout.AbsoluteContentSize
+            if contentSize and contentSize.Y > 0 then
+                if tabContent:IsA("ScrollingFrame") then
+                    tabContent.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 20)
+                end
+            end
+        end)
         
         -- 存储数据
         table.insert(subTabsData, {
