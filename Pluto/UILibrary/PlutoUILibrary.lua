@@ -1221,7 +1221,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             startGuiOffset = targetFrame.AbsolutePosition
             targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
             if developmentMode then
-                print("[MakeDraggable]: Drag started: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
+
             end
         end
     end)
@@ -1250,7 +1250,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             dragging = false
             targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
             if developmentMode then
-                print("[MakeDraggable]: Drag ended: GUI =", gui.Name, "Target =", targetFrame.Name, "Position =", tostring(targetFrame.Position))
+
             end
         end
     end)
