@@ -1648,10 +1648,15 @@ function UILibrary:CreateSubTabs(tabContent, options)
         btnContainer.Name = "SubTabContainer_" .. subTabName
         btnContainer.Size = UDim2.new(0, 0, 0, UI_STYLES.SubTabButtonHeight)
         btnContainer.AutomaticSize = Enum.AutomaticSize.X
-        btnContainer.BackgroundTransparency = 1
         btnContainer.BorderSizePixel = 0
         btnContainer.Parent = buttonContainer
         btnContainer.ZIndex = 7
+        
+        task.spawn(function()
+            game:GetService("RunService").Heartbeat:Wait()
+            btnContainer.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+            btnContainer.BackgroundTransparency = 0.99
+        end)
         
         local containerCorner = Instance.new("UICorner")
         containerCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
