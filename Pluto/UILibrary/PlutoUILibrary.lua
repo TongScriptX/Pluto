@@ -1563,11 +1563,17 @@ end
 function UILibrary:CreateSubTabs(tabContent, options)
     if not tabContent then
         warn("[SubTabs]: 创建失败 - tabContent 为 nil")
-        return nil, nil
+        return nil
     end
 
     options = options or {}
     local subTabItems = options.Items or {}
+    
+    -- 如果Items为空或nil，直接返回nil，不留空
+    if #subTabItems == 0 then
+        return nil
+    end
+    
     local defaultActive = options.DefaultActive or 1
     local onSwitch = options.OnSwitch
     
@@ -1619,29 +1625,24 @@ function UILibrary:CreateSubTabs(tabContent, options)
         local targetData = subTabsData[index]
         if activeSubTab == targetData then return end
         
-        -- 隐藏当前活动标签页
+        -- 隐藏当前活动标签页（立即隐藏避免重叠）
         if activeSubTab then
+            -- 按钮样式恢复
             TweenService:Create(activeSubTab.button, UILibrary.TWEEN_INFO_BUTTON, {
                 BackgroundTransparency = 0.8,
                 BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
             }):Play()
             activeSubTab.button.TextColor3 = Color3.fromRGB(180, 180, 190)
             
-            -- 内容淡出
-            TweenService:Create(activeSubTab.content, UILibrary.TWEEN_INFO_UI, {
-                Position = UDim2.new(-0.05, 0, 0, 0),
-                BackgroundTransparency = 1
-            }):Play()
-            task.delay(0.15, function()
-                if activeSubTab and activeSubTab ~= targetData then
-                    activeSubTab.content.Visible = false
-                end
-            end)
+            -- 内容立即隐藏（避免重叠）
+            activeSubTab.content.Visible = false
+            activeSubTab.content.Position = UDim2.new(0.05, 0, 0, 0)
         end
         
         -- 显示目标标签页
         activeSubTab = targetData
         targetData.content.Visible = true
+        targetData.content.Position = UDim2.new(0.05, 0, 0, 0)
         
         -- 按钮高亮动画（胶囊样式）
         TweenService:Create(targetData.button, UILibrary.TWEEN_INFO_BUTTON, {
@@ -1650,12 +1651,9 @@ function UILibrary:CreateSubTabs(tabContent, options)
         }):Play()
         targetData.button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
         
-        -- 内容滑入动画
-        targetData.content.Position = UDim2.new(0.05, 0, 0, 0)
-        targetData.content.BackgroundTransparency = 1
+        -- 内容滑入动画（只动画位置，不动画透明度）
         TweenService:Create(targetData.content, UILibrary.TWEEN_INFO_UI, {
-            Position = UDim2.new(0, 0, 0, 0),
-            BackgroundTransparency = 0.99
+            Position = UDim2.new(0, 0, 0, 0)
         }):Play()
         
         -- 回调
@@ -1702,8 +1700,6 @@ function UILibrary:CreateSubTabs(tabContent, options)
         content.Name = "SubTabContent_" .. subTabName
         content.Size = UDim2.new(1, 0, 1, 0)
         content.Position = UDim2.new(0, 0, 0, 0)
-        content.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
-        content.BackgroundTransparency = 0.99
         content.BorderSizePixel = 0
         content.ScrollBarThickness = 3
         content.ScrollingEnabled = true
@@ -1711,6 +1707,13 @@ function UILibrary:CreateSubTabs(tabContent, options)
         content.Visible = i == defaultActive
         content.ZIndex = 6
         content.Parent = contentContainer
+        
+        -- 延迟设置避免默认灰色背景（参考Slider和Toggle的做法）
+        task.spawn(function()
+            game:GetService("RunService").Heartbeat:Wait()
+            content.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+            content.BackgroundTransparency = 0.99
+        end)
         
         -- 内容布局
         local contentLayout = Instance.new("UIListLayout")
@@ -1725,11 +1728,32 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        -- 自动调整CanvasSize
+        -- 自动调整CanvasSize（改进版）
+        local function updateCanvasSize()
+            local contentSize = contentLayout.AbsoluteContentSize
+            if contentSize and contentSize.Y > 0 then
+                content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + (UI_STYLES.Padding * 2))
+            end
+        end
+        
+        -- 初始设置
+        task.spawn(function()
+            game:GetService("RunService").Heartbeat:Wait()
+            updateCanvasSize()
+        end)
+        
+        -- 监听变化
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            task.defer(function()
-                content.CanvasSize = UDim2.new(0, 0, 0, contentLayout.AbsoluteContentSize.Y + 20)
-            end)
+            task.defer(updateCanvasSize)
+        end)
+        
+        -- 子元素变化时也更新
+        content.ChildAdded:Connect(function()
+            task.delay(0.1, updateCanvasSize)
+        end)
+        
+        content.ChildRemoved:Connect(function()
+            task.delay(0.1, updateCanvasSize)
         end)
         
         -- 存储数据
@@ -1763,10 +1787,11 @@ function UILibrary:CreateSubTabs(tabContent, options)
         end)
     end
     
-    -- 默认激活第一个
+    -- 默认激活指定索引（确保在有效范围内）
     if #subTabsData > 0 then
+        local validIndex = math.clamp(defaultActive, 1, #subTabsData)
         task.delay(0.1, function()
-            switchToSubTab(defaultActive)
+            switchToSubTab(validIndex)
         end)
     end
     
@@ -1786,6 +1811,14 @@ function UILibrary:CreateSubTabs(tabContent, options)
         AddElement = function(index, element)
             if subTabsData[index] and element then
                 element.Parent = subTabsData[index].content
+                -- 添加元素后更新CanvasSize
+                task.delay(0.1, function()
+                    local content = subTabsData[index].content
+                    local layout = content:FindFirstChildOfClass("UIListLayout")
+                    if layout then
+                        content.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + (UI_STYLES.Padding * 2))
+                    end
+                end)
             end
         end
     }
