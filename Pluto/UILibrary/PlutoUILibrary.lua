@@ -1681,10 +1681,9 @@ function UILibrary:CreateSubTabs(tabContent, options)
         corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
         corner.Parent = button
         
-        -- 添加边框（参考Card的做法）
         local btnStroke = Instance.new("UIStroke")
-        btnStroke.Color = Color3.fromRGB(255, 255, 255)  -- 白色边缘
-        btnStroke.Transparency = 0.85  -- 半透明确保深色背景可见
+        btnStroke.Color = Color3.fromRGB(255, 255, 255)
+        btnStroke.Transparency = 0.6
         btnStroke.Thickness = 1
         btnStroke.Parent = button
         
@@ -1734,24 +1733,28 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        -- 设置初始CanvasSize
         content.CanvasSize = UDim2.new(0, 0, 0, 100)
         
-        -- 自动调整CanvasSize（只在子元素变化时更新）
+        local isUpdating = false
         local function updateCanvasSize()
+            if isUpdating then return end
+            isUpdating = true
+            
             task.defer(function()
                 local contentSize = contentLayout.AbsoluteContentSize
                 if contentSize and contentSize.Y > 0 then
-                    content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 10)
+                    local newHeight = contentSize.Y + 10
+                    local currentHeight = content.CanvasSize.Y.Offset
+                    if math.abs(newHeight - currentHeight) > 2 then
+                        content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
+                    end
                 end
+                isUpdating = false
             end)
         end
         
-        -- 只在子元素添加/删除时更新，不监听AbsoluteContentSize持续变化
         content.ChildAdded:Connect(updateCanvasSize)
         content.ChildRemoved:Connect(updateCanvasSize)
-        
-        -- 初始延迟更新一次
         task.delay(0.2, updateCanvasSize)
         
         -- 存储数据
