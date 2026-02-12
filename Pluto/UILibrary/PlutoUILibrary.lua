@@ -1402,11 +1402,6 @@ function UILibrary:CreateUIWindow(options)
             BackgroundTransparency = 0
         }):Play()
         
-        -- SubTabsContainer 淡入
-        TweenService:Create(subTabsContainer, self.TWEEN_INFO_UI, {
-            BackgroundTransparency = 0.95  -- 非常透明的背景
-        }):Play()
-        
         -- MainPage 淡入
         TweenService:Create(mainPage, self.TWEEN_INFO_UI, {
             BackgroundTransparency = 0.5
@@ -1424,8 +1419,7 @@ function UILibrary:CreateUIWindow(options)
         ScreenGui = screenGui,
         Sidebar = sidebar,
         TitleLabel = titleLabel,
-        MainPage = mainPage,
-        SubTabsContainer = subTabsContainer
+        MainPage = mainPage
     }
     UILibrary._instances.mainWindow = windowInstance
 
@@ -1738,13 +1732,29 @@ function UILibrary:CreateSubTabs(tabContent, options)
         
         local paddingY = UI_STYLES.YPadding or 10
         local lastCanvasHeight = 0
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            local newHeight = contentLayout.AbsoluteContentSize.Y + paddingY
-            if math.abs(newHeight - lastCanvasHeight) > 1 then
-                lastCanvasHeight = newHeight
-                content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
-            end
-        end)
+        local updateQueued = false
+        
+        local function updateCanvasSize()
+            if updateQueued then return end
+            updateQueued = true
+            
+            task.defer(function()
+                updateQueued = false
+                local contentSize = contentLayout.AbsoluteContentSize
+                if contentSize and contentSize.Y > 0 then
+                    local newHeight = contentSize.Y + paddingY
+                    if math.abs(newHeight - lastCanvasHeight) > 2 then
+                        lastCanvasHeight = newHeight
+                        content.CanvasSize = UDim2.new(0, 0, 0, newHeight)
+                    end
+                end
+            end)
+        end
+        
+        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSize)
+        
+        -- 初始更新
+        task.delay(0.1, updateCanvasSize)
         
         -- 存储数据
         table.insert(subTabsData, {
