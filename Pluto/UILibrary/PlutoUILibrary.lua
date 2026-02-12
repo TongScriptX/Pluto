@@ -1592,6 +1592,12 @@ function UILibrary:CreateSubTabs(tabContent, options)
     contentContainer.ZIndex = 6
     contentContainer.ClipsDescendants = true
     
+    -- 禁用父容器tabContent的滚动，由子标签内容接管
+    if tabContent:IsA("ScrollingFrame") then
+        tabContent.ScrollingEnabled = false
+        tabContent.CanvasSize = UDim2.new(0, 0, 0, 0)
+    end
+    
     -- 延迟设置避免默认灰色
     task.spawn(function()
         game:GetService("RunService").Heartbeat:Wait()
