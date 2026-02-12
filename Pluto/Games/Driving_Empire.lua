@@ -1373,7 +1373,7 @@ local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tem
 
     if currentRobbedAmount > 0 then
         PlutoX.debug("[Recovery] 发现剩余金额，尝试再次投放...")
-        local retrySuccess, retryAttempts, retryDelivered = forceDeliverRobbedAmount(false)
+        local retrySuccess = sellMoney()
 
         if retrySuccess then
             PlutoX.debug("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
@@ -1622,6 +1622,50 @@ local function forceDeliverRobbedAmount(isShutdown)
     return deliverySuccess, deliveryAttempts, initialRobbedAmount
 end
 
+-- 出售函数（使用传送点方式）
+local function sellMoney()
+    local player = game.Players.LocalPlayer
+    local sellPos1 = Vector3.new(-2520.495849609375, 15.116586685180664, 4035.560791015625)
+    local sellPos2 = Vector3.new(-2542.12646484375, 15.116586685180664, 4030.9150390625)
+    local currentAmount = getRobbedAmount() or 0
+    
+    if currentAmount <= 0 then
+        return false
+    end
+    
+    PlutoX.debug("[Sell] 开始出售，当前金额: " .. formatNumber(currentAmount))
+    
+    local char = player.Character
+    if char and char:FindFirstChild("HumanoidRootPart") then
+        char:PivotTo(CFrame.new(sellPos1 + Vector3.new(0, 3, 0)))
+    end
+    task.wait(0.5)
+    
+    local human = char and char:FindFirstChildOfClass("Humanoid")
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if human and root then
+        human:MoveTo(sellPos2)
+        local startT = tick()
+        while (root.Position - sellPos2).Magnitude > 3 and tick() - startT < 2 do task.wait(0.1) end
+    end
+    
+    task.wait(2)
+    
+    local sellStart = tick()
+    repeat
+        task.wait(0.3)
+        currentAmount = getRobbedAmount() or 0
+    until currentAmount == 0 or tick() - sellStart > 10
+    
+    if currentAmount == 0 then
+        UILibrary:Notify({ Title = "出售成功", Text = "金额已清零", Duration = 5 })
+        return true
+    else
+        UILibrary:Notify({ Title = "出售未完成", Text = "金额未清零", Duration = 3 })
+        return false
+    end
+end
+
 -- checkAndForceDelivery 函数
 local function checkAndForceDelivery(tempTarget)
     local robbedAmount = getRobbedAmount() or 0
@@ -1639,7 +1683,7 @@ local function checkAndForceDelivery(tempTarget)
 
         PlutoX.debug("[AutoRob] 交付点可用，执行强制投放...")
 
-        local success, attempts, deliveredAmount = forceDeliverRobbedAmount(false)
+        local success = sellMoney()
 
         if success then
             UILibrary:Notify({
@@ -2604,7 +2648,7 @@ UILibrary:CreateToggle(autoRobCard, {
             if currentRobbedAmount > 0 then
                 PlutoX.debug("[UI] 关闭自动抢劫，开始投放已抢金额: " .. formatNumber(currentRobbedAmount))
                 spawn(function()
-                    forceDeliverRobbedAmount(true)
+                    sellMoney()
                 end)
             else
                 PlutoX.debug("[UI] 关闭自动抢劫，无已抢金额需要投放")
