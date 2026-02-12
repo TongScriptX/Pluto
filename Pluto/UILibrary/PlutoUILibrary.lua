@@ -1624,11 +1624,6 @@ function UILibrary:CreateSubTabs(tabContent, options)
                 BackgroundColor3 = Color3.fromRGB(60, 62, 70)
             }):Play()
             activeSubTab.button.TextColor3 = Color3.fromRGB(160, 160, 170)
-            -- 边框透明度恢复
-            local stroke = activeSubTab.button:FindFirstChildOfClass("UIStroke")
-            if stroke then
-                stroke.Transparency = 0.9
-            end
             
             -- 内容立即隐藏（避免重叠），但不改变CanvasSize
             activeSubTab.content.Visible = false
@@ -1646,11 +1641,6 @@ function UILibrary:CreateSubTabs(tabContent, options)
             BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
         }):Play()
         targetData.button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-        -- 边框高亮
-        local stroke = targetData.button:FindFirstChildOfClass("UIStroke")
-        if stroke then
-            stroke.Transparency = 0.7
-        end
         
         -- 内容滑入动画（只动画位置，不动画透明度，不重置CanvasSize）
         TweenService:Create(targetData.content, UILibrary.TWEEN_INFO_UI, {
@@ -1691,10 +1681,10 @@ function UILibrary:CreateSubTabs(tabContent, options)
         corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)
         corner.Parent = button
         
-        -- 添加边框
+        -- 添加边框（参考Card的做法）
         local btnStroke = Instance.new("UIStroke")
-        btnStroke.Color = Color3.fromRGB(255, 255, 255)
-        btnStroke.Transparency = i == defaultActive and 0.7 or 0.9
+        btnStroke.Color = Color3.fromRGB(255, 255, 255)  -- 白色边缘
+        btnStroke.Transparency = 0.85  -- 半透明确保深色背景可见
         btnStroke.Thickness = 1
         btnStroke.Parent = button
         
