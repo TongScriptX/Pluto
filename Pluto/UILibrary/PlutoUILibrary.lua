@@ -1733,29 +1733,19 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        -- CanvasSize控制变量，防止无限增长
-        local lastCanvasSize = 0
+        -- 设置初始CanvasSize
+        content.CanvasSize = UDim2.new(0, 0, 0, 100)
         
-        -- 自动调整CanvasSize（防止无限增长）
-        local function updateCanvasSize()
-            local contentSize = contentLayout.AbsoluteContentSize
-            if contentSize and contentSize.Y > 0 then
-                -- 如果尺寸变化很小，不更新（防止抖动导致无限增长）
-                local sizeDiff = math.abs(contentSize.Y - lastCanvasSize)
-                if sizeDiff > 1 then  -- 只有变化超过1像素才更新
-                    lastCanvasSize = contentSize.Y
-                    content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y)
-                end
-            end
-        end
-        
-        -- 只监听AbsoluteContentSize变化
+        -- 自动调整CanvasSize（完全参考CreateTab的实现）
+        local paddingY = UI_STYLES.YPadding or 10
         contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            task.defer(updateCanvasSize)
+            task.defer(function()
+                local contentSize = contentLayout.AbsoluteContentSize
+                if contentSize and contentSize.Y > 0 then
+                    content.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + paddingY)
+                end
+            end)
         end)
-        
-        -- 初始设置（延迟确保布局已计算）
-        task.delay(0.3, updateCanvasSize)
         
         -- 存储数据
         table.insert(subTabsData, {
