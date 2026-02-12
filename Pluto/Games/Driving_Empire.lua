@@ -2314,8 +2314,23 @@ local featuresTab, featuresContent = UILibrary:CreateTab(sidebar, titleLabel, ma
     Text = "游戏功能"
 })
 
+-- 创建子标签页
+local featuresSubTabs = UILibrary:CreateSubTabs(featuresContent, {
+    Items = {
+        "辅助功能",
+        "autofarm"
+    },
+    DefaultActive = 1,
+    OnSwitch = function(index, name)
+        PlutoX.debug("[UI] 切换到子标签页: " .. name)
+    end
+})
+
+-- ========== 辅助功能子标签 ==========
+local utilityContent = featuresSubTabs.GetContent(1)
+
 -- 在线奖励
-local onlineRewardCard = UILibrary:CreateCard(featuresContent)
+local onlineRewardCard = UILibrary:CreateCard(utilityContent)
 UILibrary:CreateToggle(onlineRewardCard, {
     Text = "在线时长奖励",
     DefaultState = config.onlineRewardEnabled or false,
@@ -2329,7 +2344,7 @@ UILibrary:CreateToggle(onlineRewardCard, {
 })
 
 -- 自动生成车辆
-local autoSpawnCard = UILibrary:CreateCard(featuresContent)
+local autoSpawnCard = UILibrary:CreateCard(utilityContent)
 UILibrary:CreateToggle(autoSpawnCard, {
     Text = "自动生成车辆",
     DefaultState = config.autoSpawnVehicleEnabled or false,
@@ -2342,8 +2357,11 @@ UILibrary:CreateToggle(autoSpawnCard, {
     end
 })
 
+-- ========== autofarm 子标签 ==========
+local autofarmContent = featuresSubTabs.GetContent(2)
+
 -- AutoFarm
-local autoFarmCard = UILibrary:CreateCard(featuresContent, { IsMultiElement = true })
+local autoFarmCard = UILibrary:CreateCard(autofarmContent, { IsMultiElement = true })
 UILibrary:CreateLabel(autoFarmCard, {
     Text = "Auto Farm",
 })
@@ -2387,7 +2405,7 @@ UILibrary:CreateToggle(autoFarmCard, {
 })
 
 -- ATM 自动抢劫
-local autoRobCard = UILibrary:CreateCard(featuresContent, { IsMultiElement = true })
+local autoRobCard = UILibrary:CreateCard(autofarmContent, { IsMultiElement = true })
 UILibrary:CreateLabel(autoRobCard, {
     Text = "Auto Rob ATMs",
 })
