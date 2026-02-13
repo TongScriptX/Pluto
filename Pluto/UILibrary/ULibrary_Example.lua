@@ -1,5 +1,5 @@
 -- 加载 UI 库
-local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"))()
+local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"))()
 
 -- 创建主窗口
 local window = UILibrary:CreateUIWindow({
@@ -156,9 +156,8 @@ local autoSaveToggle, autoSaveState = UILibrary:CreateToggle(gameCard, {
     end
 })
 
--- 创建悬浮按钮
+-- 创建灵动岛悬浮按钮
 UILibrary:CreateFloatingButton(window.MainFrame, {
-    Text = "T",
     MainFrame = window.MainFrame
 })
 
