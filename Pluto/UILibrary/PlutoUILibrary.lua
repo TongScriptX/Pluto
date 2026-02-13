@@ -549,79 +549,125 @@ function UILibrary:CreateFloatingButton(parent, options)
     end
     options = options or {}
 
-    -- 灵动岛尺寸配置
-    local ISLAND_WIDTH_COLLAPSED = 60    -- 收缩状态宽度
-    local ISLAND_WIDTH_EXPANDED = 140    -- 展开状态宽度
-    local ISLAND_HEIGHT = 26             -- 高度
-    local ISLAND_RADIUS = 13             -- 圆角半径（胶囊形状）
-    local ISLAND_BG_COLOR = Color3.fromRGB(28, 28, 30)  -- 深色背景（iPhone风格）
+    -- 灵动岛尺寸配置（参考iPhone 14 Pro）
+    local ISLAND_WIDTH_COLLAPSED = 126   -- 收缩状态宽度
+    local ISLAND_WIDTH_EXPANDED = 180    -- 展开状态宽度
+    local ISLAND_HEIGHT_COLLAPSED = 37   -- 收缩状态高度
+    local ISLAND_HEIGHT_EXPANDED = 37    -- 展开状态高度
+    local ISLAND_RADIUS = 18             -- 圆角半径（胶囊形状）
+    local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)  -- 纯黑背景（苹果风格）
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
+    local TOP_MARGIN = 8                 -- 距离屏幕顶部的距离
 
     -- 创建灵动岛容器
     local island = Instance.new("Frame")
     island.Name = "DynamicIsland"
-    island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT)
-    island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 10)  -- 顶部中间
+    island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED)
+    island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_MARGIN)
     island.BackgroundColor3 = ISLAND_BG_COLOR
-    island.BackgroundTransparency = 0.1
+    island.BackgroundTransparency = 0
     island.BorderSizePixel = 0
     island.Parent = parent
     island.Visible = true
     island.ZIndex = 100
+    island.ClipsDescendants = true
 
     -- 胶囊形状圆角
     local islandCorner = Instance.new("UICorner")
     islandCorner.CornerRadius = UDim.new(0, ISLAND_RADIUS)
     islandCorner.Parent = island
 
-    -- 阴影效果
-    local islandStroke = Instance.new("UIStroke")
-    islandStroke.Color = Color3.fromRGB(60, 60, 65)
-    islandStroke.Thickness = 1
-    islandStroke.Transparency = 0.7
-    islandStroke.Parent = island
+    -- 外发光效果（模拟灵动岛的光晕）
+    local glowStroke = Instance.new("UIStroke")
+    glowStroke.Color = Color3.fromRGB(40, 40, 45)
+    glowStroke.Thickness = 1.5
+    glowStroke.Transparency = 0.5
+    glowStroke.Parent = island
 
-    -- 内容容器（用于裁剪超出部分）
+    -- 内容容器
     local contentContainer = Instance.new("Frame")
     contentContainer.Name = "ContentContainer"
     contentContainer.Size = UDim2.new(1, 0, 1, 0)
     contentContainer.BackgroundTransparency = 1
-    contentContainer.ClipsDescendants = true
     contentContainer.Parent = island
 
-    -- 图标按钮（收缩状态显示）
-    local iconBtn = Instance.new("TextButton")
-    iconBtn.Name = "IconBtn"
-    iconBtn.Size = UDim2.new(1, 0, 1, 0)
-    iconBtn.BackgroundTransparency = 1
-    iconBtn.Text = options.Text or "◈"
-    iconBtn.TextColor3 = ISLAND_TEXT_COLOR
-    iconBtn.TextSize = 14
-    iconBtn.Font = THEME.Font
-    iconBtn.Parent = contentContainer
-    iconBtn.ZIndex = 101
+    -- 收缩状态内容
+    local collapsedContent = Instance.new("Frame")
+    collapsedContent.Name = "CollapsedContent"
+    collapsedContent.Size = UDim2.new(1, 0, 1, 0)
+    collapsedContent.BackgroundTransparency = 1
+    collapsedContent.Parent = contentContainer
 
-    -- 展开内容（展开状态显示）
+    -- 左侧指示灯（模拟Face ID）
+    local leftIndicator = Instance.new("Frame")
+    leftIndicator.Name = "LeftIndicator"
+    leftIndicator.Size = UDim2.new(0, 10, 0, 10)
+    leftIndicator.Position = UDim2.new(0, 16, 0.5, -5)
+    leftIndicator.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+    leftIndicator.BackgroundTransparency = 0
+    leftIndicator.BorderSizePixel = 0
+    leftIndicator.Parent = collapsedContent
+    local leftCorner = Instance.new("UICorner")
+    leftCorner.CornerRadius = UDim.new(0, 5)
+    leftCorner.Parent = leftIndicator
+
+    -- 右侧摄像头点
+    local rightDot = Instance.new("Frame")
+    rightDot.Name = "RightDot"
+    rightDot.Size = UDim2.new(0, 8, 0, 8)
+    rightDot.Position = UDim2.new(1, -20, 0.5, -4)
+    rightDot.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+    rightDot.BackgroundTransparency = 0
+    rightDot.BorderSizePixel = 0
+    rightDot.Parent = collapsedContent
+    local rightCorner = Instance.new("UICorner")
+    rightCorner.CornerRadius = UDim.new(0, 4)
+    rightCorner.Parent = rightDot
+
+    -- 展开状态内容
     local expandedContent = Instance.new("Frame")
     expandedContent.Name = "ExpandedContent"
     expandedContent.Size = UDim2.new(1, 0, 1, 0)
     expandedContent.BackgroundTransparency = 1
     expandedContent.Visible = false
     expandedContent.Parent = contentContainer
-    expandedContent.ZIndex = 102
+
+    -- 展开状态的图标
+    local expandedIcon = Instance.new("TextLabel")
+    expandedIcon.Name = "Icon"
+    expandedIcon.Size = UDim2.new(0, 24, 0, 24)
+    expandedIcon.Position = UDim2.new(0, 12, 0.5, -12)
+    expandedIcon.BackgroundTransparency = 1
+    expandedIcon.Text = "◈"
+    expandedIcon.TextColor3 = ISLAND_TEXT_COLOR
+    expandedIcon.TextSize = 16
+    expandedIcon.Font = THEME.Font
+    expandedIcon.Parent = expandedContent
 
     -- 展开状态的文字
     local expandedLabel = Instance.new("TextLabel")
-    expandedLabel.Name = "ExpandedLabel"
-    expandedLabel.Size = UDim2.new(1, -20, 1, 0)
-    expandedLabel.Position = UDim2.new(0, 10, 0, 0)
+    expandedLabel.Name = "Label"
+    expandedLabel.Size = UDim2.new(1, -60, 1, 0)
+    expandedLabel.Position = UDim2.new(0, 44, 0, 0)
     expandedLabel.BackgroundTransparency = 1
     expandedLabel.Text = "隐藏窗口"
     expandedLabel.TextColor3 = ISLAND_TEXT_COLOR
-    expandedLabel.TextSize = 11
+    expandedLabel.TextSize = 13
     expandedLabel.Font = THEME.Font
-    expandedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    expandedLabel.TextXAlignment = Enum.TextXAlignment.Left
     expandedLabel.Parent = expandedContent
+
+    -- 箭头指示
+    local arrowLabel = Instance.new("TextLabel")
+    arrowLabel.Name = "Arrow"
+    arrowLabel.Size = UDim2.new(0, 20, 0, 20)
+    arrowLabel.Position = UDim2.new(1, -28, 0.5, -10)
+    arrowLabel.BackgroundTransparency = 1
+    arrowLabel.Text = "›"
+    arrowLabel.TextColor3 = Color3.fromRGB(150, 150, 155)
+    arrowLabel.TextSize = 18
+    arrowLabel.Font = THEME.Font
+    arrowLabel.Parent = expandedContent
 
     -- 状态变量
     local isExpanded = false
@@ -629,28 +675,28 @@ function UILibrary:CreateFloatingButton(parent, options)
     local mainFrame = options.MainFrame
     local uiVisible = true
 
-    -- 动画配置
-    local expandTweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out)
-    local collapseTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.In)
+    -- 弹性动画配置（苹果风格的spring动画）
+    local SPRING_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local COLLAPSE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
     -- 展开动画
     local function expandIsland()
         if isAnimating or isExpanded then return end
         isAnimating = true
-        isExpanded = true
 
-        -- 展开宽度
-        TweenService:Create(island, expandTweenInfo, {
-            Size = UDim2.new(0, ISLAND_WIDTH_EXPANDED, 0, ISLAND_HEIGHT),
-            Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, 10)
+        -- 展开尺寸动画
+        TweenService:Create(island, SPRING_TWEEN, {
+            Size = UDim2.new(0, ISLAND_WIDTH_EXPANDED, 0, ISLAND_HEIGHT_EXPANDED),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, TOP_MARGIN)
         }):Play()
 
-        -- 切换内容
-        task.wait(0.1)
-        iconBtn.Visible = false
+        -- 内容切换动画
+        task.wait(0.15)
+        collapsedContent.Visible = false
         expandedContent.Visible = true
         expandedLabel.Text = uiVisible and "隐藏窗口" or "显示窗口"
 
+        isExpanded = true
         isAnimating = false
     end
 
@@ -658,18 +704,18 @@ function UILibrary:CreateFloatingButton(parent, options)
     local function collapseIsland()
         if isAnimating or not isExpanded then return end
         isAnimating = true
-        isExpanded = false
 
-        -- 切换内容
+        -- 内容切换
         expandedContent.Visible = false
-        iconBtn.Visible = true
+        collapsedContent.Visible = true
 
-        -- 收缩宽度
-        TweenService:Create(island, collapseTweenInfo, {
-            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
-            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 10)
+        -- 收缩尺寸动画
+        TweenService:Create(island, COLLAPSE_TWEEN, {
+            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_MARGIN)
         }):Play()
 
+        isExpanded = false
         isAnimating = false
     end
 
@@ -689,22 +735,36 @@ function UILibrary:CreateFloatingButton(parent, options)
             local elapsed = tick() - clickStartTime
             local distance = (Vector2.new(input.Position.X, input.Position.Y) - clickStartPosition).Magnitude
 
-            -- 区分点击和拖动（短时间且小距离才算点击）
-            if elapsed < 0.5 and distance < 15 then
+            -- 区分点击和拖动
+            if elapsed < 0.4 and distance < 10 then
                 if isExpanded then
-                    -- 已展开状态：点击切换UI显示/隐藏，然后收缩
+                    -- 展开状态：切换UI显示/隐藏
                     uiVisible = not uiVisible
                     expandedLabel.Text = uiVisible and "隐藏窗口" or "显示窗口"
 
-                    -- 切换主窗口显示
+                    -- 切换主窗口
                     if mainFrame then
-                        mainFrame.Visible = uiVisible
+                        if uiVisible then
+                            mainFrame.Visible = true
+                            -- 淡入动画
+                            mainFrame.BackgroundTransparency = 1
+                            TweenService:Create(mainFrame, TweenInfo.new(0.3), {
+                                BackgroundTransparency = 0.15
+                            }):Play()
+                        else
+                            -- 淡出动画
+                            TweenService:Create(mainFrame, TweenInfo.new(0.3), {
+                                BackgroundTransparency = 1
+                            }):Play()
+                            task.wait(0.3)
+                            mainFrame.Visible = false
+                        end
                     end
 
                     -- 延迟收缩
-                    task.delay(0.3, collapseIsland)
+                    task.delay(0.4, collapseIsland)
                 else
-                    -- 收缩状态：点击展开
+                    -- 收缩状态：展开
                     expandIsland()
                 end
             end
@@ -714,55 +774,30 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 鼠标离开时自动收缩
     island.MouseLeave:Connect(function()
         if isExpanded and not isAnimating then
-            task.wait(0.5)
+            task.wait(0.8)
             if isExpanded then
                 collapseIsland()
             end
         end
     end)
 
-    -- 拖动功能
-    local dragging = false
-    local dragStart = Vector2.new(0, 0)
-    local islandStartPos = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 10)
-
-    island.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = Vector2.new(input.Position.X, input.Position.Y)
-            islandStartPos = island.Position
-        end
-    end)
-
-    island.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = false
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStart
-            island.Position = UDim2.new(
-                islandStartPos.X.Scale,
-                islandStartPos.X.Offset + delta.X,
-                islandStartPos.Y.Scale,
-                islandStartPos.Y.Offset + delta.Y
-            )
-        end
-    end)
-
-    -- 悬停效果
+    -- 悬停效果（微妙的放大）
     island.MouseEnter:Connect(function()
-        TweenService:Create(island, TweenInfo.new(0.2), {
-            BackgroundColor3 = Color3.fromRGB(38, 38, 42)
-        }):Play()
+        if not isExpanded and not isAnimating then
+            TweenService:Create(island, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED + 4, 0, ISLAND_HEIGHT_COLLAPSED + 2),
+                Position = UDim2.new(0.5, -(ISLAND_WIDTH_COLLAPSED + 4)/2, 0, TOP_MARGIN - 1)
+            }):Play()
+        end
     end)
 
     island.MouseLeave:Connect(function()
-        TweenService:Create(island, TweenInfo.new(0.2), {
-            BackgroundColor3 = ISLAND_BG_COLOR
-        }):Play()
+        if not isExpanded and not isAnimating then
+            TweenService:Create(island, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
+                Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_MARGIN)
+            }):Play()
+        end
     end)
 
     return island
