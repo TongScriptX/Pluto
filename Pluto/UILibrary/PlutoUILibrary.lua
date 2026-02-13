@@ -674,16 +674,6 @@ function UILibrary:CreateFloatingButton(parent, options)
     local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
     local COLLAPSE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0)
     local FADE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-    local MOVE_TWEEN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-    -- 获取窗口中心位置
-    local function getCenterPosition()
-        if mainFrame then
-            local size = mainFrame.AbsoluteSize
-            return UDim2.new(0.5, -size.X/2, 0.5, -size.Y/2)
-        end
-        return UDim2.new(0.5, -200, 0.5, -150)
-    end
 
     -- 应用淡入/淡出动画到所有子元素
     local function applyFadeToAll(frame, targetTransparency)
@@ -1517,10 +1507,16 @@ function UILibrary:CreateUIWindow(options)
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.DisplayOrder = 5
 
+    -- 计算屏幕中心位置（像素定位）
+    local screenSize = GuiService:GetScreenResolution()
+    if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
+    local centerX = (screenSize.X - windowWidth) / 2
+    local centerY = (screenSize.Y - windowHeight) / 2
+
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
-    mainFrame.Position = UDim2.new(0.5, -windowWidth / 2, 0.5, -windowHeight / 2)
+    mainFrame.Position = UDim2.new(0, centerX, 0, centerY)  -- 使用像素定位
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     mainFrame.BackgroundTransparency = 1  -- 初始透明，用于淡入动画
     mainFrame.Parent = screenGui
