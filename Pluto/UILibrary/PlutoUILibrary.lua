@@ -1407,54 +1407,38 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     end
 
     local dragging = false
-    local startMousePos = Vector2.new(0, 0)
-    local startFramePos = Vector2.new(0, 0)
-    local lockPosition = false
+    local dragStartPos = Vector2.new(0, 0)
+    local frameStartPos = Vector2.new(0, 0)
 
-    local function isMouseOverGui(input)
-        local mousePos = Vector2.new(input.Position.X, input.Position.Y)
-        local guiPos = gui.AbsolutePosition
-        local guiSize = gui.AbsoluteSize
-        return mousePos.X >= guiPos.X and mousePos.X <= guiPos.X + guiSize.X 
-           and mousePos.Y >= guiPos.Y and mousePos.Y <= guiPos.Y + guiSize.Y
-    end
-
-    UserInputService.InputBegan:Connect(function(input)
-        if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
+    gui.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
-            lockPosition = true
-            startMousePos = Vector2.new(input.Position.X, input.Position.Y)
-            
-            -- 在下一帧渲染前锁定位置
-            RunService.RenderStepped:Wait()
-            
-            local currentAbsPos = targetFrame.AbsolutePosition
-            startFramePos = Vector2.new(currentAbsPos.X, currentAbsPos.Y)
-            targetFrame.Position = UDim2.new(0, startFramePos.X, 0, startFramePos.Y)
+            dragStartPos = Vector2.new(input.Position.X, input.Position.Y)
+            frameStartPos = Vector2.new(targetFrame.Position.X.Offset, targetFrame.Position.Y.Offset)
         end
     end)
 
-    UserInputService.InputChanged:Connect(function(input)
+    gui.InputChanged:Connect(function(input)
         if not dragging then return end
         if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
         
-        local currentMousePos = Vector2.new(input.Position.X, input.Position.Y)
-        local delta = currentMousePos - startMousePos
-        local newFramePos = startFramePos + delta
+        local currentPos = Vector2.new(input.Position.X, input.Position.Y)
+        local delta = currentPos - dragStartPos
+        local newPos = frameStartPos + delta
         
         local screenSize = GuiService:GetScreenResolution()
         if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
         
         local frameSize = targetFrame.AbsoluteSize
-        newFramePos = Vector2.new(
-            math.clamp(newFramePos.X, 0, screenSize.X - frameSize.X),
-            math.clamp(newFramePos.Y, 0, screenSize.Y - frameSize.Y)
+        newPos = Vector2.new(
+            math.clamp(newPos.X, 0, screenSize.X - frameSize.X),
+            math.clamp(newPos.Y, 0, screenSize.Y - frameSize.Y)
         )
         
-        targetFrame.Position = UDim2.new(0, newFramePos.X, 0, newFramePos.Y)
+        targetFrame.Position = UDim2.new(0, newPos.X, 0, newPos.Y)
     end)
 
-    UserInputService.InputEnded:Connect(function(input)
+    gui.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
         end
