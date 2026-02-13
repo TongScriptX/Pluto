@@ -1607,11 +1607,15 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     listLayout.Padding = UDim.new(0, UI_STYLES.Padding or 6)
     listLayout.Parent = content
 
+    -- 简化CanvasSize更新，移除task.defer避免递归
     local paddingY = UI_STYLES.YPadding or 10
+    local lastCanvasHeight = 0
     listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        task.defer(function()
-            content.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + paddingY)
-        end)
+        local newHeight = listLayout.AbsoluteContentSize.Y
+        if math.abs(newHeight - lastCanvasHeight) > 2 then
+            lastCanvasHeight = newHeight
+            content.CanvasSize = UDim2.new(0, 0, 0, newHeight + paddingY)
+        end
     end)
 
     local function switchToThisTab()
