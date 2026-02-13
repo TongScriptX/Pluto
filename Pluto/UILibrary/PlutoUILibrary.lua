@@ -549,13 +549,16 @@ function UILibrary:CreateFloatingButton(parent, options)
     end
     options = options or {}
 
+    -- 获取 topbar 高度
+    local topbarInset = GuiService.TopbarInset
+    local topbarHeight = topbarInset and topbarInset.Height or 36
+    
     -- 灵动岛尺寸配置（与Roblox topbar协调）
-    local TOPBAR_HEIGHT = 36
     local ISLAND_WIDTH_COLLAPSED = 70
     local ISLAND_WIDTH_EXPANDED = 180
-    local ISLAND_HEIGHT_COLLAPSED = 28
-    local ISLAND_HEIGHT_EXPANDED = 40
-    local ISLAND_RADIUS = 14
+    local ISLAND_HEIGHT_COLLAPSED = topbarHeight - 8
+    local ISLAND_HEIGHT_EXPANDED = topbarHeight + 4
+    local ISLAND_RADIUS = math.floor(ISLAND_HEIGHT_COLLAPSED / 2)
     local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)
     local ISLAND_BG_TRANSPARENCY = 0.35
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
@@ -835,7 +838,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     island.MouseEnter:Connect(function()
         if not isExpanded and not isAnimating then
             TweenService:Create(island, TweenInfo.new(0.15), {
-                Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED + 6, 0, ISLAND_HEIGHT + 2),
+                Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED + 6, 0, ISLAND_HEIGHT_COLLAPSED + 2),
                 Position = UDim2.new(0.5, -(ISLAND_WIDTH_COLLAPSED + 6)/2, 0, TOP_OFFSET)
             }):Play()
         end
@@ -844,7 +847,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     island.MouseLeave:Connect(function()
         if not isExpanded and not isAnimating then
             TweenService:Create(island, TweenInfo.new(0.15), {
-                Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
+                Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
                 Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
             }):Play()
         end
