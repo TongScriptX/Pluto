@@ -772,15 +772,6 @@ function UILibrary:CreateFloatingButton(parent, options)
 
     return island
 end
-            TweenService:Create(island, TweenInfo.new(0.2), {
-                Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
-                Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_MARGIN)
-            }):Play()
-        end
-    end)
-
-    return island
-end
 
 -- 文本标签模块
 function UILibrary:CreateLabel(parent, options)
