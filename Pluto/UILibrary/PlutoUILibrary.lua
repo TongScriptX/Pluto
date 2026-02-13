@@ -2,6 +2,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local GuiService = game:GetService("GuiService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local UILibrary = {}
 
@@ -1404,7 +1405,6 @@ end
 
 -- 拖拽模块
 local developmentMode = false
-local DEBUG_DRAG = false
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
@@ -1419,6 +1419,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     local dragging = false
     local startMousePos = Vector2.new(0, 0)
     local startFramePos = Vector2.new(0, 0)
+    local lockPosition = false
 
     local function isMouseOverGui(input)
         local mousePos = Vector2.new(input.Position.X, input.Position.Y)
@@ -1431,13 +1432,14 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     UserInputService.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
             dragging = true
+            lockPosition = true
             startMousePos = Vector2.new(input.Position.X, input.Position.Y)
             
-            -- 立即获取并锁定位置
+            -- 在下一帧渲染前锁定位置
+            RunService.RenderStepped:Wait()
+            
             local currentAbsPos = targetFrame.AbsolutePosition
             startFramePos = Vector2.new(currentAbsPos.X, currentAbsPos.Y)
-            
-            -- 立即锁定为像素定位
             targetFrame.Position = UDim2.new(0, startFramePos.X, 0, startFramePos.Y)
         end
     end)
