@@ -549,15 +549,17 @@ function UILibrary:CreateFloatingButton(parent, options)
     end
     options = options or {}
 
-    -- 灵动岛尺寸配置
+    -- 灵动岛尺寸配置（与Roblox topbar协调）
+    local TOPBAR_HEIGHT = 36
     local ISLAND_WIDTH_COLLAPSED = 70
     local ISLAND_WIDTH_EXPANDED = 180
-    local ISLAND_HEIGHT_COLLAPSED = 32
-    local ISLAND_HEIGHT_EXPANDED = 50
-    local ISLAND_RADIUS = 16
+    local ISLAND_HEIGHT_COLLAPSED = 28
+    local ISLAND_HEIGHT_EXPANDED = 40
+    local ISLAND_RADIUS = 14
     local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)
+    local ISLAND_BG_TRANSPARENCY = 0.35
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
-    local TOP_OFFSET = 5
+    local TOP_OFFSET = 4
 
     -- 确保parent是ScreenGui且设置IgnoreGuiInset
     local screenGui = parent
@@ -574,7 +576,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED)
     island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
     island.BackgroundColor3 = ISLAND_BG_COLOR
-    island.BackgroundTransparency = 0
+    island.BackgroundTransparency = ISLAND_BG_TRANSPARENCY
     island.BorderSizePixel = 0
     island.Parent = parent
     island.Visible = true
@@ -606,7 +608,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     timeLabel.BackgroundTransparency = 1
     timeLabel.Text = "00:00"
     timeLabel.TextColor3 = ISLAND_TEXT_COLOR
-    timeLabel.TextSize = 13
+    timeLabel.TextSize = 12
     timeLabel.Font = Enum.Font.GothamBold
     timeLabel.Parent = collapsedContent
 
@@ -636,8 +638,8 @@ function UILibrary:CreateFloatingButton(parent, options)
 
     local expandedIcon = Instance.new("TextLabel")
     expandedIcon.Name = "Icon"
-    expandedIcon.Size = UDim2.new(0, 20, 0, 20)
-    expandedIcon.Position = UDim2.new(0, 10, 0.5, -10)
+    expandedIcon.Size = UDim2.new(0, 18, 0, 18)
+    expandedIcon.Position = UDim2.new(0, 8, 0.5, -9)
     expandedIcon.BackgroundTransparency = 1
     expandedIcon.Text = "◈"
     expandedIcon.TextColor3 = ISLAND_TEXT_COLOR
