@@ -556,7 +556,16 @@ function UILibrary:CreateFloatingButton(parent, options)
     local ISLAND_RADIUS = 16
     local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
-    local TOP_OFFSET = -2
+    local TOP_OFFSET = 0
+
+    -- 确保parent是ScreenGui且设置IgnoreGuiInset
+    local screenGui = parent
+    if parent.ClassName ~= "ScreenGui" then
+        screenGui = parent:FindFirstAncestorOfClass("ScreenGui")
+    end
+    if screenGui and screenGui.ClassName == "ScreenGui" then
+        screenGui.IgnoreGuiInset = true
+    end
 
     -- 创建灵动岛容器
     local island = Instance.new("Frame")
@@ -718,7 +727,7 @@ function UILibrary:CreateFloatingButton(parent, options)
                                 BackgroundTransparency = 0.15
                             }):Play()
                             
-                            task.wait(0.5)
+                            task.wait(0.8)
                         else
                             expandedLabel.Text = "隐藏中..."
                             
@@ -726,12 +735,12 @@ function UILibrary:CreateFloatingButton(parent, options)
                                 BackgroundTransparency = 1
                             }):Play()
                             
-                            task.wait(0.35)
+                            task.wait(0.5)
                             mainFrame.Visible = false
-                            task.wait(0.2)
+                            task.wait(0.3)
                         end
                     else
-                        task.wait(0.3)
+                        task.wait(0.5)
                     end
 
                     collapseIsland()
