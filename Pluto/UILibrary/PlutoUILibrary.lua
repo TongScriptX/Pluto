@@ -553,16 +553,16 @@ function UILibrary:CreateFloatingButton(parent, options)
     local TOPBAR_HEIGHT = 48
     local TOPBAR_OFFSET = 10
     
-    -- 灵动岛尺寸配置（与 Roblox topbar 完全一致）
-    local ISLAND_WIDTH_COLLAPSED = 70
-    local ISLAND_WIDTH_EXPANDED = 180
-    local ISLAND_HEIGHT_COLLAPSED = TOPBAR_HEIGHT
-    local ISLAND_HEIGHT_EXPANDED = TOPBAR_HEIGHT + 12
-    local ISLAND_RADIUS = math.floor(TOPBAR_HEIGHT / 2)
+    -- 灵动岛尺寸配置（更紧凑，减少上下距离，增加左右距离）
+    local ISLAND_WIDTH_COLLAPSED = 90
+    local ISLAND_WIDTH_EXPANDED = 200
+    local ISLAND_HEIGHT_COLLAPSED = 32
+    local ISLAND_HEIGHT_EXPANDED = 44
+    local ISLAND_RADIUS = 16
     local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)
     local ISLAND_BG_TRANSPARENCY = 0.35
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
-    local TOP_OFFSET = TOPBAR_OFFSET
+    local TOP_OFFSET = TOPBAR_OFFSET + (TOPBAR_HEIGHT - ISLAND_HEIGHT_COLLAPSED) / 2
 
     -- 确保parent是ScreenGui且设置IgnoreGuiInset
     local screenGui = parent
