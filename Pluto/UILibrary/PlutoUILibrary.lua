@@ -674,6 +674,23 @@ function UILibrary:CreateFloatingButton(parent, options)
     local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
     local COLLAPSE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0)
     local FADE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    local MOVE_TWEEN = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    -- 获取窗口中心位置
+    local function getCenterPosition()
+        if mainFrame then
+            local centerData = mainFrame:GetAttribute("CenterPosition")
+            if centerData then
+                local x, y = centerData:match("([^,]+),([^,]+)")
+                return UDim2.new(0, tonumber(x), 0, tonumber(y))
+            end
+            local screenSize = GuiService:GetScreenResolution()
+            if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
+            local size = mainFrame.AbsoluteSize
+            return UDim2.new(0, (screenSize.X - size.X) / 2, 0, (screenSize.Y - size.Y) / 2)
+        end
+        return UDim2.new(0, 260, 0, 490)
+    end
 
     -- 应用淡入/淡出动画到所有子元素
     local function applyFadeToAll(frame, targetTransparency)
@@ -754,10 +771,16 @@ function UILibrary:CreateFloatingButton(parent, options)
 
                     if mainFrame then
                         if uiVisible then
-                            -- 显示窗口
+                            -- 显示窗口：移动到中心位置
                             mainFrame.Visible = true
                             mainFrame.BackgroundTransparency = 1
                             expandedLabel.Text = "显示中..."
+                            
+                            -- 移动到中心位置
+                            local centerPos = getCenterPosition()
+                            TweenService:Create(mainFrame, MOVE_TWEEN, {
+                                Position = centerPos
+                            }):Play()
                             
                             local fadeTweens = applyFadeToAll(mainFrame, 0)
                             table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
@@ -769,8 +792,16 @@ function UILibrary:CreateFloatingButton(parent, options)
                             
                             task.wait(0.8)
                         else
-                            -- 隐藏窗口（不再移动到中心，直接淡出）
+                            -- 隐藏窗口：先移动到中心，再淡出
                             expandedLabel.Text = "隐藏中..."
+                            
+                            -- 移动到中心位置
+                            local centerPos = getCenterPosition()
+                            TweenService:Create(mainFrame, MOVE_TWEEN, {
+                                Position = centerPos
+                            }):Play()
+                            
+                            task.wait(0.25)
                             
                             local fadeTweens = applyFadeToAll(mainFrame, 1)
                             table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
@@ -1494,19 +1525,23 @@ function UILibrary:CreateUIWindow(options)
     -- 计算屏幕中心位置（像素定位）
     local screenSize = GuiService:GetScreenResolution()
     if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
-    local centerX = (screenSize.X - windowWidth) / 2
-    local centerY = (screenSize.Y - windowHeight) / 2
+    local centerX = math.floor((screenSize.X - windowWidth) / 2)
+    local centerY = math.floor((screenSize.Y - windowHeight) / 2)
+    
+    -- 存储中心位置供后续使用
+    local centerPosition = UDim2.new(0, centerX, 0, centerY)
 
     local mainFrame = Instance.new("Frame")
     mainFrame.Name = "MainFrame"
     mainFrame.Size = UDim2.new(0, windowWidth, 0, windowHeight)
-    mainFrame.Position = UDim2.new(0, centerX, 0, centerY)  -- 使用像素定位
+    mainFrame.Position = centerPosition
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     mainFrame.BackgroundTransparency = 1  -- 初始透明，用于淡入动画
     mainFrame.Parent = screenGui
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
     mainFrame.ClipsDescendants = true
+    mainFrame:SetAttribute("CenterPosition", centerX .. "," .. centerY)  -- 存储中心位置
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusXLarge)
     corner.Parent = mainFrame
