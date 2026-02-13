@@ -667,10 +667,15 @@ function UILibrary:CreateFloatingButton(parent, options)
     local uiVisible = true
 
     -- 动画配置
-    local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
+    local SPRING_TWEEN = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
+    local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0)
     local COLLAPSE_TWEEN = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0)
     local FADE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
     local MOVE_TWEEN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    -- 灵动岛展开后的尺寸
+    local EXPANDED_WIDTH = 180
+    local EXPANDED_HEIGHT = 50
 
     -- 获取窗口中心位置
     local function getCenterPosition()
@@ -681,14 +686,23 @@ function UILibrary:CreateFloatingButton(parent, options)
         return UDim2.new(0.5, -200, 0.5, -150)
     end
 
-    -- 展开动画
+    -- 展开动画（先向下延展，再横向展开）
     local function expandIsland()
         if isAnimating or isExpanded then return end
         isAnimating = true
 
-        TweenService:Create(island, EXPAND_TWEEN, {
-            Size = UDim2.new(0, ISLAND_WIDTH_EXPANDED, 0, ISLAND_HEIGHT),
-            Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, TOP_OFFSET)
+        -- 第一阶段：向下延展（高度增加）
+        TweenService:Create(island, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, EXPANDED_HEIGHT),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
+        }):Play()
+        
+        task.wait(0.15)
+        
+        -- 第二阶段：横向展开（宽度增加，带弹性）
+        TweenService:Create(island, SPRING_TWEEN, {
+            Size = UDim2.new(0, EXPANDED_WIDTH, 0, EXPANDED_HEIGHT),
+            Position = UDim2.new(0.5, -EXPANDED_WIDTH/2, 0, TOP_OFFSET)
         }):Play()
 
         task.wait(0.2)
@@ -700,7 +714,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         isAnimating = false
     end
 
-    -- 收缩动画
+    -- 收缩动画（先横向收缩，再向上收缩）
     local function collapseIsland()
         if isAnimating or not isExpanded then return end
         isAnimating = true
@@ -708,8 +722,15 @@ function UILibrary:CreateFloatingButton(parent, options)
         expandedContent.Visible = false
         collapsedContent.Visible = true
 
-        task.wait(0.1)
+        -- 第一阶段：横向收缩
+        TweenService:Create(island, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
+            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, EXPANDED_HEIGHT),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
+        }):Play()
         
+        task.wait(0.15)
+        
+        -- 第二阶段：向上收缩
         TweenService:Create(island, COLLAPSE_TWEEN, {
             Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
             Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
