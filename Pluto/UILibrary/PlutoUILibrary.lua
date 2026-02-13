@@ -679,15 +679,11 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 获取窗口中心位置
     local function getCenterPosition()
         if mainFrame then
-            local centerData = mainFrame:GetAttribute("CenterPosition")
-            if centerData then
-                local x, y = centerData:match("([^,]+),([^,]+)")
-                return UDim2.new(0, tonumber(x), 0, tonumber(y))
+            local cx = mainFrame:GetAttribute("CenterX")
+            local cy = mainFrame:GetAttribute("CenterY")
+            if cx and cy then
+                return UDim2.new(0, cx, 0, cy)
             end
-            local screenSize = GuiService:GetScreenResolution()
-            if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
-            local size = mainFrame.AbsoluteSize
-            return UDim2.new(0, (screenSize.X - size.X) / 2, 0, (screenSize.Y - size.Y) / 2)
         end
         return UDim2.new(0, 260, 0, 490)
     end
@@ -1501,15 +1497,19 @@ function UILibrary:CreateUIWindow(options)
         end
     end
 
-    local screenSize = GuiService:GetScreenResolution()
-    if screenSize == Vector2.new(0, 0) then
+    -- 获取屏幕尺寸
+    local camera = workspace.CurrentCamera
+    local screenSize = camera and camera.ViewportSize or Vector2.new(720, 1280)
+    if screenSize.X == 0 or screenSize.Y == 0 then
         screenSize = Vector2.new(720, 1280)
     end
+    
     local windowWidth = math.min(UI_STYLES.WindowWidth, screenSize.X * 0.8)
     local windowHeight = math.min(UI_STYLES.WindowHeight, screenSize.Y * 0.8)
 
     local screenGui = Instance.new("ScreenGui")
     screenGui.Name = "PlutoUILibraryWindow"
+    screenGui.IgnoreGuiInset = true  -- 忽略顶部安全区域
     local success, err = pcall(function()
         screenGui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui", 30)
     end)
@@ -1522,13 +1522,9 @@ function UILibrary:CreateUIWindow(options)
     screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     screenGui.DisplayOrder = 5
 
-    -- 计算屏幕中心位置（像素定位）
-    local screenSize = GuiService:GetScreenResolution()
-    if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
+    -- 计算屏幕中心位置
     local centerX = math.floor((screenSize.X - windowWidth) / 2)
     local centerY = math.floor((screenSize.Y - windowHeight) / 2)
-    
-    -- 存储中心位置供后续使用
     local centerPosition = UDim2.new(0, centerX, 0, centerY)
 
     local mainFrame = Instance.new("Frame")
@@ -1541,7 +1537,8 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.Visible = true
     mainFrame.ZIndex = 5
     mainFrame.ClipsDescendants = true
-    mainFrame:SetAttribute("CenterPosition", centerX .. "," .. centerY)  -- 存储中心位置
+    mainFrame:SetAttribute("CenterX", centerX)
+    mainFrame:SetAttribute("CenterY", centerY)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusXLarge)
     corner.Parent = mainFrame
