@@ -549,23 +549,20 @@ function UILibrary:CreateFloatingButton(parent, options)
     end
     options = options or {}
 
-    -- 获取 topbar 高度（通过 GetGuiInset）
-    local topLeftInset, _ = GuiService:GetGuiInset()
-    local topbarHeight = topLeftInset.Y
-    if topbarHeight <= 0 then
-        topbarHeight = 36
-    end
+    -- TopBar 配置（根据 CoreGui.TopBarApp.TopBarApp.MenuIconHolder）
+    local TOPBAR_HEIGHT = 48
+    local TOPBAR_OFFSET = 10
     
-    -- 灵动岛尺寸配置（与Roblox topbar完全一致）
+    -- 灵动岛尺寸配置（与 Roblox topbar 完全一致）
     local ISLAND_WIDTH_COLLAPSED = 70
     local ISLAND_WIDTH_EXPANDED = 180
-    local ISLAND_HEIGHT_COLLAPSED = topbarHeight
-    local ISLAND_HEIGHT_EXPANDED = topbarHeight + 12
-    local ISLAND_RADIUS = math.floor(topbarHeight / 2)
+    local ISLAND_HEIGHT_COLLAPSED = TOPBAR_HEIGHT
+    local ISLAND_HEIGHT_EXPANDED = TOPBAR_HEIGHT + 12
+    local ISLAND_RADIUS = math.floor(TOPBAR_HEIGHT / 2)
     local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)
     local ISLAND_BG_TRANSPARENCY = 0.35
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
-    local TOP_OFFSET = 0
+    local TOP_OFFSET = TOPBAR_OFFSET
 
     -- 确保parent是ScreenGui且设置IgnoreGuiInset
     local screenGui = parent
