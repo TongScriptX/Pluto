@@ -763,12 +763,11 @@ function UILibrary:CreateFloatingButton(parent, options)
 
                     if mainFrame then
                         if uiVisible then
+                            -- 显示窗口
                             mainFrame.Visible = true
-                            mainFrame.Position = getCenterPosition()
                             mainFrame.BackgroundTransparency = 1
                             expandedLabel.Text = "显示中..."
                             
-                            -- 同时淡入所有元素
                             local fadeTweens = applyFadeToAll(mainFrame, 0)
                             table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 0.15
@@ -779,17 +778,9 @@ function UILibrary:CreateFloatingButton(parent, options)
                             
                             task.wait(0.8)
                         else
+                            -- 隐藏窗口（不再移动到中心，直接淡出）
                             expandedLabel.Text = "隐藏中..."
                             
-                            -- 先移动到中心
-                            local centerPos = getCenterPosition()
-                            TweenService:Create(mainFrame, MOVE_TWEEN, {
-                                Position = centerPos
-                            }):Play()
-                            
-                            task.wait(0.3)
-                            
-                            -- 同时淡出所有元素
                             local fadeTweens = applyFadeToAll(mainFrame, 1)
                             table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 1
@@ -1413,7 +1404,7 @@ end
 
 -- 拖拽模块
 local developmentMode = false
-local DEBUG_DRAG = true
+local DEBUG_DRAG = false
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
@@ -1443,18 +1434,8 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             dragging = true
             firstMove = true
             startMousePos = Vector2.new(input.Position.X, input.Position.Y)
-            
-            -- 获取当前实际像素位置
             local currentAbsPos = targetFrame.AbsolutePosition
             startFramePos = Vector2.new(currentAbsPos.X, currentAbsPos.Y)
-            
-            if DEBUG_DRAG then
-                print("[Drag] 开始拖拽")
-                print("  GUI:", gui.Name)
-                print("  鼠标位置:", startMousePos)
-                print("  窗口AbsolutePosition:", startFramePos)
-                print("  窗口Position:", targetFrame.Position)
-            end
         end
     end)
 
@@ -1465,21 +1446,12 @@ function UILibrary:MakeDraggable(gui, targetFrame)
         local currentMousePos = Vector2.new(input.Position.X, input.Position.Y)
         local delta = currentMousePos - startMousePos
         
-        -- 第一次移动时，锁定窗口位置
         if firstMove then
             firstMove = false
-            -- 立即将窗口锁定为像素定位
             targetFrame.Position = UDim2.new(0, startFramePos.X, 0, startFramePos.Y)
-            
-            if DEBUG_DRAG then
-                print("[Drag] 第一次移动，锁定位置")
-                print("  锁定后Position:", targetFrame.Position)
-                print("  Delta:", delta)
-            end
         end
         
         local newFramePos = startFramePos + delta
-        
         local screenSize = GuiService:GetScreenResolution()
         if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
         
@@ -1494,10 +1466,6 @@ function UILibrary:MakeDraggable(gui, targetFrame)
 
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            if DEBUG_DRAG and dragging then
-                print("[Drag] 结束拖拽")
-                print("  最终Position:", targetFrame.Position)
-            end
             dragging = false
         end
     end)
