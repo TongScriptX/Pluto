@@ -658,20 +658,21 @@ function UILibrary:CreateFloatingButton(parent, options)
     local uiVisible = true
 
     -- 动画配置
-    local SPRING_TWEEN = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local COLLAPSE_TWEEN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
+    local COLLAPSE_TWEEN = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0)
+    local FADE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
 
     -- 展开动画
     local function expandIsland()
         if isAnimating or isExpanded then return end
         isAnimating = true
 
-        TweenService:Create(island, SPRING_TWEEN, {
+        TweenService:Create(island, EXPAND_TWEEN, {
             Size = UDim2.new(0, ISLAND_WIDTH_EXPANDED, 0, ISLAND_HEIGHT),
             Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, 0)
         }):Play()
 
-        task.wait(0.12)
+        task.wait(0.2)
         collapsedContent.Visible = false
         expandedContent.Visible = true
         expandedLabel.Text = uiVisible and "隐藏窗口" or "显示窗口"
@@ -688,6 +689,8 @@ function UILibrary:CreateFloatingButton(parent, options)
         expandedContent.Visible = false
         collapsedContent.Visible = true
 
+        task.wait(0.1)
+        
         TweenService:Create(island, COLLAPSE_TWEEN, {
             Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
             Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 0)
@@ -702,7 +705,6 @@ function UILibrary:CreateFloatingButton(parent, options)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             if not isAnimating then
                 if isExpanded then
-                    -- 展开状态：切换UI显示/隐藏
                     uiVisible = not uiVisible
                     expandedLabel.Text = uiVisible and "隐藏窗口" or "显示窗口"
 
@@ -710,19 +712,29 @@ function UILibrary:CreateFloatingButton(parent, options)
                         if uiVisible then
                             mainFrame.Visible = true
                             mainFrame.BackgroundTransparency = 1
-                            TweenService:Create(mainFrame, TweenInfo.new(0.3), {
+                            expandedLabel.Text = "显示中..."
+                            
+                            TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 0.15
                             }):Play()
+                            
+                            task.wait(0.5)
                         else
-                            TweenService:Create(mainFrame, TweenInfo.new(0.3), {
+                            expandedLabel.Text = "隐藏中..."
+                            
+                            TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 1
                             }):Play()
-                            task.wait(0.3)
+                            
+                            task.wait(FADE_TWEEN.Duration)
                             mainFrame.Visible = false
+                            task.wait(0.2)
                         end
+                    else
+                        task.wait(0.3)
                     end
 
-                    task.delay(0.3, collapseIsland)
+                    collapseIsland()
                 else
                     expandIsland()
                 end
@@ -737,7 +749,6 @@ function UILibrary:CreateFloatingButton(parent, options)
             local islandPos = island.AbsolutePosition
             local islandSize = island.AbsoluteSize
 
-            -- 检查点击是否在灵动岛外部
             if mousePos.X < islandPos.X or mousePos.X > islandPos.X + islandSize.X or
                mousePos.Y < islandPos.Y or mousePos.Y > islandPos.Y + islandSize.Y then
                 collapseIsland()
