@@ -670,6 +670,16 @@ function UILibrary:CreateFloatingButton(parent, options)
     local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
     local COLLAPSE_TWEEN = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0)
     local FADE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    local MOVE_TWEEN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+
+    -- 获取窗口中心位置
+    local function getCenterPosition()
+        if mainFrame then
+            local size = mainFrame.AbsoluteSize
+            return UDim2.new(0.5, -size.X/2, 0.5, -size.Y/2)
+        end
+        return UDim2.new(0.5, -200, 0.5, -150)
+    end
 
     -- 展开动画
     local function expandIsland()
@@ -720,6 +730,7 @@ function UILibrary:CreateFloatingButton(parent, options)
                     if mainFrame then
                         if uiVisible then
                             mainFrame.Visible = true
+                            mainFrame.Position = getCenterPosition()
                             mainFrame.BackgroundTransparency = 1
                             expandedLabel.Text = "显示中..."
                             
@@ -731,13 +742,21 @@ function UILibrary:CreateFloatingButton(parent, options)
                         else
                             expandedLabel.Text = "隐藏中..."
                             
+                            local centerPos = getCenterPosition()
+                            
+                            TweenService:Create(mainFrame, MOVE_TWEEN, {
+                                Position = centerPos
+                            }):Play()
+                            
+                            task.wait(0.3)
+                            
                             TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 1
                             }):Play()
                             
-                            task.wait(0.5)
+                            task.wait(0.35)
                             mainFrame.Visible = false
-                            task.wait(0.3)
+                            task.wait(0.2)
                         end
                     else
                         task.wait(0.5)
