@@ -1413,6 +1413,7 @@ end
 
 -- 拖拽模块
 local developmentMode = false
+local DEBUG_DRAG = true
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
@@ -1427,6 +1428,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     local dragging = false
     local startMousePos = Vector2.new(0, 0)
     local startFramePos = Vector2.new(0, 0)
+    local lastFramePos = Vector2.new(0, 0)
 
     local function isMouseOverGui(input)
         local mousePos = Vector2.new(input.Position.X, input.Position.Y)
@@ -1441,6 +1443,14 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             dragging = true
             startMousePos = Vector2.new(input.Position.X, input.Position.Y)
             startFramePos = Vector2.new(targetFrame.AbsolutePosition.X, targetFrame.AbsolutePosition.Y)
+            lastFramePos = startFramePos
+            
+            if DEBUG_DRAG then
+                print("[Drag] 开始拖拽")
+                print("  鼠标位置:", startMousePos)
+                print("  窗口位置:", startFramePos)
+                print("  窗口Position:", targetFrame.Position)
+            end
         end
     end)
 
@@ -1461,11 +1471,25 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             math.clamp(newFramePos.Y, 0, screenSize.Y - frameSize.Y)
         )
         
+        if DEBUG_DRAG then
+            local actualPos = Vector2.new(targetFrame.AbsolutePosition.X, targetFrame.AbsolutePosition.Y)
+            local diff = newFramePos - lastFramePos
+            if math.abs(diff.Y) > 5 then
+                print("[Drag] Y方向变化:", diff.Y)
+                print("  期望位置:", newFramePos)
+                print("  实际位置:", actualPos)
+            end
+            lastFramePos = newFramePos
+        end
+        
         targetFrame.Position = UDim2.new(0, newFramePos.X, 0, newFramePos.Y)
     end)
 
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if DEBUG_DRAG and dragging then
+                print("[Drag] 结束拖拽")
+            end
             dragging = false
         end
     end)
