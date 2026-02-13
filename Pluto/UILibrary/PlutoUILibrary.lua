@@ -550,18 +550,19 @@ function UILibrary:CreateFloatingButton(parent, options)
     options = options or {}
 
     -- 灵动岛尺寸配置
-    local ISLAND_WIDTH_COLLAPSED = 70    -- 收缩状态宽度（仅显示时间）
-    local ISLAND_WIDTH_EXPANDED = 160    -- 展开状态宽度
-    local ISLAND_HEIGHT = 32             -- 高度
-    local ISLAND_RADIUS = 16             -- 圆角半径（胶囊形状）
-    local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)  -- 纯黑背景
+    local ISLAND_WIDTH_COLLAPSED = 70
+    local ISLAND_WIDTH_EXPANDED = 160
+    local ISLAND_HEIGHT = 32
+    local ISLAND_RADIUS = 16
+    local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
+    local TOP_OFFSET = -2
 
     -- 创建灵动岛容器
     local island = Instance.new("Frame")
     island.Name = "DynamicIsland"
     island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT)
-    island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 0)  -- 贴住顶部边缘
+    island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
     island.BackgroundColor3 = ISLAND_BG_COLOR
     island.BackgroundTransparency = 0
     island.BorderSizePixel = 0
@@ -570,7 +571,6 @@ function UILibrary:CreateFloatingButton(parent, options)
     island.ZIndex = 100
     island.ClipsDescendants = true
 
-    -- 胶囊形状圆角（只有下方圆角，上方贴边）
     local islandCorner = Instance.new("UICorner")
     islandCorner.CornerRadius = UDim.new(0, ISLAND_RADIUS)
     islandCorner.Parent = island
@@ -669,7 +669,7 @@ function UILibrary:CreateFloatingButton(parent, options)
 
         TweenService:Create(island, EXPAND_TWEEN, {
             Size = UDim2.new(0, ISLAND_WIDTH_EXPANDED, 0, ISLAND_HEIGHT),
-            Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, 0)
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, TOP_OFFSET)
         }):Play()
 
         task.wait(0.2)
@@ -693,7 +693,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         
         TweenService:Create(island, COLLAPSE_TWEEN, {
             Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
-            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 0)
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
         }):Play()
 
         isExpanded = false
@@ -726,7 +726,7 @@ function UILibrary:CreateFloatingButton(parent, options)
                                 BackgroundTransparency = 1
                             }):Play()
                             
-                            task.wait(FADE_TWEEN.Duration)
+                            task.wait(0.35)
                             mainFrame.Visible = false
                             task.wait(0.2)
                         end
@@ -767,7 +767,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         if not isExpanded and not isAnimating then
             TweenService:Create(island, TweenInfo.new(0.15), {
                 Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED + 6, 0, ISLAND_HEIGHT + 2),
-                Position = UDim2.new(0.5, -(ISLAND_WIDTH_COLLAPSED + 6)/2, 0, 0)
+                Position = UDim2.new(0.5, -(ISLAND_WIDTH_COLLAPSED + 6)/2, 0, TOP_OFFSET)
             }):Play()
         end
     end)
@@ -776,7 +776,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         if not isExpanded and not isAnimating then
             TweenService:Create(island, TweenInfo.new(0.15), {
                 Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
-                Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 0)
+                Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
             }):Play()
         end
     end)
