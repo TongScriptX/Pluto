@@ -1428,6 +1428,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     local dragging = false
     local startMousePos = Vector2.new(0, 0)
     local startFramePos = Vector2.new(0, 0)
+    local firstMove = true
 
     local function isMouseOverGui(input)
         local mousePos = Vector2.new(input.Position.X, input.Position.Y)
@@ -1440,6 +1441,7 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     UserInputService.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
             dragging = true
+            firstMove = true
             startMousePos = Vector2.new(input.Position.X, input.Position.Y)
             
             -- 获取当前实际像素位置
@@ -1448,17 +1450,10 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             
             if DEBUG_DRAG then
                 print("[Drag] 开始拖拽")
+                print("  GUI:", gui.Name)
                 print("  鼠标位置:", startMousePos)
                 print("  窗口AbsolutePosition:", startFramePos)
                 print("  窗口Position:", targetFrame.Position)
-                print("  窗口AbsoluteSize:", targetFrame.AbsoluteSize)
-            end
-            
-            -- 立即将窗口锁定为像素定位
-            targetFrame.Position = UDim2.new(0, startFramePos.X, 0, startFramePos.Y)
-            
-            if DEBUG_DRAG then
-                print("  锁定后Position:", targetFrame.Position)
             end
         end
     end)
@@ -1469,6 +1464,20 @@ function UILibrary:MakeDraggable(gui, targetFrame)
         
         local currentMousePos = Vector2.new(input.Position.X, input.Position.Y)
         local delta = currentMousePos - startMousePos
+        
+        -- 第一次移动时，锁定窗口位置
+        if firstMove then
+            firstMove = false
+            -- 立即将窗口锁定为像素定位
+            targetFrame.Position = UDim2.new(0, startFramePos.X, 0, startFramePos.Y)
+            
+            if DEBUG_DRAG then
+                print("[Drag] 第一次移动，锁定位置")
+                print("  锁定后Position:", targetFrame.Position)
+                print("  Delta:", delta)
+            end
+        end
+        
         local newFramePos = startFramePos + delta
         
         local screenSize = GuiService:GetScreenResolution()
