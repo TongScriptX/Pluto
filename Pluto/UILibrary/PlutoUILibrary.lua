@@ -1425,42 +1425,43 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     end
 
     local dragging = false
-    local startPos, startGuiOffset
+    local startMousePos = Vector2.new(0, 0)
+    local startFramePos = Vector2.new(0, 0)
 
     local function isMouseOverGui(input)
-        local pos = input.Position
+        local mousePos = Vector2.new(input.Position.X, input.Position.Y)
         local guiPos = gui.AbsolutePosition
         local guiSize = gui.AbsoluteSize
-        return pos.X >= guiPos.X and pos.X <= guiPos.X + guiSize.X and pos.Y >= guiPos.Y and pos.Y <= guiPos.Y + guiSize.Y
+        return mousePos.X >= guiPos.X and mousePos.X <= guiPos.X + guiSize.X 
+           and mousePos.Y >= guiPos.Y and mousePos.Y <= guiPos.Y + guiSize.Y
     end
 
     UserInputService.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
             dragging = true
-            startPos = Vector2.new(input.Position.X, input.Position.Y)
-            startGuiOffset = Vector2.new(targetFrame.AbsolutePosition.X, targetFrame.AbsolutePosition.Y)
+            startMousePos = Vector2.new(input.Position.X, input.Position.Y)
+            startFramePos = Vector2.new(targetFrame.AbsolutePosition.X, targetFrame.AbsolutePosition.Y)
         end
     end)
 
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local currentPos = Vector2.new(input.Position.X, input.Position.Y)
-            local delta = currentPos - startPos
-            local newOffset = startGuiOffset + delta
-            
-            local screenSize = GuiService:GetScreenResolution()
-            if screenSize == Vector2.new(0, 0) then
-                screenSize = Vector2.new(720, 1280)
-            end
-            local guiSize = targetFrame.AbsoluteSize
-            local maxX = math.max(0, screenSize.X - guiSize.X)
-            local maxY = math.max(0, screenSize.Y - guiSize.Y)
-            newOffset = Vector2.new(
-                math.clamp(newOffset.X, 0, maxX),
-                math.clamp(newOffset.Y, 0, maxY)
-            )
-            targetFrame.Position = UDim2.new(0, newOffset.X, 0, newOffset.Y)
-        end
+        if not dragging then return end
+        if input.UserInputType ~= Enum.UserInputType.MouseMovement and input.UserInputType ~= Enum.UserInputType.Touch then return end
+        
+        local currentMousePos = Vector2.new(input.Position.X, input.Position.Y)
+        local delta = currentMousePos - startMousePos
+        local newFramePos = startFramePos + delta
+        
+        local screenSize = GuiService:GetScreenResolution()
+        if screenSize.X == 0 then screenSize = Vector2.new(720, 1280) end
+        
+        local frameSize = targetFrame.AbsoluteSize
+        newFramePos = Vector2.new(
+            math.clamp(newFramePos.X, 0, screenSize.X - frameSize.X),
+            math.clamp(newFramePos.Y, 0, screenSize.Y - frameSize.Y)
+        )
+        
+        targetFrame.Position = UDim2.new(0, newFramePos.X, 0, newFramePos.Y)
     end)
 
     UserInputService.InputEnded:Connect(function(input)
