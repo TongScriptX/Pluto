@@ -541,99 +541,231 @@ function UILibrary:CreateButton(parent, options)
     return button
 end
 
--- 悬浮按钮模块
+-- 灵动岛悬浮按钮模块
 function UILibrary:CreateFloatingButton(parent, options)
     if not parent then
         warn("[FloatingButton]: Creation failed: Parent is nil")
         return nil
     end
     options = options or {}
-    local button = Instance.new("TextButton")
-    button.Name = "FloatingButton"
-    button.Size = UDim2.new(0, 30, 0, 30)
-    button.Position = UDim2.new(1, -40, 1, -80)
-    button.BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary
-    button.BackgroundTransparency = 0.2
-    button.Text = options.Text or "T"
-    button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-    button.TextSize = 12
-    button.Font = THEME.Font
-    button.Rotation = 0
-    button.Parent = parent
-    button.Visible = true
-    button.ZIndex = 15
-    local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
-                corner.Parent = button
-            
-                if not button.Parent then
-        warn("[FloatingButton]: Button has no parent after creation")
-        button:Destroy()
-        return nil
-    end
 
+    -- 灵动岛尺寸配置
+    local ISLAND_WIDTH_COLLAPSED = 60    -- 收缩状态宽度
+    local ISLAND_WIDTH_EXPANDED = 140    -- 展开状态宽度
+    local ISLAND_HEIGHT = 26             -- 高度
+    local ISLAND_RADIUS = 13             -- 圆角半径（胶囊形状）
+    local ISLAND_BG_COLOR = Color3.fromRGB(28, 28, 30)  -- 深色背景（iPhone风格）
+    local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
+
+    -- 创建灵动岛容器
+    local island = Instance.new("Frame")
+    island.Name = "DynamicIsland"
+    island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT)
+    island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 10)  -- 顶部中间
+    island.BackgroundColor3 = ISLAND_BG_COLOR
+    island.BackgroundTransparency = 0.1
+    island.BorderSizePixel = 0
+    island.Parent = parent
+    island.Visible = true
+    island.ZIndex = 100
+
+    -- 胶囊形状圆角
+    local islandCorner = Instance.new("UICorner")
+    islandCorner.CornerRadius = UDim.new(0, ISLAND_RADIUS)
+    islandCorner.Parent = island
+
+    -- 阴影效果
+    local islandStroke = Instance.new("UIStroke")
+    islandStroke.Color = Color3.fromRGB(60, 60, 65)
+    islandStroke.Thickness = 1
+    islandStroke.Transparency = 0.7
+    islandStroke.Parent = island
+
+    -- 内容容器（用于裁剪超出部分）
+    local contentContainer = Instance.new("Frame")
+    contentContainer.Name = "ContentContainer"
+    contentContainer.Size = UDim2.new(1, 0, 1, 0)
+    contentContainer.BackgroundTransparency = 1
+    contentContainer.ClipsDescendants = true
+    contentContainer.Parent = island
+
+    -- 图标按钮（收缩状态显示）
+    local iconBtn = Instance.new("TextButton")
+    iconBtn.Name = "IconBtn"
+    iconBtn.Size = UDim2.new(1, 0, 1, 0)
+    iconBtn.BackgroundTransparency = 1
+    iconBtn.Text = options.Text or "◈"
+    iconBtn.TextColor3 = ISLAND_TEXT_COLOR
+    iconBtn.TextSize = 14
+    iconBtn.Font = THEME.Font
+    iconBtn.Parent = contentContainer
+    iconBtn.ZIndex = 101
+
+    -- 展开内容（展开状态显示）
+    local expandedContent = Instance.new("Frame")
+    expandedContent.Name = "ExpandedContent"
+    expandedContent.Size = UDim2.new(1, 0, 1, 0)
+    expandedContent.BackgroundTransparency = 1
+    expandedContent.Visible = false
+    expandedContent.Parent = contentContainer
+    expandedContent.ZIndex = 102
+
+    -- 展开状态的文字
+    local expandedLabel = Instance.new("TextLabel")
+    expandedLabel.Name = "ExpandedLabel"
+    expandedLabel.Size = UDim2.new(1, -20, 1, 0)
+    expandedLabel.Position = UDim2.new(0, 10, 0, 0)
+    expandedLabel.BackgroundTransparency = 1
+    expandedLabel.Text = "隐藏窗口"
+    expandedLabel.TextColor3 = ISLAND_TEXT_COLOR
+    expandedLabel.TextSize = 11
+    expandedLabel.Font = THEME.Font
+    expandedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    expandedLabel.Parent = expandedContent
+
+    -- 状态变量
+    local isExpanded = false
+    local isAnimating = false
     local mainFrame = options.MainFrame
-    local firstOpenPos = mainFrame and mainFrame.Position or UDim2.new(0.5, -UI_STYLES.WindowWidth / 2, 0.5, -UI_STYLES.WindowHeight / 2)
-    local lastKnownPos = firstOpenPos
-    if mainFrame then
-        button.MouseButton1Click:Connect(function()
-            if not button.Active then return end
-            button.Active = false
-            local isVisible = not mainFrame.Visible
-            button.Text = isVisible and "L" or "T"
-            mainFrame.Visible = true
-            mainFrame.ZIndex = isVisible and 5 or 1
-            
-            if isVisible then
-                -- 打开窗口：从中心位置淡入
-                mainFrame.Position = firstOpenPos
-                lastKnownPos = firstOpenPos  -- 重置位置记录
-                local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, true)
-                for _, t in ipairs(tweens) do
-                    t:Play()
-                end
-                TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
-                    BackgroundTransparency = 0.5
-                }):Play()
-            else
-                -- 关闭窗口：先补间动画移动到中心，再淡出
-                -- 第一步：补间动画移动到屏幕中心
-                local moveTween = TweenService:Create(mainFrame, TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Position = firstOpenPos
-                })
-                moveTween:Play()
-                
-                moveTween.Completed:Connect(function()
-                    -- 第二步：淡出隐藏
-                    local tweens = self:ApplyFadeTweens(mainFrame, self.TWEEN_INFO_UI, false)
-                    for _, t in ipairs(tweens) do
-                        t:Play()
-                    end
-                    local fadeTween = TweenService:Create(mainFrame, self.TWEEN_INFO_UI, {
-                        BackgroundTransparency = 1
-                    })
-                    fadeTween:Play()
-                    fadeTween.Completed:Connect(function()
-                        mainFrame.Visible = false
-                        lastKnownPos = firstOpenPos  -- 关闭后重置位置到中心
-                    end)
-                end)
-            end
-            
-            TweenService:Create(button, self.TWEEN_INFO_BUTTON, {Rotation = isVisible and 45 or 0}):Play()
-            button.Active = true
-        end)
+    local uiVisible = true
+
+    -- 动画配置
+    local expandTweenInfo = TweenInfo.new(0.35, Enum.EasingStyle.Cubic, Enum.EasingDirection.Out)
+    local collapseTweenInfo = TweenInfo.new(0.25, Enum.EasingStyle.Cubic, Enum.EasingDirection.In)
+
+    -- 展开动画
+    local function expandIsland()
+        if isAnimating or isExpanded then return end
+        isAnimating = true
+        isExpanded = true
+
+        -- 展开宽度
+        TweenService:Create(island, expandTweenInfo, {
+            Size = UDim2.new(0, ISLAND_WIDTH_EXPANDED, 0, ISLAND_HEIGHT),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, 10)
+        }):Play()
+
+        -- 切换内容
+        task.wait(0.1)
+        iconBtn.Visible = false
+        expandedContent.Visible = true
+        expandedLabel.Text = uiVisible and "隐藏窗口" or "显示窗口"
+
+        isAnimating = false
     end
 
-    button.MouseEnter:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Accent or DEFAULT_THEME.Accent}):Play()
-    end)
-    button.MouseLeave:Connect(function()
-        TweenService:Create(button, self.TWEEN_INFO_BUTTON, {BackgroundColor3 = THEME.Primary or DEFAULT_THEME.Primary}):Play()
+    -- 收缩动画
+    local function collapseIsland()
+        if isAnimating or not isExpanded then return end
+        isAnimating = true
+        isExpanded = false
+
+        -- 切换内容
+        expandedContent.Visible = false
+        iconBtn.Visible = true
+
+        -- 收缩宽度
+        TweenService:Create(island, collapseTweenInfo, {
+            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 10)
+        }):Play()
+
+        isAnimating = false
+    end
+
+    -- 点击事件处理
+    local clickStartTime = 0
+    local clickStartPosition = Vector2.new(0, 0)
+
+    island.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            clickStartTime = tick()
+            clickStartPosition = Vector2.new(input.Position.X, input.Position.Y)
+        end
     end)
 
-    self:MakeDraggable(button, button)
-    return button
+    island.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local elapsed = tick() - clickStartTime
+            local distance = (Vector2.new(input.Position.X, input.Position.Y) - clickStartPosition).Magnitude
+
+            -- 区分点击和拖动（短时间且小距离才算点击）
+            if elapsed < 0.5 and distance < 15 then
+                if isExpanded then
+                    -- 已展开状态：点击切换UI显示/隐藏，然后收缩
+                    uiVisible = not uiVisible
+                    expandedLabel.Text = uiVisible and "隐藏窗口" or "显示窗口"
+
+                    -- 切换主窗口显示
+                    if mainFrame then
+                        mainFrame.Visible = uiVisible
+                    end
+
+                    -- 延迟收缩
+                    task.delay(0.3, collapseIsland)
+                else
+                    -- 收缩状态：点击展开
+                    expandIsland()
+                end
+            end
+        end
+    end)
+
+    -- 鼠标离开时自动收缩
+    island.MouseLeave:Connect(function()
+        if isExpanded and not isAnimating then
+            task.wait(0.5)
+            if isExpanded then
+                collapseIsland()
+            end
+        end
+    end)
+
+    -- 拖动功能
+    local dragging = false
+    local dragStart = Vector2.new(0, 0)
+    local islandStartPos = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, 10)
+
+    island.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = Vector2.new(input.Position.X, input.Position.Y)
+            islandStartPos = island.Position
+        end
+    end)
+
+    island.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = Vector2.new(input.Position.X, input.Position.Y) - dragStart
+            island.Position = UDim2.new(
+                islandStartPos.X.Scale,
+                islandStartPos.X.Offset + delta.X,
+                islandStartPos.Y.Scale,
+                islandStartPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    -- 悬停效果
+    island.MouseEnter:Connect(function()
+        TweenService:Create(island, TweenInfo.new(0.2), {
+            BackgroundColor3 = Color3.fromRGB(38, 38, 42)
+        }):Play()
+    end)
+
+    island.MouseLeave:Connect(function()
+        TweenService:Create(island, TweenInfo.new(0.2), {
+            BackgroundColor3 = ISLAND_BG_COLOR
+        }):Play()
+    end)
+
+    return island
 end
 
 -- 文本标签模块
