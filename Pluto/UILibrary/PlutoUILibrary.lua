@@ -554,8 +554,8 @@ function UILibrary:CreateFloatingButton(parent, options)
     local TOPBAR_OFFSET = 10
     
     -- 灵动岛尺寸配置（参考 UnibarMenu['2']）
-    local ISLAND_WIDTH_COLLAPSED = 140
-    local ISLAND_WIDTH_EXPANDED = 200
+    local ISLAND_WIDTH_COLLAPSED = 100
+    local ISLAND_WIDTH_EXPANDED = 160
     local ISLAND_HEIGHT_COLLAPSED = 44
     local ISLAND_HEIGHT_EXPANDED = 44
     local ISLAND_RADIUS = 22
