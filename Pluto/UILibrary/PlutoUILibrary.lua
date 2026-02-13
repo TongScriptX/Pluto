@@ -551,12 +551,13 @@ function UILibrary:CreateFloatingButton(parent, options)
 
     -- 灵动岛尺寸配置
     local ISLAND_WIDTH_COLLAPSED = 70
-    local ISLAND_WIDTH_EXPANDED = 160
-    local ISLAND_HEIGHT = 32
+    local ISLAND_WIDTH_EXPANDED = 180
+    local ISLAND_HEIGHT_COLLAPSED = 32
+    local ISLAND_HEIGHT_EXPANDED = 50
     local ISLAND_RADIUS = 16
     local ISLAND_BG_COLOR = Color3.fromRGB(0, 0, 0)
     local ISLAND_TEXT_COLOR = Color3.fromRGB(255, 255, 255)
-    local TOP_OFFSET = 0
+    local TOP_OFFSET = 5
 
     -- 确保parent是ScreenGui且设置IgnoreGuiInset
     local screenGui = parent
@@ -570,7 +571,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 创建灵动岛容器
     local island = Instance.new("Frame")
     island.Name = "DynamicIsland"
-    island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT)
+    island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED)
     island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
     island.BackgroundColor3 = ISLAND_BG_COLOR
     island.BackgroundTransparency = 0
@@ -612,14 +613,12 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 更新时间的函数
     local function updateTime()
         local now = os.time()
-        -- UTC+8
         local utc8Time = now + 8 * 3600
         local hours = math.floor((utc8Time % 86400) / 3600)
         local minutes = math.floor((utc8Time % 3600) / 60)
         timeLabel.Text = string.format("%02d:%02d", hours, minutes)
     end
 
-    -- 启动时间更新
     task.spawn(function()
         while island and island.Parent do
             updateTime()
@@ -635,7 +634,6 @@ function UILibrary:CreateFloatingButton(parent, options)
     expandedContent.Visible = false
     expandedContent.Parent = contentContainer
 
-    -- 展开状态的图标
     local expandedIcon = Instance.new("TextLabel")
     expandedIcon.Name = "Icon"
     expandedIcon.Size = UDim2.new(0, 20, 0, 20)
@@ -667,15 +665,10 @@ function UILibrary:CreateFloatingButton(parent, options)
     local uiVisible = true
 
     -- 动画配置
-    local SPRING_TWEEN = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
-    local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out, 0, false, 0)
-    local COLLAPSE_TWEEN = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0)
+    local EXPAND_TWEEN = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
+    local COLLAPSE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut, 0, false, 0)
     local FADE_TWEEN = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
     local MOVE_TWEEN = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-
-    -- 灵动岛展开后的尺寸
-    local EXPANDED_WIDTH = 180
-    local EXPANDED_HEIGHT = 50
 
     -- 获取窗口中心位置
     local function getCenterPosition()
@@ -686,26 +679,49 @@ function UILibrary:CreateFloatingButton(parent, options)
         return UDim2.new(0.5, -200, 0.5, -150)
     end
 
-    -- 展开动画（先向下延展，再横向展开）
+    -- 应用淡入/淡出动画到所有子元素
+    local function applyFadeToAll(frame, targetTransparency)
+        local tweens = {}
+        
+        local function processElement(element)
+            if element:IsA("Frame") then
+                local baseTransparency = element:GetAttribute("BaseTransparency")
+                if baseTransparency then
+                    table.insert(tweens, TweenService:Create(element, FADE_TWEEN, {
+                        BackgroundTransparency = targetTransparency == 0 and tonumber(baseTransparency) or 1
+                    }))
+                end
+            elseif element:IsA("TextLabel") or element:IsA("TextButton") then
+                table.insert(tweens, TweenService:Create(element, FADE_TWEEN, {
+                    TextTransparency = targetTransparency
+                }))
+            elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
+                table.insert(tweens, TweenService:Create(element, FADE_TWEEN, {
+                    ImageTransparency = targetTransparency
+                }))
+            end
+            
+            for _, child in ipairs(element:GetChildren()) do
+                processElement(child)
+            end
+        end
+        
+        processElement(frame)
+        return tweens
+    end
+
+    -- 展开动画（横向和纵向同时展开）
     local function expandIsland()
         if isAnimating or isExpanded then return end
         isAnimating = true
 
-        -- 第一阶段：向下延展（高度增加）
-        TweenService:Create(island, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, EXPANDED_HEIGHT),
-            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
-        }):Play()
-        
-        task.wait(0.15)
-        
-        -- 第二阶段：横向展开（宽度增加，带弹性）
-        TweenService:Create(island, SPRING_TWEEN, {
-            Size = UDim2.new(0, EXPANDED_WIDTH, 0, EXPANDED_HEIGHT),
-            Position = UDim2.new(0.5, -EXPANDED_WIDTH/2, 0, TOP_OFFSET)
+        -- 同时展开宽度和高度
+        TweenService:Create(island, EXPAND_TWEEN, {
+            Size = UDim2.new(0, ISLAND_WIDTH_EXPANDED, 0, ISLAND_HEIGHT_EXPANDED),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_EXPANDED/2, 0, TOP_OFFSET)
         }):Play()
 
-        task.wait(0.2)
+        task.wait(0.15)
         collapsedContent.Visible = false
         expandedContent.Visible = true
         expandedLabel.Text = uiVisible and "隐藏窗口" or "显示窗口"
@@ -714,7 +730,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         isAnimating = false
     end
 
-    -- 收缩动画（先横向收缩，再向上收缩）
+    -- 收缩动画（横向和纵向同时收缩）
     local function collapseIsland()
         if isAnimating or not isExpanded then return end
         isAnimating = true
@@ -722,17 +738,9 @@ function UILibrary:CreateFloatingButton(parent, options)
         expandedContent.Visible = false
         collapsedContent.Visible = true
 
-        -- 第一阶段：横向收缩
-        TweenService:Create(island, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, EXPANDED_HEIGHT),
-            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
-        }):Play()
-        
-        task.wait(0.15)
-        
-        -- 第二阶段：向上收缩
+        -- 同时收缩宽度和高度
         TweenService:Create(island, COLLAPSE_TWEEN, {
-            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT),
+            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
             Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
         }):Play()
 
@@ -755,25 +763,35 @@ function UILibrary:CreateFloatingButton(parent, options)
                             mainFrame.BackgroundTransparency = 1
                             expandedLabel.Text = "显示中..."
                             
-                            TweenService:Create(mainFrame, FADE_TWEEN, {
+                            -- 同时淡入所有元素
+                            local fadeTweens = applyFadeToAll(mainFrame, 0)
+                            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 0.15
-                            }):Play()
+                            }))
+                            for _, tween in ipairs(fadeTweens) do
+                                tween:Play()
+                            end
                             
                             task.wait(0.8)
                         else
                             expandedLabel.Text = "隐藏中..."
                             
+                            -- 先移动到中心
                             local centerPos = getCenterPosition()
-                            
                             TweenService:Create(mainFrame, MOVE_TWEEN, {
                                 Position = centerPos
                             }):Play()
                             
                             task.wait(0.3)
                             
-                            TweenService:Create(mainFrame, FADE_TWEEN, {
+                            -- 同时淡出所有元素
+                            local fadeTweens = applyFadeToAll(mainFrame, 1)
+                            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 1
-                            }):Play()
+                            }))
+                            for _, tween in ipairs(fadeTweens) do
+                                tween:Play()
+                            end
                             
                             task.wait(0.35)
                             mainFrame.Visible = false
@@ -1414,26 +1432,24 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     UserInputService.InputBegan:Connect(function(input)
         if (input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch) and isMouseOverGui(input) then
             dragging = true
-            startPos = input.Position
-            startGuiOffset = targetFrame.AbsolutePosition
-            targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
-            if developmentMode then
-
-            end
+            startPos = Vector2.new(input.Position.X, input.Position.Y)
+            startGuiOffset = Vector2.new(targetFrame.AbsolutePosition.X, targetFrame.AbsolutePosition.Y)
         end
     end)
 
     UserInputService.InputChanged:Connect(function(input)
         if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - startPos
-            local newOffset = Vector2.new(startGuiOffset.X + delta.X, startGuiOffset.Y + delta.Y)
+            local currentPos = Vector2.new(input.Position.X, input.Position.Y)
+            local delta = currentPos - startPos
+            local newOffset = startGuiOffset + delta
+            
             local screenSize = GuiService:GetScreenResolution()
             if screenSize == Vector2.new(0, 0) then
                 screenSize = Vector2.new(720, 1280)
             end
             local guiSize = targetFrame.AbsoluteSize
-            local maxX = math.max(0, screenSize.X - math.max(guiSize.X, 1))
-            local maxY = math.max(0, screenSize.Y - math.max(guiSize.Y, 1))
+            local maxX = math.max(0, screenSize.X - guiSize.X)
+            local maxY = math.max(0, screenSize.Y - guiSize.Y)
             newOffset = Vector2.new(
                 math.clamp(newOffset.X, 0, maxX),
                 math.clamp(newOffset.Y, 0, maxY)
@@ -1445,10 +1461,6 @@ function UILibrary:MakeDraggable(gui, targetFrame)
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             dragging = false
-            targetFrame.ZIndex = targetFrame.Name == "FloatingButton" and 15 or 5
-            if developmentMode then
-
-            end
         end
     end)
 end
