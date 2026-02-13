@@ -1851,27 +1851,8 @@ function UILibrary:CreateSubTabs(tabContent, options)
         contentPadding.PaddingBottom = UDim.new(0, UI_STYLES.Padding)
         contentPadding.Parent = content
         
-        contentLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            task.defer(function()
-                local contentSize = contentLayout.AbsoluteContentSize
-                if contentSize and contentSize.Y > 0 then
-                    -- 更新父容器tabContent的CanvasSize
-                    if tabContent:IsA("ScrollingFrame") then
-                        tabContent.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 20)
-                    end
-                end
-            end)
-        end)
-        
-        -- 初始延迟更新CanvasSize
-        task.delay(0.1, function()
-            local contentSize = contentLayout.AbsoluteContentSize
-            if contentSize and contentSize.Y > 0 then
-                if tabContent:IsA("ScrollingFrame") then
-                    tabContent.CanvasSize = UDim2.new(0, 0, 0, contentSize.Y + 20)
-                end
-            end
-        end)
+        -- 简化CanvasSize更新，移除task.defer避免递归
+        -- 子标签页内容使用AutomaticSize，不需要手动管理CanvasSize
         
         -- 存储数据
         table.insert(subTabsData, {
