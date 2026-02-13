@@ -1413,7 +1413,7 @@ end
 
 -- 拖拽模块
 local developmentMode = false
-local DEBUG_DRAG = false
+local DEBUG_DRAG = true
 
 function UILibrary:MakeDraggable(gui, targetFrame)
     if not gui then
@@ -1446,13 +1446,19 @@ function UILibrary:MakeDraggable(gui, targetFrame)
             local currentAbsPos = targetFrame.AbsolutePosition
             startFramePos = Vector2.new(currentAbsPos.X, currentAbsPos.Y)
             
-            -- 立即将窗口锁定为像素定位，防止跳动
-            targetFrame.Position = UDim2.new(0, startFramePos.X, 0, startFramePos.Y)
-            
             if DEBUG_DRAG then
                 print("[Drag] 开始拖拽")
                 print("  鼠标位置:", startMousePos)
-                print("  窗口位置:", startFramePos)
+                print("  窗口AbsolutePosition:", startFramePos)
+                print("  窗口Position:", targetFrame.Position)
+                print("  窗口AbsoluteSize:", targetFrame.AbsoluteSize)
+            end
+            
+            -- 立即将窗口锁定为像素定位
+            targetFrame.Position = UDim2.new(0, startFramePos.X, 0, startFramePos.Y)
+            
+            if DEBUG_DRAG then
+                print("  锁定后Position:", targetFrame.Position)
             end
         end
     end)
@@ -1479,6 +1485,10 @@ function UILibrary:MakeDraggable(gui, targetFrame)
 
     UserInputService.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            if DEBUG_DRAG and dragging then
+                print("[Drag] 结束拖拽")
+                print("  最终Position:", targetFrame.Position)
+            end
             dragging = false
         end
     end)
