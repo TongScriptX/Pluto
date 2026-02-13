@@ -33,43 +33,17 @@ local subTabs = UILibrary:CreateSubTabs(homeContent, {
 -- 子标签页 1: 概览
 local overviewContent = subTabs.GetContent(1)
 if overviewContent then
-    -- 用户信息卡片
     local userCard = UILibrary:CreateCard(overviewContent)
-    UILibrary:CreateLabel(userCard, {
-        Text = "用户信息",
-        TextSize = 14
-    })
-    UILibrary:CreateLabel(userCard, {
-        Text = "用户名: Player123"
-    })
-    UILibrary:CreateLabel(userCard, {
-        Text = "等级: 15"
-    })
+    UILibrary:CreateLabel(userCard, { Text = "用户信息", TextSize = 14 })
+    UILibrary:CreateLabel(userCard, { Text = "用户名: Player123" })
+    UILibrary:CreateLabel(userCard, { Text = "等级: 15" })
     
-    -- 快捷操作卡片
     local actionCard = UILibrary:CreateCard(overviewContent)
-    UILibrary:CreateLabel(actionCard, {
-        Text = "快捷操作",
-        TextSize = 14
-    })
-    
+    UILibrary:CreateLabel(actionCard, { Text = "快捷操作", TextSize = 14 })
     UILibrary:CreateButton(actionCard, {
         Text = "开始游戏",
         Callback = function()
-            UILibrary:Notify({
-                Title = "游戏开始",
-                Text = "游戏即将开始，请准备！"
-            })
-        end
-    })
-    
-    UILibrary:CreateButton(actionCard, {
-        Text = "查看成就",
-        Callback = function()
-            UILibrary:Notify({
-                Title = "成就",
-                Text = "暂无新成就"
-            })
+            UILibrary:Notify({ Title = "游戏开始", Text = "游戏即将开始！" })
         end
     })
 end
@@ -78,24 +52,16 @@ end
 local characterContent = subTabs.GetContent(2)
 if characterContent then
     local charCard = UILibrary:CreateCard(characterContent)
-    UILibrary:CreateLabel(charCard, {
-        Text = "角色属性",
-        TextSize = 14
-    })
+    UILibrary:CreateLabel(charCard, { Text = "角色属性", TextSize = 14 })
     UILibrary:CreateLabel(charCard, { Text = "力量: 85" })
     UILibrary:CreateLabel(charCard, { Text = "敏捷: 72" })
-    UILibrary:CreateLabel(charCard, { Text = "智力: 68" })
     
-    -- 下拉框选择职业
-    local roleDropdown = UILibrary:CreateDropdown(charCard, {
+    UILibrary:CreateDropdown(charCard, {
         Text = "职业",
         DefaultOption = "战士",
-        Options = { "战士", "法师", "弓箭手", "刺客" },
-        Callback = function(selectedRole)
-            UILibrary:Notify({
-                Title = "职业选择",
-                Text = "你选择了: " .. selectedRole
-            })
+        Options = { "战士", "法师", "弓箭手" },
+        Callback = function(selected)
+            UILibrary:Notify({ Title = "职业", Text = "选择了: " .. selected })
         end
     })
 end
@@ -104,68 +70,59 @@ end
 local backpackContent = subTabs.GetContent(3)
 if backpackContent then
     local bagCard = UILibrary:CreateCard(backpackContent)
-    UILibrary:CreateLabel(bagCard, {
-        Text = "背包物品",
-        TextSize = 14
-    })
+    UILibrary:CreateLabel(bagCard, { Text = "背包物品", TextSize = 14 })
     UILibrary:CreateLabel(bagCard, { Text = "生命药水 x10" })
-    UILibrary:CreateLabel(bagCard, { Text = "魔法药水 x5" })
-    UILibrary:CreateLabel(bagCard, { Text = "金币: 1,250" })
     UILibrary:CreateButton(bagCard, {
         Text = "整理背包",
         Callback = function()
-            UILibrary:Notify({ Title = "背包", Text = "背包已整理" })
+            UILibrary:Notify({ Title = "背包", Text = "已整理" })
         end
     })
 end
 
--- 程序化切换子标签页示例
-task.delay(5, function()
-    subTabs.SwitchTo(2)  -- 5秒后自动切换到"角色"标签
-end)
-
 -- === 设置页面内容 ===
--- 显示设置
 local displayCard = UILibrary:CreateCard(settingsContent)
-UILibrary:CreateLabel(displayCard, {
-    Text = "显示设置",
-    TextSize = 14
-})
+UILibrary:CreateLabel(displayCard, { Text = "显示设置", TextSize = 14 })
 
--- 音量控制
-UILibrary:CreateLabel(displayCard, {
-    Text = "音量控制"
-})
-
-local volumeSlider = Instance.new("Frame") -- 简化的滑块示例
-volumeSlider.Size = UDim2.new(1, 0, 0, 20)
-volumeSlider.Parent = displayCard
-
--- 游戏设置
-local gameCard = UILibrary:CreateCard(settingsContent)
-UILibrary:CreateLabel(gameCard, {
-    Text = "游戏设置",
-    TextSize = 14
-})
-
-local autoSaveToggle, autoSaveState = UILibrary:CreateToggle(gameCard, {
+UILibrary:CreateToggle(displayCard, {
     Text = "自动保存",
     DefaultState = true,
     Callback = function(state)
-        print("自动保存设置:", state)
+        print("自动保存:", state)
     end
 })
 
--- 创建灵动岛悬浮按钮
-UILibrary:CreateFloatingButton(window.MainFrame, {
+UILibrary:CreateSlider(displayCard, {
+    Text = "音量",
+    Min = 0,
+    Max = 100,
+    Default = 75,
+    Callback = function(value)
+        print("音量:", value)
+    end
+})
+
+-- 创建输入框示例
+local inputCard = UILibrary:CreateCard(settingsContent)
+UILibrary:CreateLabel(inputCard, { Text = "输入设置", TextSize = 14 })
+UILibrary:CreateTextBox(inputCard, {
+    PlaceholderText = "输入玩家名称...",
+    Text = "",
+    OnFocusLost = function(text)
+        print("输入内容:", text)
+    end
+})
+
+-- 创建灵动岛悬浮按钮（控制窗口显示/隐藏）
+UILibrary:CreateFloatingButton(window.ScreenGui, {
     MainFrame = window.MainFrame
 })
 
--- 自定义主题（可选）
+-- 可选：自定义主题
 UILibrary:SetTheme({
     Primary = Color3.fromRGB(63, 81, 181),
-    Background = Color3.fromRGB(30, 30, 30),
-    SecondaryBackground = Color3.fromRGB(46, 46, 46),
+    Background = Color3.fromRGB(25, 25, 28),
+    SecondaryBackground = Color3.fromRGB(40, 42, 50),
     Accent = Color3.fromRGB(92, 107, 192),
     Text = Color3.fromRGB(255, 255, 255),
     Success = Color3.fromRGB(76, 175, 80),
