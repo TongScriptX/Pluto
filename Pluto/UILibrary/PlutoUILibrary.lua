@@ -1880,6 +1880,8 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     local isActive = options.Active or false
     local tabText = options.Text or "Unnamed"
     local tabIcon = options.Icon  -- 支持图标
+    
+    print(string.format("[Tab DEBUG] Text: '%s', Icon from options: '%s'", tostring(tabText), tostring(tabIcon)))
 
     local tabButton = self:CreateButton(sidebar, {
         Text = tabText,
