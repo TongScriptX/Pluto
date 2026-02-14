@@ -1078,29 +1078,39 @@ function UILibrary:CreateDropdown(parent, options)
     })
     label.ZIndex = 101
 
+    -- 右侧下拉按钮容器（有边框）
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.Name = "ButtonContainer"
+    buttonContainer.Size = UDim2.new(0.8, -ddPad, 0, UI_STYLES.ButtonHeight)
+    buttonContainer.Position = UDim2.new(0.2, ddPad, 0, 0)
+    buttonContainer.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    buttonContainer.BackgroundTransparency = 0.3
+    buttonContainer.BorderSizePixel = 0
+    buttonContainer.Parent = dropdownFrame
+    buttonContainer.ZIndex = 101
+
+    local containerCorner = Instance.new("UICorner", buttonContainer)
+    containerCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+
+    local containerStroke = Instance.new("UIStroke")
+    containerStroke.Color = Color3.fromRGB(255, 255, 255)
+    containerStroke.Transparency = 0.6
+    containerStroke.Thickness = 1
+    containerStroke.Parent = buttonContainer
+
     local dropdownButton = Instance.new("TextButton")
     dropdownButton.Name = "DropdownButton"
-    dropdownButton.Size = UDim2.new(0.8, -ddPad, 0, UI_STYLES.ButtonHeight)
-    dropdownButton.Position = UDim2.new(0.2, ddPad, 0, 0)
-    dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    dropdownButton.BackgroundTransparency = 0.999
+    dropdownButton.Size = UDim2.new(1, 0, 1, 0)
+    dropdownButton.Position = UDim2.new(0, 0, 0, 0)
+    dropdownButton.BackgroundTransparency = 1
     dropdownButton.BorderSizePixel = 0
     dropdownButton.Text = options.DefaultOption or "选择选项"
     dropdownButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     dropdownButton.TextSize = 11
     dropdownButton.Font = THEME.Font
     dropdownButton.TextXAlignment = Enum.TextXAlignment.Left
-    dropdownButton.Parent = dropdownFrame
-    dropdownButton.ZIndex = 101
-
-    local buttonCorner = Instance.new("UICorner", dropdownButton)
-    buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
-
-    local buttonStroke = Instance.new("UIStroke")
-    buttonStroke.Color = Color3.fromRGB(255, 255, 255)
-    buttonStroke.Transparency = 0.6
-    buttonStroke.Thickness = 1
-    buttonStroke.Parent = dropdownButton
+    dropdownButton.Parent = buttonContainer
+    dropdownButton.ZIndex = 102
 
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.Name = "Arrow"
@@ -1112,7 +1122,7 @@ function UILibrary:CreateDropdown(parent, options)
     arrowLabel.TextSize = 10
     arrowLabel.Font = THEME.Font
     arrowLabel.Parent = dropdownButton
-    arrowLabel.ZIndex = 102
+    arrowLabel.ZIndex = 103
 
     local optionsList = Instance.new("ScrollingFrame")
     optionsList.Name = "OptionsList"
@@ -1228,8 +1238,8 @@ function UILibrary:CreateDropdown(parent, options)
 
         if isOpen then
             -- 计算绝对位置
-            local buttonAbsolutePos = dropdownButton.AbsolutePosition
-            local buttonAbsoluteSize = dropdownButton.AbsoluteSize
+            local buttonAbsolutePos = buttonContainer.AbsolutePosition
+            local buttonAbsoluteSize = buttonContainer.AbsoluteSize
             local screenGuiPos = optionsList.Parent.AbsolutePosition
             
             optionsList.Position = UDim2.new(0, buttonAbsolutePos.X - screenGuiPos.X, 0, buttonAbsolutePos.Y + buttonAbsoluteSize.Y + 4)
@@ -1250,14 +1260,14 @@ function UILibrary:CreateDropdown(parent, options)
     end)
 
     dropdownButton.MouseEnter:Connect(function()
-        TweenService:Create(buttonStroke, self.TWEEN_INFO_BUTTON, {
+        TweenService:Create(containerStroke, self.TWEEN_INFO_BUTTON, {
             Color = THEME.Primary or DEFAULT_THEME.Primary,
             Transparency = 0.3
         }):Play()
     end)
 
     dropdownButton.MouseLeave:Connect(function()
-        TweenService:Create(buttonStroke, self.TWEEN_INFO_BUTTON, {
+        TweenService:Create(containerStroke, self.TWEEN_INFO_BUTTON, {
             Color = Color3.fromRGB(255, 255, 255),
             Transparency = 0.6
         }):Play()
@@ -1270,8 +1280,8 @@ function UILibrary:CreateDropdown(parent, options)
         
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
             local mousePos = Vector2.new(input.Position.X, input.Position.Y)
-            local buttonPos = dropdownButton.AbsolutePosition
-            local buttonSize = dropdownButton.AbsoluteSize
+            local buttonPos = buttonContainer.AbsolutePosition
+            local buttonSize = buttonContainer.AbsoluteSize
             local listPos = optionsList.AbsolutePosition
             local listSize = optionsList.AbsoluteSize
             
