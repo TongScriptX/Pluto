@@ -1128,8 +1128,8 @@ function UILibrary:CreateDropdown(parent, options)
     optionsList.Name = "OptionsList"
     optionsList.Size = UDim2.new(0.8, -ddPad, 0, 0)
     optionsList.Position = UDim2.new(0.2, ddPad, 1, 4)
-    optionsList.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    optionsList.BackgroundTransparency = 0.999
+    optionsList.BackgroundColor3 = Color3.fromRGB(12, 12, 16)  -- 比窗口背景更深
+    optionsList.BackgroundTransparency = 0.1
     optionsList.BorderSizePixel = 0
     optionsList.ScrollBarThickness = 4
     optionsList.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
