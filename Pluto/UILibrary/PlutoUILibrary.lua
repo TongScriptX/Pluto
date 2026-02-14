@@ -1084,8 +1084,7 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.Position = UDim2.new(0.2, ddPad, 0, 0)
     dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     dropdownButton.BackgroundTransparency = 0.999
-    dropdownButton.BorderSizePixel = 1
-    dropdownButton.BorderColor3 = Color3.fromRGB(60, 62, 70)
+    dropdownButton.BorderSizePixel = 0
     dropdownButton.Text = options.DefaultOption or "选择选项"
     dropdownButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     dropdownButton.TextSize = 11
@@ -1096,6 +1095,12 @@ function UILibrary:CreateDropdown(parent, options)
 
     local buttonCorner = Instance.new("UICorner", dropdownButton)
     buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
+
+    local buttonStroke = Instance.new("UIStroke")
+    buttonStroke.Color = Color3.fromRGB(255, 255, 255)
+    buttonStroke.Transparency = 0.6
+    buttonStroke.Thickness = 1
+    buttonStroke.Parent = dropdownButton
 
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.Name = "Arrow"
@@ -1115,8 +1120,7 @@ function UILibrary:CreateDropdown(parent, options)
     optionsList.Position = UDim2.new(0.2, ddPad, 1, 4)
     optionsList.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     optionsList.BackgroundTransparency = 0.999
-    optionsList.BorderSizePixel = 1
-    optionsList.BorderColor3 = Color3.fromRGB(60, 62, 70)
+    optionsList.BorderSizePixel = 0
     optionsList.ScrollBarThickness = 4
     optionsList.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
     optionsList.Visible = false
@@ -1134,6 +1138,12 @@ function UILibrary:CreateDropdown(parent, options)
 
     local optionsListCorner = Instance.new("UICorner", optionsList)
     optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusLarge)
+
+    local listStroke = Instance.new("UIStroke")
+    listStroke.Color = Color3.fromRGB(255, 255, 255)
+    listStroke.Transparency = 0.6
+    listStroke.Thickness = 1
+    listStroke.Parent = optionsList
 
     local optionsListLayout = Instance.new("UIListLayout")
     optionsListLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1240,14 +1250,16 @@ function UILibrary:CreateDropdown(parent, options)
     end)
 
     dropdownButton.MouseEnter:Connect(function()
-        TweenService:Create(dropdownButton, self.TWEEN_INFO_BUTTON, {
-            BorderColor3 = THEME.Primary or DEFAULT_THEME.Primary
+        TweenService:Create(buttonStroke, self.TWEEN_INFO_BUTTON, {
+            Color = THEME.Primary or DEFAULT_THEME.Primary,
+            Transparency = 0.3
         }):Play()
     end)
 
     dropdownButton.MouseLeave:Connect(function()
-        TweenService:Create(dropdownButton, self.TWEEN_INFO_BUTTON, {
-            BorderColor3 = Color3.fromRGB(60, 62, 70)
+        TweenService:Create(buttonStroke, self.TWEEN_INFO_BUTTON, {
+            Color = Color3.fromRGB(255, 255, 255),
+            Transparency = 0.6
         }):Play()
     end)
 
