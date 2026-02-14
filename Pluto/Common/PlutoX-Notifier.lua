@@ -2193,6 +2193,7 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
     
     UILibrary:CreateButton(card, {
         Text = "重新计算目标值",
+        Icon = "refresh-cw",
         Callback = function()
             if config["base" .. keyUpper] <= 0 then
                 UILibrary:Notify({
@@ -3009,6 +3010,7 @@ function PlutoX.createAboutPage(parent, UILibrary)
     
     UILibrary:CreateButton(parent, {
         Text = "复制 Discord",
+        Icon = "external-link",
         Callback = function()
             local link = "https://discord.gg/6G2UfBgEZJ"
             if setclipboard then
@@ -3031,6 +3033,7 @@ function PlutoX.createAboutPage(parent, UILibrary)
     -- 复制 UUID 按钮
     UILibrary:CreateButton(parent, {
         Text = "复制 UUID",
+        Icon = "copy",
         Callback = function()
             PlutoX.debug("[AboutPage] 点击复制 UUID 按钮")
             local gameUserId = _G.PLUTO_GAME_USER_ID
