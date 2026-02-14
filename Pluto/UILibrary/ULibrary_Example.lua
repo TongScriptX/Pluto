@@ -22,17 +22,20 @@ local window = UILibrary:CreateUIWindow({
 -- 主页标签
 local homeTab, homeContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
     Text = "主页",
+    Icon = "home",
     Active = true
 })
 
 -- 组件标签
 local compTab, compContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
-    Text = "组件"
+    Text = "组件",
+    Icon = "layout"
 })
 
 -- 设置标签
 local settingsTab, settingsContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
-    Text = "设置"
+    Text = "设置",
+    Icon = "settings"
 })
 
 -- ============================================
@@ -63,12 +66,14 @@ if overviewContent then
     UILibrary:CreateLabel(notifyCard, { Text = "通知演示", TextSize = 14 })
     UILibrary:CreateButton(notifyCard, {
         Text = "发送成功通知",
+        Icon = "checkCircle",
         Callback = function()
             UILibrary:Notify({ Title = "成功", Text = "操作已完成！" })
         end
     })
     UILibrary:CreateButton(notifyCard, {
         Text = "发送错误通知",
+        Icon = "xCircle",
         Callback = function()
             UILibrary:Notify({ Title = "错误", Text = "操作失败，请重试" })
         end
@@ -82,6 +87,7 @@ if quickContent then
     UILibrary:CreateLabel(actionCard, { Text = "快捷操作", TextSize = 14 })
     UILibrary:CreateButton(actionCard, {
         Text = "切换到设置页",
+        Icon = "arrowRight",
         Callback = function()
             -- 程序化切换标签页
             for _, child in ipairs(window.Sidebar:GetChildren()) do
@@ -93,6 +99,7 @@ if quickContent then
     })
     UILibrary:CreateButton(actionCard, {
         Text = "切换到子标签2",
+        Icon = "chevronRight",
         Callback = function()
             subTabs.SwitchTo(3)
         end
@@ -122,6 +129,7 @@ local btnCard = UILibrary:CreateCard(compContent)
 UILibrary:CreateLabel(btnCard, { Text = "按钮 Button", TextSize = 14 })
 UILibrary:CreateButton(btnCard, {
     Text = "普通按钮",
+    Icon = "mouse-pointer",
     Callback = function()
         UILibrary:Notify({ Title = "按钮", Text = "你点击了普通按钮" })
     end
@@ -246,12 +254,14 @@ local otherCard = UILibrary:CreateCard(settingsContent)
 UILibrary:CreateLabel(otherCard, { Text = "其他设置", TextSize = 14 })
 UILibrary:CreateButton(otherCard, {
     Text = "重置所有设置",
+    Icon = "refresh",
     Callback = function()
         UILibrary:Notify({ Title = "重置", Text = "设置已重置" })
     end
 })
 UILibrary:CreateButton(otherCard, {
     Text = "关于作者",
+    Icon = "info",
     Callback = function()
         subTabs.SwitchTo(3)
     end

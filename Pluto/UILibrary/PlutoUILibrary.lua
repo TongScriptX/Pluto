@@ -122,6 +122,7 @@ UILibrary.Icons = {
     home = "rbxassetid://7733960981",
     settings = "rbxassetid://7734053495",
     menu = "rbxassetid://7733993211",
+    layout = "rbxassetid://7733970543",
     x = "rbxassetid://7743878857",
     check = "rbxassetid://7733715400",
     plus = "rbxassetid://7734042071",
@@ -197,6 +198,8 @@ UILibrary.Icons = {
     eye = "rbxassetid://7733774602",
     eyeOff = "rbxassetid://7733774495",
     loader = "rbxassetid://7733992358",
+    mousePointer = "rbxassetid://7743870392",
+    ["mouse-pointer"] = "rbxassetid://7743870392",  -- 别名
     
     -- 购物车
     shoppingCart = "rbxassetid://7734056813",
@@ -646,6 +649,8 @@ function UILibrary:CreateButton(parent, options)
         icon.BackgroundTransparency = 1
         icon.Parent = button
         icon.ZIndex = 4
+        
+        print("[Button] Icon created:", icon.Name, "Image:", icon.Image, "Size:", icon.Size, "Position:", icon.Position)
         
         local label = Instance.new("TextLabel")
         label.Name = "TextLabel"
