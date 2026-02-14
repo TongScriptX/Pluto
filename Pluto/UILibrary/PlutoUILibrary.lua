@@ -181,6 +181,7 @@ UILibrary.Icons = {
     key = "rbxassetid://7733965118",
     link = "rbxassetid://7733978098",
     externalLink = "rbxassetid://7743866903",
+    ["external-link"] = "rbxassetid://7743866903",  -- 别名
     globe = "rbxassetid://7733954760",
     wifi = "rbxassetid://7743878148",
     database = "rbxassetid://7743866778",
@@ -189,12 +190,17 @@ UILibrary.Icons = {
     sun = "rbxassetid://7734068495",
     moon = "rbxassetid://7743870134",
     refresh = "rbxassetid://7734051052",
+    ["refresh-cw"] = "rbxassetid://7734051052",  -- 别名
     maximize = "rbxassetid://7733992982",
     minimize = "rbxassetid://7733997941",
     power = "rbxassetid://7734042493",
     eye = "rbxassetid://7733774602",
     eyeOff = "rbxassetid://7733774495",
     loader = "rbxassetid://7733992358",
+    
+    -- 购物车
+    shoppingCart = "rbxassetid://7734056813",
+    ["shopping-cart"] = "rbxassetid://7734056813",  -- 别名
     
     -- Roblox 内置
     robux = "rbxassetid://3944680095",
