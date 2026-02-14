@@ -1060,10 +1060,16 @@ function UILibrary:CreateDropdown(parent, options)
     local dropdownFrame = Instance.new("Frame")
     dropdownFrame.Name = "Dropdown_" .. (options.Text or "Unnamed")
     dropdownFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
-    dropdownFrame.BackgroundTransparency = 1
     dropdownFrame.BorderSizePixel = 0
     dropdownFrame.Parent = parent
     dropdownFrame.ZIndex = 100
+
+    -- 延迟设置透明避免默认灰色
+    task.spawn(function()
+        game:GetService("RunService").Heartbeat:Wait()
+        dropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+        dropdownFrame.BackgroundTransparency = 0.999
+    end)
 
     local label = self:CreateLabel(dropdownFrame, {
         Text = options.Text or "",
@@ -1077,7 +1083,7 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.Size = UDim2.new(0.8, -ddPad, 0, UI_STYLES.ButtonHeight)
     dropdownButton.Position = UDim2.new(0.2, ddPad, 0, 0)
     dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    dropdownButton.BackgroundTransparency = 0.3
+    dropdownButton.BackgroundTransparency = 0.999
     dropdownButton.BorderSizePixel = 0
     dropdownButton.Text = options.DefaultOption or "选择选项"
     dropdownButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
