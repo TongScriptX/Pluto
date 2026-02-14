@@ -616,7 +616,7 @@ function UILibrary:CreateButton(parent, options)
     
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
-    button.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
+    button.Size = options.Size or UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.4
     button.Text = options.Text or ""
