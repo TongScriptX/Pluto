@@ -1868,21 +1868,39 @@ function UILibrary:CreateSubTabs(tabContent, options)
     padding.Parent = buttonContainer
     
     -- 创建内容容器（所有子标签页内容都放这里）
-    local contentContainer = Instance.new("Frame")
+    local contentContainer = Instance.new("ScrollingFrame")
     contentContainer.Name = "SubTabsContentContainer"
     contentContainer.Size = UDim2.new(1, 0, 1, -UI_STYLES.SubTabBarHeight)
     contentContainer.Position = UDim2.new(0, 0, 0, UI_STYLES.SubTabBarHeight)
     contentContainer.BorderSizePixel = 0
+    contentContainer.ScrollBarThickness = 4
+    contentContainer.ScrollingEnabled = true
+    contentContainer.ClipsDescendants = true
+    contentContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
     contentContainer.Parent = tabContent
     contentContainer.ZIndex = 6
-    
-
     
     -- 延迟设置避免默认灰色
     task.spawn(function()
         game:GetService("RunService").Heartbeat:Wait()
         contentContainer.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
         contentContainer.BackgroundTransparency = 0.99
+    end)
+    
+    -- 内容容器布局
+    local containerLayout = Instance.new("UIListLayout")
+    containerLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    containerLayout.Padding = UDim.new(0, UI_STYLES.Padding)
+    containerLayout.Parent = contentContainer
+    
+    -- 自动更新 CanvasSize
+    local lastContainerHeight = 0
+    containerLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+        local newHeight = containerLayout.AbsoluteContentSize.Y
+        if math.abs(newHeight - lastContainerHeight) > 2 then
+            lastContainerHeight = newHeight
+            contentContainer.CanvasSize = UDim2.new(0, 0, 0, newHeight + UI_STYLES.Padding)
+        end
     end)
     
     -- 存储子标签页数据
