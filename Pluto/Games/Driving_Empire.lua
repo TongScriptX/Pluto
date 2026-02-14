@@ -2283,6 +2283,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
 -- 常规标签页
 local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "常规",
+    Icon = "home",
     Active = true
 })
 
@@ -2311,7 +2312,8 @@ UILibrary:CreateLabel(antiAfkCard, {
 
 -- 游戏功能标签页
 local featuresTab, featuresContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "游戏功能"
+    Text = "游戏功能",
+    Icon = "gamepad"
 })
 
 -- 创建子标签页
@@ -2502,12 +2504,14 @@ UILibrary:CreateToggle(autoRobCard, {
 
 -- 自动购买标签页
 local purchaseTab, purchaseContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "自动购买"
+    Text = "自动购买",
+    Icon = "shopping-cart"
 })
 
 -- 通知设置标签页
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "通知设置"
+    Text = "通知设置",
+    Icon = "bell"
 })
 
 -- Webhook 配置
@@ -3399,7 +3403,8 @@ local regretButton = UILibrary:CreateButton(autoBuyCard, {
 
 -- 关于标签页
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "关于"
+    Text = "关于",
+    Icon = "info"
 })
 
 PlutoX.createAboutPage(aboutContent, UILibrary)
