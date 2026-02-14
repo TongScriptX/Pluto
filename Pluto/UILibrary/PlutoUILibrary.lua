@@ -1084,7 +1084,8 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.Position = UDim2.new(0.2, ddPad, 0, 0)
     dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     dropdownButton.BackgroundTransparency = 0.999
-    dropdownButton.BorderSizePixel = 0
+    dropdownButton.BorderSizePixel = 1
+    dropdownButton.BorderColor3 = Color3.fromRGB(60, 62, 70)
     dropdownButton.Text = options.DefaultOption or "选择选项"
     dropdownButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     dropdownButton.TextSize = 11
@@ -1114,7 +1115,8 @@ function UILibrary:CreateDropdown(parent, options)
     optionsList.Position = UDim2.new(0.2, ddPad, 1, 4)
     optionsList.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
     optionsList.BackgroundTransparency = 0.999
-    optionsList.BorderSizePixel = 0
+    optionsList.BorderSizePixel = 1
+    optionsList.BorderColor3 = Color3.fromRGB(60, 62, 70)
     optionsList.ScrollBarThickness = 4
     optionsList.ScrollBarImageColor3 = THEME.Primary or DEFAULT_THEME.Primary
     optionsList.Visible = false
@@ -1245,8 +1247,33 @@ function UILibrary:CreateDropdown(parent, options)
 
     dropdownButton.MouseLeave:Connect(function()
         TweenService:Create(dropdownButton, self.TWEEN_INFO_BUTTON, {
-            BorderColor3 = THEME.Background or DEFAULT_THEME.Background
+            BorderColor3 = Color3.fromRGB(60, 62, 70)
         }):Play()
+    end)
+
+    -- 点击外部收回
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if gameProcessed then return end
+        if not isOpen then return end
+        
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local mousePos = Vector2.new(input.Position.X, input.Position.Y)
+            local buttonPos = dropdownButton.AbsolutePosition
+            local buttonSize = dropdownButton.AbsoluteSize
+            local listPos = optionsList.AbsolutePosition
+            local listSize = optionsList.AbsoluteSize
+            
+            local inButton = mousePos.X >= buttonPos.X and mousePos.X <= buttonPos.X + buttonSize.X
+                        and mousePos.Y >= buttonPos.Y and mousePos.Y <= buttonPos.Y + buttonSize.Y
+            local inList = mousePos.X >= listPos.X and mousePos.X <= listPos.X + listSize.X
+                       and mousePos.Y >= listPos.Y and mousePos.Y <= listPos.Y + listSize.Y
+            
+            if not inButton and not inList then
+                isOpen = false
+                optionsList.Visible = false
+                arrowLabel.Text = "▼"
+            end
+        end
     end)
 
     return dropdownFrame
