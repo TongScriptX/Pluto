@@ -1060,16 +1060,20 @@ function UILibrary:CreateDropdown(parent, options)
     local dropdownFrame = Instance.new("Frame")
     dropdownFrame.Name = "Dropdown_" .. (options.Text or "Unnamed")
     dropdownFrame.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
+    dropdownFrame.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
+    dropdownFrame.BackgroundTransparency = 0.3
     dropdownFrame.BorderSizePixel = 0
     dropdownFrame.Parent = parent
     dropdownFrame.ZIndex = 100
-    
-    -- 延迟设置避免默认灰色
-    task.spawn(function()
-        game:GetService("RunService").Heartbeat:Wait()
-        dropdownFrame.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
-        dropdownFrame.BackgroundTransparency = 0.999
-    end)
+
+    local frameCorner = Instance.new("UICorner", dropdownFrame)
+    frameCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
+
+    local frameStroke = Instance.new("UIStroke")
+    frameStroke.Color = Color3.fromRGB(255, 255, 255)
+    frameStroke.Transparency = 0.6
+    frameStroke.Thickness = 1
+    frameStroke.Parent = dropdownFrame
 
     local label = self:CreateLabel(dropdownFrame, {
         Text = options.Text or "",
@@ -1082,8 +1086,7 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.Name = "DropdownButton"
     dropdownButton.Size = UDim2.new(0.8, -ddPad, 0, UI_STYLES.ButtonHeight)
     dropdownButton.Position = UDim2.new(0.2, ddPad, 0, 0)
-    dropdownButton.BackgroundColor3 = THEME.SecondaryBackground or DEFAULT_THEME.SecondaryBackground
-    dropdownButton.BackgroundTransparency = 0.999
+    dropdownButton.BackgroundTransparency = 1
     dropdownButton.BorderSizePixel = 0
     dropdownButton.Text = options.DefaultOption or "选择选项"
     dropdownButton.TextColor3 = THEME.Text or DEFAULT_THEME.Text
@@ -1092,15 +1095,6 @@ function UILibrary:CreateDropdown(parent, options)
     dropdownButton.TextXAlignment = Enum.TextXAlignment.Left
     dropdownButton.Parent = dropdownFrame
     dropdownButton.ZIndex = 101
-
-    local buttonCorner = Instance.new("UICorner", dropdownButton)
-    buttonCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
-
-    local buttonStroke = Instance.new("UIStroke")
-    buttonStroke.Color = Color3.fromRGB(255, 255, 255)
-    buttonStroke.Transparency = 0.6
-    buttonStroke.Thickness = 1
-    buttonStroke.Parent = dropdownButton
 
     local arrowLabel = Instance.new("TextLabel")
     arrowLabel.Name = "Arrow"
@@ -1250,14 +1244,14 @@ function UILibrary:CreateDropdown(parent, options)
     end)
 
     dropdownButton.MouseEnter:Connect(function()
-        TweenService:Create(buttonStroke, self.TWEEN_INFO_BUTTON, {
+        TweenService:Create(frameStroke, self.TWEEN_INFO_BUTTON, {
             Color = THEME.Primary or DEFAULT_THEME.Primary,
             Transparency = 0.3
         }):Play()
     end)
 
     dropdownButton.MouseLeave:Connect(function()
-        TweenService:Create(buttonStroke, self.TWEEN_INFO_BUTTON, {
+        TweenService:Create(frameStroke, self.TWEEN_INFO_BUTTON, {
             Color = Color3.fromRGB(255, 255, 255),
             Transparency = 0.6
         }):Play()
