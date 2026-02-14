@@ -2118,13 +2118,41 @@ function UILibrary:CreateSubTabs(tabContent, options)
         button.Size = UDim2.new(1, 0, 1, 0)
         button.BackgroundColor3 = i == defaultActive and (THEME.Primary or DEFAULT_THEME.Primary) or Color3.fromRGB(60, 62, 70)
         button.BackgroundTransparency = i == defaultActive and 0.3 or 0.6
-        button.Text = subTabIcon and (subTabIcon .. " " .. subTabName) or subTabName
         button.TextColor3 = i == defaultActive and (THEME.Text or DEFAULT_THEME.Text) or Color3.fromRGB(160, 160, 170)
         button.TextSize = 11
         button.Font = THEME.Font
         button.Parent = btnContainer
         button.ZIndex = 8
         button.BorderSizePixel = 0
+        
+        -- 处理图标显示
+        local iconAsset = subTabIcon and UILibrary.Icons[subTabIcon]
+        local isEmoji = subTabIcon and not iconAsset and #subTabIcon <= 4  -- emoji 通常是 1-4 个字符
+        
+        if iconAsset then
+            -- Lucide 图标：使用 ImageLabel
+            local icon = Instance.new("ImageLabel")
+            icon.Name = "Icon"
+            icon.Size = UDim2.new(0, 14, 0, 14)
+            icon.Position = UDim2.new(0, 6, 0.5, -7)
+            icon.Image = iconAsset
+            icon.ImageColor3 = i == defaultActive and (THEME.Text or DEFAULT_THEME.Text) or Color3.fromRGB(160, 160, 170)
+            icon.BackgroundTransparency = 1
+            icon.Parent = button
+            icon.ZIndex = 9
+            
+            -- 文字向右偏移
+            button.Text = subTabName
+            button.TextXAlignment = Enum.TextXAlignment.Left
+            local btnPadding = Instance.new("UIPadding")
+            btnPadding.PaddingLeft = UDim.new(0, 24)
+            btnPadding.Parent = button
+        elseif isEmoji then
+            -- Emoji 图标：使用文本
+            button.Text = subTabIcon .. " " .. subTabName
+        else
+            button.Text = subTabName
+        end
         
         local btnCorner = Instance.new("UICorner")
         btnCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusPill)

@@ -293,6 +293,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
 -- 标签页：常规
 local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "常规",
+    Icon = "home",
     Active = true
 })
 
@@ -313,7 +314,8 @@ end
 
 -- 标签页：主要功能
 local mainFeaturesTab, mainFeaturesContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "主要功能",
+    Text = "功能",
+    Icon = "gamepad"
 })
 
 -- 卡片：autofarm
@@ -335,7 +337,8 @@ local autoFarmToggle = UILibrary:CreateToggle(autoFarmCard, {
 
 -- 标签页：通知设置
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "通知设置"
+    Text = "通知",
+    Icon = "bell"
 })
 
 -- 使用通用模块创建 UI 组件
@@ -414,7 +417,8 @@ UILibrary:CreateButton(recalculateCard, {
 
 -- 标签页：关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "关于"
+    Text = "关于",
+    Icon = "info"
 })
 
 PlutoX.createAboutPage(aboutContent, UILibrary)

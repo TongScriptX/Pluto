@@ -202,6 +202,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
 -- 常规标签页
 local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "常规",
+    Icon = "home",
     Active = true
 })
 
@@ -227,7 +228,8 @@ UILibrary:CreateLabel(antiAfkCard, {
 
 -- 通知设置标签页
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "通知设置"
+    Text = "通知",
+    Icon = "bell"
 })
 
 -- 使用通用模块创建 UI 组件
@@ -297,7 +299,8 @@ UILibrary:CreateButton(recalculateCard, {
 
 -- 关于标签页
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "关于"
+    Text = "关于",
+    Icon = "info"
 })
 
 PlutoX.createAboutPage(aboutContent, UILibrary)
