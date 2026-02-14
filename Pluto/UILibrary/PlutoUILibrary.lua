@@ -614,6 +614,11 @@ function UILibrary:CreateButton(parent, options)
     local iconSize = options.IconSize or 16
     local iconPadding = hasIcon and 24 or 0
     
+    -- 调试：检查图标是否正确获取
+    if options.Icon then
+        print("[Button] Icon requested:", options.Icon, "hasIcon:", hasIcon, "iconAsset:", iconAsset)
+    end
+    
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
     button.Size = options.Size or UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
