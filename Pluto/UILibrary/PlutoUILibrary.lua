@@ -609,8 +609,8 @@ function UILibrary:CreateButton(parent, options)
         return nil
     end
     options = options or {}
-    local hasIcon = options.Icon ~= nil
-    local iconAsset = hasIcon and (self.Icons[options.Icon] or options.Icon) or nil
+    local hasIcon = options.Icon ~= nil and options.Icon ~= ""
+    local iconAsset = hasIcon and (UILibrary.Icons[options.Icon] or options.Icon) or nil
     local iconSize = options.IconSize or 16
     local iconPadding = hasIcon and 24 or 0
     
