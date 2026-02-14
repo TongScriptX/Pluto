@@ -614,15 +614,6 @@ function UILibrary:CreateButton(parent, options)
     options = options or {}
     local hasIcon = options.Icon ~= nil and options.Icon ~= ""
     local iconAsset = hasIcon and (UILibrary.Icons[options.Icon] or options.Icon) or nil
-    
-    -- 调试输出
-    if options.Icon then
-        print(string.format("[Button DEBUG] Icon: '%s', hasIcon: %s, iconAsset: %s", 
-            tostring(options.Icon), 
-            tostring(hasIcon), 
-            tostring(iconAsset)))
-    end
-    
     local iconSize = options.IconSize or 16
     local iconPadding = hasIcon and 24 or 0
     
@@ -1880,8 +1871,6 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     local isActive = options.Active or false
     local tabText = options.Text or "Unnamed"
     local tabIcon = options.Icon  -- 支持图标
-    
-    print(string.format("[Tab DEBUG] Text: '%s', Icon from options: '%s'", tostring(tabText), tostring(tabIcon)))
 
     local tabButton = self:CreateButton(sidebar, {
         Text = tabText,

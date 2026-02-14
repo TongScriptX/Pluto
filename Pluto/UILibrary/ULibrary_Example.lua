@@ -19,17 +19,12 @@ local window = UILibrary:CreateUIWindow({
 -- ============================================
 -- 创建标签页
 -- ============================================
-print("[DEBUG] 示例文件开始创建标签页")
-
 -- 主页标签
-local homeOptions = {
+local homeTab, homeContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
     Text = "主页",
     Icon = "home",
     Active = true
-}
-print("[DEBUG] homeOptions.Icon =", tostring(homeOptions.Icon))
-
-local homeTab, homeContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, homeOptions)
+})
 
 -- 组件标签
 local compTab, compContent = UILibrary:CreateTab(window.Sidebar, window.TitleLabel, window.MainPage, {
