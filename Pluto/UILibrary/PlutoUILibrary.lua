@@ -116,6 +116,116 @@ UILibrary.THEME = THEME
 UILibrary.DEFAULT_THEME = DEFAULT_THEME
 UILibrary.UI_STYLES = UI_STYLES
 
+-- Lucide 图标库 (来自 lucideblox)
+UILibrary.Icons = {
+    -- 导航/操作
+    home = "rbxassetid://7733960981",
+    settings = "rbxassetid://7734053495",
+    menu = "rbxassetid://7733993211",
+    x = "rbxassetid://7743878857",
+    check = "rbxassetid://7733715400",
+    plus = "rbxassetid://7734042071",
+    minus = "rbxassetid://7734000129",
+    search = "rbxassetid://7734052925",
+    
+    -- 方向箭头
+    arrowLeft = "rbxassetid://7733673136",
+    arrowRight = "rbxassetid://7733673345",
+    arrowUp = "rbxassetid://7733673717",
+    arrowDown = "rbxassetid://7733672933",
+    chevronLeft = "rbxassetid://7733717651",
+    chevronRight = "rbxassetid://7733717755",
+    chevronUp = "rbxassetid://7733919605",
+    chevronDown = "rbxassetid://7733717447",
+    
+    -- 用户/社交
+    user = "rbxassetid://7743875962",
+    users = "rbxassetid://7743876054",
+    userPlus = "rbxassetid://7743875759",
+    userMinus = "rbxassetid://7743875629",
+    heart = "rbxassetid://7733956134",
+    star = "rbxassetid://7734068321",
+    bell = "rbxassetid://7733911828",
+    
+    -- 文件/编辑
+    file = "rbxassetid://7733793319",
+    folder = "rbxassetid://7733799185",
+    folderPlus = "rbxassetid://7733799092",
+    edit = "rbxassetid://7733771472",
+    copy = "rbxassetid://7733764083",
+    trash = "rbxassetid://7743873871",
+    save = "rbxassetid://7734052335",
+    download = "rbxassetid://7733770755",
+    upload = "rbxassetid://7743875428",
+    
+    -- 媒体
+    play = "rbxassetid://7743871480",
+    pause = "rbxassetid://7734021897",
+    volume = "rbxassetid://7743877487",
+    volumeX = "rbxassetid://7743877381",
+    music = "rbxassetid://7734020554",
+    video = "rbxassetid://7743876610",
+    image = "rbxassetid://7733964126",
+    
+    -- 状态/反馈
+    alertCircle = "rbxassetid://7733658271",
+    alertTriangle = "rbxassetid://7733658504",
+    info = "rbxassetid://7733964719",
+    checkCircle = "rbxassetid://7733919427",
+    xCircle = "rbxassetid://7743878496",
+    helpCircle = "rbxassetid://7733956210",
+    
+    -- 其他常用
+    lock = "rbxassetid://7733992528",
+    unlock = "rbxassetid://7743875263",
+    key = "rbxassetid://7733965118",
+    link = "rbxassetid://7733978098",
+    externalLink = "rbxassetid://7743866903",
+    globe = "rbxassetid://7733954760",
+    wifi = "rbxassetid://7743878148",
+    database = "rbxassetid://7743866778",
+    server = "rbxassetid://7734053426",
+    gamepad = "rbxassetid://7733799901",
+    sun = "rbxassetid://7734068495",
+    moon = "rbxassetid://7743870134",
+    refresh = "rbxassetid://7734051052",
+    maximize = "rbxassetid://7733992982",
+    minimize = "rbxassetid://7733997941",
+    power = "rbxassetid://7734042493",
+    eye = "rbxassetid://7733774602",
+    eyeOff = "rbxassetid://7733774495",
+    loader = "rbxassetid://7733992358",
+    
+    -- Roblox 内置
+    robux = "rbxassetid://3944680095",
+}
+
+-- 创建图标 ImageLabel
+function UILibrary:CreateIcon(parent, options)
+    if not parent then
+        warn("[Icon]: Creation failed - parent is nil")
+        return nil
+    end
+    
+    options = options or {}
+    local iconName = options.Icon or "home"
+    local size = options.Size or 24
+    local iconAsset = self.Icons[iconName] or iconName  -- 支持直接传入 rbxassetid
+    
+    local icon = Instance.new("ImageLabel")
+    icon.Name = "Icon_" .. iconName
+    icon.Size = UDim2.new(0, size, 0, size)
+    icon.Position = options.Position or UDim2.new(0, 0, 0, 0)
+    icon.AnchorPoint = options.AnchorPoint or Vector2.new(0, 0)
+    icon.Image = iconAsset
+    icon.ImageColor3 = options.Color or THEME.Text
+    icon.BackgroundTransparency = 1
+    icon.Parent = parent
+    icon.ZIndex = options.ZIndex or 5
+    
+    return icon
+end
+
 -- 销毁已存在的UI实例
 function UILibrary:DestroyExistingInstances()
     if Players.LocalPlayer and Players.LocalPlayer:FindFirstChild("PlayerGui") then
@@ -493,6 +603,11 @@ function UILibrary:CreateButton(parent, options)
         return nil
     end
     options = options or {}
+    local hasIcon = options.Icon ~= nil
+    local iconAsset = hasIcon and (self.Icons[options.Icon] or options.Icon) or nil
+    local iconSize = options.IconSize or 16
+    local iconPadding = hasIcon and 24 or 0
+    
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
     button.Size = UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
@@ -505,6 +620,35 @@ function UILibrary:CreateButton(parent, options)
     button.Parent = parent
     button.Visible = true
     button.ZIndex = 3
+    
+    -- 如果有图标，调整文字位置
+    if hasIcon then
+        button.Text = ""  -- 清空文字，用 TextLabel 代替
+        button.AutoButtonColor = false
+        
+        local icon = Instance.new("ImageLabel")
+        icon.Name = "Icon"
+        icon.Size = UDim2.new(0, iconSize, 0, iconSize)
+        icon.Position = UDim2.new(0, 8, 0.5, -iconSize/2)
+        icon.Image = iconAsset
+        icon.ImageColor3 = options.IconColor or THEME.Text or DEFAULT_THEME.Text
+        icon.BackgroundTransparency = 1
+        icon.Parent = button
+        icon.ZIndex = 4
+        
+        local label = Instance.new("TextLabel")
+        label.Name = "TextLabel"
+        label.Size = UDim2.new(1, -iconPadding - 16, 1, 0)
+        label.Position = UDim2.new(0, iconPadding + 12, 0, 0)
+        label.Text = options.Text or ""
+        label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+        label.TextSize = options.TextSize or 12
+        label.Font = THEME.Font
+        label.BackgroundTransparency = 1
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = button
+        label.ZIndex = 4
+    end
 
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusMedium)
@@ -1717,9 +1861,12 @@ function UILibrary:CreateTab(sidebar, titleLabel, mainPage, options)
     options = options or {}
     local isActive = options.Active or false
     local tabText = options.Text or "Unnamed"
+    local tabIcon = options.Icon  -- 支持图标
 
     local tabButton = self:CreateButton(sidebar, {
         Text = tabText,
+        Icon = tabIcon,
+        IconSize = 16,
         Size = UDim2.new(1, 0, 0, UI_STYLES.TabButtonHeight),
         TextSize = 13,
         BackgroundColor3 = isActive and (THEME.Accent or DEFAULT_THEME.Accent) or (THEME.Primary or DEFAULT_THEME.Primary),
