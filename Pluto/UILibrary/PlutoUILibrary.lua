@@ -1145,8 +1145,8 @@ function UILibrary:CreateTextBox(parent, options)
     
     -- 添加与卡片一致的边框到容器
     local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(255, 255, 255)
-    stroke.Transparency = 0.6
+    stroke.Color = THEME.Primary or DEFAULT_THEME.Primary
+    stroke.Transparency = 0.5
     stroke.Thickness = 1
     stroke.Parent = container
 
@@ -1170,14 +1170,14 @@ function UILibrary:CreateTextBox(parent, options)
 
     textBox.Focused:Connect(function()
         TweenService:Create(stroke, self.TWEEN_INFO_BUTTON, {
-            Color = THEME.Primary or DEFAULT_THEME.Primary,
-            Transparency = 0.3
+            Color = THEME.Accent or DEFAULT_THEME.Accent,
+            Transparency = 0.2
         }):Play()
     end)
     textBox.FocusLost:Connect(function()
         TweenService:Create(stroke, self.TWEEN_INFO_BUTTON, {
-            Color = Color3.fromRGB(255, 255, 255),
-            Transparency = 0.6
+            Color = THEME.Primary or DEFAULT_THEME.Primary,
+            Transparency = 0.5
         }):Play()
         if options.OnFocusLost then pcall(options.OnFocusLost, textBox.Text) end
     end)
@@ -1311,8 +1311,8 @@ function UILibrary:CreateDropdown(parent, options)
     containerCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusSmall)
 
     local containerStroke = Instance.new("UIStroke")
-    containerStroke.Color = Color3.fromRGB(255, 255, 255)
-    containerStroke.Transparency = 0.6
+    containerStroke.Color = THEME.Primary or DEFAULT_THEME.Primary
+    containerStroke.Transparency = 0.5
     containerStroke.Thickness = 1
     containerStroke.Parent = buttonContainer
 
@@ -1368,8 +1368,8 @@ function UILibrary:CreateDropdown(parent, options)
     optionsListCorner.CornerRadius = UDim.new(0, UI_STYLES.CornerRadiusLarge)
 
     local listStroke = Instance.new("UIStroke")
-    listStroke.Color = Color3.fromRGB(255, 255, 255)
-    listStroke.Transparency = 0.6
+    listStroke.Color = THEME.Primary or DEFAULT_THEME.Primary
+    listStroke.Transparency = 0.5
     listStroke.Thickness = 1
     listStroke.Parent = optionsList
 
