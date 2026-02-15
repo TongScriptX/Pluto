@@ -1076,6 +1076,29 @@ function UILibrary:CreateFloatingButton(parent, options)
             mainFrame.Visible = true
             mainFrame.BackgroundTransparency = 1
             
+            -- 先将所有元素设置为透明状态
+            local function setAllTransparent(element)
+                if element:IsA("Frame") or element:IsA("ScrollingFrame") then
+                    local baseTransparency = element:GetAttribute("BaseTransparency")
+                    if baseTransparency then
+                        element.BackgroundTransparency = 1
+                    end
+                    -- 处理 UIStroke
+                    local stroke = element:FindFirstChildOfClass("UIStroke")
+                    if stroke then
+                        stroke.Transparency = 1
+                    end
+                elseif element:IsA("TextLabel") or element:IsA("TextButton") then
+                    element.TextTransparency = 1
+                elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
+                    element.ImageTransparency = 1
+                end
+                for _, child in ipairs(element:GetChildren()) do
+                    setAllTransparent(child)
+                end
+            end
+            setAllTransparent(mainFrame)
+            
             local centerPos = getCenterPosition()
             TweenService:Create(mainFrame, MOVE_TWEEN, {
                 Position = centerPos
@@ -1085,11 +1108,18 @@ function UILibrary:CreateFloatingButton(parent, options)
             local function applyInjectFade(element)
                 local tweens = {}
                 local function process(el)
-                    if el:IsA("Frame") then
+                    if el:IsA("Frame") or el:IsA("ScrollingFrame") then
                         local baseTransparency = el:GetAttribute("BaseTransparency")
                         if baseTransparency then
                             table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
                                 BackgroundTransparency = tonumber(baseTransparency)
+                            }))
+                        end
+                        -- 处理 UIStroke
+                        local stroke = el:FindFirstChildOfClass("UIStroke")
+                        if stroke then
+                            table.insert(tweens, TweenService:Create(stroke, INJECT_TWEEN_FADE, {
+                                Transparency = 0.5
                             }))
                         end
                     elseif el:IsA("TextLabel") or el:IsA("TextButton") then
