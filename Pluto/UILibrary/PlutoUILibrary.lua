@@ -1035,7 +1035,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     local INJECT_TWEEN_APPEAR = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     local INJECT_TWEEN_MOVE = TweenInfo.new(1.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local INJECT_TWEEN_EXPAND = TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local INJECT_TWEEN_FADE = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local INJECT_TWEEN_FADE = TweenInfo.new(1.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     
     -- 初始隐藏内容
     collapsedContent.Visible = false
@@ -1070,7 +1070,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         -- 阶段4：显示内容
         collapsedContent.Visible = true
         
-        -- 阶段5：显示窗口 (0.6秒)
+        -- 阶段5：显示窗口 (1.2秒)
         if mainFrame then
             task.wait(0.3)
             mainFrame.Visible = true
@@ -1081,7 +1081,35 @@ function UILibrary:CreateFloatingButton(parent, options)
                 Position = centerPos
             }):Play()
             
-            local fadeTweens = applyFadeToAll(mainFrame, 0)
+            -- 使用注入动画专用的淡入时间
+            local function applyInjectFade(element)
+                local tweens = {}
+                local function process(el)
+                    if el:IsA("Frame") then
+                        local baseTransparency = el:GetAttribute("BaseTransparency")
+                        if baseTransparency then
+                            table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
+                                BackgroundTransparency = tonumber(baseTransparency)
+                            }))
+                        end
+                    elseif el:IsA("TextLabel") or el:IsA("TextButton") then
+                        table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
+                            TextTransparency = 0
+                        }))
+                    elseif el:IsA("ImageLabel") or el:IsA("ImageButton") then
+                        table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
+                            ImageTransparency = 0
+                        }))
+                    end
+                    for _, child in ipairs(el:GetChildren()) do
+                        process(child)
+                    end
+                end
+                process(element)
+                return tweens
+            end
+            
+            local fadeTweens = applyInjectFade(mainFrame)
             table.insert(fadeTweens, TweenService:Create(mainFrame, INJECT_TWEEN_FADE, {
                 BackgroundTransparency = 0.15
             }))
