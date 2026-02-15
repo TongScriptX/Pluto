@@ -781,6 +781,8 @@ function UILibrary:CreateFloatingButton(parent, options)
     timeLabel.TextColor3 = ISLAND_TEXT_COLOR
     timeLabel.TextSize = 12
     timeLabel.Font = Enum.Font.GothamBold
+    timeLabel.TextXAlignment = Enum.TextXAlignment.Center
+    timeLabel.TextYAlignment = Enum.TextYAlignment.Center
     timeLabel.Parent = collapsedContent
 
     -- 更新时间的函数
@@ -810,7 +812,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     local expandedIcon = Instance.new("TextLabel")
     expandedIcon.Name = "Icon"
     expandedIcon.Size = UDim2.new(0, 18, 0, 18)
-    expandedIcon.Position = UDim2.new(0, 8, 0.5, -9)
+    expandedIcon.Position = UDim2.new(0.5, -55, 0.5, -9)
     expandedIcon.BackgroundTransparency = 1
     expandedIcon.Text = "◈"
     expandedIcon.TextColor3 = ISLAND_TEXT_COLOR
@@ -821,14 +823,14 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 展开状态的文字
     local expandedLabel = Instance.new("TextLabel")
     expandedLabel.Name = "Label"
-    expandedLabel.Size = UDim2.new(1, -50, 1, 0)
-    expandedLabel.Position = UDim2.new(0, 34, 0, 0)
+    expandedLabel.Size = UDim2.new(1, 0, 1, 0)
     expandedLabel.BackgroundTransparency = 1
     expandedLabel.Text = "隐藏窗口"
     expandedLabel.TextColor3 = ISLAND_TEXT_COLOR
     expandedLabel.TextSize = 12
     expandedLabel.Font = THEME.Font
-    expandedLabel.TextXAlignment = Enum.TextXAlignment.Left
+    expandedLabel.TextXAlignment = Enum.TextXAlignment.Center
+    expandedLabel.TextYAlignment = Enum.TextYAlignment.Center
     expandedLabel.Parent = expandedContent
 
     -- 状态变量
