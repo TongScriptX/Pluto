@@ -1015,39 +1015,39 @@ function UILibrary:CreateFloatingButton(parent, options)
         end
     end)
 
-    -- 注入动画 (参考 iOS 动画指南: 页面过渡 300-500ms)
-    local INJECT_TWEEN_MOVE = TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    local INJECT_TWEEN_EXPAND = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local INJECT_TWEEN_FADE = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    -- 注入动画
+    local INJECT_TWEEN_MOVE = TweenInfo.new(1.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local INJECT_TWEEN_EXPAND = TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local INJECT_TWEEN_FADE = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     
     -- 初始隐藏内容
     collapsedContent.Visible = false
     
     task.spawn(function()
         -- 阶段1：等待一帧确保渲染
-        task.wait(0.15)
+        task.wait(0.2)
         
-        -- 阶段2：从中心移动到顶部 (700ms)
+        -- 阶段2：从中心移动到顶部 (1.2秒)
         TweenService:Create(island, INJECT_TWEEN_MOVE, {
             Position = UDim2.new(0.5, -ISLAND_HEIGHT_COLLAPSED/2, 0, TOP_OFFSET)
         }):Play()
         
-        task.wait(0.75)
+        task.wait(1.3)
         
-        -- 阶段3：展开成灵动岛 (500ms)
+        -- 阶段3：展开成灵动岛 (0.8秒)
         TweenService:Create(island, INJECT_TWEEN_EXPAND, {
             Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
             Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
         }):Play()
         
-        task.wait(0.35)
+        task.wait(0.6)
         
         -- 阶段4：显示内容
         collapsedContent.Visible = true
         
-        -- 阶段5：显示窗口 (400ms)
+        -- 阶段5：显示窗口 (0.6秒)
         if mainFrame then
-            task.wait(0.25)
+            task.wait(0.3)
             mainFrame.Visible = true
             mainFrame.BackgroundTransparency = 1
             
