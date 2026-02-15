@@ -730,8 +730,8 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 创建灵动岛容器
     local island = Instance.new("Frame")
     island.Name = "DynamicIsland"
-    island.Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED)
-    island.Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
+    island.Size = UDim2.new(0, ISLAND_HEIGHT_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED)  -- 初始为圆球
+    island.Position = UDim2.new(0.5, -ISLAND_HEIGHT_COLLAPSED/2, 0.5, -ISLAND_HEIGHT_COLLAPSED/2)  -- 初始在屏幕中心
     island.BackgroundColor3 = ISLAND_BG_COLOR
     island.BackgroundTransparency = ISLAND_BG_TRANSPARENCY
     island.BorderSizePixel = 0
@@ -1012,6 +1012,56 @@ function UILibrary:CreateFloatingButton(parent, options)
                 Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
                 Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
             }):Play()
+        end
+    end)
+
+    -- 注入动画
+    local INJECT_TWEEN_MOVE = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.InOut)
+    local INJECT_TWEEN_EXPAND = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    
+    -- 初始隐藏内容
+    collapsedContent.Visible = false
+    
+    task.spawn(function()
+        -- 阶段1：等待一帧确保渲染
+        task.wait(0.1)
+        
+        -- 阶段2：从中心移动到顶部
+        TweenService:Create(island, INJECT_TWEEN_MOVE, {
+            Position = UDim2.new(0.5, -ISLAND_HEIGHT_COLLAPSED/2, 0, TOP_OFFSET)
+        }):Play()
+        
+        task.wait(0.5)
+        
+        -- 阶段3：展开成灵动岛
+        TweenService:Create(island, INJECT_TWEEN_EXPAND, {
+            Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
+            Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
+        }):Play()
+        
+        task.wait(0.3)
+        
+        -- 阶段4：显示内容
+        collapsedContent.Visible = true
+        
+        -- 阶段5：显示窗口
+        if mainFrame then
+            task.wait(0.2)
+            mainFrame.Visible = true
+            mainFrame.BackgroundTransparency = 1
+            
+            local centerPos = getCenterPosition()
+            TweenService:Create(mainFrame, MOVE_TWEEN, {
+                Position = centerPos
+            }):Play()
+            
+            local fadeTweens = applyFadeToAll(mainFrame, 0)
+            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
+                BackgroundTransparency = 0.15
+            }))
+            for _, tween in ipairs(fadeTweens) do
+                tween:Play()
+            end
         end
     end)
 
@@ -1741,7 +1791,7 @@ function UILibrary:CreateUIWindow(options)
     mainFrame.BackgroundColor3 = THEME.Background or DEFAULT_THEME.Background
     mainFrame.BackgroundTransparency = 1  -- 初始透明，用于淡入动画
     mainFrame.Parent = screenGui
-    mainFrame.Visible = true
+    mainFrame.Visible = false  -- 初始隐藏，由注入动画控制显示
     mainFrame.ZIndex = 5
     mainFrame.ClipsDescendants = true
     mainFrame:SetAttribute("CenterX", centerX)
