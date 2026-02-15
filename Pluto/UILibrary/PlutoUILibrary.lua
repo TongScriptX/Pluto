@@ -1015,38 +1015,39 @@ function UILibrary:CreateFloatingButton(parent, options)
         end
     end)
 
-    -- 注入动画
-    local INJECT_TWEEN_MOVE = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.InOut)
-    local INJECT_TWEEN_EXPAND = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    -- 注入动画 (参考 iOS 动画指南: 页面过渡 300-500ms)
+    local INJECT_TWEEN_MOVE = TweenInfo.new(0.7, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local INJECT_TWEEN_EXPAND = TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local INJECT_TWEEN_FADE = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     
     -- 初始隐藏内容
     collapsedContent.Visible = false
     
     task.spawn(function()
         -- 阶段1：等待一帧确保渲染
-        task.wait(0.1)
+        task.wait(0.15)
         
-        -- 阶段2：从中心移动到顶部
+        -- 阶段2：从中心移动到顶部 (700ms)
         TweenService:Create(island, INJECT_TWEEN_MOVE, {
             Position = UDim2.new(0.5, -ISLAND_HEIGHT_COLLAPSED/2, 0, TOP_OFFSET)
         }):Play()
         
-        task.wait(0.5)
+        task.wait(0.75)
         
-        -- 阶段3：展开成灵动岛
+        -- 阶段3：展开成灵动岛 (500ms)
         TweenService:Create(island, INJECT_TWEEN_EXPAND, {
             Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
             Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
         }):Play()
         
-        task.wait(0.3)
+        task.wait(0.35)
         
         -- 阶段4：显示内容
         collapsedContent.Visible = true
         
-        -- 阶段5：显示窗口
+        -- 阶段5：显示窗口 (400ms)
         if mainFrame then
-            task.wait(0.2)
+            task.wait(0.25)
             mainFrame.Visible = true
             mainFrame.BackgroundTransparency = 1
             
@@ -1056,7 +1057,7 @@ function UILibrary:CreateFloatingButton(parent, options)
             }):Play()
             
             local fadeTweens = applyFadeToAll(mainFrame, 0)
-            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
+            table.insert(fadeTweens, TweenService:Create(mainFrame, INJECT_TWEEN_FADE, {
                 BackgroundTransparency = 0.15
             }))
             for _, tween in ipairs(fadeTweens) do
