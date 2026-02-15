@@ -234,7 +234,6 @@ local function checkAutoRobStatus(context)
     end
     
     if not config.autoRobATMsEnabled then
-        PlutoX.debug("[AutoRob] [" .. ctx .. "] 检测到功能已关闭，停止操作")
         return false
     end
     return true
@@ -1239,45 +1238,17 @@ end
 local function getRobbedAmount()
     local success, amount = pcall(function()
         local character = workspace:FindFirstChild(player.Name)
-        if not character then
-            PlutoX.debug("[AutoRob] 警告: 无法找到角色对象")
-            return 0
-        end
-        
+        if not character then return 0 end
         local head = character:FindFirstChild("Head")
-        if not head then
-            PlutoX.debug("[AutoRob] 警告: 无法找到角色头部")
-            return 0
-        end
-        
+        if not head then return 0 end
         local billboard = head:FindFirstChild("CharacterBillboard")
-        if not billboard then
-            PlutoX.debug("[AutoRob] 警告: 无法找到角色公告牌")
-            return 0
-        end
-        
+        if not billboard then return 0 end
         local children = billboard:GetChildren()
-        if #children < 4 then
-            PlutoX.debug("[AutoRob] 警告: 公告牌子元素数量不足，当前数量: " .. #children)
-            return 0
-        end
-        
+        if #children < 4 then return 0 end
         local textLabel = children[4]
-        if not textLabel then
-            PlutoX.debug("[AutoRob] 警告: 无法找到第4个子元素")
-            return 0
-        end
-        
-        if not textLabel.ContentText then
-            PlutoX.debug("[AutoRob] 警告: 文本标签ContentText为空")
-            return 0
-        end
-        
-        local text = textLabel.ContentText
-        local cleanText = text:gsub("[$,]", "")
-        local amount = tonumber(cleanText) or 0
-        
-        return amount
+        if not textLabel or not textLabel.ContentText then return 0 end
+        local cleanText = textLabel.ContentText:gsub("[$,]", "")
+        return tonumber(cleanText) or 0
     end)
     
     if success then
@@ -1312,11 +1283,8 @@ local function checkDropOffPointEnabled()
     end
     
     if dropOffPoint then
-        local enabled = dropOffPoint.Enabled
-        PlutoX.debug("[DropOff] 交付点enabled状态: " .. tostring(enabled))
-        return enabled
+        return dropOffPoint.Enabled
     else
-        PlutoX.warn("[DropOff] 无法找到交付点Billboard（已尝试" .. maxRetries .. "次）")
         return false
     end
 end
@@ -1327,28 +1295,16 @@ local function checkRobberyCompletion(previousAmount)
     local currentAmount = getRobbedAmount()
     local change = currentAmount - (previousAmount or 0)
     
-    PlutoX.debug("[AutoRob] 金额检测结果:")
-    PlutoX.debug("  - 之前金额: " .. formatNumber(previousAmount))
-    PlutoX.debug("  - 当前金额: " .. formatNumber(currentAmount))
-    PlutoX.debug("  - 变化量: " .. (change >= 0 and "+" or "") .. formatNumber(change))
-    
     if change > 0 then
-        PlutoX.debug("[AutoRob] ✓ 检测到抢劫成功获得金额: +" .. formatNumber(change))
         return true, change
     elseif change < 0 then
-        PlutoX.debug("[AutoRob] ⚠ 检测到金额减少: " .. formatNumber(change))
         return false, change
     else
-        PlutoX.debug("[AutoRob] - 金额无变化")
         return false, 0
     end
 end
 
 local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tempTargetRef)
-    PlutoX.debug("[Recovery] === 启动投放失败恢复机制 ===")
-    PlutoX.debug("[Recovery] 当前已抢金额: " .. formatNumber(robbedAmount))
-    PlutoX.debug("[Recovery] 原始目标金额: " .. formatNumber(originalTarget))
-
     local collectionService = game:GetService("CollectionService")
     local moneyBags = collectionService:GetTagged("CriminalMoneyBagTool")
     for _, bag in pairs(moneyBags) do
@@ -1363,32 +1319,22 @@ local function enhancedDeliveryFailureRecovery(robbedAmount, originalTarget, tem
     if character and character.PrimaryPart then
         character.PrimaryPart.Velocity = Vector3.zero
         character:PivotTo(dropOffSpawners.CriminalDropOffSpawnerPermanent.CFrame + Vector3.new(0, 20, 0))
-        PlutoX.debug("[Recovery] 已传送到安全位置重置状态")
     end
 
     task.wait(1)
 
     local currentRobbedAmount = getRobbedAmount() or 0
-    PlutoX.debug("[Recovery] 重置后已抢金额: " .. formatNumber(currentRobbedAmount))
 
     if currentRobbedAmount > 0 then
-        PlutoX.debug("[Recovery] 发现剩余金额，尝试再次投放...")
         local retrySuccess = sellMoney()
 
         if retrySuccess then
-            PlutoX.debug("[Recovery] ✓ 重试投放成功！金额: " .. formatNumber(retryDelivered))
-            PlutoX.debug("[Recovery] === 投放失败恢复机制结束（成功） ===")
             return true, retryDelivered
-        else
-            PlutoX.debug("[Recovery] ✗ 重试投放仍然失败")
         end
     end
 
     local newTempTarget = currentRobbedAmount + originalTarget
     tempTargetRef.value = newTempTarget
-
-    PlutoX.debug("[Recovery] ✗ 投放失败，继续增加临时目标: " .. formatNumber(newTempTarget))
-    PlutoX.debug("[Recovery] === 投放失败恢复机制结束（失败，增加临时目标） ===")
 
     return false, 0
 end
@@ -1432,8 +1378,6 @@ local function sellMoney()
         return false
     end
     
-    PlutoX.debug("[Sell] 开始出售，当前金额: " .. formatNumber(currentAmount))
-    
     local char = player.Character
     if char and char:FindFirstChild("HumanoidRootPart") then
         char:PivotTo(CFrame.new(sellPos1 + Vector3.new(0, 3, 0)))
@@ -1471,16 +1415,11 @@ local function checkAndForceDelivery(tempTarget)
     local targetAmount = tempTarget or config.robTargetAmount or 0
 
     if targetAmount > 0 and robbedAmount >= targetAmount then
-        PlutoX.debug("[AutoRob] ⚠ 已抢金额达到或超过目标: " .. formatNumber(robbedAmount) .. " >= " .. formatNumber(targetAmount))
-
         local dropOffEnabled = checkDropOffPointEnabled()
 
         if not dropOffEnabled then
-            PlutoX.debug("[AutoRob] 交付点不可用，继续抢劫...")
             return false, 0, 0
         end
-
-        PlutoX.debug("[AutoRob] 交付点可用，执行强制投放...")
 
         local success = sellMoney()
 
@@ -1494,7 +1433,6 @@ local function checkAndForceDelivery(tempTarget)
             task.wait(2)
             return true
         else
-            PlutoX.warn("[AutoRob] 投放失败，自动创建临时目标继续抢劫")
             return false, attempts, 0
         end
     end
@@ -1510,13 +1448,10 @@ local function monitorDropOffStatusAndUpdateTarget()
     
     if lastDropOffEnabledStatus == nil then
         lastDropOffEnabledStatus = currentStatus
-        PlutoX.debug("[DropOff] 初始交付点状态: " .. tostring(currentStatus))
         return false
     end
     
     if not lastDropOffEnabledStatus and currentStatus then
-        PlutoX.debug("[DropOff] 交付点从不可用变为可用！")
-        
         local currentRobbedAmount = getRobbedAmount() or 0
         if currentRobbedAmount > 0 then
             config.robTargetAmount = currentRobbedAmount
@@ -1527,8 +1462,6 @@ local function monitorDropOffStatusAndUpdateTarget()
                 Text = string.format("交付点可用，目标金额更新为: %s", formatNumber(currentRobbedAmount)),
                 Duration = 5
             })
-            
-            PlutoX.debug("[DropOff] 目标金额已更新为当前已抢劫金额: " .. formatNumber(currentRobbedAmount))
         end
         
         lastDropOffEnabledStatus = currentStatus
@@ -1874,7 +1807,6 @@ local originalLocationNameCall = nil
 -- Auto Rob ATMs功能
 local function performAutoRobATMs()
     isAutoRobActive = true
-    PlutoX.debug("[AutoRobATMs] 自动抢劫已启动")
     
     local remotes = ReplicatedStorage:WaitForChild("Remotes")
     remotes:WaitForChild("RequestStartJobSession"):FireServer("Criminal", "jobPad")
@@ -1937,7 +1869,6 @@ local function performAutoRobATMs()
         end
         
         local function createAllPlatforms()
-            PlutoX.debug("[AutoRob] 创建平台，共 " .. #platformPositions .. " 个")
             for i, pos in ipairs(platformPositions) do
                 local platform = Instance.new("Part")
                 platform.Name = "DeltaCorePlatform"
@@ -1946,21 +1877,15 @@ local function performAutoRobATMs()
                 platform.Size = Vector3.new(50000, 3, 50000)
                 platform.Color = Color3.fromRGB(128, 128, 128)
                 platform.Anchored = true
-                PlutoX.debug("[AutoRob] 平台 " .. i .. " 创建完成: " .. tostring(pos))
             end
-            PlutoX.debug("[AutoRob] 所有平台创建完成")
         end
         
         local function removeAllPlatforms()
-            PlutoX.debug("[AutoRob] 删除所有平台")
-            local count = 0
             for _, obj in ipairs(workspace:GetChildren()) do
                 if obj.Name == "DeltaCorePlatform" then 
                     obj:Destroy() 
-                    count = count + 1
                 end
             end
-            PlutoX.debug("[AutoRob] 已删除 " .. count .. " 个平台")
         end
         
         local function safeTeleport(pos)
@@ -1974,15 +1899,11 @@ local function performAutoRobATMs()
         
         local function smartBust(spawner, atm)
             if not isAutoRobActive then return false end
-            PlutoX.debug("[AutoRob] ====== 开始抢劫 ATM ======")
             
             local char = localPlayer.Character
             local root = char and char:FindFirstChild("HumanoidRootPart")
             local beforeAmount = getRobbedAmount() or 0
             local targetPos = atm.WorldPivot + Vector3.new(0, 5, 0)
-            
-            PlutoX.debug("[AutoRob] 初始金额: " .. formatNumber(beforeAmount))
-            PlutoX.debug("[AutoRob] 传送到 ATM 位置")
             
             -- 步骤1：传送到 ATM 并保持位置 1 秒
             local teleportStart = tick()
@@ -1998,7 +1919,6 @@ local function performAutoRobATMs()
             if not isAutoRobActive then return false end
             
             -- 调用开始抢劫
-            PlutoX.debug("[AutoRob] 调用 AttemptATMBustStart")
             game:GetService("ReplicatedStorage").Remotes.AttemptATMBustStart:InvokeServer(atm)
             
             -- 步骤2：保持位置 2.5 秒
@@ -2015,7 +1935,6 @@ local function performAutoRobATMs()
             if not isAutoRobActive then return false end
             
             -- 步骤3：调用完成抢劫
-            PlutoX.debug("[AutoRob] 调用 AttemptATMBustComplete")
             game:GetService("ReplicatedStorage").Remotes.AttemptATMBustComplete:InvokeServer(atm)
             
             -- 步骤4：保持位置等待冷却完成（检查 ATMBustDebounce）
@@ -2039,12 +1958,9 @@ local function performAutoRobATMs()
             -- 检测金额变化
             local success = checkRobberyCompletion(beforeAmount)
             
-            PlutoX.debug("[AutoRob] 抢劫结果: " .. (success and "成功" or "失败"))
-            
             -- 抢劫后检查是否需要出售
             sellByAmount()
             
-            PlutoX.debug("[AutoRob] ====== 抢劫结束 ======")
             return success
         end
         
@@ -2054,7 +1970,6 @@ local function performAutoRobATMs()
             local targetAmount = config.robTargetAmount or 0
             
             if targetAmount > 0 and currentAmount >= targetAmount then
-                PlutoX.debug("[AutoRob] 金额达到目标，开始出售...")
                 setNoclip(true)
                 
                 -- 传送到出售点1
@@ -2095,95 +2010,67 @@ local function performAutoRobATMs()
         
         local function getAvailableATM()
             local spawners = workspace.Game.Jobs.CriminalATMSpawners
-            local spawnerCount = #spawners:GetChildren()
-            PlutoX.debug("[AutoRob] 开始搜索可用 ATM，共 " .. spawnerCount .. " 个 spawner")
             
             for _, spawner in ipairs(spawners:GetChildren()) do
                 local atm = spawner:FindFirstChild("CriminalATM")
                 if atm then
                     local state = atm:GetAttribute("State")
                     if state == "Normal" then
-                        PlutoX.debug("[AutoRob] 找到可用 ATM，State=" .. tostring(state))
                         return spawner, atm
                     end
                 end
             end
-            PlutoX.debug("[AutoRob] 未找到可用 ATM")
             return nil, nil
         end
         
         local function searchAndRob()
             if not isAutoRobActive then 
-                PlutoX.debug("[AutoRob] searchAndRob: isAutoRobActive=false，退出")
                 return false 
             end
             
-            PlutoX.debug("[AutoRob] ====== 开始搜索和抢劫 ======")
-            
             -- 先检查是否需要出售
             if sellByAmount() then
-                PlutoX.debug("[AutoRob] 出售完成")
             end
             
             setNoclip(true)
             
             -- 先尝试直接寻找 ATM（不传送平台）
-            PlutoX.debug("[AutoRob] 尝试直接寻找可用 ATM")
             local spawner, atm = getAvailableATM()
             if spawner and atm then
-                PlutoX.debug("[AutoRob] 直接找到 ATM，开始抢劫")
                 local success = smartBust(spawner, atm)
                 if success then
-                    PlutoX.debug("[AutoRob] 抢劫成功，传送到平台")
                     -- 抢劫成功后传送到第一个平台
                     safeTeleport(platformPositions[1])
                     return true
-                else
-                    PlutoX.debug("[AutoRob] 抢劫失败，继续搜索")
                 end
-            else
-                PlutoX.debug("[AutoRob] 未直接找到 ATM，开始遍历平台")
             end
             
             -- 如果没找到或抢劫失败，遍历平台
             for i, platformPos in ipairs(platformPositions) do
                 if not isAutoRobActive then 
-                    PlutoX.debug("[AutoRob] 循环中断: isAutoRobActive=false")
                     break 
                 end
                 
-                PlutoX.debug("[AutoRob] 前往平台 " .. i .. "/" .. #platformPositions .. ": " .. tostring(platformPos))
-                
                 safeTeleport(platformPos)
-                PlutoX.debug("[AutoRob] 已传送到平台，等待 5 秒加载 ATM")
                 task.wait(5)
                 
                 local spawner, atm = getAvailableATM()
                 if spawner and atm then
-                    PlutoX.debug("[AutoRob] 找到 ATM，开始抢劫")
                     local success = smartBust(spawner, atm)
                     if success then
-                        PlutoX.debug("[AutoRob] 抢劫成功，返回 true")
                         return true
-                    else
-                        PlutoX.debug("[AutoRob] 抢劫失败，继续搜索")
                     end
-                else
-                    PlutoX.debug("[AutoRob] 平台 " .. i .. " 未找到 ATM")
                 end
             end
             
-            PlutoX.debug("[AutoRob] ====== 搜索结束，未找到可用 ATM ======")
             return false
         end
 
         -- 初始化：创建平台、设置 noclip 和 weight
-        PlutoX.debug("[AutoRob] ====== 初始化 ATM 抢劫 ======")
         removeAllPlatforms()
         createAllPlatforms()
         setNoclip(true)
         setWeight(true)
-        PlutoX.debug("[AutoRob] 初始化完成，开始主循环")
         
         while isAutoRobActive do
             task.wait()
@@ -2193,7 +2080,6 @@ local function performAutoRobATMs()
                 else
                     noATMCount = noATMCount + 1
                     if noATMCount >= 5 then
-                        PlutoX.debug("[AutoRobATMs] 连续5次未找到ATM，重置搜索")
                         noATMCount = 0
                         safeTeleport(Vector3.new(0, 50, 0))
                         task.wait(1)
@@ -2201,12 +2087,10 @@ local function performAutoRobATMs()
                 end
             end)
             if not success then
-                PlutoX.warn("[AutoRobATMs] Error:", err)
                 noATMCount = 0
             end
         end
         
-        PlutoX.debug("[AutoRobATMs] 自动抢劫已停止")
         if noclipConnection then noclipConnection:Disconnect() end
         removeAllPlatforms()
         setWeight(false)
@@ -2219,7 +2103,6 @@ local function performAutoRobATMs()
             mt.__namecall = originalLocationNameCall
             setreadonly(mt, true)
             originalLocationNameCall = nil
-            PlutoX.debug("[AutoRobATMs] 已恢复 Location remote")
         end
     end)
 end
