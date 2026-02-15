@@ -616,25 +616,24 @@ function UILibrary:CreateButton(parent, options)
     local iconAsset = hasIcon and (UILibrary.Icons[options.Icon] or options.Icon) or nil
     local iconSize = options.IconSize or 16
     local iconPadding = hasIcon and 24 or 0
+    local showHintIcon = options.ShowHintIcon ~= false  -- 默认显示提示图标
     
     local button = Instance.new("TextButton")
     button.Name = "Button_" .. (options.Text or "Unnamed")
     button.Size = options.Size or UDim2.new(1, 0, 0, UI_STYLES.ButtonHeight)
     button.BackgroundColor3 = options.BackgroundColor3 or THEME.Primary or DEFAULT_THEME.Primary
     button.BackgroundTransparency = options.BackgroundTransparency or 0.4
-    button.Text = options.Text or ""
+    button.Text = ""  -- 使用 TextLabel 代替
     button.TextColor3 = THEME.Text or DEFAULT_THEME.Text
     button.TextSize = options.TextSize or 12
     button.Font = THEME.Font
     button.Parent = parent
     button.Visible = true
     button.ZIndex = 3
+    button.AutoButtonColor = false
     
-    -- 如果有图标，调整文字位置
+    -- 左侧图标
     if hasIcon then
-        button.Text = ""  -- 清空文字，用 TextLabel 代替
-        button.AutoButtonColor = false
-        
         local icon = Instance.new("ImageLabel")
         icon.Name = "Icon"
         icon.Size = UDim2.new(0, iconSize, 0, iconSize)
@@ -644,19 +643,34 @@ function UILibrary:CreateButton(parent, options)
         icon.BackgroundTransparency = 1
         icon.Parent = button
         icon.ZIndex = 4
-        
-        local label = Instance.new("TextLabel")
-        label.Name = "TextLabel"
-        label.Size = UDim2.new(1, -iconPadding - 16, 1, 0)
-        label.Position = UDim2.new(0, iconPadding + 12, 0, 0)
-        label.Text = options.Text or ""
-        label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
-        label.TextSize = options.TextSize or 12
-        label.Font = THEME.Font
-        label.BackgroundTransparency = 1
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = button
-        label.ZIndex = 4
+    end
+    
+    -- 文字标签（左对齐）
+    local label = Instance.new("TextLabel")
+    label.Name = "TextLabel"
+    label.Size = UDim2.new(1, -iconPadding - 32, 1, 0)
+    label.Position = UDim2.new(0, iconPadding + 12, 0, 0)
+    label.Text = options.Text or ""
+    label.TextColor3 = THEME.Text or DEFAULT_THEME.Text
+    label.TextSize = options.TextSize or 12
+    label.Font = THEME.Font
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+    label.Parent = button
+    label.ZIndex = 4
+    
+    -- 右侧提示图标
+    if showHintIcon then
+        local hintIcon = Instance.new("ImageLabel")
+        hintIcon.Name = "HintIcon"
+        hintIcon.Size = UDim2.new(0, 14, 0, 14)
+        hintIcon.Position = UDim2.new(1, -20, 0.5, -7)
+        hintIcon.Image = UILibrary.Icons.chevronRight
+        hintIcon.ImageColor3 = Color3.fromRGB(150, 150, 160)
+        hintIcon.BackgroundTransparency = 1
+        hintIcon.ImageTransparency = 0.3
+        hintIcon.Parent = button
+        hintIcon.ZIndex = 4
     end
 
     local corner = Instance.new("UICorner")
