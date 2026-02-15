@@ -913,23 +913,31 @@ function UILibrary:CreateFloatingButton(parent, options)
                             mainFrame.BackgroundTransparency = 1
                             expandedLabel.Text = "显示中..."
                             
-                            -- 先将所有元素设置为透明状态，并保存原始透明度
+                            -- 先将所有元素设置为透明状态，只在第一次保存原始透明度
                             local function setAllTransparent(element)
                                 if element:IsA("Frame") or element:IsA("ScrollingFrame") then
-                                    -- 保存原始透明度
-                                    element:SetAttribute("_SavedTransparency", element.BackgroundTransparency)
+                                    -- 只在第一次保存原始透明度
+                                    if not element:GetAttribute("_SavedTransparency") then
+                                        element:SetAttribute("_SavedTransparency", element.BackgroundTransparency)
+                                    end
                                     element.BackgroundTransparency = 1
                                     
                                     local stroke = element:FindFirstChildOfClass("UIStroke")
                                     if stroke then
-                                        stroke:SetAttribute("_SavedStrokeTransparency", stroke.Transparency)
+                                        if not stroke:GetAttribute("_SavedStrokeTransparency") then
+                                            stroke:SetAttribute("_SavedStrokeTransparency", stroke.Transparency)
+                                        end
                                         stroke.Transparency = 1
                                     end
                                 elseif element:IsA("TextLabel") or element:IsA("TextButton") then
-                                    element:SetAttribute("_SavedTransparency", element.TextTransparency)
+                                    if not element:GetAttribute("_SavedTransparency") then
+                                        element:SetAttribute("_SavedTransparency", element.TextTransparency)
+                                    end
                                     element.TextTransparency = 1
                                 elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
-                                    element:SetAttribute("_SavedTransparency", element.ImageTransparency)
+                                    if not element:GetAttribute("_SavedTransparency") then
+                                        element:SetAttribute("_SavedTransparency", element.ImageTransparency)
+                                    end
                                     element.ImageTransparency = 1
                                 end
                                 for _, child in ipairs(element:GetChildren()) do
@@ -1151,24 +1159,32 @@ function UILibrary:CreateFloatingButton(parent, options)
             mainFrame.Visible = true
             mainFrame.BackgroundTransparency = 1
             
-            -- 先将所有元素设置为透明状态，并保存原始透明度
+            -- 先将所有元素设置为透明状态，只在第一次保存原始透明度
             local function setAllTransparent(element)
                 if element:IsA("Frame") or element:IsA("ScrollingFrame") then
-                    -- 保存原始透明度
-                    element:SetAttribute("_SavedTransparency", element.BackgroundTransparency)
+                    -- 只在第一次保存原始透明度
+                    if not element:GetAttribute("_SavedTransparency") then
+                        element:SetAttribute("_SavedTransparency", element.BackgroundTransparency)
+                    end
                     element.BackgroundTransparency = 1
                     
                     -- 处理 UIStroke
                     local stroke = element:FindFirstChildOfClass("UIStroke")
                     if stroke then
-                        stroke:SetAttribute("_SavedStrokeTransparency", stroke.Transparency)
+                        if not stroke:GetAttribute("_SavedStrokeTransparency") then
+                            stroke:SetAttribute("_SavedStrokeTransparency", stroke.Transparency)
+                        end
                         stroke.Transparency = 1
                     end
                 elseif element:IsA("TextLabel") or element:IsA("TextButton") then
-                    element:SetAttribute("_SavedTransparency", element.TextTransparency)
+                    if not element:GetAttribute("_SavedTransparency") then
+                        element:SetAttribute("_SavedTransparency", element.TextTransparency)
+                    end
                     element.TextTransparency = 1
                 elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
-                    element:SetAttribute("_SavedTransparency", element.ImageTransparency)
+                    if not element:GetAttribute("_SavedTransparency") then
+                        element:SetAttribute("_SavedTransparency", element.ImageTransparency)
+                    end
                     element.ImageTransparency = 1
                 end
                 for _, child in ipairs(element:GetChildren()) do
