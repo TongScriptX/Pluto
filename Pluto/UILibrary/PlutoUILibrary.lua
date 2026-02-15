@@ -859,50 +859,6 @@ function UILibrary:CreateFloatingButton(parent, options)
 
     -- 应用淡入/淡出动画到所有子元素
     local FADE_OUT_TWEEN = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
-    
-    local function applyFadeToAll(frame, targetTransparency)
-        local tweens = {}
-        local tween = targetTransparency == 0 and FADE_TWEEN or FADE_OUT_TWEEN
-        
-        local function processElement(element)
-            if element:IsA("Frame") or element:IsA("ScrollingFrame") then
-                -- 处理背景透明度（使用 BaseTransparency 或当前值）
-                local baseTransparency = element:GetAttribute("BaseTransparency")
-                if baseTransparency then
-                    table.insert(tweens, TweenService:Create(element, tween, {
-                        BackgroundTransparency = targetTransparency == 0 and tonumber(baseTransparency) or 1
-                    }))
-                elseif element.BackgroundTransparency < 1 then
-                    -- 如果没有 BaseTransparency 但背景不透明，也需要淡出
-                    table.insert(tweens, TweenService:Create(element, tween, {
-                        BackgroundTransparency = targetTransparency
-                    }))
-                end
-                -- 处理 UIStroke
-                local stroke = element:FindFirstChildOfClass("UIStroke")
-                if stroke and stroke.Transparency < 1 then
-                    table.insert(tweens, TweenService:Create(stroke, tween, {
-                        Transparency = targetTransparency == 0 and 0.5 or 1
-                    }))
-                end
-            elseif element:IsA("TextLabel") or element:IsA("TextButton") then
-                table.insert(tweens, TweenService:Create(element, tween, {
-                    TextTransparency = targetTransparency
-                }))
-            elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
-                table.insert(tweens, TweenService:Create(element, tween, {
-                    ImageTransparency = targetTransparency
-                }))
-            end
-            
-            for _, child in ipairs(element:GetChildren()) do
-                processElement(child)
-            end
-        end
-        
-        processElement(frame)
-        return tweens, tween
-    end
 
     -- 展开动画（横向和纵向同时展开）
     local function expandIsland()
@@ -957,19 +913,23 @@ function UILibrary:CreateFloatingButton(parent, options)
                             mainFrame.BackgroundTransparency = 1
                             expandedLabel.Text = "显示中..."
                             
-                            -- 先将所有元素设置为透明状态
+                            -- 先将所有元素设置为透明状态，并保存原始透明度
                             local function setAllTransparent(element)
                                 if element:IsA("Frame") or element:IsA("ScrollingFrame") then
-                                    if element.BackgroundTransparency < 1 then
-                                        element.BackgroundTransparency = 1
-                                    end
+                                    -- 保存原始透明度
+                                    element:SetAttribute("_SavedTransparency", element.BackgroundTransparency)
+                                    element.BackgroundTransparency = 1
+                                    
                                     local stroke = element:FindFirstChildOfClass("UIStroke")
-                                    if stroke and stroke.Transparency < 1 then
+                                    if stroke then
+                                        stroke:SetAttribute("_SavedStrokeTransparency", stroke.Transparency)
                                         stroke.Transparency = 1
                                     end
                                 elseif element:IsA("TextLabel") or element:IsA("TextButton") then
+                                    element:SetAttribute("_SavedTransparency", element.TextTransparency)
                                     element.TextTransparency = 1
                                 elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
+                                    element:SetAttribute("_SavedTransparency", element.ImageTransparency)
                                     element.ImageTransparency = 1
                                 end
                                 for _, child in ipairs(element:GetChildren()) do
@@ -984,8 +944,47 @@ function UILibrary:CreateFloatingButton(parent, options)
                                 Position = centerPos
                             }):Play()
                             
-                            local fadeTweens, fadeTween = applyFadeToAll(mainFrame, 0)
-                            table.insert(fadeTweens, TweenService:Create(mainFrame, fadeTween, {
+                            -- 淡入所有元素
+                            local function fadeInAll(element, tweens, tween)
+                                if element:IsA("Frame") or element:IsA("ScrollingFrame") then
+                                    local savedTrans = element:GetAttribute("_SavedTransparency")
+                                    if savedTrans then
+                                        table.insert(tweens, TweenService:Create(element, tween, {
+                                            BackgroundTransparency = tonumber(savedTrans)
+                                        }))
+                                    end
+                                    local stroke = element:FindFirstChildOfClass("UIStroke")
+                                    if stroke then
+                                        local savedStrokeTrans = stroke:GetAttribute("_SavedStrokeTransparency")
+                                        if savedStrokeTrans then
+                                            table.insert(tweens, TweenService:Create(stroke, tween, {
+                                                Transparency = tonumber(savedStrokeTrans)
+                                            }))
+                                        end
+                                    end
+                                elseif element:IsA("TextLabel") or element:IsA("TextButton") then
+                                    local savedTrans = element:GetAttribute("_SavedTransparency")
+                                    if savedTrans then
+                                        table.insert(tweens, TweenService:Create(element, tween, {
+                                            TextTransparency = tonumber(savedTrans)
+                                        }))
+                                    end
+                                elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
+                                    local savedTrans = element:GetAttribute("_SavedTransparency")
+                                    if savedTrans then
+                                        table.insert(tweens, TweenService:Create(element, tween, {
+                                            ImageTransparency = tonumber(savedTrans)
+                                        }))
+                                    end
+                                end
+                                for _, child in ipairs(element:GetChildren()) do
+                                    fadeInAll(child, tweens, tween)
+                                end
+                            end
+                            
+                            local fadeTweens = {}
+                            fadeInAll(mainFrame, fadeTweens, FADE_TWEEN)
+                            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
                                 BackgroundTransparency = 0.15
                             }))
                             for _, tween in ipairs(fadeTweens) do
@@ -1005,8 +1004,47 @@ function UILibrary:CreateFloatingButton(parent, options)
                             
                             task.wait(0.25)
                             
-                            local fadeTweens, fadeTween = applyFadeToAll(mainFrame, 1)
-                            table.insert(fadeTweens, TweenService:Create(mainFrame, fadeTween, {
+                            -- 淡出所有元素
+                            local function fadeOutAll(element, tweens, tween)
+                                if element:IsA("Frame") or element:IsA("ScrollingFrame") then
+                                    local savedTrans = element:GetAttribute("_SavedTransparency")
+                                    if savedTrans and tonumber(savedTrans) < 1 then
+                                        table.insert(tweens, TweenService:Create(element, tween, {
+                                            BackgroundTransparency = 1
+                                        }))
+                                    end
+                                    local stroke = element:FindFirstChildOfClass("UIStroke")
+                                    if stroke then
+                                        local savedStrokeTrans = stroke:GetAttribute("_SavedStrokeTransparency")
+                                        if savedStrokeTrans and tonumber(savedStrokeTrans) < 1 then
+                                            table.insert(tweens, TweenService:Create(stroke, tween, {
+                                                Transparency = 1
+                                            }))
+                                        end
+                                    end
+                                elseif element:IsA("TextLabel") or element:IsA("TextButton") then
+                                    local savedTrans = element:GetAttribute("_SavedTransparency")
+                                    if savedTrans and tonumber(savedTrans) < 1 then
+                                        table.insert(tweens, TweenService:Create(element, tween, {
+                                            TextTransparency = 1
+                                        }))
+                                    end
+                                elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
+                                    local savedTrans = element:GetAttribute("_SavedTransparency")
+                                    if savedTrans and tonumber(savedTrans) < 1 then
+                                        table.insert(tweens, TweenService:Create(element, tween, {
+                                            ImageTransparency = 1
+                                        }))
+                                    end
+                                end
+                                for _, child in ipairs(element:GetChildren()) do
+                                    fadeOutAll(child, tweens, tween)
+                                end
+                            end
+                            
+                            local fadeTweens = {}
+                            fadeOutAll(mainFrame, fadeTweens, FADE_OUT_TWEEN)
+                            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_OUT_TWEEN, {
                                 BackgroundTransparency = 1
                             }))
                             for _, tween in ipairs(fadeTweens) do
@@ -1113,20 +1151,24 @@ function UILibrary:CreateFloatingButton(parent, options)
             mainFrame.Visible = true
             mainFrame.BackgroundTransparency = 1
             
-            -- 先将所有元素设置为透明状态
+            -- 先将所有元素设置为透明状态，并保存原始透明度
             local function setAllTransparent(element)
                 if element:IsA("Frame") or element:IsA("ScrollingFrame") then
-                    if element.BackgroundTransparency < 1 then
-                        element.BackgroundTransparency = 1
-                    end
+                    -- 保存原始透明度
+                    element:SetAttribute("_SavedTransparency", element.BackgroundTransparency)
+                    element.BackgroundTransparency = 1
+                    
                     -- 处理 UIStroke
                     local stroke = element:FindFirstChildOfClass("UIStroke")
-                    if stroke and stroke.Transparency < 1 then
+                    if stroke then
+                        stroke:SetAttribute("_SavedStrokeTransparency", stroke.Transparency)
                         stroke.Transparency = 1
                     end
                 elseif element:IsA("TextLabel") or element:IsA("TextButton") then
+                    element:SetAttribute("_SavedTransparency", element.TextTransparency)
                     element.TextTransparency = 1
                 elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
+                    element:SetAttribute("_SavedTransparency", element.ImageTransparency)
                     element.ImageTransparency = 1
                 end
                 for _, child in ipairs(element:GetChildren()) do
@@ -1140,37 +1182,41 @@ function UILibrary:CreateFloatingButton(parent, options)
                 Position = centerPos
             }):Play()
             
-            -- 使用注入动画专用的淡入时间
+            -- 使用注入动画专用的淡入时间，恢复原始透明度
             local function applyInjectFade(element)
                 local tweens = {}
                 local function process(el)
                     if el:IsA("Frame") or el:IsA("ScrollingFrame") then
-                        -- 处理背景透明度
-                        local baseTransparency = el:GetAttribute("BaseTransparency")
-                        if baseTransparency then
+                        local savedTrans = el:GetAttribute("_SavedTransparency")
+                        if savedTrans then
                             table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
-                                BackgroundTransparency = tonumber(baseTransparency)
-                            }))
-                        elseif el.BackgroundTransparency < 1 then
-                            table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
-                                BackgroundTransparency = 0
+                                BackgroundTransparency = tonumber(savedTrans)
                             }))
                         end
                         -- 处理 UIStroke
                         local stroke = el:FindFirstChildOfClass("UIStroke")
-                        if stroke and stroke.Transparency < 1 then
-                            table.insert(tweens, TweenService:Create(stroke, INJECT_TWEEN_FADE, {
-                                Transparency = 0.5
-                            }))
+                        if stroke then
+                            local savedStrokeTrans = stroke:GetAttribute("_SavedStrokeTransparency")
+                            if savedStrokeTrans then
+                                table.insert(tweens, TweenService:Create(stroke, INJECT_TWEEN_FADE, {
+                                    Transparency = tonumber(savedStrokeTrans)
+                                }))
+                            end
                         end
                     elseif el:IsA("TextLabel") or el:IsA("TextButton") then
-                        table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
-                            TextTransparency = 0
-                        }))
+                        local savedTrans = el:GetAttribute("_SavedTransparency")
+                        if savedTrans then
+                            table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
+                                TextTransparency = tonumber(savedTrans)
+                            }))
+                        end
                     elseif el:IsA("ImageLabel") or el:IsA("ImageButton") then
-                        table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
-                            ImageTransparency = 0
-                        }))
+                        local savedTrans = el:GetAttribute("_SavedTransparency")
+                        if savedTrans then
+                            table.insert(tweens, TweenService:Create(el, INJECT_TWEEN_FADE, {
+                                ImageTransparency = tonumber(savedTrans)
+                            }))
+                        end
                     end
                     for _, child in ipairs(el:GetChildren()) do
                         process(child)
