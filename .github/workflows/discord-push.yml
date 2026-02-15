@@ -41,52 +41,21 @@ jobs:
           
           echo ""
           echo "=== 提取提交信息 ==="
+          # 直接使用最新提交信息
+          COMMIT_MESSAGE=$(git log -1 --pretty=%s)
+          COMMIT_AUTHOR=$(git log -1 --pretty=%an)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_BODY=$(git log -1 --pretty=%b)
+          
           # 检查是否是 merge commit
           IS_MERGE=$(git log -1 --pretty=%P | grep -c "^")
           
+          # 获取合并的提交数量（如果是 merge commit）
+          MERGE_COMMIT_COUNT=0
           if [ "$IS_MERGE" -gt 0 ]; then
-            echo "检测到 Merge Commit，获取父提交信息"
-            
-            # 获取merge commit的父提交数量
-            PARENT_COUNT=$(git log -1 --pretty=%P | grep -c "^")
-            echo "父提交数量: $PARENT_COUNT"
-            
-            # 如果有第二个父提交，使用它（develop分支的提交）
-            if [ "$PARENT_COUNT" -ge 2 ]; then
-              PARENT2=$(git log -1 --pretty=%h HEAD^2 2>/dev/null || echo "")
-              if [ -n "$PARENT2" ]; then
-                PARENT2_MESSAGE=$(git log -1 --pretty=%s HEAD^2 2>/dev/null || echo "")
-                PARENT2_AUTHOR=$(git log -1 --pretty=%an HEAD^2 2>/dev/null || echo "")
-                PARENT2_HASH=$(git rev-parse --short HEAD^2 2>/dev/null || echo "")
-                
-                echo "父提交 (develop): $PARENT2"
-                echo "父提交消息: $PARENT2_MESSAGE"
-                echo "父提交作者: $PARENT2_AUTHOR"
-                
-                COMMIT_MESSAGE="$PARENT2_MESSAGE"
-                COMMIT_AUTHOR="$PARENT2_AUTHOR"
-                COMMIT_HASH="$PARENT2_HASH"
-              else
-                echo "无法获取第二个父提交，使用merge commit本身"
-                COMMIT_MESSAGE=$(git log -1 --pretty=%s)
-                COMMIT_AUTHOR=$(git log -1 --pretty=%an)
-                COMMIT_HASH=$(git rev-parse --short HEAD)
-              fi
-            else
-              echo "Merge Commit只有一个父提交，使用merge commit本身"
-              COMMIT_MESSAGE=$(git log -1 --pretty=%s)
-              COMMIT_AUTHOR=$(git log -1 --pretty=%an)
-              COMMIT_HASH=$(git rev-parse --short HEAD)
-            fi
-          else
-            COMMIT_MESSAGE=$(git log -1 --pretty=%s)
-            COMMIT_AUTHOR=$(git log -1 --pretty=%an)
-            COMMIT_HASH=$(git rev-parse --short HEAD)
+            MERGE_COMMIT_COUNT=$(git log --oneline HEAD^1..HEAD^2 2>/dev/null | wc -l || echo "0")
+            echo "检测到 Merge Commit，合并了 $MERGE_COMMIT_COUNT 个提交"
           fi
-          
-          COMMIT_BODY=$(git log -1 --pretty=%b)
-          FILES=$(git diff --name-only HEAD^ HEAD || echo "")
-          FILE_NAMES=$(echo "$FILES" | xargs -n1 basename 2>/dev/null | paste -sd ", " - || echo "无更改")
           
           echo "提交消息: $COMMIT_MESSAGE"
           echo "提交作者: $COMMIT_AUTHOR"
@@ -131,13 +100,25 @@ jobs:
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "时间戳: $TIMESTAMP"
           
-          JSON=$(jq -n --arg title "$ICON $TYPE 提交" \
-                       --arg description "$SUBJECT" \
+          # 对于 merge commit，显示完整的 body 作为描述
+          if [ "$IS_MERGE" -gt 0 ] && [ -n "$COMMIT_BODY" ]; then
+            # merge commit 使用完整 body
+            DESCRIPTION="$COMMIT_BODY"
+            TITLE="🔀 $SUBJECT ($MERGE_COMMIT_COUNT commits)"
+          else
+            DESCRIPTION="$SUBJECT"
+            TITLE="$ICON $TYPE 提交"
+          fi
+          
+          # Discord embed description 限制 4096 字符
+          if [ ${#DESCRIPTION} -gt 4000 ]; then
+            DESCRIPTION="${DESCRIPTION:0:3997}..."
+          fi
+          
+          JSON=$(jq -n --arg title "$TITLE" \
+                       --arg description "$DESCRIPTION" \
                        --arg author "$COMMIT_AUTHOR" \
                        --arg hash "$COMMIT_HASH" \
-                       --arg scope "$SCOPE" \
-                       --arg files "$FILE_NAMES" \
-                       --arg body "$COMMIT_BODY" \
                        --arg timestamp "$TIMESTAMP" \
                        --argjson color $COLOR \
                        '{
@@ -156,16 +137,6 @@ jobs:
                                   "name": "🔗 提交",
                                   "value": "`\($hash)`",
                                   "inline": true
-                                },
-                                {
-                                  "name": "📂 范围",
-                                  "value": ($scope // "无"),
-                                  "inline": true
-                                },
-                                {
-                                  "name": "🗂️ 更新文件",
-                                  "value": ($files // "无"),
-                                  "inline": false
                                 }
                               ],
                               "footer": {
