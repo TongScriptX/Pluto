@@ -744,8 +744,8 @@ function UILibrary:CreateFloatingButton(parent, options)
     -- 创建灵动岛容器
     local island = Instance.new("Frame")
     island.Name = "DynamicIsland"
-    island.Size = UDim2.new(0, ISLAND_HEIGHT_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED)  -- 初始为圆球
-    island.Position = UDim2.new(0.5, -ISLAND_HEIGHT_COLLAPSED/2, 0.5, -ISLAND_HEIGHT_COLLAPSED/2)  -- 初始在屏幕中心
+    island.Size = UDim2.new(0, 0, 0, 0)  -- 初始为 0，用于由小到大动画
+    island.Position = UDim2.new(0.5, 0, 0.5, 0)  -- 初始在屏幕中心
     island.BackgroundColor3 = ISLAND_BG_COLOR
     island.BackgroundTransparency = ISLAND_BG_TRANSPARENCY
     island.BorderSizePixel = 0
@@ -755,7 +755,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     island.ClipsDescendants = true
 
     local islandCorner = Instance.new("UICorner")
-    islandCorner.CornerRadius = UDim.new(0, ISLAND_RADIUS)
+    islandCorner.CornerRadius = UDim.new(1, 0)  -- 初始为圆形（百分比圆角）
     islandCorner.Parent = island
 
     -- 内容容器
@@ -1032,6 +1032,7 @@ function UILibrary:CreateFloatingButton(parent, options)
     end)
 
     -- 注入动画
+    local INJECT_TWEEN_APPEAR = TweenInfo.new(0.6, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     local INJECT_TWEEN_MOVE = TweenInfo.new(1.2, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
     local INJECT_TWEEN_EXPAND = TweenInfo.new(0.8, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
     local INJECT_TWEEN_FADE = TweenInfo.new(0.6, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
@@ -1040,8 +1041,13 @@ function UILibrary:CreateFloatingButton(parent, options)
     collapsedContent.Visible = false
     
     task.spawn(function()
-        -- 阶段1：等待一帧确保渲染
-        task.wait(0.2)
+        -- 阶段1：圆球在中心由小到大出现 (0.6秒)
+        TweenService:Create(island, INJECT_TWEEN_APPEAR, {
+            Size = UDim2.new(0, ISLAND_HEIGHT_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
+            Position = UDim2.new(0.5, -ISLAND_HEIGHT_COLLAPSED/2, 0.5, -ISLAND_HEIGHT_COLLAPSED/2)
+        }):Play()
+        
+        task.wait(0.7)
         
         -- 阶段2：从中心移动到顶部 (1.2秒)
         TweenService:Create(island, INJECT_TWEEN_MOVE, {
@@ -1050,10 +1056,13 @@ function UILibrary:CreateFloatingButton(parent, options)
         
         task.wait(1.3)
         
-        -- 阶段3：展开成灵动岛 (0.8秒)
+        -- 阶段3：展开成灵动岛，同时圆角变为固定像素值 (0.8秒)
         TweenService:Create(island, INJECT_TWEEN_EXPAND, {
             Size = UDim2.new(0, ISLAND_WIDTH_COLLAPSED, 0, ISLAND_HEIGHT_COLLAPSED),
             Position = UDim2.new(0.5, -ISLAND_WIDTH_COLLAPSED/2, 0, TOP_OFFSET)
+        }):Play()
+        TweenService:Create(islandCorner, INJECT_TWEEN_EXPAND, {
+            CornerRadius = UDim.new(0, ISLAND_RADIUS)
         }):Play()
         
         task.wait(0.6)
