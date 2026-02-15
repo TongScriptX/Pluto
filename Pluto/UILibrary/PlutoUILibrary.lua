@@ -858,23 +858,33 @@ function UILibrary:CreateFloatingButton(parent, options)
     end
 
     -- 应用淡入/淡出动画到所有子元素
+    local FADE_OUT_TWEEN = TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
+    
     local function applyFadeToAll(frame, targetTransparency)
         local tweens = {}
+        local tween = targetTransparency == 0 and FADE_TWEEN or FADE_OUT_TWEEN
         
         local function processElement(element)
-            if element:IsA("Frame") then
+            if element:IsA("Frame") or element:IsA("ScrollingFrame") then
                 local baseTransparency = element:GetAttribute("BaseTransparency")
                 if baseTransparency then
-                    table.insert(tweens, TweenService:Create(element, FADE_TWEEN, {
+                    table.insert(tweens, TweenService:Create(element, tween, {
                         BackgroundTransparency = targetTransparency == 0 and tonumber(baseTransparency) or 1
                     }))
                 end
+                -- 处理 UIStroke
+                local stroke = element:FindFirstChildOfClass("UIStroke")
+                if stroke then
+                    table.insert(tweens, TweenService:Create(stroke, tween, {
+                        Transparency = targetTransparency == 0 and 0.5 or 1
+                    }))
+                end
             elseif element:IsA("TextLabel") or element:IsA("TextButton") then
-                table.insert(tweens, TweenService:Create(element, FADE_TWEEN, {
+                table.insert(tweens, TweenService:Create(element, tween, {
                     TextTransparency = targetTransparency
                 }))
             elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
-                table.insert(tweens, TweenService:Create(element, FADE_TWEEN, {
+                table.insert(tweens, TweenService:Create(element, tween, {
                     ImageTransparency = targetTransparency
                 }))
             end
@@ -885,7 +895,7 @@ function UILibrary:CreateFloatingButton(parent, options)
         end
         
         processElement(frame)
-        return tweens
+        return tweens, tween
     end
 
     -- 展开动画（横向和纵向同时展开）
@@ -941,14 +951,36 @@ function UILibrary:CreateFloatingButton(parent, options)
                             mainFrame.BackgroundTransparency = 1
                             expandedLabel.Text = "显示中..."
                             
+                            -- 先将所有元素设置为透明状态
+                            local function setAllTransparent(element)
+                                if element:IsA("Frame") or element:IsA("ScrollingFrame") then
+                                    local baseTransparency = element:GetAttribute("BaseTransparency")
+                                    if baseTransparency then
+                                        element.BackgroundTransparency = 1
+                                    end
+                                    local stroke = element:FindFirstChildOfClass("UIStroke")
+                                    if stroke then
+                                        stroke.Transparency = 1
+                                    end
+                                elseif element:IsA("TextLabel") or element:IsA("TextButton") then
+                                    element.TextTransparency = 1
+                                elseif element:IsA("ImageLabel") or element:IsA("ImageButton") then
+                                    element.ImageTransparency = 1
+                                end
+                                for _, child in ipairs(element:GetChildren()) do
+                                    setAllTransparent(child)
+                                end
+                            end
+                            setAllTransparent(mainFrame)
+                            
                             -- 移动到中心位置
                             local centerPos = getCenterPosition()
                             TweenService:Create(mainFrame, MOVE_TWEEN, {
                                 Position = centerPos
                             }):Play()
                             
-                            local fadeTweens = applyFadeToAll(mainFrame, 0)
-                            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
+                            local fadeTweens, fadeTween = applyFadeToAll(mainFrame, 0)
+                            table.insert(fadeTweens, TweenService:Create(mainFrame, fadeTween, {
                                 BackgroundTransparency = 0.15
                             }))
                             for _, tween in ipairs(fadeTweens) do
@@ -968,15 +1000,15 @@ function UILibrary:CreateFloatingButton(parent, options)
                             
                             task.wait(0.25)
                             
-                            local fadeTweens = applyFadeToAll(mainFrame, 1)
-                            table.insert(fadeTweens, TweenService:Create(mainFrame, FADE_TWEEN, {
+                            local fadeTweens, fadeTween = applyFadeToAll(mainFrame, 1)
+                            table.insert(fadeTweens, TweenService:Create(mainFrame, fadeTween, {
                                 BackgroundTransparency = 1
                             }))
                             for _, tween in ipairs(fadeTweens) do
                                 tween:Play()
                             end
                             
-                            task.wait(0.35)
+                            task.wait(0.85)
                             mainFrame.Visible = false
                             task.wait(0.2)
                         end
