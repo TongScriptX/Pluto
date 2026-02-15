@@ -1486,8 +1486,8 @@ function UILibrary:CreateDropdown(parent, options)
 
     dropdownButton.MouseLeave:Connect(function()
         TweenService:Create(containerStroke, self.TWEEN_INFO_BUTTON, {
-            Color = Color3.fromRGB(255, 255, 255),
-            Transparency = 0.6
+            Color = THEME.Primary or DEFAULT_THEME.Primary,
+            Transparency = 0.5
         }):Play()
     end)
 
