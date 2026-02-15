@@ -2226,7 +2226,7 @@ end
 
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)
-local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector)
+local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector, gameName, username)
 disconnectDetector:init()
 
 -- 设置数据监测器的发送前回调，用于添加排行榜信息

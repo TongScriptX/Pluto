@@ -159,7 +159,7 @@ local config = configManager:loadConfig()
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
 
 -- 数据监测管理器
-local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes)
+local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, nil, gameName, username)
 
 -- 掉线检测
 local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookManager)

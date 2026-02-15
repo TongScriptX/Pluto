@@ -1146,7 +1146,7 @@ end
 
 -- 通用数据监测管理器
 
-function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector)
+function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector, gameName, username)
     local monitor = {}
 
     monitor.config = config
@@ -1168,8 +1168,9 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
     end
 
     monitor.HttpService = PlutoX.uploaderHttpService or webhookHttpService
-    monitor.gameName = PlutoX.gameName or webhookGameName
-    monitor.username = PlutoX.username or webhookUsername
+    -- 优先使用传入的参数，然后是全局变量，最后是 webhook 中的值
+    monitor.gameName = gameName or PlutoX.gameName or webhookGameName or "未知游戏"
+    monitor.username = username or PlutoX.username or webhookUsername
     
     -- 内部状态
     monitor.lastSendTime = os.time()
