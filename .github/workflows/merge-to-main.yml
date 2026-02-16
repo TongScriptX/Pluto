@@ -5,15 +5,6 @@ on:
     branches:
       - develop
   workflow_dispatch:
-    inputs:
-      confirm:
-        description: '确认合并 develop 到 main'
-        required: true
-        default: 'yes'
-        type: choice
-        options:
-          - 'yes'
-          - 'no'
 
 permissions:
   contents: write
@@ -49,11 +40,9 @@ jobs:
         if: steps.check.outputs.commits != '0'
         id: commits
         run: |
-          # 获取提交信息
           COMMIT_MESSAGES=$(git log origin/main..origin/develop --pretty=format:"- %s")
           echo "$COMMIT_MESSAGES" > /tmp/commit_messages.txt
           
-          # 获取文件变更统计
           FILE_CHANGES=$(git diff origin/main...origin/develop --stat | tail -1)
           echo "$FILE_CHANGES" > /tmp/file_changes.txt
 
@@ -68,53 +57,25 @@ jobs:
           COMMIT_MSGS=$(cat /tmp/commit_messages.txt)
           FILE_STATS=$(cat /tmp/file_changes.txt)
           
-          # 默认 API 配置
           API_URL="${AI_API_URL:-https://api.openai.com/v1/chat/completions}"
           MODEL="${AI_MODEL:-gpt-4o-mini}"
           
-          # 构建请求
-          PROMPT="你是一个 Git 提交信息总结助手。请根据以下 develop 分支的修改内容，生成一个简洁的合并提交信息。
-
-要求：
-1. 总结主要修改类别（feat/fix/style/refactor 等）
-2. 每个类别下列出关键修改（不要重复列出相同类型的修改）
-3. 使用中文
-4. 格式清晰，适合作为 commit message
-5. 直接输出内容，不要有代码块标记
-
-提交列表:
-$COMMIT_MSGS
-
-文件变更统计:
-$FILE_STATS
-
-请直接输出总结内容，格式如下：
-merge: 合并 develop 分支
-
-## 新功能
-- xxx
-
-## 修复  
-- xxx
-
-## 样式
-- xxx"
-
           if [ -z "$AI_API_KEY" ]; then
             echo "::warning::未配置 AI_API_KEY，使用简单总结"
-            SUMMARY="merge: 合并 develop 分支
+            cat > /tmp/merge_message.txt << 'EOF'
+merge: 合并 develop 分支
 
 本次合并包含以下修改:
-$COMMIT_MSGS"
+EOF
+            echo "$COMMIT_MSGS" >> /tmp/merge_message.txt
           else
-            # 调用 AI API
             RESPONSE=$(curl -s -X POST "$API_URL" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $AI_API_KEY" \
               -d "{
                 \"model\": \"$MODEL\",
-                \"messages\": [{\"role\": \"user\", \"content\": $(echo "$PROMPT" | jq -Rs .)}],
-                \"max_tokens\": 1000,
+                \"messages\": [{\"role\": \"user\", \"content\": \"请根据以下提交列表生成一个简洁的合并提交信息，使用中文，格式为 merge: 开头：\n$COMMIT_MSGS\"}],
+                \"max_tokens\": 500,
                 \"temperature\": 0.3
               }")
             
@@ -122,17 +83,17 @@ $COMMIT_MSGS"
             
             if [ -z "$SUMMARY" ] || [ "$SUMMARY" = "null" ]; then
               echo "::warning::AI API 调用失败，使用简单总结"
-              SUMMARY="merge: 合并 develop 分支
+              cat > /tmp/merge_message.txt << 'EOF'
+merge: 合并 develop 分支
 
 本次合并包含以下修改:
-$COMMIT_MSGS"
+EOF
+              echo "$COMMIT_MSGS" >> /tmp/merge_message.txt
+            else
+              echo "$SUMMARY" > /tmp/merge_message.txt
             fi
           fi
           
-          # 保存总结
-          echo "$SUMMARY" > /tmp/merge_message.txt
-          
-          # 输出预览
           echo "========== 合并提交信息 =========="
           cat /tmp/merge_message.txt
           echo "=================================="
@@ -143,30 +104,18 @@ $COMMIT_MSGS"
           git checkout main
           git pull origin main
           
-          # 使用生成的总结作为合并提交信息
           MERGE_MSG=$(cat /tmp/merge_message.txt)
           
           git merge origin/develop --no-ff -m "$MERGE_MSG"
           git push origin main
 
-      - name: Switch back to develop
+      - name: Summary
         if: steps.check.outputs.commits != '0'
         run: |
-          git checkout develop
-          git pull origin develop
-
-      - name: Summary
-        run: |
-          if [ "${{ steps.check.outputs.commits }}" = "0" ]; then
-            echo "### ✅ 无需合并" >> $GITHUB_STEP_SUMMARY
-            echo "develop 与 main 已同步" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "### ✅ 合并完成" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "合并 **${{ steps.check.outputs.commits }}** 个提交到 main 分支" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "#### 合并提交信息" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-            cat /tmp/merge_message.txt >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "### ✅ 合并完成" >> $GITHUB_STEP_SUMMARY
+          echo "合并 **${{ steps.check.outputs.commits }}** 个提交到 main 分支" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### 合并提交信息" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          cat /tmp/merge_message.txt >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
