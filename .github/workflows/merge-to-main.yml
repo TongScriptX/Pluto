@@ -1,4 +1,4 @@
-name: 🔀 Merge Develop to Main
+name: Merge Develop to Main
 
 on:
   push:
@@ -23,99 +23,28 @@ jobs:
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
 
-      - name: Check for changes
-        id: check
+      - name: Merge to main
         run: |
           git fetch origin main
           git fetch origin develop
           
           COMMITS=$(git log origin/main..origin/develop --oneline | wc -l)
-          echo "commits=$COMMITS" >> $GITHUB_OUTPUT
           
           if [ "$COMMITS" -eq 0 ]; then
-            echo "::notice::develop 与 main 同步，无需合并"
-          fi
-
-      - name: Get commit messages
-        if: steps.check.outputs.commits != '0'
-        id: commits
-        run: |
-          COMMIT_MESSAGES=$(git log origin/main..origin/develop --pretty=format:"- %s")
-          echo "$COMMIT_MESSAGES" > /tmp/commit_messages.txt
-          
-          FILE_CHANGES=$(git diff origin/main...origin/develop --stat | tail -1)
-          echo "$FILE_CHANGES" > /tmp/file_changes.txt
-
-      - name: Summarize with AI
-        if: steps.check.outputs.commits != '0'
-        id: summarize
-        env:
-          AI_API_URL: ${{ secrets.AI_API_URL }}
-          AI_API_KEY: ${{ secrets.AI_API_KEY }}
-          AI_MODEL: ${{ secrets.AI_MODEL }}
-        run: |
-          COMMIT_MSGS=$(cat /tmp/commit_messages.txt)
-          FILE_STATS=$(cat /tmp/file_changes.txt)
-          
-          API_URL="${AI_API_URL:-https://api.openai.com/v1/chat/completions}"
-          MODEL="${AI_MODEL:-gpt-4o-mini}"
-          
-          if [ -z "$AI_API_KEY" ]; then
-            echo "::warning::未配置 AI_API_KEY，使用简单总结"
-            cat > /tmp/merge_message.txt << 'EOF'
-merge: 合并 develop 分支
-
-本次合并包含以下修改:
-EOF
-            echo "$COMMIT_MSGS" >> /tmp/merge_message.txt
-          else
-            RESPONSE=$(curl -s -X POST "$API_URL" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer $AI_API_KEY" \
-              -d "{
-                \"model\": \"$MODEL\",
-                \"messages\": [{\"role\": \"user\", \"content\": \"请根据以下提交列表生成一个简洁的合并提交信息，使用中文，格式为 merge: 开头：\n$COMMIT_MSGS\"}],
-                \"max_tokens\": 500,
-                \"temperature\": 0.3
-              }")
-            
-            SUMMARY=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' 2>/dev/null)
-            
-            if [ -z "$SUMMARY" ] || [ "$SUMMARY" = "null" ]; then
-              echo "::warning::AI API 调用失败，使用简单总结"
-              cat > /tmp/merge_message.txt << 'EOF'
-merge: 合并 develop 分支
-
-本次合并包含以下修改:
-EOF
-              echo "$COMMIT_MSGS" >> /tmp/merge_message.txt
-            else
-              echo "$SUMMARY" > /tmp/merge_message.txt
-            fi
+            echo "No changes to merge"
+            exit 0
           fi
           
-          echo "========== 合并提交信息 =========="
-          cat /tmp/merge_message.txt
-          echo "=================================="
-
-      - name: Merge to main
-        if: steps.check.outputs.commits != '0'
-        run: |
+          COMMIT_MSGS=$(git log origin/main..origin/develop --pretty=format:"- %s")
+          
           git checkout main
           git pull origin main
-          
-          MERGE_MSG=$(cat /tmp/merge_message.txt)
-          
-          git merge origin/develop --no-ff -m "$MERGE_MSG"
+          git merge origin/develop --no-ff -m "merge: 合并 develop 分支
+
+本次合并包含以下修改:
+$COMMIT_MSGS"
           git push origin main
 
       - name: Summary
-        if: steps.check.outputs.commits != '0'
         run: |
-          echo "### ✅ 合并完成" >> $GITHUB_STEP_SUMMARY
-          echo "合并 **${{ steps.check.outputs.commits }}** 个提交到 main 分支" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### 合并提交信息" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          cat /tmp/merge_message.txt >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "Merge completed successfully"
