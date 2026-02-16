@@ -1,4 +1,4 @@
-name: Merge Develop to Main
+name: Auto Merge to Main
 
 on:
   push:
@@ -16,14 +16,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure Git
         run: |
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
 
-      - name: Merge to main
+      - name: Check and Merge
         run: |
           git fetch origin main
           git fetch origin develop
@@ -39,12 +38,5 @@ jobs:
           
           git checkout main
           git pull origin main
-          git merge origin/develop --no-ff -m "merge: 合并 develop 分支
-
-本次合并包含以下修改:
-$COMMIT_MSGS"
+          git merge origin/develop --no-ff -m "merge: 合并 develop 分支" -m "本次合并包含以下修改:" -m "$COMMIT_MSGS"
           git push origin main
-
-      - name: Summary
-        run: |
-          echo "Merge completed successfully"
