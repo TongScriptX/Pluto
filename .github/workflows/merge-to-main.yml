@@ -1,6 +1,9 @@
 name: 🔀 Merge Develop to Main
 
 on:
+  push:
+    branches:
+      - develop
   workflow_dispatch:
     inputs:
       confirm:
@@ -18,7 +21,6 @@ permissions:
 jobs:
   merge:
     runs-on: ubuntu-latest
-    if: github.event.inputs.confirm == 'yes'
     steps:
       - uses: actions/checkout@v4
         with:
