@@ -1665,6 +1665,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
             
             if newTargetValue > currentValue then
                 self.config["target" .. keyUpper] = newTargetValue
+                self.config["targetStart" .. keyUpper] = currentValue  -- 更新起点，为下次调整做准备
                 if self.UILibrary then
                     self.UILibrary:Notify({
                         Title = "目标值已调整",
@@ -1699,6 +1700,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         -- 只在配置变化时保存
         if configChanged and saveConfig then
             saveConfig()
+            configChanged = false  -- 重置标志，避免重复保存
         end
         return true
     end
@@ -2094,6 +2096,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                 config["base" .. keyUpper] = num
                 config["target" .. keyUpper] = newTarget
                 config["lastSaved" .. keyUpper] = currentValue
+                config["targetStart" .. keyUpper] = currentValue  -- 记录设置目标时的金额，用于后续调整计算
                 
                 baseValueInput.Text = PlutoX.formatNumber(num)
                 updateTargetLabel()
