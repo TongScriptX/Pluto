@@ -23,20 +23,23 @@ local uiModule = loadstring(uiCode)()
 local ui = uiModule.CreateUI(playerGui)
 
 -- 性能优化配置
-local UPDATE_THROTTLE = 0.1 -- UI更新节流时间（秒）
-local MAX_VISIBLE_LOGS = 100 -- 最大可见日志数
-local DUPLICATE_MERGE_TIME = 2 -- 相同消息合并时间窗口（秒）
-local DUPLICATE_THRESHOLD = 3 -- 超过此数量开始合并显示
+local UPDATE_THROTTLE = 0.05 -- UI更新节流时间（秒）
+local MAX_VISIBLE_LOGS = 150 -- 最大可见日志数
+local DUPLICATE_MERGE_TIME = 1 -- 相同消息合并时间窗口（秒）
 
--- 保存日志（按时间顺序存储）
+-- 保存日志
 local logHistory = {}
 local pendingLogs = {}
 local lastUpdateTime = 0
 local isUpdating = false
-local nextLayoutOrder = 1000000  -- 从大数字开始递减，使新日志显示在上面
+local nextLayoutOrder = 1000000
 
--- 当前显示的日志标签（用于合并相同消息）
-local displayedLogs = {} -- {msg = {label, count, lastTime, msgType}}
+-- 用于合并的临时存储
+local lastLogMsg = nil
+local lastLogLabel = nil
+local lastLogCount = 0
+local lastLogTime = 0
+local lastLogType = nil
 
 -- 对象池（重用TextLabel）
 local textLabelPool = {}
@@ -75,14 +78,11 @@ local function getTimeString()
 end
 
 -- 格式化日志文本
-local function formatLogText(msg, msgType, count, timeStr)
-    local prefix = timeStr and ("[%s] "):format(timeStr) or ("[%s] "):format(getTimeString())
-    local typeStr = msgType.Name
-    
+local function formatLogText(timeStr, msgType, msg, count)
     if count and count > 1 then
-        return prefix .. ("[%s x%d] %s"):format(typeStr, count, msg)
+        return string.format("[%s] [%s x%d] %s", timeStr, msgType.Name, count, msg)
     else
-        return prefix .. ("[%s] %s"):format(typeStr, msg)
+        return string.format("[%s] [%s] %s", timeStr, msgType.Name, msg)
     end
 end
 
@@ -93,33 +93,27 @@ local function updateUI()
     
     local currentTime = tick()
     
-    -- 清理过期的显示记录
-    for msg, data in pairs(displayedLogs) do
-        if currentTime - data.lastTime > DUPLICATE_MERGE_TIME then
-            displayedLogs[msg] = nil
-        end
-    end
-    
     -- 处理待处理的日志
     for _, logData in ipairs(pendingLogs) do
         local msg, msgType = logData.msg, logData.msgType
         local timeStr = getTimeString()
         
         -- 添加到历史记录
-        table.insert(logHistory, formatLogText(msg, msgType, nil, timeStr))
+        table.insert(logHistory, formatLogText(timeStr, msgType, msg, nil))
         
-        -- 检查是否可以合并到已有显示
-        local existing = displayedLogs[msg]
-        if existing and (currentTime - existing.lastTime) <= DUPLICATE_MERGE_TIME then
-            -- 合并到已有日志
-            existing.count = existing.count + 1
-            existing.lastTime = currentTime
-            existing.timeStr = timeStr
-            
-            -- 更新标签文本
-            if existing.label and existing.label.Parent then
-                existing.label.Text = formatLogText(msg, msgType, existing.count, timeStr)
-            end
+        -- 检查是否可以合并（相同消息、相同类型、在时间窗口内）
+        local canMerge = false
+        if lastLogMsg == msg and lastLogType == msgType and 
+           lastLogLabel and lastLogLabel.Parent and
+           (currentTime - lastLogTime) <= DUPLICATE_MERGE_TIME then
+            canMerge = true
+        end
+        
+        if canMerge then
+            -- 合并到上一条日志
+            lastLogCount = lastLogCount + 1
+            lastLogTime = currentTime
+            lastLogLabel.Text = formatLogText(timeStr, msgType, msg, lastLogCount)
         else
             -- 创建新的日志条目
             local line = getLabel()
@@ -130,21 +124,19 @@ local function updateUI()
             line.TextXAlignment = Enum.TextXAlignment.Left
             line.Font = Enum.Font.Code
             line.TextSize = 14
-            line.Text = formatLogText(msg, msgType, nil, timeStr)
+            line.Text = formatLogText(timeStr, msgType, msg, nil)
             line.TextWrapped = true
             line.LayoutOrder = nextLayoutOrder
-            nextLayoutOrder = nextLayoutOrder - 1  -- 递减，使新日志显示在上面
+            nextLayoutOrder = nextLayoutOrder - 1
             
             line.Parent = ui.Scroll
             
-            -- 记录显示的日志
-            displayedLogs[msg] = {
-                label = line,
-                count = 1,
-                lastTime = currentTime,
-                timeStr = timeStr,
-                msgType = msgType
-            }
+            -- 更新最后日志记录
+            lastLogMsg = msg
+            lastLogLabel = line
+            lastLogCount = 1
+            lastLogTime = currentTime
+            lastLogType = msgType
         end
     end
     
@@ -156,7 +148,6 @@ local function updateUI()
     local visibleCount = 0
     local textLabels = {}
     
-    -- 收集所有TextLabel
     for _, child in ipairs(children) do
         if child:IsA("TextLabel") and child.Visible then
             table.insert(textLabels, child)
@@ -164,23 +155,10 @@ local function updateUI()
         end
     end
     
-    -- 如果超过最大可见数量，删除最旧的
     if visibleCount > MAX_VISIBLE_LOGS then
-        -- 按LayoutOrder排序（最大的最旧）
         table.sort(textLabels, function(a, b) return a.LayoutOrder > b.LayoutOrder end)
-        
-        -- 删除超出限制的旧日志
-        local removedCount = visibleCount - MAX_VISIBLE_LOGS
-        for i = 1, removedCount do
-            local label = textLabels[i]
-            -- 清理对应的displayedLogs记录
-            for msg, data in pairs(displayedLogs) do
-                if data.label == label then
-                    displayedLogs[msg] = nil
-                    break
-                end
-            end
-            returnLabel(label)
+        for i = 1, visibleCount - MAX_VISIBLE_LOGS do
+            returnLabel(textLabels[i])
         end
     end
     
@@ -192,7 +170,6 @@ end
 local function appendLog(msg, msgType)
     table.insert(pendingLogs, {msg = msg, msgType = msgType})
     
-    -- 检查是否需要更新UI
     local currentTime = tick()
     if currentTime - lastUpdateTime >= UPDATE_THROTTLE then
         updateUI()
@@ -224,7 +201,6 @@ end
 
 -- 点击复制按钮
 ui.CopyBtn.MouseButton1Click:Connect(function()
-    -- 按时间顺序拼接日志（从早到晚）
     local output = table.concat(logHistory, "\n")
     local success = trySetClipboard(output)
     if success then
@@ -233,39 +209,40 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
         ui.Notice.Text = "⚠️ 无法自动复制，请手动复制文本"
     end
 
-    -- 清空日志
     logHistory = {}
     pendingLogs = {}
-    displayedLogs = {}
+    lastLogMsg = nil
+    lastLogLabel = nil
+    lastLogCount = 0
     
-    -- 返回所有标签到对象池
     for _, child in ipairs(ui.Scroll:GetChildren()) do
         if child:IsA("TextLabel") then
             returnLabel(child)
         end
     end
     
-    nextLayoutOrder = 1000000  -- 重置为初始值
+    nextLayoutOrder = 1000000
 end)
 
 -- 点击清空按钮
 ui.ClearBtn.MouseButton1Click:Connect(function()
     logHistory = {}
     pendingLogs = {}
-    displayedLogs = {}
+    lastLogMsg = nil
+    lastLogLabel = nil
+    lastLogCount = 0
     
-    -- 返回所有标签到对象池
     for _, child in ipairs(ui.Scroll:GetChildren()) do
         if child:IsA("TextLabel") then
             returnLabel(child)
         end
     end
     
-    nextLayoutOrder = 1000000  -- 重置为初始值
+    nextLayoutOrder = 1000000
     ui.Notice.Text = "🗑️ 日志已清空"
 end)
 
--- 定期更新UI（确保待处理的日志被处理）
+-- 定期更新UI
 spawn(function()
     while true do
         task.wait(UPDATE_THROTTLE)
