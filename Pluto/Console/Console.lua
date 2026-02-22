@@ -25,7 +25,6 @@ local ui = uiModule.CreateUI(playerGui)
 -- 性能优化配置
 local UPDATE_THROTTLE = 0.05 -- UI更新节流时间（秒）
 local MAX_VISIBLE_LOGS = 150 -- 最大可见日志数
-local DUPLICATE_MERGE_TIME = 1.5 -- 相同消息合并时间窗口（秒）
 
 -- 保存日志（按时间顺序存储）
 local logHistory = {}
@@ -33,12 +32,6 @@ local pendingLogs = {}
 local lastUpdateTime = 0
 local isUpdating = false
 local nextLayoutOrder = 1000000  -- 从大数字开始递减，使新日志显示在上面
-
--- 用于合并的记录
-local lastLogMsg = nil
-local lastLogLabel = nil
-local lastLogCount = 0
-local lastLogTime = 0
 
 -- 对象池（重用TextLabel）
 local textLabelPool = {}
@@ -70,63 +63,32 @@ local function getColor(msgType)
     end
 end
 
--- 获取当前时间字符串
-local function getTimeString()
-    local now = DateTime.now()
-    return string.format("%02d:%02d:%02d", now.Hour, now.Minute, now.Second)
-end
-
 -- 批量更新UI
 local function updateUI()
     if isUpdating then return end
     isUpdating = true
     
-    local currentTime = tick()
-    
     -- 处理待处理的日志
     for _, logData in ipairs(pendingLogs) do
         local msg, msgType = logData.msg, logData.msgType
-        local timeStr = getTimeString()
         
         -- 添加到历史记录
-        table.insert(logHistory, ("[%s] [%s] %s"):format(timeStr, msgType.Name, msg))
+        table.insert(logHistory, ("[%s] %s"):format(msgType.Name, msg))
+
+        local line = getLabel()
+        line.Size = UDim2.new(1, -10, 0, 0)
+        line.AutomaticSize = Enum.AutomaticSize.Y
+        line.BackgroundTransparency = 1
+        line.TextColor3 = getColor(msgType)
+        line.TextXAlignment = Enum.TextXAlignment.Left
+        line.Font = Enum.Font.Code
+        line.TextSize = 14
+        line.Text = ("[%s] %s"):format(msgType.Name, msg)
+        line.TextWrapped = true
+        line.LayoutOrder = nextLayoutOrder
+        nextLayoutOrder = nextLayoutOrder - 1  -- 递减，使新日志显示在上面
         
-        -- 检查是否可以合并（相同消息、在时间窗口内、label还存在）
-        local canMerge = false
-        if lastLogMsg == msg and lastLogLabel and lastLogLabel.Parent then
-            if (currentTime - lastLogTime) <= DUPLICATE_MERGE_TIME then
-                canMerge = true
-            end
-        end
-        
-        if canMerge then
-            -- 合并到已有日志
-            lastLogCount = lastLogCount + 1
-            lastLogTime = currentTime
-            lastLogLabel.Text = ("[%s] [%s x%d] %s"):format(timeStr, msgType.Name, lastLogCount, msg)
-        else
-            -- 创建新的日志条目
-            local line = getLabel()
-            line.Size = UDim2.new(1, -10, 0, 0)
-            line.AutomaticSize = Enum.AutomaticSize.Y
-            line.BackgroundTransparency = 1
-            line.TextColor3 = getColor(msgType)
-            line.TextXAlignment = Enum.TextXAlignment.Left
-            line.Font = Enum.Font.Code
-            line.TextSize = 14
-            line.Text = ("[%s] [%s] %s"):format(timeStr, msgType.Name, msg)
-            line.TextWrapped = true
-            line.LayoutOrder = nextLayoutOrder
-            nextLayoutOrder = nextLayoutOrder - 1  -- 递减，使新日志显示在上面
-            
-            line.Parent = ui.Scroll
-            
-            -- 更新最后日志记录
-            lastLogMsg = msg
-            lastLogLabel = line
-            lastLogCount = 1
-            lastLogTime = currentTime
-        end
+        line.Parent = ui.Scroll
     end
     
     -- 清空待处理队列
@@ -208,9 +170,6 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
     -- 清空日志
     logHistory = {}
     pendingLogs = {}
-    lastLogMsg = nil
-    lastLogLabel = nil
-    lastLogCount = 0
     
     -- 返回所有标签到对象池
     for _, child in ipairs(ui.Scroll:GetChildren()) do
@@ -226,9 +185,6 @@ end)
 ui.ClearBtn.MouseButton1Click:Connect(function()
     logHistory = {}
     pendingLogs = {}
-    lastLogMsg = nil
-    lastLogLabel = nil
-    lastLogCount = 0
     
     -- 返回所有标签到对象池
     for _, child in ipairs(ui.Scroll:GetChildren()) do
