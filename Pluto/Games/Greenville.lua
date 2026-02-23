@@ -57,7 +57,7 @@ _G.PRIMARY_COLOR = 5793266
 -- UI 库加载
 local UILibrary
 local success, result = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)
@@ -70,7 +70,7 @@ end
 
 -- PlutoX 模块加载
 local success, PlutoX = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
+    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)

@@ -135,7 +135,7 @@ end
 
 -- PlutoX 模块加载（必须在UILibrary加载之前）
 local plutoSuccess, PlutoX = pcall(function()
-    local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
+    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)
@@ -149,9 +149,9 @@ local UILibrary
 local success, result = pcall(function()
     local url
     if PlutoX.debugEnabled then
-        url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
+        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
     else
-        url = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     end
     local source = game:HttpGet(url)
     return loadstring(source)()

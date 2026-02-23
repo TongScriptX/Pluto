@@ -1,7 +1,7 @@
 local HttpService = game:GetService("HttpService")
 
 -- 安全加载 Pluto UI 库
-local url = "https://raw.githubusercontent.com/TongScriptX/Pluto/main/Pluto/UILibrary/PlutoUILibrary.lua"
+local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/main/Pluto/UILibrary/PlutoUILibrary.lua"
 
 local content
 local success, err = pcall(function()
