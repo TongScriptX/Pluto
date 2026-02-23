@@ -1238,17 +1238,34 @@ end
 local function getRobbedAmount()
     local success, amount = pcall(function()
         local character = workspace:FindFirstChild(player.Name)
-        if not character then return 0 end
+        if not character then 
+            PlutoX.debug("[AutoRob] getRobbedAmount: 未找到角色")
+            return 0 
+        end
         local head = character:FindFirstChild("Head")
-        if not head then return 0 end
+        if not head then 
+            PlutoX.debug("[AutoRob] getRobbedAmount: 未找到 Head")
+            return 0 
+        end
         local billboard = head:FindFirstChild("CharacterBillboard")
-        if not billboard then return 0 end
+        if not billboard then 
+            PlutoX.debug("[AutoRob] getRobbedAmount: 未找到 CharacterBillboard")
+            return 0 
+        end
         local children = billboard:GetChildren()
-        if #children < 4 then return 0 end
+        if #children < 4 then 
+            PlutoX.debug("[AutoRob] getRobbedAmount: 子元素数量不足: " .. #children)
+            return 0 
+        end
         local textLabel = children[4]
-        if not textLabel or not textLabel.ContentText then return 0 end
+        if not textLabel or not textLabel.ContentText then 
+            PlutoX.debug("[AutoRob] getRobbedAmount: 第4个元素无 ContentText")
+            return 0 
+        end
         local cleanText = textLabel.ContentText:gsub("[$,]", "")
-        return tonumber(cleanText) or 0
+        local result = tonumber(cleanText) or 0
+        PlutoX.debug("[AutoRob] getRobbedAmount: 成功获取金额 " .. formatNumber(result))
+        return result
     end)
     
     if success then
@@ -1968,6 +1985,11 @@ local function performAutoRobATMs()
             if not isAutoRobActive then return false end
             local currentAmount = getRobbedAmount() or 0
             local targetAmount = config.robTargetAmount or 0
+            
+            -- 调试输出：显示当前金额和目标金额
+            if targetAmount > 0 then
+                PlutoX.debug("[AutoRob] 当前已抢金额: " .. formatNumber(currentAmount) .. " / 目标: " .. formatNumber(targetAmount))
+            end
             
             if targetAmount > 0 and currentAmount >= targetAmount then
                 setNoclip(true)
