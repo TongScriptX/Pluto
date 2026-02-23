@@ -56,7 +56,7 @@ end
 
 local gameName = gameScripts[placeId]
 if gameName then
-    local baseUrl = "https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/main/Pluto/Games/"
+    local baseUrl = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/Games/"
     local scriptUrl = baseUrl .. gameName .. ".lua"
     loadRemoteScript(scriptUrl)
 else

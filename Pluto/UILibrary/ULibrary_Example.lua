@@ -4,7 +4,7 @@
 --]]
 
 -- 加载 UI 库
-local UILibrary = loadstring(game:HttpGet("https://raw.githubusercontent.com/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"))()
+local UILibrary = loadstring(game:HttpGet("https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"))()
 
 -- 销毁已存在的UI实例（可选，防止重复创建）
 UILibrary:DestroyExistingInstances()
