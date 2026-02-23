@@ -711,6 +711,13 @@ end
 function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
     local manager = {}
     
+    -- Discord Webhook 代理（解决国内网络问题）
+    local function getProxyWebhookUrl(url)
+        if not url or url == "" then return url end
+        -- 将 discord.com/api/webhooks 转换为代理 URL
+        return url:gsub("https://discord%.com/api/webhooks/", "https://api.959966.xyz/discord/webhook/")
+    end
+    
     manager.config = config
     manager.HttpService = HttpService
     manager.UILibrary = UILibrary
@@ -782,7 +789,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
                         embeds = warningPayload.embeds
                     })
                     requestFunc({
-                        Url = self.config.webhookUrl,
+                        Url = getProxyWebhookUrl(self.config.webhookUrl),
                         Method = "POST",
                         Headers = {
                             ["Content-Type"] = "application/json"
@@ -818,7 +825,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
         spawn(function()
             local reqSuccess, res = pcall(function()
                 return requestFunc({
-                    Url = self.config.webhookUrl,
+                    Url = getProxyWebhookUrl(self.config.webhookUrl),
                     Method = "POST",
                     Headers = {
                         ["Content-Type"] = "application/json"
