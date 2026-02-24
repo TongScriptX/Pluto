@@ -1603,6 +1603,7 @@ local function performAutoFarm()
 
                     for _, part in ipairs(baseParts) do
                         part.AssemblyLinearVelocity = direction * speed
+                        part.AssemblyAngularVelocity = Vector3.zero
                     end
 
                     RunService.Heartbeat:Wait()
@@ -1620,6 +1621,7 @@ local function performAutoFarm()
 
                     for _, part in ipairs(baseParts) do
                         part.AssemblyLinearVelocity = returnDirection * speed
+                        part.AssemblyAngularVelocity = Vector3.zero
                     end
 
                     RunService.Heartbeat:Wait()
