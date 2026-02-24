@@ -8,7 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 _G.PRIMARY_COLOR = 5793266
 
--- UI 库加载
+-- UI
 
 local UILibrary
 local success, result = pcall(function()
@@ -23,7 +23,7 @@ else
     error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- PlutoX 模块加载
+-- PlutoX
 
 local PlutoX
 local success, result = pcall(function()
@@ -35,13 +35,13 @@ end)
 if success and result then
     PlutoX = result
 
--- 启用调试模式（默认关闭，可在代码中设置 DEBUG_MODE = true 启用）
+-- 调试模式
 local DEBUG_MODE = false
 else
     error("[PlutoX] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- 玩家和游戏信息
+-- 玩家信息
 
 local player = Players.LocalPlayer
 if not player then
@@ -50,13 +50,13 @@ end
 local userId = player.UserId
 local username = player.Name
 
--- HTTP 请求配置
+-- HTTP
 local http_request = syn and syn.request or http and http.request or http_request
 if not http_request then
     error("此执行器不支持 HTTP 请求")
 end
 
--- 获取游戏信息
+-- 游戏信息
 local gameName = "未知游戏"
 
 do
@@ -68,18 +68,18 @@ do
     end
 end
 
--- 初始化调试系统（如果调试模式开启）
+-- 初始化调试
 PlutoX.setGameInfo(gameName, username, HttpService)
 
--- 初始化调试系统（如果调试模式开启）
+-- 初始化调试
 if DEBUG_MODE then
     PlutoX.initDebugSystem()
     PlutoX.debug("调试系统已初始化")
 end
 
--- 注册数据类型
+-- 数据类型
 
--- 注册 Cash 数据类型
+-- Cash
 PlutoX.registerDataType({
     id = "cash",
     name = "金额",
@@ -97,14 +97,14 @@ PlutoX.registerDataType({
     supportTarget = true  -- 支持目标检测
 })
 
--- 配置管理
+-- 配置
 
 local configFile = "PlutoX/Restaurant_Tycoon_2_config.json"
 
--- 获取所有注册的数据类型
+-- 数据类型
 local dataTypes = PlutoX.getAllDataTypes()
 
--- 生成默认配置（自动包含所有注册的数据类型）
+-- 默认配置
 local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)
 
 local defaultConfig = {
@@ -113,7 +113,7 @@ local defaultConfig = {
     autoCollectEnabled = false,
 }
 
--- 合并数据类型配置
+-- 合并配置
 for key, value in pairs(dataTypeConfigs) do
     defaultConfig[key] = value
 end
@@ -121,11 +121,11 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
--- Webhook 管理
+-- Webhook
 
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
 
--- 数据监测管理器
+-- 数据监测
 
 local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, nil, gameName, username)
 
@@ -145,7 +145,7 @@ end)
 
 dataMonitor:init()
 
--- 初始化欢迎消息
+-- 欢迎消息
 if config.webhookUrl ~= "" then
     spawn(function()
         wait(2)
@@ -216,7 +216,7 @@ if config.autoCollectEnabled then
     autoCollectCoroutine = coroutine.wrap(autoCollectFunction)()
 end
 
--- UI 创建
+-- UI
 
 local window = UILibrary:CreateUIWindow()
 if not window then
@@ -234,14 +234,14 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     Text = "菜单"
 })
 
--- 标签页：常规
+-- 常规
 local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "常规",
     Icon = "home",
     Active = true
 })
 
--- 卡片：常规信息（动态生成所有数据类型的显示）
+-- 常规信息
 local generalCard = UILibrary:CreateCard(generalContent, { IsMultiElement = true })
 UILibrary:CreateLabel(generalCard, {
     Text = "游戏: " .. gameName,
@@ -256,7 +256,7 @@ for _, dataType in ipairs(dataTypes) do
     updateFunctions[dataType.id] = updateFunc
 end
 
--- 卡片：反挂机
+-- 反挂机
 local antiAfkCard = UILibrary:CreateCard(generalContent)
 UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已启用",
@@ -296,16 +296,16 @@ local autoCollectToggle = UILibrary:CreateToggle(autoCollectCard, {
     end
 })
 
--- 标签页：通知设置
+-- 通知
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "通知",
     Icon = "bell"
 })
 
--- 使用通用模块创建 UI 组件
+-- UI 组件
 PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end, webhookManager)
 
--- 动态生成所有数据类型的开关
+-- 数据类型开关
 for _, dataType in ipairs(dataTypes) do
     local keyUpper = dataType.id:gsub("^%l", string.upper)
     local card = UILibrary:CreateCard(notifyContent)
@@ -332,7 +332,7 @@ end
 
 PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 
--- 目标值功能（为每个支持目标的数据类型创建独立的目标设置）
+-- 目标值设置
 local targetValueLabels = {}  -- 保存所有目标值标签引用
 
 for _, dataType in ipairs(dataTypes) do
@@ -360,7 +360,7 @@ for _, dataType in ipairs(dataTypes) do
     end
 end
 
--- 统一的重新计算所有目标值按钮
+-- 重新计算目标值
 local recalculateCard = UILibrary:CreateCard(notifyContent)
 UILibrary:CreateButton(recalculateCard, {
     Text = "重新计算所有目标值",
@@ -376,7 +376,7 @@ UILibrary:CreateButton(recalculateCard, {
     end
 })
 
--- 标签页：关于
+-- 关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "关于",
     Icon = "info"

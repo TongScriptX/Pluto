@@ -1,4 +1,4 @@
--- 反检测模块
+-- 反检测
 for _, connection in pairs(getconnections(game.ChildAdded)) do
     if connection.Function and type(getfenv(connection.Function).script) ~= "table" then
         connection:Disable()
@@ -54,7 +54,7 @@ local NetworkClient = game:GetService("NetworkClient")
 
 _G.PRIMARY_COLOR = 5793266
 
--- UI 库加载
+-- UI
 local UILibrary
 local success, result = pcall(function()
     local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
@@ -68,7 +68,7 @@ else
     error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- PlutoX 模块加载
+-- PlutoX
 local success, PlutoX = pcall(function()
     local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
     local source = game:HttpGet(url)
@@ -79,7 +79,7 @@ if not success or not PlutoX then
     error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
 
--- 玩家和游戏信息
+-- 玩家信息
 local player = Players.LocalPlayer
 if not player then
     error("无法获取当前玩家")
@@ -100,13 +100,13 @@ end
 -- 初始化调试系统
 PlutoX.setGameInfo(gameName, username, HttpService)
 
--- 初始化调试系统（如果调试模式开启）
+-- 初始化调试
 if DEBUG_MODE then
     PlutoX.initDebugSystem()
     PlutoX.debug("调试系统已初始化")
 end
 
--- 注册数据类型
+-- 数据类型
 PlutoX.registerDataType({
     id = "cash",
     name = "金额",
@@ -136,10 +136,10 @@ PlutoX.registerDataType({
 -- 初始化
 local configFile = "PlutoX/Greenville_config.json"
 
--- 获取所有注册的数据类型
+-- 数据类型
 local dataTypes = PlutoX.getAllDataTypes()
 
--- 生成默认配置（自动包含所有注册的数据类型）
+-- 默认配置
 local dataTypeConfigs = PlutoX.generateDataTypeConfigs(dataTypes)
 
 local defaultConfig = {
@@ -147,7 +147,7 @@ local defaultConfig = {
     notificationInterval = 30,
 }
 
--- 合并数据类型配置
+-- 合并配置
 for key, value in pairs(dataTypeConfigs) do
     defaultConfig[key] = value
 end
@@ -155,10 +155,10 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
--- Webhook 管理
+-- Webhook
 local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username)
 
--- 数据监测管理器
+-- 数据监测
 local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, nil, gameName, username)
 
 -- 掉线检测
@@ -174,7 +174,7 @@ end)
 -- 初始化
 dataMonitor:init()
 
--- 初始化欢迎消息
+-- 欢迎消息
 if config.webhookUrl ~= "" then
     spawn(function()
         wait(2)
@@ -182,7 +182,7 @@ if config.webhookUrl ~= "" then
     end)
 end
 
--- UI 创建
+-- UI
 local window = UILibrary:CreateUIWindow()
 if not window then
     error("无法创建 UI 窗口")
@@ -199,7 +199,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     Text = "菜单"
 })
 
--- 常规标签页
+-- 常规
 local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "常规",
     Icon = "home",
@@ -226,16 +226,16 @@ UILibrary:CreateLabel(antiAfkCard, {
     Text = "安全起见,反挂机未启用",
 })
 
--- 通知设置标签页
+-- 通知
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "通知",
     Icon = "bell"
 })
 
--- 使用通用模块创建 UI 组件
+-- UI 组件
 PlutoX.createWebhookCard(notifyContent, UILibrary, configManager.config, function() configManager:saveConfig() end, webhookManager)
 
--- 监测金额变化
+-- 监测金额
 local currencyNotifyCard = UILibrary:CreateCard(notifyContent)
 UILibrary:CreateToggle(currencyNotifyCard, {
     Text = "监测金额变化",
@@ -254,7 +254,7 @@ UILibrary:CreateToggle(currencyNotifyCard, {
 
 PlutoX.createIntervalCard(notifyContent, UILibrary, configManager.config, function() configManager:saveConfig() end)
 
--- 数据类型设置区域
+-- 数据类型设置
 local targetValueLabels = {}
 
 for _, dataType in ipairs(dataTypes) do
@@ -281,7 +281,7 @@ for _, dataType in ipairs(dataTypes) do
     targetValueLabels[dataType.id] = targetValueLabel
 end
 
--- 统一的重新计算所有目标值按钮
+-- 重新计算目标值
 local recalculateCard = UILibrary:CreateCard(notifyContent)
 UILibrary:CreateButton(recalculateCard, {
     Text = "重新计算所有目标值",
@@ -297,7 +297,7 @@ UILibrary:CreateButton(recalculateCard, {
     end
 })
 
--- 关于标签页
+-- 关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "关于",
     Icon = "info"

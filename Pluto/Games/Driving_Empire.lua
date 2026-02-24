@@ -1,4 +1,4 @@
--- 服务和变量声明
+-- 服务
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local MarketplaceService = game:GetService("MarketplaceService")
@@ -8,12 +8,12 @@ local GuiService = game:GetService("GuiService")
 local NetworkClient = game:GetService("NetworkClient")
 local UserInputService = game:GetService("UserInputService")
 
--- Bypass 反检测系统
+-- Bypass
 local BypassActive = true
 local HookInstalled = false
 local BlockCount = 0
 
--- 目标远程事件黑名单
+-- 黑名单
 local TargetRemotes = {
     ["StarwatchClientEventIngestor"] = true, ["_network"] = true,
     ["rsp"] = true, ["rps"] = true, ["rsi"] = true, ["rs"] = true, ["rsw"] = true,
@@ -25,7 +25,7 @@ local TargetRemotes = {
     ["loadTime"] = true, ["InformLoadingEventFunnel"] = true, ["InformGeneralEventFunnel"] = true
 }
 
--- 立即安装钩子（Early Hook）
+-- 安装钩子
 local function InstallEarlyHook()
     if HookInstalled then return end
     
@@ -75,7 +75,7 @@ end
 
 InstallEarlyHook()
 
--- 监控和同步循环
+-- 监控循环
 task.spawn(function()
     while true do
         if BypassActive then
@@ -133,7 +133,7 @@ local function safePositionUpdate(targetCFrame)
     end
 end
 
--- PlutoX 模块加载（必须在UILibrary加载之前）
+-- PlutoX
 local plutoSuccess, PlutoX = pcall(function()
     local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/Common/PlutoX-Notifier.lua"
     local source = game:HttpGet(url)
@@ -144,7 +144,7 @@ if not plutoSuccess or not PlutoX then
     error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
 
--- UI 库加载
+-- UI
 local UILibrary
 local success, result = pcall(function()
     local url
@@ -163,7 +163,7 @@ else
     error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- 玩家和游戏信息
+-- 玩家信息
 local player = Players.LocalPlayer
 if not player then
     error("无法获取当前玩家")
@@ -182,10 +182,10 @@ do
     end
 end
 
--- 设置游戏信息（用于数据上传）
+-- 游戏信息
 PlutoX.setGameInfo(gameName, username, HttpService)
 
--- 游戏特定功能
+-- 游戏功能
 local function teleportCharacterTo(targetCFrame)
     if not player.Character or not player.Character.PrimaryPart then
         PlutoX.warn("[Teleport] 角色或主要部件不存在")
@@ -237,7 +237,7 @@ local function checkAutoRobStatus(context)
     return true
 end
 
--- 注册数据类型
+-- 数据类型
 PlutoX.registerDataType({
     id = "cash",
     name = "金额",
@@ -256,7 +256,7 @@ PlutoX.registerDataType({
     supportTarget = true
 })
 
--- 从API获取排行榜数据
+-- API 排行榜
 local function fetchLeaderboardFromAPI()
     if not PlutoX.uploaderHttpService then
         return nil, false
@@ -285,7 +285,7 @@ local function fetchLeaderboardFromAPI()
     end
 end
 
--- 从排行榜数据中查找玩家排名
+-- 查找排名
 local function findPlayerRankInLeaderboard(leaderboardData)
     if not leaderboardData or type(leaderboardData) ~= "table" then
         return nil, false
@@ -300,7 +300,7 @@ local function findPlayerRankInLeaderboard(leaderboardData)
     return nil, false
 end
 
--- 上传排行榜数据到网站
+-- 上传排行榜
 local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
     if not PlutoX.uploaderHttpService then
         return false
@@ -351,7 +351,7 @@ local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
     end
 end
 
--- 上传排行榜数据到网站
+-- 上传排行榜
 local function uploadLeaderboardToWebsite(contents)
     if not PlutoX.uploaderHttpService then
         return false
@@ -724,7 +724,7 @@ local function fetchPlayerRank()
                                 teleport(originalPosition)
                                 restoreVelocities()
                                 
-                                -- 上传排行榜数据到网站
+                                -- 上传排行榜
                                 local shouldUpload = false
                                 if apiSuccess and apiData and #apiData == 0 then
                                     -- API返回0条数据，立即上传
@@ -776,7 +776,7 @@ local function fetchPlayerRank()
     return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
 end
 
--- 从游戏中获取排行榜（原有逻辑）
+-- 游戏排行榜
 local function fetchPlayerRankFromGame(currentTime)
     local currentTime = currentTime or tick()
     
@@ -804,7 +804,7 @@ local function fetchPlayerRankFromGame(currentTime)
         leaderboardConfig.hasFetched = true
         leaderboardConfig.isFetching = false
         
-        -- 立即上传排行榜数据到网站
+        -- 上传排行榜
         if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
             spawn(function()
                 pcall(function()
@@ -858,7 +858,7 @@ local function fetchPlayerRankFromGame(currentTime)
             leaderboardConfig.hasFetched = true
             leaderboardConfig.isFetching = false
             
-            -- 立即上传排行榜数据到网站
+            -- 上传排行榜
             if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
                 spawn(function()
                     pcall(function()
@@ -958,7 +958,7 @@ local function fetchPlayerRankFromGame(currentTime)
         teleport(originalPosition)
         restoreVelocities()
         
--- 立即上传排行榜数据到网站
+-- 上传排行榜
         if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
             spawn(function()
                 pcall(function()
@@ -983,7 +983,7 @@ local function fetchPlayerRankFromGame(currentTime)
     end
 end
 
--- 注册排行榜数据类型
+-- 排行榜
 PlutoX.registerDataType({
     id = "leaderboard",
     name = "排行榜排名",
@@ -1019,7 +1019,7 @@ PlutoX.registerDataType({
     end
 })
 
--- 自动生成车辆功能
+-- 自动生成
 local function fetchVehicleStatsConcurrent(vehicleNames, GetVehicleStats)
     local results = {}
     local threads = {}
@@ -1095,7 +1095,7 @@ local function findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
 end
 
 
--- 在线时长奖励功能
+-- 在线奖励
 local function findRewardsRoot()
     local ok, gui = pcall(function()
         return player:WaitForChild("PlayerGui", 2)
@@ -1150,7 +1150,7 @@ local function findRewardsRoot()
     return nil
 end
 
--- ATM 自动抢劫功能
+-- ATM 抢劫
 local function getRobbedAmount()
     local success, amount = pcall(function()
         local character = workspace:FindFirstChild(player.Name)
@@ -1282,7 +1282,7 @@ local defaultConfig = {
     leaderboardKick = false,
 }
 
--- AutoFarm 状态不保存到配置（每次加载默认为 false）
+-- AutoFarm 默认关闭
 local autoFarmEnabled = false
 
 for key, value in pairs(dataTypeConfigs) do
@@ -1292,7 +1292,7 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
--- 出售函数（使用传送点方式）
+-- 出售
 local function sellMoney()
     local player = game.Players.LocalPlayer
     local sellPos1 = Vector3.new(-2520.495849609375, 15.116586685180664, 4035.560791015625)
@@ -1492,7 +1492,7 @@ local function claimPlaytimeRewards()
     end)
 end
 
--- AutoFarm功能
+-- AutoFarm
 local isAutoFarmActive = false
 local autoFarmOriginalPosition = nil
 
@@ -1730,7 +1730,7 @@ end
 
 local originalLocationNameCall = nil
 
--- Auto Rob ATMs功能
+-- Auto Rob ATMs
 local function performAutoRobATMs()
     isAutoRobActive = true
     
@@ -2043,7 +2043,7 @@ local disconnectDetector = PlutoX.createDisconnectDetector(UILibrary, webhookMan
 local dataMonitor = PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector, gameName, username)
 disconnectDetector:init()
 
--- 设置数据监测器的发送前回调，用于添加排行榜信息
+-- 排行榜回调
 dataMonitor.beforeSendCallback = function(embed)
     if config.notifyLeaderboard or config.leaderboardKick then
         local currentRank, isOnLeaderboard = fetchPlayerRank()
@@ -2069,7 +2069,7 @@ end)
 -- 初始化
 dataMonitor:init()
 
--- 启动游戏特定功能
+-- 游戏功能
 if config.onlineRewardEnabled then
     spawn(claimPlaytimeRewards)
 end
@@ -2078,7 +2078,7 @@ if config.autoSpawnVehicleEnabled then
     spawn(performAutoSpawnVehicle)
 end
 
--- UI 创建
+-- UI
 local window = UILibrary:CreateUIWindow()
 if not window then
     error("无法创建 UI 窗口")
@@ -2094,7 +2094,7 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     Text = "菜单"
 })
 
--- 常规标签页
+-- 常规
 local generalTab, generalContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "常规",
     Icon = "home",
@@ -2109,7 +2109,7 @@ UILibrary:CreateLabel(generalCard, {
 local displayLabels = {}
 local updateFunctions = {}
 
--- 只为支持目标检测的数据类型创建显示标签
+-- 数据类型标签
 for _, dataType in ipairs(dataTypes) do
     if dataType.supportTarget then
         local card, label, updateFunc = dataMonitor:createDisplayLabel(generalCard, dataType)
@@ -2124,13 +2124,13 @@ UILibrary:CreateLabel(antiAfkCard, {
     Text = "反挂机已启用",
 })
 
--- 游戏功能标签页
+-- 游戏功能
 local featuresTab, featuresContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "功能",
     Icon = "gamepad"
 })
 
--- 创建子标签页
+-- 子标签页
 local featuresSubTabs = UILibrary:CreateSubTabs(featuresContent, {
     Items = {
         "辅助功能",
@@ -2141,7 +2141,7 @@ local featuresSubTabs = UILibrary:CreateSubTabs(featuresContent, {
     end
 })
 
--- ========== 辅助功能子标签 ==========
+-- 辅助功能
 local utilityContent = featuresSubTabs.GetContent(1)
 
 -- 在线奖励
@@ -2158,7 +2158,7 @@ UILibrary:CreateToggle(onlineRewardCard, {
     end
 })
 
--- 自动生成车辆
+-- 自动生成
 local autoSpawnCard = UILibrary:CreateCard(utilityContent)
 UILibrary:CreateToggle(autoSpawnCard, {
     Text = "自动生成车辆",
@@ -2172,7 +2172,7 @@ UILibrary:CreateToggle(autoSpawnCard, {
     end
 })
 
--- ========== autofarm 子标签 ==========
+-- autofarm
 local autofarmContent = featuresSubTabs.GetContent(2)
 
 -- AutoFarm
@@ -2181,7 +2181,7 @@ UILibrary:CreateLabel(autoFarmCard, {
     Text = "Auto Farm",
 })
 
--- 速度滑块（使用 UILibrary CreateSlider）
+-- 速度滑块
 UILibrary:CreateSlider(autoFarmCard, {
     Text = "速度",
     Min = 0,
@@ -2194,7 +2194,7 @@ UILibrary:CreateSlider(autoFarmCard, {
     end
 })
 
--- AutoFarm 开关（状态不保存到配置）
+-- AutoFarm 开关
 UILibrary:CreateToggle(autoFarmCard, {
     Text = "启用autofarm",
     DefaultState = autoFarmEnabled,
@@ -2219,7 +2219,7 @@ UILibrary:CreateToggle(autoFarmCard, {
     end
 })
 
--- ATM 自动抢劫
+-- ATM 抢劫
 local autoRobCard = UILibrary:CreateCard(autofarmContent, { IsMultiElement = true })
 UILibrary:CreateLabel(autoRobCard, {
     Text = "Auto Rob ATMs",
@@ -2310,25 +2310,25 @@ UILibrary:CreateToggle(autoRobCard, {
     end
 })
 
--- 自动购买标签页
+-- 自动购买
 local purchaseTab, purchaseContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "购买",
     Icon = "shopping-cart"
 })
 
--- 通知设置标签页
+-- 通知
 local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "通知",
     Icon = "bell"
 })
 
--- Webhook 配置
+-- Webhook
 PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end, webhookManager)
 
 -- 通知间隔
 PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() configManager:saveConfig() end)
 
--- 监测金额变化
+-- 监测金额
 local currencyNotifyCard = UILibrary:CreateCard(notifyContent)
 UILibrary:CreateToggle(currencyNotifyCard, {
     Text = "监测金额变化",
@@ -2369,7 +2369,7 @@ UILibrary:CreateToggle(leaderboardKickCard, {
     end
 })
 
--- 数据类型设置区域
+-- 数据类型设置
 local targetValueLabels = {}
 
 for _, dataType in ipairs(dataTypes) do
@@ -2397,7 +2397,7 @@ for _, dataType in ipairs(dataTypes) do
     end
 end
 
--- 统一的重新计算所有目标值按钮
+-- 重新计算目标值
 local recalculateCard = UILibrary:CreateCard(notifyContent)
 UILibrary:CreateButton(recalculateCard, {
     Text = "重新计算所有目标值",
@@ -2413,7 +2413,7 @@ UILibrary:CreateButton(recalculateCard, {
     end
 })
 
--- 车辆数据获取功能
+-- 车辆数据
 local purchaseFunctions = {}
 
 -- 进入车店
@@ -2432,7 +2432,7 @@ function purchaseFunctions.enterDealership()
     return true
 end
 
--- 获取所有车辆数据
+-- 车辆数据
 function purchaseFunctions.getAllVehicles()
     local vehicles = {}
     
@@ -2536,7 +2536,7 @@ function purchaseFunctions.getAllVehicles()
     return vehicles
 end
 
--- 获取当前资金
+-- 当前资金
 function purchaseFunctions.getCurrentCash()
     local leaderstats = player:FindFirstChild("leaderstats")
     if leaderstats then
@@ -2548,12 +2548,12 @@ function purchaseFunctions.getCurrentCash()
     return 0
 end
 
--- 生成随机颜色
+-- 随机颜色
 function purchaseFunctions.randomColor()
     return Color3.new(math.random(), math.random(), math.random())
 end
 
--- 购买指定车辆
+-- 购买车辆
 function purchaseFunctions.buyVehicle(frameName)
     
     local success, result = pcall(function()
@@ -2593,10 +2593,10 @@ function purchaseFunctions.buyVehicle(frameName)
     end
 end
 
--- 记录一键购买的车辆
+-- 记录购买
 purchaseFunctions.autoPurchasedVehicles = {}
 
--- 独立的购买车辆函数
+-- 购买车辆
 function purchaseFunctions.purchaseVehicle(vehicle)
     
     -- 检查资金是否足够
@@ -2617,7 +2617,7 @@ function purchaseFunctions.purchaseVehicle(vehicle)
     end
 end
 
--- 后悔功能（卖车）
+-- 后悔卖车
 function purchaseFunctions.sellVehicle(vehicle)
     
     local success, err = pcall(function()
@@ -2647,7 +2647,7 @@ function purchaseFunctions.sellVehicle(vehicle)
     end
 end
 
--- 后悔所有购买的车辆
+-- 后悔所有
 function purchaseFunctions.regretAllPurchases()
     
     -- 创建副本，避免在遍历时修改原表
@@ -2677,7 +2677,7 @@ function purchaseFunctions.regretAllPurchases()
     }
 end
 
--- 通用自动购买函数
+-- 自动购买
 function purchaseFunctions.autoPurchase(options)
     options = options or {}
     local sortAscending = options.sortAscending ~= false  -- 默认按价格从低到高排序
@@ -2759,13 +2759,13 @@ function purchaseFunctions.autoPurchase(options)
     }
 end
 
--- 搜索购买UI
+-- 搜索购买
 local searchCard = UILibrary:CreateCard(purchaseContent, { IsMultiElement = true })
 UILibrary:CreateLabel(searchCard, {
     Text = "搜索购买",
 })
 
--- 存储之前创建的UI元素
+-- 存储 UI
 local previousDropdown = nil
 local previousBuyButton = nil
 
@@ -3006,7 +3006,7 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
     end
 })
 
--- 一键购买功能
+-- 一键购买
 local autoBuyCard = UILibrary:CreateCard(purchaseContent, { IsMultiElement = true })
 UILibrary:CreateLabel(autoBuyCard, {
     Text = "一键购买",
@@ -3125,7 +3125,7 @@ local regretButton = UILibrary:CreateButton(autoBuyCard, {
     end
 })
 
--- 关于标签页
+-- 关于
 local aboutTab, aboutContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
     Text = "关于",
     Icon = "info"
@@ -3232,7 +3232,7 @@ spawn(function()
     end
 end)
 
--- 初始化欢迎消息
+-- 欢迎消息
 if config.webhookUrl ~= "" then
     spawn(function()
         wait(2)
