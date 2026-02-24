@@ -66,36 +66,25 @@ local UI_STYLES = {
     NotificationMargin = 10
 }
 
--- 解析带单位的数字（支持 k/K, m/M, b/B）
--- 例如: "1k" -> 1000, "1.5m" -> 1500000, "2B" -> 2000000000
+-- 解析带单位的数字（支持 k/m/b）
 function UILibrary.parseNumberWithUnit(text)
     if not text then return nil end
     
-    -- 去除空白字符
     text = text:match("^%s*(.-)%s*$")
     if not text or text == "" then return nil end
     
-    -- 移除逗号
     text = text:gsub(",", "")
     
-    -- 匹配数字和可选的单位
     local number, unit = text:match("^([%d%.]+)([kKmMbB]?)$")
-    
     if not number then return nil end
     
     local num = tonumber(number)
     if not num then return nil end
     
-    -- 根据单位乘以相应的倍数
-    if unit == "k" or unit == "K" then
-        num = num * 1000
-    elseif unit == "m" or unit == "M" then
-        num = num * 1000000
-    elseif unit == "b" or unit == "B" then
-        num = num * 1000000000
-    end
+    local multipliers = { k = 1000, K = 1000, m = 1000000, M = 1000000, b = 1000000000, B = 1000000000 }
+    num = num * (multipliers[unit] or 1)
     
-    return math.floor(num + 0.5)  -- 四舍五入到整数
+    return math.floor(num + 0.5)
 end
 
 -- 备选字体（优先粗体）

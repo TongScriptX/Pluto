@@ -3,22 +3,22 @@
 
 local PlutoX = {}
 
--- Debug 功能
+-- Debug
 PlutoX.debugEnabled = true
-PlutoX.logFile = nil -- 当前日志文件句柄
-PlutoX.currentLogFile = nil -- 当前日志文件路径
-PlutoX.originalPrint = nil -- 保存原始 print 函数
-PlutoX.gameName = nil -- 游戏名称
-PlutoX.username = nil -- 用户名称
-PlutoX.isInitialized = false -- 是否已初始化
+PlutoX.logFile = nil
+PlutoX.currentLogFile = nil
+PlutoX.originalPrint = nil
+PlutoX.gameName = nil
+PlutoX.username = nil
+PlutoX.isInitialized = false
 
--- 数据上传相关（独立于 webhook）
+-- 数据上传
 PlutoX.uploaderConfig = nil
 PlutoX.uploaderHttpService = nil
 PlutoX.uploaderDataMonitor = nil
 PlutoX.uploader = nil  -- 全局上传器引用
 
--- 设置游戏信息（用于日志文件命名和数据上传）
+-- 设置游戏信息
 function PlutoX.setGameInfo(gameName, username, HttpService)
     PlutoX.gameName = gameName
     PlutoX.username = username
@@ -32,7 +32,7 @@ function PlutoX.setGameInfo(gameName, username, HttpService)
     end
 end
 
--- 获取日志文件路径
+-- 日志路径
 function PlutoX.getLogFilePath()
     local dateStr = os.date("%Y-%m-%d")
     local timeStr = os.date("%H-%M-%S")
@@ -46,7 +46,7 @@ function PlutoX.getLogFilePath()
         timeStr)
 end
 
--- 初始化日志系统
+-- 初始化日志
 function PlutoX.initDebugSystem()
     if not PlutoX.debugEnabled or PlutoX.isInitialized then
         return
@@ -161,7 +161,7 @@ function PlutoX.initDebugSystem()
     end
 end
 
--- 写入日志
+-- 写日志
 function PlutoX.writeLog(message)
     if not PlutoX.debugEnabled then
         return
@@ -213,7 +213,7 @@ function PlutoX.debug(...)
     print(logMessage:gsub("\n$", ""))
 end
 
--- 警告函数（始终输出）
+-- 警告输出
 function PlutoX.warn(...)
     local timestamp = os.date("%H:%M:%S")
     local info = debug.getinfo(2, "Sl")
@@ -237,10 +237,10 @@ function PlutoX.warn(...)
     print(logMessage:gsub("\n$", ""))
 end
 
--- Webhook Footer 配置
+-- Webhook Footer
 PlutoX.footerText = "桐 · TStudioX"
 
--- 脚本实例管理（防止多个脚本同时运行）
+-- 脚本实例管理
 PlutoX.scriptInstances = {}
 
 -- 注册脚本实例
@@ -268,7 +268,7 @@ function PlutoX.unregisterScriptInstance(gameName, username)
     PlutoX.scriptInstances[instanceId] = nil
 end
 
--- 工具函数
+-- 工具
 
 function PlutoX.formatNumber(num)
     if not num then return "0" end
@@ -285,7 +285,7 @@ function PlutoX.formatNumber(num)
     return result
 end
 
--- 格式化运行时长
+-- 格式化时长
 function PlutoX.formatElapsedTime(seconds)
     local hours = math.floor(seconds / 3600)
     local minutes = math.floor((seconds % 3600) / 60)
@@ -293,20 +293,11 @@ function PlutoX.formatElapsedTime(seconds)
     return string.format("%02d小时%02d分%02d秒", hours, minutes, secs)
 end
 
--- 数据类型注册系统
+-- 数据类型注册
 
 PlutoX.dataTypes = {}
 
--- 注册数据类型
--- @param dataType 数据类型定义表
---   - id: 数据类型唯一标识（如 "cash", "wins", "miles", "level"）
---   - name: 显示名称（如 "金额", "胜利次数"）
---   - icon: 图标（如 "💰", "🏆"）
---   - unit: 单位（可选，如 "英里"）
---   - fetchFunc: 获取当前值的函数
---   - calculateAvg: 是否计算平均速度（默认 false）
---   - supportTarget: 是否支持目标检测（默认 false）
---   - formatFunc: 自定义格式化函数（可选，默认使用 formatNumber）
+-- 注册数据类型 (id, name, icon, fetchFunc, supportTarget等)
 function PlutoX.registerDataType(dataType)
     if not dataType or not dataType.id or not dataType.name then
         error("数据类型必须包含 id 和 name 字段")
@@ -326,12 +317,12 @@ function PlutoX.registerDataType(dataType)
     return PlutoX.dataTypes[dataType.id]
 end
 
--- 获取数据类型定义
+-- 获取数据类型
 function PlutoX.getDataType(id)
     return PlutoX.dataTypes[id]
 end
 
--- 获取所有注册的数据类型
+-- 获取所有数据类型
 function PlutoX.getAllDataTypes()
     local types = {}
     for id, typeDef in pairs(PlutoX.dataTypes) do
@@ -340,7 +331,7 @@ function PlutoX.getAllDataTypes()
     return types
 end
 
--- 生成数据类型相关的配置项
+-- 生成数据类型配置
 function PlutoX.generateDataTypeConfigs(dataTypes)
     local configs = {}
     for _, dataType in ipairs(dataTypes) do
@@ -367,7 +358,7 @@ function PlutoX.generateDataTypeConfigs(dataTypes)
     return configs
 end
 
--- 配置管理
+-- 配置
 
 function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
     local manager = {}
@@ -674,7 +665,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
     return manager
 end
 
--- Webhook 管理
+-- Webhook
 
 function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, configFile)
     local manager = {}
@@ -1151,7 +1142,7 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
     return manager
 end
 
--- 通用数据监测管理器
+-- 数据监测
 
 function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, disconnectDetector, gameName, username)
     local monitor = {}
@@ -1586,7 +1577,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         return true
     end
     
--- 目标值调整（通用：适用于任何支持目标检测的数据类型）
+-- 目标值调整
     function monitor:adjustTargetValue(saveConfig, dataTypeId)
         if not dataTypeId then
             -- 调整所有数据类型的目标值
@@ -1889,9 +1880,9 @@ function PlutoX.createDisconnectDetector(UILibrary, webhookManager, fetchFuncs)
     return detector
 end
 
--- UI 组件创建辅助函数
+-- UI 组件
 
--- 创建 Webhook 配置卡片
+-- Webhook 卡片
 function PlutoX.createWebhookCard(parent, UILibrary, config, saveConfig, webhookManager)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
@@ -1939,7 +1930,7 @@ function PlutoX.createWebhookCard(parent, UILibrary, config, saveConfig, webhook
     return card
 end
 
--- 创建通知间隔卡片
+-- 通知间隔卡片
 function PlutoX.createIntervalCard(parent, UILibrary, config, saveConfig)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
@@ -1973,7 +1964,7 @@ function PlutoX.createIntervalCard(parent, UILibrary, config, saveConfig)
     return card
 end
 
--- 创建数据类型分隔标签
+-- 数据类型分隔
 function PlutoX.createDataTypeSectionLabel(parent, UILibrary, dataType)
     local card = UILibrary:CreateCard(parent)
     UILibrary:CreateLabel(card, {
@@ -1982,7 +1973,7 @@ function PlutoX.createDataTypeSectionLabel(parent, UILibrary, dataType)
     return card
 end
 
--- 创建基准值卡片
+-- 基准值卡片
 function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetchValue, keyUpper, icon)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
@@ -2119,7 +2110,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
     end
 end
 
--- 创建目标值卡片
+-- 目标值卡片
 function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fetchValue, keyUpper)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
@@ -2246,7 +2237,7 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
     return card, targetValueLabel, function(suppress, toggle) suppressTargetToggleCallback = suppress; targetValueToggle = toggle end, function(setLabel) if setLabel then setLabel(targetValueLabel) end end
 end
 
--- 创建目标值卡片
+-- 目标值卡片
 function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfig, fetchValue, keyUpper)
     local card = UILibrary:CreateCard(parent, { IsMultiElement = true })
     
@@ -2322,7 +2313,7 @@ function PlutoX.createTargetValueCardSimple(parent, UILibrary, config, saveConfi
     return card, targetValueLabel, function(suppress, toggle) suppressTargetToggleCallback = suppress; targetValueToggle = toggle end
 end
 
--- 重新计算所有数据类型的目标值
+-- 重新计算目标值
 function PlutoX.recalculateAllTargetValues(config, UILibrary, dataMonitor, dataTypes, saveConfig, getTargetValueLabels)
     local successCount = 0
     local failCount = 0
@@ -2385,7 +2376,7 @@ function PlutoX.recalculateAllTargetValues(config, UILibrary, dataMonitor, dataT
     end
 end
 
--- 数据上传管理器（Dashboard 数据上传）
+-- 数据上传管理
 
 function PlutoX.createDataUploader(config, HttpService, gameName, username, dataMonitor, disconnectDetector)
     local uploader = {}
@@ -2951,7 +2942,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
     return uploader
 end
 
--- 创建关于页面
+-- 关于页面
 function PlutoX.createAboutPage(parent, UILibrary)
     UILibrary:CreateAuthorInfo(parent, {
         Text = "作者: tongblx",
