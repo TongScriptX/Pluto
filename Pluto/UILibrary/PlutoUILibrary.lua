@@ -66,6 +66,38 @@ local UI_STYLES = {
     NotificationMargin = 10
 }
 
+-- 解析带单位的数字（支持 k/K, m/M, b/B）
+-- 例如: "1k" -> 1000, "1.5m" -> 1500000, "2B" -> 2000000000
+function UILibrary.parseNumberWithUnit(text)
+    if not text then return nil end
+    
+    -- 去除空白字符
+    text = text:match("^%s*(.-)%s*$")
+    if not text or text == "" then return nil end
+    
+    -- 移除逗号
+    text = text:gsub(",", "")
+    
+    -- 匹配数字和可选的单位
+    local number, unit = text:match("^([%d%.]+)([kKmMbB]?)$")
+    
+    if not number then return nil end
+    
+    local num = tonumber(number)
+    if not num then return nil end
+    
+    -- 根据单位乘以相应的倍数
+    if unit == "k" or unit == "K" then
+        num = num * 1000
+    elseif unit == "m" or unit == "M" then
+        num = num * 1000000
+    elseif unit == "b" or unit == "B" then
+        num = num * 1000000000
+    end
+    
+    return math.floor(num + 0.5)  -- 四舍五入到整数
+end
+
 -- 备选字体（优先粗体）
 local function getAvailableFont()
     local fonts = {
@@ -1351,6 +1383,18 @@ function UILibrary:CreateTextBox(parent, options)
             Color = THEME.Primary or DEFAULT_THEME.Primary,
             Transparency = 0.5
         }):Play()
+        
+        -- 支持带单位输入
+        if options.SupportUnits then
+            local parsedValue = self.parseNumberWithUnit(textBox.Text)
+            if parsedValue then
+                if options.OnFocusLost then
+                    pcall(options.OnFocusLost, parsedValue, textBox.Text)
+                end
+                return
+            end
+        end
+        
         if options.OnFocusLost then pcall(options.OnFocusLost, textBox.Text) end
     end)
 

@@ -285,38 +285,6 @@ function PlutoX.formatNumber(num)
     return result
 end
 
--- 解析带单位的数字（支持 k/K, m/M, b/B）
--- 例如: "1k" -> 1000, "1.5m" -> 1500000, "2B" -> 2000000000
-function PlutoX.parseNumberWithUnit(text)
-    if not text then return nil end
-    
-    -- 去除空白字符
-    text = text:match("^%s*(.-)%s*$")
-    if not text or text == "" then return nil end
-    
-    -- 移除逗号
-    text = text:gsub(",", "")
-    
-    -- 匹配数字和可选的单位
-    local number, unit = text:match("^([%d%.]+)([kKmMbB]?)$")
-    
-    if not number then return nil end
-    
-    local num = tonumber(number)
-    if not num then return nil end
-    
-    -- 根据单位乘以相应的倍数
-    if unit == "k" or unit == "K" then
-        num = num * 1000
-    elseif unit == "m" or unit == "M" then
-        num = num * 1000000
-    elseif unit == "b" or unit == "B" then
-        num = num * 1000000000
-    end
-    
-    return math.floor(num + 0.5)  -- 四舍五入到整数
-end
-
 -- 格式化运行时长
 function PlutoX.formatElapsedTime(seconds)
     local hours = math.floor(seconds / 3600)
@@ -2069,7 +2037,7 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
             end
 
             -- 支持带单位的数字（k/K, m/M, b/B）
-            local num = PlutoX.parseNumberWithUnit(text)
+            local num = UILibrary.parseNumberWithUnit(text)
             
             PlutoX.debug("处理输入值: " .. tostring(num))
             
