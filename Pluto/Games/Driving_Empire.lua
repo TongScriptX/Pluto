@@ -198,10 +198,8 @@ local function teleportCharacterTo(targetCFrame)
     
     if seat and vehicle then
         vehicle:PivotTo(targetCFrame)
-        PlutoX.debug("[Teleport] 使用车辆传送")
     else
         player.Character:SetPrimaryPartCFrame(targetCFrame)
-        PlutoX.debug("[Teleport] 使用角色传送")
     end
     
     return true
@@ -274,10 +272,8 @@ local function fetchLeaderboardFromAPI()
         local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
         
         if responseJson.success and responseJson.data then
-            PlutoX.debug("[排行榜] 从API获取排行榜数据成功，共 " .. #responseJson.data .. " 条")
             return responseJson.data, true
         else
-            PlutoX.debug("[排行榜] API返回错误: " .. tostring(responseJson.error))
             return nil, false
         end
     end)
@@ -285,7 +281,6 @@ local function fetchLeaderboardFromAPI()
     if success then
         return result, true
     else
-        PlutoX.debug("[排行榜] API请求失败: " .. tostring(result))
         return nil, false
     end
 end
@@ -298,28 +293,23 @@ local function findPlayerRankInLeaderboard(leaderboardData)
     
     for _, entry in ipairs(leaderboardData) do
         if entry.user_id == userId then
-            PlutoX.debug("[排行榜] ✅ 从API数据中找到玩家ID: " .. userId .. ", 排名: #" .. entry.rank)
             return entry.rank, true
         end
     end
     
-    PlutoX.debug("[排行榜] ❌ 未在API数据中找到玩家ID: " .. userId)
     return nil, false
 end
 
 -- 上传排行榜数据到网站
 local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
     if not PlutoX.uploaderHttpService then
-        PlutoX.debug("[排行榜] HttpService 不可用，无法上传排行榜数据")
         return false
     end
     
     if #leaderboardEntries == 0 then
-        PlutoX.debug("[排行榜] 排行榜为空，取消上传")
         return false
     end
     
-    PlutoX.debug("[排行榜] 准备上传 " .. #leaderboardEntries .. " 条排行榜数据到网站")
     
     local success, result = pcall(function()
         local uploadUrl = "https://api.959966.xyz/api/dashboard/leaderboard"
@@ -338,7 +328,6 @@ local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
             local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
             
             if responseJson.success then
-                PlutoX.debug("[排行榜] ✅ 排行榜数据上传成功，共 " .. #leaderboardEntries .. " 条")
                 return true
             elseif attempt < maxRetries then
                 PlutoX.warn("[排行榜] 上传失败（尝试 " .. attempt .. "/" .. maxRetries .. "），" .. retryDelay .. "秒后重试: " .. tostring(responseJson.error))
@@ -365,7 +354,6 @@ end
 -- 上传排行榜数据到网站
 local function uploadLeaderboardToWebsite(contents)
     if not PlutoX.uploaderHttpService then
-        PlutoX.debug("[排行榜] HttpService 不可用，无法上传排行榜数据")
         return false
     end
     
@@ -375,7 +363,6 @@ local function uploadLeaderboardToWebsite(contents)
     if not contents then
         contents = tryGetContents(2)
         if not contents then
-            PlutoX.debug("[排行榜] 无法获取排行榜数据，取消上传")
             return false
         end
     end
@@ -417,17 +404,14 @@ local leaderboardConfig = {
 
 local function tryGetContents(timeout)
     local ok, result = pcall(function()
-        PlutoX.debug("[排行榜] tryGetContents: 开始查找UI元素...")
         
         local Game = workspace:FindFirstChild("Game")
         if not Game then
-            PlutoX.debug("[排行榜] tryGetContents: ❌ Game 不存在")
             return nil
         end
         
         local Leaderboards = Game:FindFirstChild("Leaderboards")
         if not Leaderboards then
-            PlutoX.debug("[排行榜] tryGetContents: ❌ Leaderboards 不存在")
             return nil
         end
         
@@ -435,11 +419,9 @@ local function tryGetContents(timeout)
         for _, child in ipairs(Leaderboards:GetChildren()) do
             table.insert(LeaderboardsChildren, child.Name)
         end
-        PlutoX.debug("[排行榜] tryGetContents: Leaderboards 子元素: " .. table.concat(LeaderboardsChildren, ", "))
         
         local weekly_money = Leaderboards:FindFirstChild("weekly_money")
         if not weekly_money then
-            PlutoX.debug("[排行榜] tryGetContents: ❌ weekly_money 不存在")
             return nil
         end
         
@@ -450,31 +432,25 @@ local function tryGetContents(timeout)
                 local className = child.ClassName or "Unknown"
                 table.insert(childrenInfo, child.Name .. "(" .. className .. ")")
             end
-            PlutoX.debug("[排行榜] tryGetContents: weekly_money 子元素: " .. table.concat(childrenInfo, ", "))
         else
-            PlutoX.debug("[排行榜] tryGetContents: weekly_money 没有子元素")
         end
         
         local Screen = weekly_money:FindFirstChild("Screen")
         if not Screen then
-            PlutoX.debug("[排行榜] tryGetContents: ❌ Screen 不存在")
             return nil
         end
         
         local Leaderboard = Screen:FindFirstChild("Leaderboard")
         if not Leaderboard then
-            PlutoX.debug("[排行榜] tryGetContents: ❌ Leaderboard 不存在")
             return nil
         end
         
         local Contents = Leaderboard:FindFirstChild("Contents")
         if not Contents then
-            PlutoX.debug("[排行榜] tryGetContents: ❌ Contents 不存在")
             return nil
         end
         
         local childrenCount = #Contents:GetChildren()
-        PlutoX.debug("[排行榜] tryGetContents: ✅ 找到Contents，子元素数量: " .. childrenCount)
         
         -- 输出前5个子元素名称
         local sampleChildren = {}
@@ -486,14 +462,12 @@ local function tryGetContents(timeout)
             end
         end
         if #sampleChildren > 0 then
-            PlutoX.debug("[排行榜] tryGetContents: 前5个子元素: " .. table.concat(sampleChildren, ", "))
         end
         
         return Contents
     end)
     
     if not ok then
-        PlutoX.debug("[排行榜] tryGetContents: ❌ 发生错误: " .. tostring(result))
     end
     
     return ok and result or nil
@@ -504,11 +478,9 @@ local function parseContents(contents)
     local leaderboardList = {}
     local childrenCount = #contents:GetChildren()
     
-    PlutoX.debug("[排行榜] parseContents: Contents子元素数量: " .. childrenCount)
     
     -- 输出完整榜单（仅在首次检测时输出）
     if not leaderboardConfig.hasFetched then
-        PlutoX.debug("[排行榜] ========== 完整榜单 ==========")
         for _, child in ipairs(contents:GetChildren()) do
             -- 跳过模板元素
             if tonumber(child.Name) then
@@ -521,9 +493,7 @@ local function parseContents(contents)
         
         -- 输出榜单列表
         for _, entry in ipairs(leaderboardList) do
-            PlutoX.debug("[排行榜] " .. entry)
         end
-        PlutoX.debug("[排行榜] ==========================")
     else
         -- 已缓存，只收集数据不输出
         for _, child in ipairs(contents:GetChildren()) do
@@ -544,13 +514,11 @@ local function parseContents(contents)
             if childId == userId then
                 local placement = child:FindFirstChild("Placement")
                 local foundRank = placement and placement:IsA("IntValue") and placement.Value or rank
-                PlutoX.debug("[排行榜] ✅ 找到玩家ID: " .. childId .. ", 排名: #" .. foundRank .. " (扫描了 " .. foundEntries .. " 个有效条目)")
                 return foundRank, true
             end
             rank = rank + 1
         end
     end
-    PlutoX.debug("[排行榜] ❌ 未在排行榜中找到玩家ID: " .. userId .. " (扫描了 " .. foundEntries .. " 个有效条目)")
     return nil, false
 end
 
@@ -559,7 +527,6 @@ local function fetchPlayerRank()
     
     -- 如果正在获取中，返回缓存值（如果有）
     if leaderboardConfig.isFetching then
-        PlutoX.debug("[排行榜] 正在获取中，返回缓存值")
         return leaderboardConfig.cachedRank, leaderboardConfig.cachedIsOnLeaderboard
     end
     
@@ -580,10 +547,8 @@ local function fetchPlayerRank()
                 leaderboardConfig.hasFetched = true
                 leaderboardConfig.isFetching = false
                 
-                PlutoX.debug("[排行榜] ✅ 使用API数据，排名: " .. (rank or "未上榜"))
             else
                 -- API没有数据或调用失败，继续从游戏中获取
-                PlutoX.debug("[排行榜] API无数据或获取失败，继续从游戏中获取...")
                 -- 临时保存isFetching状态，因为fetchPlayerRankFromGame会修改它
                 local wasFetching = leaderboardConfig.isFetching
                 leaderboardConfig.isFetching = true
@@ -595,7 +560,6 @@ local function fetchPlayerRank()
                 -- 尝试直接获取
                 local contents = tryGetContents(2)
                 if contents then
-                    PlutoX.debug("[排行榜] ✅ 直接获取成功")
                     gameRank, gameIsOnLeaderboard = parseContents(contents)
                     
                     -- 提取排行榜数据用于上传
@@ -620,16 +584,13 @@ local function fetchPlayerRank()
                         if leaderboardEntries and #leaderboardEntries > 0 then
                             spawn(function()
                                 pcall(function()
-                                    PlutoX.debug("[排行榜] API返回0条数据，直接获取成功后立即上传...")
                                     uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
-                                    PlutoX.debug("[排行榜] 排行榜数据上传完成")
                                 end)
                             end)
                         end
                     end
                 else
                     -- 尝试远程加载
-                    PlutoX.debug("[排行榜] 直接获取失败，使用远程加载...")
                     pcall(function()
                         player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
                     end)
@@ -637,7 +598,6 @@ local function fetchPlayerRank()
                     wait(1)
                     contents = tryGetContents(1)
                     if contents then
-                        PlutoX.debug("[排行榜] ✅ 远程加载成功")
                         gameRank, gameIsOnLeaderboard = parseContents(contents)
                         
                         -- 提取排行榜数据用于上传（如果 API 返回 0 条数据）
@@ -656,22 +616,18 @@ local function fetchPlayerRank()
                                     entryRank = entryRank + 1
                                 end
                             end
-                            PlutoX.debug("[排行榜] 远程加载提取到 " .. #leaderboardEntries .. " 条排行榜数据")
                             
                             -- 立即上传排行榜数据（API返回0条时）
                             if leaderboardEntries and #leaderboardEntries > 0 then
                                 spawn(function()
                                     pcall(function()
-                                        PlutoX.debug("[排行榜] API返回0条数据，远程加载成功后立即上传...")
                                         uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
-                                        PlutoX.debug("[排行榜] 排行榜数据上传完成")
                                     end)
                                 end)
                             end
                         end
                     else
                         -- 远程加载也失败，尝试传送玩家到排行榜位置
-                        PlutoX.debug("[排行榜] 远程加载失败，尝试传送玩家...")
                         
                         -- 保存玩家当前位置
                         local character = player.Character
@@ -743,7 +699,6 @@ local function fetchPlayerRank()
                             contents = tryGetContents(1)
                             if contents then
                                 local childrenCount = #contents:GetChildren()
-                                PlutoX.debug("[排行榜] ✅ 传送后成功获取排行榜，子元素数量: " .. childrenCount)
                                 gameRank, gameIsOnLeaderboard = parseContents(contents)
                                 
                                 -- 提取排行榜数据（确保rank为正数）
@@ -764,33 +719,26 @@ local function fetchPlayerRank()
                                         rankCounter = rankCounter + 1
                                     end
                                 end
-                                PlutoX.debug("[排行榜] 传送后提取到 " .. #leaderboardEntries .. " 条排行榜数据")
                                 
                                 -- 立即传送回原位置并恢复速度
                                 teleport(originalPosition)
                                 restoreVelocities()
-                                PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
                                 
                                 -- 上传排行榜数据到网站
                                 local shouldUpload = false
                                 if apiSuccess and apiData and #apiData == 0 then
                                     -- API返回0条数据，立即上传
                                     shouldUpload = true
-                                    PlutoX.debug("[排行榜] API返回0条数据，准备立即上传")
                                 elseif (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
                                     -- 冷却时间已到，允许上传
                                     shouldUpload = true
-                                    PlutoX.debug("[排行榜] 冷却时间已到，准备上传")
                                 else
-                                    PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
                                 end
                                 
                                 if shouldUpload and leaderboardEntries and #leaderboardEntries > 0 then
                                     spawn(function()
                                         pcall(function()
-                                            PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
                                             uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
-                                            PlutoX.debug("[排行榜] 排行榜数据上传完成")
                                         end)
                                     end)
                                 end
@@ -798,10 +746,8 @@ local function fetchPlayerRank()
                                 -- 传送回原位置
                                 teleport(originalPosition)
                                 restoreVelocities()
-                                PlutoX.debug("[排行榜] 传送后仍无法获取排行榜")
                             end
                         else
-                            PlutoX.debug("[排行榜] 无法获取玩家位置，无法传送")
                         end
                     end
                 end
@@ -814,7 +760,6 @@ local function fetchPlayerRank()
                 leaderboardConfig.hasFetched = true
                 leaderboardConfig.isFetching = false
                 
-                PlutoX.debug("[排行榜] 游戏内获取完成，排名: " .. (gameRank or "未上榜"))
             end
         end)
         
@@ -847,12 +792,9 @@ local function fetchPlayerRankFromGame(currentTime)
     
     -- 开始新获取
     leaderboardConfig.isFetching = true
-    PlutoX.debug("[排行榜] ========== 开始检测排行榜 ==========")
-    PlutoX.debug("[排行榜] 玩家: " .. username .. " (ID: " .. userId .. ")")
     
     local contents = tryGetContents(2)
     if contents then
-        PlutoX.debug("[排行榜] ✅ 直接获取成功")
         local rank, isOnLeaderboard = parseContents(contents)
         -- 更新缓存
         leaderboardConfig.cachedRank = rank
@@ -866,28 +808,22 @@ local function fetchPlayerRankFromGame(currentTime)
         if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
             spawn(function()
                 pcall(function()
-                    PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
                     uploadLeaderboardToWebsite()
-                    PlutoX.debug("[排行榜] 排行榜数据上传完成")
                 end)
             end)
         else
-            PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
         end
 
         return rank, isOnLeaderboard
     end
     
-    PlutoX.debug("[排行榜] 直接获取失败，使用 RequestStreamAroundAsync 远程加载...")
     
     local success, err = pcall(function()
-        PlutoX.debug("[排行榜] RequestStreamAroundAsync 调用参数: position=" .. tostring(leaderboardConfig.position) .. ", timeout=" .. leaderboardConfig.streamTimeout)
         player:RequestStreamAroundAsync(leaderboardConfig.position, leaderboardConfig.streamTimeout)
     end)
     
     if not success then
         PlutoX.warn("[排行榜] RequestStreamAroundAsync 失败: " .. tostring(err))
-        PlutoX.debug("[排行榜] ========== 远程加载失败 ==========")
         -- 失败时设置较短的缓存时间（30秒），避免频繁重试
         leaderboardConfig.cachedRank = nil
         leaderboardConfig.cachedIsOnLeaderboard = false
@@ -898,7 +834,6 @@ local function fetchPlayerRankFromGame(currentTime)
         return nil, false
     end
     
-    PlutoX.debug("[排行榜] ✅ RequestStreamAroundAsync 调用成功，开始轮询检测...")
     
     -- 轮询检测排行榜是否加载完成
     local checkStartTime = tick()
@@ -910,12 +845,10 @@ local function fetchPlayerRankFromGame(currentTime)
         pollCount = pollCount + 1
         wait(checkInterval)
         local elapsed = tick() - checkStartTime
-        PlutoX.debug("[排行榜] 轮询 #" .. pollCount .. " (已等待: " .. string.format("%.1f", elapsed) .. "秒)")
         
         contents = tryGetContents(1)
         if contents then
             local childrenCount = #contents:GetChildren()
-            PlutoX.debug("[排行榜] ✅ 远程加载成功 (耗时: " .. string.format("%.1f", elapsed) .. "秒, 轮询次数: " .. pollCount .. "), 子元素数量: " .. childrenCount)
             local rank, isOnLeaderboard = parseContents(contents)
             -- 更新缓存
             leaderboardConfig.cachedRank = rank
@@ -929,20 +862,16 @@ local function fetchPlayerRankFromGame(currentTime)
             if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
                 spawn(function()
                     pcall(function()
-                        PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
                         uploadLeaderboardToWebsite()
-                        PlutoX.debug("[排行榜] 排行榜数据上传完成")
                     end)
                 end)
             else
-                PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
             end
             
             return rank, isOnLeaderboard
         end
     end
     
-    PlutoX.debug("[排行榜] ========== 远程加载失败 (超时)，尝试传送玩家到排行榜位置 ==========")
     
     -- 保存玩家当前位置
     local character = player.Character
@@ -970,7 +899,6 @@ local function fetchPlayerRankFromGame(currentTime)
         return nil, false
     end
     
-    PlutoX.debug("[排行榜] 保存原始位置，准备传送...")
     
     -- 保存所有部件的速度状态
     local savedVelocities = {}
@@ -983,7 +911,6 @@ local function fetchPlayerRankFromGame(currentTime)
                 }
             end
         end
-        PlutoX.debug("[排行榜] 已保存 " .. #savedVelocities .. " 个部件的速度状态")
     elseif character and character.PrimaryPart then
         for _, part in ipairs(character:GetDescendants()) do
             if part:IsA("BasePart") then
@@ -993,17 +920,14 @@ local function fetchPlayerRankFromGame(currentTime)
                 }
             end
         end
-        PlutoX.debug("[排行榜] 已保存角色速度状态")
     end
     
     -- 传送函数
     local function teleport(position)
         if originalVehicle then
             originalVehicle:PivotTo(position)
-            PlutoX.debug("[排行榜] 传送车辆")
         else
             character:PivotTo(position)
-            PlutoX.debug("[排行榜] 传送角色")
         end
     end
     
@@ -1015,7 +939,6 @@ local function fetchPlayerRankFromGame(currentTime)
                 part.RotVelocity = state.rotVelocity
             end
         end
-        PlutoX.debug("[排行榜] 已恢复速度状态")
     end
     
     -- 传送到排行榜位置
@@ -1029,31 +952,25 @@ local function fetchPlayerRankFromGame(currentTime)
     contents = tryGetContents(1)
     if contents then
         local childrenCount = #contents:GetChildren()
-        PlutoX.debug("[排行榜] ✅ 传送后成功获取排行榜，子元素数量: " .. childrenCount)
         local rank, isOnLeaderboard = parseContents(contents)
         
         -- 立即传送回原位置并恢复速度
         teleport(originalPosition)
         restoreVelocities()
-        PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
         
 -- 立即上传排行榜数据到网站
         if (tick() - (leaderboardConfig.lastUploadTime or 0)) >= leaderboardConfig.uploadCooldown then
             spawn(function()
                 pcall(function()
-                    PlutoX.debug("[排行榜] 开始上传排行榜数据到网站...")
                     uploadLeaderboardToWebsite()
-                    PlutoX.debug("[排行榜] 排行榜数据上传完成")
                 end)
             end)
         else
-            PlutoX.debug("[排行榜] 跳过上传（冷却中，剩余: " .. string.format("%.0f", leaderboardConfig.uploadCooldown - (tick() - (leaderboardConfig.lastUploadTime or 0))) .. "秒）")
         end
         
         -- 立即传送回原位置并恢复速度
         teleport(originalPosition)
         restoreVelocities()
-        PlutoX.debug("[排行榜] 已传送回原位置并恢复运动状态")
         
         -- 设置较短的缓存时间（30秒），避免频繁重试
         leaderboardConfig.cachedRank = nil
@@ -1163,7 +1080,6 @@ local function findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
         return nil, -1, vehicleCount
     end
     
-    PlutoX.debug("[AutoSpawnVehicle] 找到", vehicleCount, "辆拥有的车辆")
     
     local vehicleData = fetchVehicleStatsConcurrent(ownedVehicles, GetVehicleStats)
     
@@ -1238,34 +1154,17 @@ end
 local function getRobbedAmount()
     local success, amount = pcall(function()
         local character = workspace:FindFirstChild(player.Name)
-        if not character then 
-            PlutoX.debug("[AutoRob] getRobbedAmount: 未找到角色")
-            return 0 
-        end
+        if not character then return 0 end
         local head = character:FindFirstChild("Head")
-        if not head then 
-            PlutoX.debug("[AutoRob] getRobbedAmount: 未找到 Head")
-            return 0 
-        end
+        if not head then return 0 end
         local billboard = head:FindFirstChild("CharacterBillboard")
-        if not billboard then 
-            PlutoX.debug("[AutoRob] getRobbedAmount: 未找到 CharacterBillboard")
-            return 0 
-        end
+        if not billboard then return 0 end
         local children = billboard:GetChildren()
-        if #children < 4 then 
-            PlutoX.debug("[AutoRob] getRobbedAmount: 子元素数量不足: " .. #children)
-            return 0 
-        end
+        if #children < 4 then return 0 end
         local textLabel = children[4]
-        if not textLabel or not textLabel.ContentText then 
-            PlutoX.debug("[AutoRob] getRobbedAmount: 第4个元素无 ContentText")
-            return 0 
-        end
+        if not textLabel or not textLabel.ContentText then return 0 end
         local cleanText = textLabel.ContentText:gsub("[$,]", "")
-        local result = tonumber(cleanText) or 0
-        PlutoX.debug("[AutoRob] getRobbedAmount: 成功获取金额 " .. formatNumber(result))
-        return result
+        return tonumber(cleanText) or 0
     end)
     
     if success then
@@ -1491,7 +1390,6 @@ end
 
 local function claimPlaytimeRewards()
     if not config.onlineRewardEnabled then
-        PlutoX.debug("[PlaytimeRewards] 功能未启用")
         return
     end
 
@@ -1544,7 +1442,6 @@ local function claimPlaytimeRewards()
                     end
 
                     if allClaimed then
-                        PlutoX.debug("[PlaytimeRewards] 所有奖励已领取")
                         task.wait(rewardCheckInterval)
                     else
                         local remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -1573,7 +1470,6 @@ local function claimPlaytimeRewards()
                                         uiInteraction:FireServer({action = "PlaytimeRewards", rewardId = i})
                                         task.wait(0.2)
                                         playRewards:FireServer(i, false)
-                                        PlutoX.debug("[PlaytimeRewards] 已领取奖励 ID:", i)
                                     end)
                                     task.wait(0.4)
                                 end
@@ -1594,6 +1490,7 @@ local autoFarmOriginalPosition = nil
 local function performAutoFarm()
     if not autoFarmEnabled then return end
     isAutoFarmActive = true
+    PlutoX.debug("[AutoFarm] 开始执行 AutoFarm")
 
     -- 循环刷金位置配置
     local loopPos = Vector3.new(-25453.49, 34.09, -14927.61)
@@ -1646,9 +1543,12 @@ local function performAutoFarm()
 
                 local vehicle = vehicles:FindFirstChild(localPlayer.Name)
                 if not vehicle then
+                    PlutoX.debug("[AutoFarm] 未找到车辆，等待...")
                     task.wait(3)
                     return
                 end
+                
+                PlutoX.debug("[AutoFarm] 找到车辆，准备传送")
 
                 -- 寻找最近的 Road Marker
                 local nearestMarker = getNearestRoadMarker(loopPos)
@@ -1676,6 +1576,7 @@ local function performAutoFarm()
 
                 -- 获取速度配置
                 local speed = config.autoFarmSpeed or 300
+                PlutoX.debug("[AutoFarm] 速度: " .. speed .. ", 移动时间: " .. moveDuration .. "s")
 
                 -- 计算目标位置：从起点沿着方向移动 (速度 * 20秒) 的距离
                 local moveDistance = speed * moveDuration
@@ -1712,6 +1613,7 @@ local function performAutoFarm()
                 end
 
                 -- 阶段2：往回移动20秒（不传送）
+                PlutoX.debug("[AutoFarm] 开始返回")
                 local returnStartTime = tick()
                 local returnDirection = -direction -- 相反方向
 
@@ -1742,6 +1644,7 @@ local function performAutoFarm()
                             part.AssemblyAngularVelocity = Vector3.zero
                         end
                     end
+                    PlutoX.debug("[AutoFarm] 一轮完成，继续下一轮...")
                 end
             end)
         end
@@ -1750,11 +1653,9 @@ end
 
 local function performAutoSpawnVehicle()
     if not config.autoSpawnVehicleEnabled then
-        PlutoX.debug("[AutoSpawnVehicle] 功能未启用")
         return
     end
 
-    PlutoX.debug("[AutoSpawnVehicle] 开始执行车辆生成...")
     local startTime = tick()
 
     local localPlayer = Players.LocalPlayer
@@ -1797,7 +1698,6 @@ local function performAutoSpawnVehicle()
     local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
     local searchTime = tick() - startTime
     
-    PlutoX.debug("[AutoSpawnVehicle] 搜索完成，耗时:", string.format("%.2f", searchTime), "秒")
 
     if fastestName and fastestSpeed > 0 then
         local success, err = pcall(function()
@@ -2229,7 +2129,6 @@ local featuresSubTabs = UILibrary:CreateSubTabs(featuresContent, {
     },
     DefaultActive = 1,
     OnSwitch = function(index, name)
-        PlutoX.debug("[UI] 切换到子标签页: " .. name)
     end
 })
 
@@ -2370,16 +2269,13 @@ UILibrary:CreateToggle(autoRobCard, {
             
             local currentRobbedAmount = getRobbedAmount() or 0
             if currentRobbedAmount > 0 then
-                PlutoX.debug("[UI] 关闭自动抢劫，开始投放已抢金额: " .. formatNumber(currentRobbedAmount))
                 spawn(function()
                     sellMoney()
                 end)
             else
-                PlutoX.debug("[UI] 关闭自动抢劫，无已抢金额需要投放")
                 isDeliveryInProgress = false
             end
             
-            PlutoX.debug("[UI] 用户关闭自动抢劫功能，设置状态为非活动")
             
             if originalLocationNameCall then
                 local mt = getrawmetatable(game)
@@ -2387,10 +2283,8 @@ UILibrary:CreateToggle(autoRobCard, {
                 mt.__namecall = originalLocationNameCall
                 setreadonly(mt, true)
                 originalLocationNameCall = nil
-                PlutoX.debug("[UI] 已恢复 Location remote")
             end
         else
-            PlutoX.debug("[UI] 用户开启自动抢劫功能")
             spawn(function()
                 task.wait(0.5)
                 if performAutoRobATMs then
@@ -2518,7 +2412,6 @@ function purchaseFunctions.enterDealership()
     local success, err = pcall(function()
         local locationRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Location")
         locationRemote:FireServer("Enter", "Cars")
-        PlutoX.debug("[Purchase] 已进入车店")
         return true
     end)
     
@@ -2534,77 +2427,61 @@ end
 function purchaseFunctions.getAllVehicles()
     local vehicles = {}
     
-    PlutoX.debug("[Purchase] ========== 开始获取车辆数据 ==========")
     
     local success, err = pcall(function()
-        PlutoX.debug("[Purchase] 步骤1: 获取 PlayerGui")
         local playerGui = player:WaitForChild("PlayerGui", 10)
         if not playerGui then
             PlutoX.warn("[Purchase] PlayerGui 获取超时")
             return vehicles
         end
-        PlutoX.debug("[Purchase] PlayerGui 获取成功")
         
         task.wait(0.7)
         
-        PlutoX.debug("[Purchase] 步骤2: 查找 DealershipHolder")
         local dealershipHolder = playerGui:FindFirstChild("DealershipHolder")
         if not dealershipHolder then
             PlutoX.warn("[Purchase] 未找到 DealershipHolder")
             return vehicles
         end
-        PlutoX.debug("[Purchase] DealershipHolder 找到")
         
         task.wait(0.7)
         
-        PlutoX.debug("[Purchase] 步骤3: 查找 Dealership")
         local dealership = dealershipHolder:FindFirstChild("Dealership")
         if not dealership then
             PlutoX.warn("[Purchase] 未找到 Dealership")
             return vehicles
         end
-        PlutoX.debug("[Purchase] Dealership 找到")
         
         task.wait(0.7)
         
-        PlutoX.debug("[Purchase] 步骤4: 查找 Selector")
         local selector = dealership:FindFirstChild("Selector")
         if not selector then
             PlutoX.warn("[Purchase] 未找到 Selector")
             return vehicles
         end
-        PlutoX.debug("[Purchase] Selector 找到")
         
         task.wait(0.7)
         
-        PlutoX.debug("[Purchase] 步骤5: 查找 View")
         local view = selector:FindFirstChild("View")
         if not view then
             PlutoX.warn("[Purchase] 未找到 View")
             return vehicles
         end
-        PlutoX.debug("[Purchase] View 找到")
         
         task.wait(0.7)
         
-        PlutoX.debug("[Purchase] 步骤6: 查找 All")
         local allView = view:FindFirstChild("All")
         if not allView then
             PlutoX.warn("[Purchase] 未找到 All")
             return vehicles
         end
-        PlutoX.debug("[Purchase] All 找到")
         
         task.wait(0.7)
         
-        PlutoX.debug("[Purchase] 步骤7: 查找 Container")
         local container = allView:FindFirstChild("Container")
         if not container then
             PlutoX.warn("[Purchase] 未找到 Container")
             return vehicles
         end
-        PlutoX.debug("[Purchase] Container 找到")
-        PlutoX.debug("[Purchase] Container 的子元素数量:", #container:GetChildren())
         
         task.wait(1)
         
@@ -2646,8 +2523,6 @@ function purchaseFunctions.getAllVehicles()
         PlutoX.warn("[Purchase] 获取车辆数据失败:", err)
     end
     
-    PlutoX.debug("[Purchase] 获取到", #vehicles, "辆车辆")
-    PlutoX.debug("[Purchase] ========== 获取车辆数据完成 ==========")
     
     return vehicles
 end
@@ -2671,12 +2546,9 @@ end
 
 -- 购买指定车辆
 function purchaseFunctions.buyVehicle(frameName)
-    PlutoX.debug("[Purchase] ========== 开始购买 ==========")
-    PlutoX.debug("[Purchase] 购买名称:", frameName)
     
     local success, result = pcall(function()
         local purchaseRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Purchase")
-        PlutoX.debug("[Purchase] 找到Purchase远程事件")
         
         -- 随机颜色配置
         local mainColor = purchaseFunctions.randomColor()
@@ -2692,34 +2564,22 @@ function purchaseFunctions.buyVehicle(frameName)
             }
         }
         
-        PlutoX.debug("[Purchase] 购买参数:")
-        PlutoX.debug("[Purchase]  - 购买名称:", frameName)
-        PlutoX.debug("[Purchase]  - 主颜色:", mainColor)
-        PlutoX.debug("[Purchase]  - 次要颜色:", secondaryColor)
-        PlutoX.debug("[Purchase]  - 轮毂颜色:", wheelColor)
         
         local purchaseResult = purchaseRemote:InvokeServer(unpack(args))
-        PlutoX.debug("[Purchase] 远程调用返回:", type(purchaseResult))
         
         if type(purchaseResult) == "table" then
-            PlutoX.debug("[Purchase] 返回的table内容:")
             for k, v in pairs(purchaseResult) do
-                PlutoX.debug("[Purchase]   ", k, "=", v)
             end
         else
-            PlutoX.debug("[Purchase] 返回值:", purchaseResult)
         end
         
         return purchaseResult
     end)
     
     if success then
-        PlutoX.debug("[Purchase] pcall成功，结果:", result)
-        PlutoX.debug("[Purchase] ========== 购买完成 ==========")
         return true, result
     else
         PlutoX.warn("[Purchase] pcall失败，错误:", result)
-        PlutoX.debug("[Purchase] ========== 购买失败 ==========")
         return false, result
     end
 end
@@ -2729,15 +2589,10 @@ purchaseFunctions.autoPurchasedVehicles = {}
 
 -- 独立的购买车辆函数
 function purchaseFunctions.purchaseVehicle(vehicle)
-    PlutoX.debug("[Purchase] ========== 开始购买车辆 ==========")
-    PlutoX.debug("[Purchase] 车辆名称:", vehicle.name)
-    PlutoX.debug("[Purchase] Frame Name:", vehicle.frameName)
-    PlutoX.debug("[Purchase] 车辆价格:", vehicle.price)
     
     -- 检查资金是否足够
     local currentCash = purchaseFunctions.getCurrentCash()
     if currentCash < vehicle.price then
-        PlutoX.debug("[Purchase] 资金不足")
         return false, "资金不足"
     end
     
@@ -2745,59 +2600,46 @@ function purchaseFunctions.purchaseVehicle(vehicle)
     local success, result = purchaseFunctions.buyVehicle(vehicle.frameName)
     
     if success then
-        PlutoX.debug("[Purchase] 购买成功")
         -- 记录购买的车辆
         table.insert(purchaseFunctions.autoPurchasedVehicles, vehicle)
-        PlutoX.debug("[Purchase] 已记录购买车辆:", vehicle.name, "当前记录数量:", #purchaseFunctions.autoPurchasedVehicles)
         return true, result
     else
-        PlutoX.debug("[Purchase] 购买失败:", result)
         return false, result
     end
 end
 
 -- 后悔功能（卖车）
 function purchaseFunctions.sellVehicle(vehicle)
-    PlutoX.debug("[Sell] ========== 开始卖车 ==========")
-    PlutoX.debug("[Sell] 车辆名称:", vehicle.name)
-    PlutoX.debug("[Sell] Frame Name:", vehicle.frameName)
     
     local success, err = pcall(function()
         local sellRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("SellCar")
-        PlutoX.debug("[Sell] 找到SellCar远程事件")
         
         local args = {
             vehicle.frameName
         }
         
-        PlutoX.debug("[Sell] 卖车参数:", vehicle.frameName)
         sellRemote:FireServer(unpack(args))
         
         return true
     end)
     
     if success then
-        PlutoX.debug("[Sell] 卖车成功")
         -- 从记录中移除
         for i, v in ipairs(purchaseFunctions.autoPurchasedVehicles) do
             if v.frameName == vehicle.frameName then
                 table.remove(purchaseFunctions.autoPurchasedVehicles, i)
-                PlutoX.debug("[Sell] 已从记录中移除:", vehicle.name)
                 break
             end
         end
         return true
     else
         PlutoX.warn("[Sell] 卖车失败:", err)
-        PlutoX.debug("[Sell] ========== 卖车失败 ==========")
         return false, err
     end
 end
 
 -- 后悔所有购买的车辆
 function purchaseFunctions.regretAllPurchases()
-    PlutoX.debug("[Regret] ========== 开始后悔所有购买 ==========")
-    PlutoX.debug("[Regret] 需要后悔的车辆数量:", #purchaseFunctions.autoPurchasedVehicles)
     
     -- 创建副本，避免在遍历时修改原表
     local vehiclesToSell = {}
@@ -2813,17 +2655,12 @@ function purchaseFunctions.regretAllPurchases()
         if success then
             soldCount = soldCount + 1
             totalRefund = totalRefund + vehicle.price
-            PlutoX.debug("[Regret] 已卖出:", vehicle.name, "价格:", vehicle.price)
         else
-            PlutoX.debug("[Regret] 卖出失败:", vehicle.name)
         end
         
         task.wait(1)
     end
     
-    PlutoX.debug("[Regret] ========== 后悔完成 ==========")
-    PlutoX.debug("[Regret] 成功卖出:", soldCount, "辆")
-    PlutoX.debug("[Regret] 总退款:", formatNumber(totalRefund))
     
     return true, {
         soldCount = soldCount,
@@ -2839,7 +2676,6 @@ function purchaseFunctions.autoPurchase(options)
     local onProgress = options.onProgress or function() end  -- 进度回调
     local shouldContinue = options.shouldContinue or function() return true end
     
-    PlutoX.debug("[AutoPurchase] ========== 开始自动购买 ==========")
     
     -- 进入车店
     if not purchaseFunctions.enterDealership() then
@@ -2860,29 +2696,24 @@ function purchaseFunctions.autoPurchase(options)
         table.sort(vehicles, function(a, b)
             return a.price < b.price
         end)
-        PlutoX.debug("[AutoPurchase] 按价格从低到高排序")
     else
         table.sort(vehicles, function(a, b)
             return a.price > b.price
         end)
-        PlutoX.debug("[AutoPurchase] 按价格从高到低排序")
     end
     
     local currentCash = purchaseFunctions.getCurrentCash()
     local purchasedCount = 0
     local totalSpent = 0
     
-    PlutoX.debug("[AutoPurchase] 当前资金:", formatNumber(currentCash), "车辆数量:", #vehicles)
     
     -- 依次购买
     for _, vehicle in ipairs(vehicles) do
         if purchasedCount >= maxPurchases then
-            PlutoX.debug("[AutoPurchase] 达到最大购买数量:", maxPurchases)
             break
         end
         
         if not shouldContinue() then
-            PlutoX.debug("[AutoPurchase] 停止条件触发")
             break
         end
         
@@ -2894,7 +2725,6 @@ function purchaseFunctions.autoPurchase(options)
                 totalSpent = totalSpent + vehicle.price
                 purchasedCount = purchasedCount + 1
                 
-                PlutoX.debug("[AutoPurchase] 已购买:", vehicle.name, "剩余资金:", formatNumber(currentCash))
                 
                 -- 调用进度回调
                 onProgress({
@@ -2906,16 +2736,12 @@ function purchaseFunctions.autoPurchase(options)
                 
                 task.wait(1)
             else
-                PlutoX.debug("[AutoPurchase] 购买失败:", vehicle.name)
             end
         else
-            PlutoX.debug("[AutoPurchase] 资金不足，停止购买")
             break
         end
     end
     
-    PlutoX.debug("[AutoPurchase] ========== 自动购买完成 ==========")
-    PlutoX.debug("[AutoPurchase] 购买数量:", purchasedCount, "总花费:", formatNumber(totalSpent))
     
     return true, {
         purchasedCount = purchasedCount,
@@ -2971,7 +2797,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             return
         end
         
-        PlutoX.debug("[Purchase] 开始搜索，关键词:", searchText)
         
         -- 销毁之前创建的UI元素
         pcall(function()
@@ -3018,7 +2843,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
             end
         end
         
-        PlutoX.debug("[Purchase] 搜索完成，匹配到", #matchedVehicles, "辆车辆")
         
         if #matchedVehicles == 0 then
             UILibrary:Notify({
@@ -3051,7 +2875,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
         end)
         
         if not success then
-            PlutoX.debug("[Purchase] 创建下拉框失败:", errorMsg)
             UILibrary:Notify({
                 Title = "错误",
                 Text = "创建下拉框失败: " .. tostring(errorMsg),
@@ -3078,7 +2901,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 Text = "购买选中车辆",
                 Callback = function()
                     if not vehicleDropdown or not vehicleDropdown.Parent then
-                        PlutoX.debug("[Purchase] 下拉框已被销毁")
                         return
                     end
                     
@@ -3096,7 +2918,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     local selectedVehicleName = selectedDisplayText:match("^(.-) %-")
                     
                     if not selectedVehicleName then
-                        PlutoX.debug("[Purchase] 无法从displayText中提取车辆名称:", selectedDisplayText)
                         UILibrary:Notify({
                             Title = "错误",
                             Text = "无法解析车辆名称",
@@ -3115,7 +2936,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                     end
                     
                     if not selectedVehicle then
-                        PlutoX.debug("[Purchase] 未找到选中的车辆数据")
                         UILibrary:Notify({
                             Title = "错误",
                             Text = "未找到选中的车辆",
@@ -3124,12 +2944,9 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         return
                     end
                     
-                    PlutoX.debug("[Purchase] 开始购买:", selectedVehicle.name)
                     local success, result = purchaseFunctions.purchaseVehicle(selectedVehicle)
-                    PlutoX.debug("[Purchase] 购买结果:", success, result)
                     
                     if success then
-                        PlutoX.debug("[Purchase] 购买成功，开始清理UI")
                         UILibrary:Notify({
                             Title = "购买成功",
                             Text = string.format("已购买: %s\n价格: $%s", selectedVehicle.name, formatNumber(selectedVehicle.price)),
@@ -3138,7 +2955,6 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         
                         pcall(function()
                             if vehicleDropdown and vehicleDropdown.Parent then
-                                PlutoX.debug("[Purchase] 销毁下拉框")
                                 vehicleDropdown:Destroy()
                                 vehicleDropdown = nil
                             end
@@ -3146,19 +2962,16 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                         
                         pcall(function()
                             if buyButton and buyButton.Parent then
-                                PlutoX.debug("[Purchase] 销毁购买按钮")
                                 buyButton:Destroy()
                                 buyButton = nil
                             end
                         end)
                         
                         -- 清空搜索框
-                        PlutoX.debug("[Purchase] 清空搜索框")
                         if searchInput and searchInput.Parent then
                             searchInput.Text = ""
                         end
                     else
-                        PlutoX.debug("[Purchase] 购买失败")
                         UILibrary:Notify({
                             Title = "购买失败",
                             Text = string.format("无法购买: %s", selectedVehicle.name),
@@ -3168,14 +2981,12 @@ local searchInput = UILibrary:CreateTextBox(searchCard, {
                 end
             })
             
-            PlutoX.debug("[Purchase] 购买按钮创建成功")
         end)
         
         -- 存储购买按钮引用
         previousBuyButton = buyButton
         
         if not buyButton then
-            PlutoX.debug("[Purchase] 购买按钮创建失败")
             UILibrary:Notify({
                 Title = "错误",
                 Text = "无法创建购买按钮",
@@ -3215,7 +3026,6 @@ local startAutoBuyButton = UILibrary:CreateButton(autoBuyCard, {
                     return autoBuyStatus
                 end,
                 onProgress = function(progress)
-                    PlutoX.debug("[AutoBuy] 进度:", progress.purchasedCount, "已花费:", formatNumber(progress.totalSpent))
                 end
             })
             
@@ -3365,7 +3175,6 @@ spawn(function()
 
             -- 输出最终结果
             if allSuccess then
-                PlutoX.debug("[主循环] 目标达成：所有操作成功完成，已退出游戏")
             else
                 PlutoX.warn("[主循环] 目标达成：部分操作失败，但已退出游戏")
             end
