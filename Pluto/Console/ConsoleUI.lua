@@ -17,15 +17,18 @@ function module.CreateUI(playerGui)
     frame.ZIndex = 10  -- 主框架层级
 
     local scroll = Instance.new("ScrollingFrame", frame)
-    scroll.Size = UDim2.new(1, 0, 0.85, 0)
+    scroll.Size = UDim2.new(1, -6, 0.85, 0)  -- 留出滚动条空间
+    scroll.Position = UDim2.new(0, 0, 0, 0)
     scroll.ScrollBarThickness = 6
     scroll.BackgroundTransparency = 1
     scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    scroll.ZIndex = 11  -- 滚动框层级
+    scroll.ZIndex = 11
+    scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
 
     local layout = Instance.new("UIListLayout", scroll)
     layout.SortOrder = Enum.SortOrder.LayoutOrder
     layout.Padding = UDim.new(0, 2)
+    layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 
     -- 清空按钮
     local clearBtn = Instance.new("TextButton", frame)
