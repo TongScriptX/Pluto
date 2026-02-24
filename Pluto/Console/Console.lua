@@ -76,15 +76,17 @@ local function updateUI()
         table.insert(logHistory, ("[%s] %s"):format(msgType.Name, msg))
 
         local line = getLabel()
-        line.Size = UDim2.new(1, -10, 0, 0)
+        line.Size = UDim2.new(1, 0, 0, 0)
         line.AutomaticSize = Enum.AutomaticSize.Y
         line.BackgroundTransparency = 1
         line.TextColor3 = getColor(msgType)
         line.TextXAlignment = Enum.TextXAlignment.Left
+        line.TextYAlignment = Enum.TextYAlignment.Top
         line.Font = Enum.Font.Code
         line.TextSize = 14
         line.Text = ("[%s] %s"):format(msgType.Name, msg)
         line.TextWrapped = true
+        line.TextScaled = false
         line.LayoutOrder = nextLayoutOrder
         nextLayoutOrder = nextLayoutOrder - 1  -- 递减，使新日志显示在上面
         
