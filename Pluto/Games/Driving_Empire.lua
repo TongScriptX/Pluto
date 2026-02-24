@@ -1159,12 +1159,21 @@ local function getRobbedAmount()
         if not head then return 0 end
         local billboard = head:FindFirstChild("CharacterBillboard")
         if not billboard then return 0 end
-        local children = billboard:GetChildren()
-        if #children < 4 then return 0 end
-        local textLabel = children[4]
-        if not textLabel or not textLabel.ContentText then return 0 end
-        local cleanText = textLabel.ContentText:gsub("[$,]", "")
-        return tonumber(cleanText) or 0
+        
+        -- 遍历查找包含金额的 TextLabel（以 $ 开头的内容）
+        for _, child in ipairs(billboard:GetChildren()) do
+            if child:IsA("TextLabel") and child.ContentText then
+                local text = child.ContentText
+                if text:find("^%$") or text:find("^%$[%d,]+") then
+                    local cleanText = text:gsub("[$,]", "")
+                    local num = tonumber(cleanText)
+                    if num and num > 0 then
+                        return num
+                    end
+                end
+            end
+        end
+        return 0
     end)
     
     if success then
