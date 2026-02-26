@@ -1573,19 +1573,19 @@ local function performAutoFarm()
                     vehicle:PivotTo(CFrame.lookAt(loopPos, loopPos + direction))
                 end
 
-                -- 缓存 BasePart 列表
-                local baseParts = {}
-                for _, part in ipairs(vehicle:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        baseParts[#baseParts + 1] = part
+                -- 设置速度函数（每次重新获取部件，避免引用失效）
+                local function setVehicleVelocity(dir, spd)
+                    if not vehicle or not vehicle.Parent then return end
+                    for _, part in ipairs(vehicle:GetDescendants()) do
+                        if part:IsA("BasePart") and part.Parent then
+                            part.AssemblyLinearVelocity = dir * spd
+                            part.AssemblyAngularVelocity = Vector3.zero
+                        end
                     end
                 end
 
-                -- 设置速度
-                for _, part in ipairs(baseParts) do
-                    part.AssemblyLinearVelocity = Vector3.zero
-                    part.AssemblyAngularVelocity = Vector3.zero
-                end
+                -- 停止速度
+                setVehicleVelocity(Vector3.zero, 0)
 
                 local speed = config.autoFarmSpeed or 300
                 PlutoX.debug("[AutoFarm] 速度: " .. speed .. ", 移动时间: " .. moveDuration .. "s")
@@ -1597,13 +1597,12 @@ local function performAutoFarm()
                 while tick() - startTime < moveDuration and isAutoFarmActive do
                     if not vehicle or not vehicle.Parent then break end
 
-                    local currentPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
-                    vehicle:PivotTo(CFrame.lookAt(currentPos, currentPos + direction))
+                    local primaryPart = vehicle.PrimaryPart
+                    if not primaryPart then break end
 
-                    for _, part in ipairs(baseParts) do
-                        part.AssemblyLinearVelocity = direction * speed
-                        part.AssemblyAngularVelocity = Vector3.zero
-                    end
+                    local currentPos = primaryPart.Position
+                    vehicle:PivotTo(CFrame.lookAt(currentPos, currentPos + direction))
+                    setVehicleVelocity(direction, speed)
 
                     RunService.Heartbeat:Wait()
                 end
@@ -1615,23 +1614,19 @@ local function performAutoFarm()
                 while tick() - returnStartTime < returnDuration and isAutoFarmActive do
                     if not vehicle or not vehicle.Parent then break end
 
-                    local currentPos = vehicle.PrimaryPart and vehicle.PrimaryPart.Position or loopPos
-                    vehicle:PivotTo(CFrame.lookAt(currentPos, currentPos + returnDirection))
+                    local primaryPart = vehicle.PrimaryPart
+                    if not primaryPart then break end
 
-                    for _, part in ipairs(baseParts) do
-                        part.AssemblyLinearVelocity = returnDirection * speed
-                        part.AssemblyAngularVelocity = Vector3.zero
-                    end
+                    local currentPos = primaryPart.Position
+                    vehicle:PivotTo(CFrame.lookAt(currentPos, currentPos + returnDirection))
+                    setVehicleVelocity(returnDirection, speed)
 
                     RunService.Heartbeat:Wait()
                 end
 
                 -- 停止
                 if vehicle and vehicle.Parent then
-                    for _, part in ipairs(baseParts) do
-                        part.AssemblyLinearVelocity = Vector3.zero
-                        part.AssemblyAngularVelocity = Vector3.zero
-                    end
+                    setVehicleVelocity(Vector3.zero, 0)
                     PlutoX.debug("[AutoFarm] 一轮完成，继续下一轮...")
                 end
             end)
