@@ -1539,7 +1539,7 @@ local function performAutoFarm()
 
     spawn(function()
         while isAutoFarmActive and autoFarmEnabled do
-            pcall(function()
+            local success, err = pcall(function()
                 local localPlayer = Players.LocalPlayer
                 if not localPlayer then return end
 
@@ -1553,7 +1553,6 @@ local function performAutoFarm()
                 local vehicle = vehicles:FindFirstChild(localPlayer.Name)
                 if not vehicle then
                     PlutoX.debug("[AutoFarm] 未找到车辆，等待...")
-                    task.wait(3)
                     return
                 end
                 
@@ -1574,7 +1573,7 @@ local function performAutoFarm()
                     vehicle:PivotTo(CFrame.lookAt(loopPos, loopPos + direction))
                 end
 
-                -- 缓存 BasePart 列表，避免每帧 GetDescendants()
+                -- 缓存 BasePart 列表
                 local baseParts = {}
                 for _, part in ipairs(vehicle:GetDescendants()) do
                     if part:IsA("BasePart") then
@@ -1636,6 +1635,14 @@ local function performAutoFarm()
                     PlutoX.debug("[AutoFarm] 一轮完成，继续下一轮...")
                 end
             end)
+            
+            -- 错误处理或等待间隔
+            if not success then
+                PlutoX.warn("[AutoFarm] 错误: " .. tostring(err))
+                task.wait(3)
+            else
+                task.wait(0.5) -- 每轮间隔，让 GC 有机会清理
+            end
         end
     end)
 end
