@@ -1615,8 +1615,13 @@ local function performAutoFarm()
                     RunService.Heartbeat:Wait()
                 end
 
-                -- 阶段2：返回
+                -- 阶段2：返回（先停止再反向）
                 PlutoX.debug("[AutoFarm] 开始返回")
+                
+                -- 停止当前速度，等待物理引擎稳定
+                setVehicleVelocity(Vector3.zero, 0)
+                for _ = 1, 3 do RunService.Heartbeat:Wait() end
+                
                 local returnDirection = -direction
                 local returnStartTime = tick()
                 while tick() - returnStartTime < returnDuration and isAutoFarmActive do
