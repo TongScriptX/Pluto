@@ -1573,15 +1573,22 @@ local function performAutoFarm()
                     vehicle:PivotTo(CFrame.lookAt(loopPos, loopPos + direction))
                 end
 
-                -- 设置速度函数（每次重新获取部件，避免引用失效）
-                local function setVehicleVelocity(dir, spd)
-                    if not vehicle or not vehicle.Parent then return end
-                    for _, part in ipairs(vehicle:GetDescendants()) do
-                        if part:IsA("BasePart") and part.Parent then
-                            part.AssemblyLinearVelocity = dir * spd
-                            part.AssemblyAngularVelocity = Vector3.zero
-                        end
+                -- 缓存部件列表（每轮只获取一次）
+                local baseParts = {}
+                for _, part in ipairs(vehicle:GetDescendants()) do
+                    if part:IsA("BasePart") then
+                        baseParts[#baseParts + 1] = part
                     end
+                end
+
+                -- 设置速度函数（检查部件有效性）
+                local function setVehicleVelocity(dir, spd)
+                    for _, part in ipairs(baseParts) do
+                        if not part.Parent then return false end -- 部件失效
+                        part.AssemblyLinearVelocity = dir * spd
+                        part.AssemblyAngularVelocity = Vector3.zero
+                    end
+                    return true
                 end
 
                 -- 停止速度
@@ -1602,7 +1609,8 @@ local function performAutoFarm()
 
                     local currentPos = primaryPart.Position
                     vehicle:PivotTo(CFrame.lookAt(currentPos, currentPos + direction))
-                    setVehicleVelocity(direction, speed)
+                    
+                    if not setVehicleVelocity(direction, speed) then break end
 
                     RunService.Heartbeat:Wait()
                 end
@@ -1619,7 +1627,8 @@ local function performAutoFarm()
 
                     local currentPos = primaryPart.Position
                     vehicle:PivotTo(CFrame.lookAt(currentPos, currentPos + returnDirection))
-                    setVehicleVelocity(returnDirection, speed)
+                    
+                    if not setVehicleVelocity(returnDirection, speed) then break end
 
                     RunService.Heartbeat:Wait()
                 end
