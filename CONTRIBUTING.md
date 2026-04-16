@@ -1,0 +1,379 @@
+# 贡献指南
+
+感谢你对 Pluto 项目的贡献！为了保持代码质量和项目的可维护性，请遵循以下规范。
+
+## 📋 提交规范
+
+### 提交消息格式
+
+我们使用 [Conventional Commits](https://www.conventionalcommits.org/) 规范，所有提交消息必须遵循以下格式：
+
+```
+<类型>[(可选范围)]: <简短描述>
+
+[可选正文]
+
+[可选脚注]
+```
+
+#### 格式要求
+
+- **标题行**：`<类型>: <描述>` 或 `<类型>(范围): <描述>`
+- **最大长度**：标题不超过 72 字符
+- **描述格式**：使用小写开头，不要以句号结尾
+- **正文**：与标题空一行，每行不超过 72 字符
+- **脚注**：与正文空一行，用于引用 issue 或说明破坏性变更
+
+### 提交类型
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| `feat` | 新功能 | `feat: 添加自动驾驶功能` |
+| `fix` | 修复缺陷 | `fix: 修复车辆碰撞检测问题` |
+| `docs` | 文档变更 | `docs: 更新 API 文档` |
+| `style` | 代码格式调整（不影响逻辑） | `style: 格式化代码缩进` |
+| `refactor` | 重构（不增加功能也不修复缺陷） | `refactor: 重构车辆管理模块` |
+| `test` | 测试相关 | `test: 添加碰撞检测单元测试` |
+| `chore` | 构建、依赖、工具配置等 | `chore: 更新依赖版本` |
+| `perf` | 性能优化 | `perf: 优化路径查找算法` |
+| `ci` | CI/CD 配置变更 | `ci: 添加自动部署工作流` |
+| `build` | 构建系统或外部依赖变更 | `build: 升级构建工具版本` |
+| `revert` | 回滚之前的提交 | `revert: 回滚 feat: xxx` |
+| `hotfix` | 生产环境紧急修复 | `hotfix: 修复服务器崩溃问题` |
+| `release` | 版本发布 | `release: v1.0.0` |
+
+### 提交示例
+
+#### ✅ 正确示例
+
+```bash
+# 简单提交
+feat: 添加车辆自动驾驶功能
+
+# 带范围的提交
+fix(ui): 修复按钮点击无响应问题
+
+# 带详细正文的提交
+feat: 添加调试模式功能
+
+- 添加 DEBUG_MODE 变量控制调试输出
+- 创建 debugPrint 函数包装 print
+- 将所有 print 语句替换为 debugPrint
+- 调试信息仅在 DEBUG_MODE 为 true 时输出
+
+# 破坏性变更
+feat!: 重构 API 接口
+
+BREAKING CHANGE: API 端点从 /v1 迁移到 /v2
+
+# 关联 issue
+fix: 修复内存泄漏问题
+
+Closes #123
+```
+
+#### ❌ 错误示例
+
+```bash
+# 缺少类型
+添加新功能
+
+# 类型后缺少冒号
+feat 添加新功能
+
+# 描述以大写开头
+feat: Add new feature
+
+# 描述以句号结尾
+feat: 添加新功能。
+
+# 标题过长
+feat: 这是一个非常非常非常非常非常非常非常非常非常非常长的提交消息超过了七十二个字符的限制
+
+# 使用了不存在的类型
+update: 更新代码
+```
+
+## 🌿 分支管理策略
+
+### 分支结构
+
+- **main** - 主分支，仅包含稳定发布的代码
+- **develop** - 开发分支，所有需要测试的代码都提交到此分支
+- **test** - 测试分支，用于测试环境部署
+
+### 开发流程
+
+#### 🚀 新功能开发
+
+**不再需要创建功能分支！** 所有开发直接在 `develop` 分支上进行：
+
+```bash
+# 1. 切换到 develop 分支
+git checkout develop
+git pull origin develop
+
+# 2. 进行开发
+# ... 修改代码 ...
+
+# 3. 暂存更改
+git add .
+
+# 4. 提交（遵循规范）
+git commit -m "feat: 添加新功能"
+
+# 5. 直接推送到 develop 分支
+git push origin develop
+```
+
+#### 🔧 紧急修复
+
+对于紧急修复，可以直接在 `develop` 分支上进行，或者临时创建 hotfix 分支：
+
+```bash
+# 直接在 develop 上修复（推荐）
+git checkout develop
+# ... 修复代码 ...
+git commit -m "fix: 修复紧急问题"
+git push origin develop
+
+# 或者临时 hotfix 分支（特殊情况）
+git checkout -b hotfix/urgent-fix
+# ... 修复代码 ...
+git commit -m "hotfix: 修复紧急问题"
+git push origin hotfix/urgent-fix
+# 合并到 develop 后删除分支
+```
+
+#### 📚 文档更新
+
+文档更新同样直接在 `develop` 分支进行：
+
+```bash
+git checkout develop
+# ... 修改文档 ...
+git commit -m "docs: 更新 API 文档"
+git push origin develop
+```
+
+### 分支保护规则
+
+以下分支受保护：
+- **main** - 仅通过 PR 从 develop 合并
+- **develop** - 直接推送，但需要通过 CI 检查
+- **test** - 自动部署分支，不可直接推送
+
+### 何时创建分支
+
+仅在以下特殊情况创建新分支：
+
+1. **hotfix** - 生产环境紧急修复
+   ```bash
+   git checkout -b hotfix/issue-number-description
+   ```
+
+2. **release** - 版本发布准备
+   ```bash
+   git checkout -b release/v1.0.0
+   ```
+
+3. **experiment** - 实验性功能（不确定是否会合并）
+   ```bash
+   git checkout -b experiment/feature-name
+   ```
+
+## 🔍 自动检查
+
+每次推送和 PR 时，GitHub Actions 会自动检查：
+
+1. **分支命名** - 是否符合 `<类型>/<描述>` 格式
+2. **提交消息** - 是否符合 Conventional Commits 规范
+3. **合并提交** - PR 中是否包含 merge commits（建议使用 rebase）
+
+## 🛠️ 本地配置
+
+### 安装 commitlint（可选）
+
+```bash
+# 安装依赖
+npm install --save-dev @commitlint/cli @commitlint/config-conventional
+
+# 安装 husky
+npm install --save-dev husky
+
+# 配置 husky
+npx husky install
+npx husky add .husky/commit-msg 'npx --no -- commitlint --edit "$1"'
+```
+
+### 使用 pre-commit（可选）
+
+项目已配置 `.pre-commit-config.yaml`，安装后可在提交前自动检查：
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+## 📝 提交流程
+
+### 🚀 标准开发流程
+
+```bash
+# 1. 切换到 develop 分支并更新
+git checkout develop
+git pull origin develop
+
+# 2. 进行开发
+# ... 修改代码 ...
+
+# 3. 暂存更改
+git add .
+
+# 4. 提交（遵循规范）
+git commit -m "feat: 添加新功能"
+
+# 5. 直接推送到 develop 分支
+git push origin develop
+
+# 6. 等待 CI 检查通过
+```
+
+### 🔧 紧急修复流程
+
+```bash
+# 1. 切换到 develop 分支
+git checkout develop
+git pull origin develop
+
+# 2. 进行修复
+# ... 修复代码 ...
+
+# 3. 提交修复
+git add .
+git commit -m "fix: 修复紧急问题"
+
+# 4. 推送到 develop
+git push origin develop
+
+# 5. 如需立即发布到 main，创建 PR
+```
+
+### 📚 文档更新流程
+
+```bash
+# 1. 切换到 develop 分支
+git checkout develop
+git pull origin develop
+
+# 2. 更新文档
+# ... 修改文档 ...
+
+# 3. 提交更改
+git add .
+git commit -m "docs: 更新文档"
+
+# 4. 推送到 develop
+git push origin develop
+```
+
+### 修改最后一次提交
+
+如果提交消息不符合规范：
+
+```bash
+# 修改最后一次提交消息
+git commit --amend -m "feat: 正确的提交消息"
+
+# 强制推送（如果已推送）
+git push --force
+```
+
+### 交互式 rebase
+
+修改多个提交：
+
+```bash
+# 交互式 rebase 最近 3 次提交
+git rebase -i HEAD~3
+
+# 在编辑器中将要修改的提交标记为 'reword'
+# 保存后会逐个编辑提交消息
+
+# 强制推送
+git push --force
+```
+
+## 🚫 常见错误
+
+### 1. 缺少提交类型
+
+```bash
+# ❌ 错误
+添加新功能
+
+# ✅ 正确
+feat: 添加新功能
+```
+
+### 2. 类型后缺少冒号和空格
+
+```bash
+# ❌ 错误
+feat添加新功能
+feat:添加新功能
+
+# ✅ 正确
+feat: 添加新功能
+```
+
+### 3. 描述格式错误
+
+```bash
+# ❌ 错误
+feat: Add new feature  # 使用英文但项目使用中文
+feat: 添加新功能。     # 以句号结尾
+
+# ✅ 正确
+feat: 添加新功能
+```
+
+### 4. 直接推送到 main 分支
+
+```bash
+# ❌ 错误
+git checkout main
+git commit -m "feat: 新功能"
+git push origin main  # 不应该直接推送到 main
+
+# ✅ 正确
+git checkout develop
+git commit -m "feat: 新功能"
+git push origin develop  # 推送到 develop 分支
+```
+
+## 📚 参考资源
+
+- [Conventional Commits 规范](https://www.conventionalcommits.org/)
+- [commitlint 文档](https://commitlint.js.org/)
+- [Git 分支管理最佳实践](https://nvie.com/posts/a-successful-git-branching-model/)
+
+## 💡 提示
+
+- 提交前使用 `git log --oneline` 查看最近的提交格式
+- 使用 `git commit --amend` 修改最后一次提交
+- 大型功能建议拆分为多个小提交，每个提交保持原子性
+- **始终在 develop 分支进行开发**，不要创建功能分支
+- 定期从 main 分支同步到 develop 分支以保持最新
+- develop 分支的代码会自动部署到测试环境进行验证
+- 只有经过充分测试的代码才会从 develop 合并到 main
+
+## ❓ 问题反馈
+
+如有任何问题或建议，请：
+- 提交 [Issue](https://github.com/TongScriptX/Pluto/issues)
+- 在 [Discussions](https://github.com/TongScriptX/Pluto/discussions) 中讨论
+
+---
+
+再次感谢你的贡献！🎉

@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+  - repo: local
+    hooks:
+      - id: commit-msg
+        name: Validate commit message
+        entry: bash -c 'grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .{1,72}" "$1"'
+        language: system
+        stages: [commit-msg]
+      - id: check-branch-name
+        name: Check branch name
+        entry: bash -c 'BRANCH=$(git rev-parse --abbrev-ref HEAD); if ! [[ "$BRANCH" =~ ^(main|develop|feat|fix|docs|style|refactor|test|chore|hotfix|release)\/([a-z0-9.-]+)$ ]]; then echo "Branch name must follow <type>/<ticket>-<desc> pattern"; exit 1; fi'
+        language: system
+        stages: [push]
+        always_run: true

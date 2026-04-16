@@ -1,0 +1,37 @@
+License
+
+Copyright (c) 2025 TongScriptX
+
+This license applies to all source code in this repository (including but not limited to .lua, .ts, .js files, etc.), unless otherwise stated.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the “Software”), to use,
+copy, modify, merge, publish, and distribute the Software, subject to the following conditions:
+
+1. Attribution: You must retain the original author's name ("TongScriptX") in the license and provide clear credit in any public release (e.g., in README, interface, or documentation).
+
+2. No Misrepresentation: You must not falsely claim to be the original creator. Any distributed or published modifications must include a clear statement that the version is modified and unofficial.
+
+3. No Unauthorized Commercial Use: You may not sell, license, rent, or otherwise charge others for access to the Software or its derivatives, in part or in whole, without explicit written permission from the original author.
+
+4. On Access Control Mechanisms:
+   a. The original author retains the right to implement access control systems (e.g., whitelists, license keys, or API verification) for purposes such as anti-abuse, security, or integrity verification.
+   b. You may not re-distribute the Software with newly added restrictive mechanisms (e.g., white-listing, locking, device binding) unless the changes are clearly disclosed, the source code remains open, and it is clearly marked as a fork.
+
+5. Integrity and Security:
+   - Implementing code integrity or signature checks is permitted.
+   - Any form of malware, spyware, or backdoor injection is strictly forbidden.
+   - Distributing obfuscated versions without source code is discouraged.
+
+6. Disclaimer of Warranty and Liability:
+   - The Software is provided “AS IS”, without warranty of any kind.
+   - The author assumes **no responsibility or liability** for any damage, legal consequences, loss, or unintended outcomes resulting from the use, distribution, or modification of this Software.
+   - **Use at your own risk.** This includes but is not limited to: bans, account penalties, device issues, or legal consequences resulting from misuse or violation of third-party terms.
+
+THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

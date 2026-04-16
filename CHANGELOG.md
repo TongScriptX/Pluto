@@ -1,0 +1,97 @@
+# Changelog
+
+## [Driving Empire] - 2026-01-27
+
+### Fixed
+- 修复数据上传时session_start字段错误（将其设置为会话开始时间戳，而不是游戏数据初始值）
+- 修复目标达成后游戏未退出的问题（直接在主循环中执行退出逻辑）
+- 确保目标达成后所有操作（webhook、数据上传、配置保存）完成再退出
+- 防止目标达成后重复发送webhook（添加exiting标志）
+- 修复forceUpload函数重置lastUploadTime导致的时间差计算错误（显示约56年）
+
+### Refactor
+- 删除Driving_Empire.lua的DEBUG_MODE变量，统一使用模块debug系统
+- 将所有warn()改为PlutoX.warn()，统一使用模块日志系统
+- 优化sendTargetAchieved函数为同步执行，确保所有操作完成
+- 添加步骤状态记录，记录webhook、数据上传、配置保存的执行结果
+
+### Chores
+- 关闭DEBUG模式（DEBUG_MODE设置为false）
+- 清理不必要的debug日志输出
+
+### Documentation
+- 更新Dashboard：添加无效时间戳检查，防止显示错误的运行时长（超过10年或负数）
+
+### Added
+- 日志系统增强：使用LogService捕获所有类型的输出（包括错误和警告）
+- 目标达成自动退出：达到目标金额后发送webhook并自动退出游戏
+- Webhook重试机制：目标达成webhook发送失败时自动重试（最多3次）
+- 启动时目标检查：脚本启动时自动检查是否已达到目标值，自动关闭踢出功能
+- 目标达成配置清理：达到目标后自动关闭踢出功能并清除目标值
+
+### Fixed
+- 修复FPS Boost中Transparency类型错误（ParticleEmitter和Trail使用NumberSequence类型）
+- 修复投放检测中lastCheckAmount未初始化导致的错误
+- 修复标签页按钮与侧边栏居中对齐问题
+
+### Performance
+- 优化Console.lua性能：使用对象池、批量更新、LayoutOrder优化、更新节流
+- 限制可见日志数量为50条，但保留完整历史记录
+
+### Code Quality
+- 恢复continue语句使用（Roblox Luau支持）
+- 删除无用的垃圾回收函数（Roblox环境不支持）
+
+### Chores
+- 关闭调试模式（DEBUG_MODE设置为false）
+
+## [Driving Empire] - 2026-01-01
+
+### Added
+- 日志系统增强：使用LogService捕获所有类型的输出（包括错误和警告）
+- 目标达成自动退出：达到目标金额后发送webhook并自动退出游戏
+- Webhook重试机制：目标达成webhook发送失败时自动重试（最多3次）
+
+### Fixed
+- 修复FPS Boost中Transparency类型错误（ParticleEmitter和Trail使用NumberSequence类型）
+- 修复投放检测中lastCheckAmount未初始化导致的错误
+
+### Performance
+- 优化Console.lua性能：使用对象池、批量更新、LayoutOrder优化、更新节流
+- 限制可见日志数量为50条，但保留完整历史记录
+
+## [Driving Empire] - 2026-01-01
+
+### Added
+- 搜索购买功能：支持通过关键词搜索车辆并购买
+- 一键购买功能：按价格从低到高自动购买车辆
+- 后悔功能：一键卖出所有通过一键购买功能购买的车辆
+- 下拉框UI组件：支持可滚动的选项列表
+- 自动购买标签页：将购买功能改名为"自动购买"并移到通知设置前
+
+### Fixed
+- 修复购买参数错误
+- 修复下拉框显示层级问题
+- 修复UI元素清理问题
+- 修复后悔功能只卖出部分车辆的问题
+- 增加卖车间隔时间，确保稳定
+- 修复从商店外搜索时车辆数量不足的问题
+
+### Performance
+- 优化车辆数据获取性能（等待时间从1-2秒优化为0.7-1秒）
+- 优化车辆遍历性能
+- 减少控制台输出
+- 清理代码注释，简化代码
+
+### UI
+- 加宽下拉框显示完整车辆名称和价格（标签20%，按钮80%）
+- 提升下拉框显示层级
+- 添加下拉框和输入框示例到文档
+
+### Documentation
+- 更新UI库README.md，添加下拉框组件文档
+- 更新ULibrary_Example.lua，添加更多组件示例
+- 完善API参考表
+
+### Chores
+- 关闭调试模式（DEBUG_MODE设置为false）

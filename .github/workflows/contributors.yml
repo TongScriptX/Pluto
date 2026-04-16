@@ -1,0 +1,195 @@
+name: 👥 Contributors Statistics
+
+on:
+  push:
+    branches: [ main ]
+  issues:
+    types: [opened, closed, reopened, edited]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-contributors:
+    runs-on: ubuntu-latest
+    # 只在push到main分支或issue事件时运行
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'issues'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate contributors list
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            // 获取贡献者信息
+            const { data: contributors } = await github.rest.repos.listContributors({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100
+            });
+            
+            // 获取仓库信息
+            const { data: repo } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            // 获取issue信息
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100
+            });
+            
+            // 提取issue贡献者
+            const issueContributors = new Map();
+            issues.forEach(issue => {
+              if (issue.user && issue.user.type === 'User') {
+                const username = issue.user.login;
+                if (!issueContributors.has(username)) {
+                  issueContributors.set(username, {
+                    login: username,
+                    contributions: 0,
+                    type: 'User',
+                    issue_contributions: 0
+                  });
+                }
+                issueContributors.get(username).issue_contributions++;
+              }
+            });
+            
+            // 合并代码贡献者和issue贡献者
+            const allContributors = new Map();
+            
+            // 添加代码贡献者
+            contributors.forEach(contributor => {
+              allContributors.set(contributor.login, {
+                ...contributor,
+                issue_contributions: 0
+              });
+            });
+            
+            // 添加issue贡献者
+            issueContributors.forEach((contributor, username) => {
+              if (allContributors.has(username)) {
+                allContributors.get(username).issue_contributions = contributor.issue_contributions;
+              } else {
+                allContributors.set(username, contributor);
+              }
+            });
+            
+            // 生成贡献者列表
+            let contributorsMd = '## 🌟 贡献者\n\n';
+            contributorsMd += '感谢所有为 Pluto 项目做出贡献的开发者！包括代码贡献和Issue反馈。\n\n';
+            contributorsMd += '<!-- 此文件由 GitHub Actions 自动生成，请勿手动编辑 -->\n\n';
+            
+            // 转换为数组并按总贡献次数排序
+            const sortedContributors = Array.from(allContributors.values()).sort((a, b) => {
+              const totalA = a.contributions + a.issue_contributions;
+              const totalB = b.contributions + b.issue_contributions;
+              return totalB - totalA;
+            });
+            
+            // 贡献者统计
+            const totalContributors = sortedContributors.length;
+            const totalCodeContributions = sortedContributors.reduce((sum, c) => sum + c.contributions, 0);
+            const totalIssueContributions = sortedContributors.reduce((sum, c) => sum + c.issue_contributions, 0);
+            
+            contributorsMd += '### 📊 贡献统计\n\n';
+            contributorsMd += `- 👥 总贡献者: ${totalContributors}\n`;
+            contributorsMd += `- 💻 代码提交: ${totalCodeContributions} 次\n`;
+            contributorsMd += `- 🐛 Issue反馈: ${totalIssueContributions} 个\n`;
+            contributorsMd += `- ⭐ 项目 Stars: ${repo.stargazers_count}\n`;
+            contributorsMd += `- 🍴 项目 Forks: ${repo.forks_count}\n\n`;
+            
+            // 贡献者列表
+            contributorsMd += '### 🏆 贡献者榜单\n\n';
+            
+            // 分级显示（基于总贡献）
+            const tiers = {
+              '🥇 核心贡献者': 10,
+              '🥈 活跃贡献者': 5,
+              '🥉 贡献者': 1
+            };
+            
+            let currentTier = '';
+            sortedContributors.forEach((contributor, index) => {
+              const totalContrib = contributor.contributions + contributor.issue_contributions;
+              let tier = '';
+              
+              if (totalContrib >= 10) tier = '🥇 核心贡献者';
+              else if (totalContrib >= 5) tier = '🥈 活跃贡献者';
+              else tier = '🥉 贡献者';
+              
+              if (tier !== currentTier) {
+                if (currentTier) contributorsMd += '\n';
+                contributorsMd += `#### ${tier}\n\n`;
+                currentTier = tier;
+              }
+              
+              let contributionText = `${contributor.contributions} 次代码提交`;
+              if (contributor.issue_contributions > 0) {
+                contributionText += ` + ${contributor.issue_contributions} 个Issue`;
+              }
+              
+              contributorsMd += `- [${contributor.login}](https://github.com/${contributor.login}) - ${contributionText}\n`;
+            });
+            
+            // 新贡献者欢迎
+            const recentContributors = contributors
+              .filter(c => c.type === 'User')
+              .slice(0, 5);
+            
+            if (recentContributors.length > 0) {
+              contributorsMd += '\n### 🎉 最新加入的贡献者\n\n';
+              recentContributors.forEach(contributor => {
+                contributorsMd += `- 欢迎 [@${contributor.login}](https://github.com/${contributor.login})! 🎊\n`;
+              });
+            }
+            
+            // 贡献指南
+            contributorsMd += '\n### 🤝 如何贡献\n\n';
+            contributorsMd += '想要成为贡献者吗？查看我们的 [贡献指南](CONTRIBUTING.md) 了解如何参与项目！\n\n';
+            contributorsMd += '- 🐛 报告 Bug\n';
+            contributorsMd += '- ✨ 提出新功能建议\n';
+            contributorsMd += '- 📝 改进文档\n';
+            contributorsMd += '- 🛠️ 提交代码\n';
+            contributorsMd += '- 🌍 翻译和本地化\n';
+            
+            contributorsMd += '\n---\n';
+            contributorsMd += '<div align="center">\n';
+            contributorsMd += '<sub>最后更新: ' + new Date().toLocaleString('zh-CN') + '</sub>\n';
+            contributorsMd += '</div>\n';
+            
+            // 写入文件
+            fs.writeFileSync('CONTRIBUTORS.md', contributorsMd);
+            console.log('Contributors list updated successfully');
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit updated contributors
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update contributors list"
+          file_pattern: "CONTRIBUTORS.md"
+          commit_user_name: "GitHub Action"
+          commit_user_email: "action@github.com"
+          skip_dirty_check: false
+          create_branch: false
+          push_options: '--force-with-lease'
+          skip_fetch: false
+          branch: main

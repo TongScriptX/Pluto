@@ -1,0 +1,46 @@
+name: Sync and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  sync-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+      - name: Clone and sync
+        env:
+          TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git clone https://${TOKEN}@github.com/SerivelleValois/pluto-x-api.git /tmp/pluto-x-api
+          mkdir -p /tmp/pluto-x-api/scripts
+          rm -rf /tmp/pluto-x-api/scripts/*
+          cp -r Pluto/* /tmp/pluto-x-api/scripts/
+          cd /tmp/pluto-x-api
+          git add scripts/
+          git commit -m "sync: update scripts from Pluto"
+          git push
+
+      - name: Trigger CF Deploy
+        env:
+          TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          curl -X POST https://api.github.com/repos/SerivelleValois/pluto-x-api/actions/workflows/deploy.yml/dispatches \
+          -H "Accept: application/vnd.github+json" \
+          -H "Authorization: Bearer ${TOKEN}" \
+          -H "Content-Type: application/json" \
+          -d '{"ref": "master"}'

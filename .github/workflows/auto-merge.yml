@@ -1,0 +1,42 @@
+name: Auto Merge to Main
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+
+      - name: Check and Merge
+        run: |
+          git fetch origin main
+          git fetch origin develop
+          
+          COMMITS=$(git log origin/main..origin/develop --oneline | wc -l)
+          
+          if [ "$COMMITS" -eq 0 ]; then
+            echo "No changes to merge"
+            exit 0
+          fi
+          
+          COMMIT_MSGS=$(git log origin/main..origin/develop --pretty=format:"- %s")
+          
+          git checkout main
+          git pull origin main
+          git merge origin/develop --no-ff -m "merge: 合并 develop 分支" -m "本次合并包含以下修改:" -m "$COMMIT_MSGS"
+          git push origin main
