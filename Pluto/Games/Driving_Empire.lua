@@ -3181,16 +3181,6 @@ spawn(function()
         -- 掉线检测（传入已收集的数据，避免在掉线时重新获取）
         disconnectDetector:checkAndNotify(collectedData)
 
-        -- 目标值调整
-        for _, dataType in ipairs(dataTypes) do
-            if dataType.supportTarget then
-                local keyUpper = dataType.id:gsub("^%l", string.upper)
-                if config["base" .. keyUpper] > 0 and config["target" .. keyUpper] > 0 then
-                    pcall(function() dataMonitor:adjustTargetValue(function() configManager:saveConfig() end, dataType.id) end)
-                end
-            end
-        end
-
         -- 目标值达成检测
         local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
         if achieved then

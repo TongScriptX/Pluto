@@ -351,8 +351,8 @@ function PlutoX.generateDataTypeConfigs(dataTypes)
             configs["target" .. keyUpper] = 0
             configs["enable" .. keyUpper .. "Kick"] = false
             configs["base" .. keyUpper] = 0
-            configs["lastSaved" .. keyUpper] = 0
-            configs["targetStart" .. keyUpper] = 0  -- 目标设置时的金额
+            configs["savedCurrentValue" .. keyUpper] = 0
+            configs["savedTargetValue" .. keyUpper] = 0
         end
     end
     return configs
@@ -971,7 +971,8 @@ function PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, u
             -- 清除目标
             self.config["target" .. keyUpper] = 0
             self.config["base" .. keyUpper] = 0
-            self.config["lastSaved" .. keyUpper] = 0
+            self.config["savedCurrentValue" .. keyUpper] = 0
+            self.config["savedTargetValue" .. keyUpper] = 0
 
             -- 保存配置
             local saveSuccess = pcall(function()
@@ -1226,13 +1227,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                 if sessionStartValue > 0 then
                     self.sessionStartValues[dataType.id] = sessionStartValue
                     PlutoX.debug("[启动检查] 从配置加载 " .. dataType.name .. " 初始值: " .. tostring(sessionStartValue))
-                    
-                    -- 初始化 lastSaved 值为 sessionStart，以便启动时可以检测减少
-                    self.config["lastSaved" .. keyUpper] = sessionStartValue
                 end
                 
                 -- 启动时调整目标值（检测金额减少并相应调整）
-                if self.config["target" .. keyUpper] and self.config["target" .. keyUpper] > 0 then
+                if self.config["base" .. keyUpper] > 0 and self.config["target" .. keyUpper] > 0 then
                     self:adjustTargetValue(function() end, dataType.id)
                 end
                 
@@ -1580,7 +1578,6 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
 -- 目标值调整
     function monitor:adjustTargetValue(saveConfig, dataTypeId)
         if not dataTypeId then
-            -- 调整所有数据类型的目标值
             for _, dataType in ipairs(self.dataTypes) do
                 if dataType.supportTarget then
                     self:adjustTargetValue(saveConfig, dataType.id)
@@ -1597,8 +1594,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         local keyUpper = dataType.id:gsub("^%l", string.upper)
         local baseValue = self.config["base" .. keyUpper]
         local targetValue = self.config["target" .. keyUpper]
+        local savedCurrentValue = self.config["savedCurrentValue" .. keyUpper] or 0
+        local savedTargetValue = self.config["savedTargetValue" .. keyUpper] or 0
         
-        if baseValue <= 0 or targetValue <= 0 then
+        if baseValue <= 0 or targetValue <= 0 or savedCurrentValue <= 0 or savedTargetValue <= 0 then
             return false
         end
         
@@ -1607,40 +1606,36 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
             return false
         end
         
-        if currentValue == self.config["lastSaved" .. keyUpper] then
-            return false
-        end
-        -- 使用 targetStart（设置目标时的金额）作为参考点
-        local targetStart = self.config["targetStart" .. keyUpper] or 0
-        if targetStart <= 0 then
-            targetStart = self.config["lastSaved" .. keyUpper] or currentValue
-        end
+        local decrease = savedCurrentValue - currentValue
         
-        -- 计算与设置目标时的差异（只有真正减少才调整）
-        local valueDifference = currentValue - targetStart
-        
-        -- 只在值减少时调整
-        if valueDifference < 0 then
-            local newTargetValue = targetValue + valueDifference
+        if decrease > 0 then
+            local newTarget = savedTargetValue - decrease
             
-            if newTargetValue > currentValue then
-                self.config["target" .. keyUpper] = newTargetValue
-                self.config["targetStart" .. keyUpper] = currentValue  -- 更新起点，为下次调整做准备
+            if newTarget > currentValue then
+                self.config["savedTargetValue" .. keyUpper] = newTarget
+                self.config["target" .. keyUpper] = newTarget
+                self.config["savedCurrentValue" .. keyUpper] = currentValue
+                
                 if self.UILibrary then
                     self.UILibrary:Notify({
                         Title = "目标值已调整",
                         Text = string.format("检测到%s减少 %s，目标调整至: %s", 
                             dataType.name,
-                            dataType.formatFunc(math.abs(valueDifference)),
-                            dataType.formatFunc(self.config["target" .. keyUpper])),
+                            dataType.formatFunc(decrease),
+                            dataType.formatFunc(newTarget)),
                         Duration = 5
                     })
                 end
-                configChanged = true
+                
+                if saveConfig then saveConfig() end
+                return true
             else
                 self.config["enable" .. keyUpper .. "Kick"] = false
                 self.config["target" .. keyUpper] = 0
                 self.config["base" .. keyUpper] = 0
+                self.config["savedCurrentValue" .. keyUpper] = 0
+                self.config["savedTargetValue" .. keyUpper] = 0
+                
                 if self.UILibrary then
                     self.UILibrary:Notify({
                         Title = "目标值已重置",
@@ -1648,21 +1643,13 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                         Duration = 5
                     })
                 end
-                configChanged = true
+                
+                if saveConfig then saveConfig() end
+                return true
             end
-        else
-            -- 值未减少，不调整目标
         end
         
-        -- 更新 lastSaved 值（即使没有变化）
-        self.config["lastSaved" .. keyUpper] = currentValue
-        
-        -- 只在配置变化时保存
-        if configChanged and saveConfig then
-            saveConfig()
-            configChanged = false  -- 重置标志，避免重复保存
-        end
-        return true
+        return false
     end
     
     -- 检查目标是否达成（通用）
@@ -2015,7 +2002,8 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                 PlutoX.debug("清除基准值")
                 config["base" .. keyUpper] = 0
                 config["target" .. keyUpper] = 0
-                config["lastSaved" .. keyUpper] = 0
+                config["savedCurrentValue" .. keyUpper] = 0
+                config["savedTargetValue" .. keyUpper] = 0
                 baseValueInput.Text = ""
                 updateTargetLabel()
                 if saveConfig then saveConfig() end
@@ -2043,12 +2031,23 @@ function PlutoX.createBaseValueCard(parent, UILibrary, config, saveConfig, fetch
                 local currentValue = fetchValue() or 0
                 local newTarget = num + currentValue
                 
+                -- 保护：目标不可小于当前值
+                if newTarget < currentValue then
+                    UILibrary:Notify({
+                        Title = "设置失败",
+                        Text = "目标金额不能小于当前金额",
+                        Duration = 5
+                    })
+                    baseValueInput.Text = config["base" .. keyUpper] > 0 and PlutoX.formatNumber(config["base" .. keyUpper]) or ""
+                    return
+                end
+                
                 PlutoX.debug("当前值: " .. currentValue .. ", 新目标: " .. newTarget)
                 
                 config["base" .. keyUpper] = num
                 config["target" .. keyUpper] = newTarget
-                config["lastSaved" .. keyUpper] = currentValue
-                config["targetStart" .. keyUpper] = currentValue  -- 记录设置目标时的金额，用于后续调整计算
+                config["savedCurrentValue" .. keyUpper] = currentValue
+                config["savedTargetValue" .. keyUpper] = newTarget
                 
                 baseValueInput.Text = PlutoX.formatNumber(num)
                 updateTargetLabel()
@@ -2204,8 +2203,8 @@ function PlutoX.createTargetValueCard(parent, UILibrary, config, saveConfig, fet
             end
             
             config["target" .. keyUpper] = newTarget
-            config["lastSaved" .. keyUpper] = currentValue
-            config["targetStart" .. keyUpper] = currentValue  -- 保存目标设置时的金额
+            config["savedCurrentValue" .. keyUpper] = currentValue
+            config["savedTargetValue" .. keyUpper] = newTarget
             
             targetValueLabel.Text = "目标值: " .. PlutoX.formatNumber(newTarget)
             
@@ -2329,8 +2328,8 @@ function PlutoX.recalculateAllTargetValues(config, UILibrary, dataMonitor, dataT
                 
                 if newTarget > currentValue then
                     config["target" .. keyUpper] = newTarget
-                    config["lastSaved" .. keyUpper] = currentValue
-                    config["targetStart" .. keyUpper] = currentValue  -- 保存目标设置时的金额
+                    config["savedCurrentValue" .. keyUpper] = currentValue
+                    config["savedTargetValue" .. keyUpper] = newTarget
                     
                     -- 更新标签显示
                     if getTargetValueLabels and getTargetValueLabels[dataType.id] then
@@ -2493,16 +2492,14 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     local totalEarned = 0
                     local kickEnabled = self.config["enable" .. keyUpper .. "Kick"] or false
                     if targetValue > 0 and kickEnabled then
-                        -- 目标踢出功能开启，显示目标设置以来的收入
-                        local targetStartValue = self.config["targetStart" .. keyUpper] or 0
-                        if targetStartValue > 0 then
-                            totalEarned = dataInfo.current - targetStartValue
+                        local savedCurrentValue = self.config["savedCurrentValue" .. keyUpper] or 0
+                        if savedCurrentValue > 0 then
+                            totalEarned = dataInfo.current - savedCurrentValue
                             if totalEarned < 0 then
                                 totalEarned = 0
                             end
                         end
                     else
-                        -- 目标踢出功能未开启，显示本次运行的收入
                         local sessionStartValue = self.config["sessionStart" .. keyUpper] or 0
                         if sessionStartValue > 0 then
                             totalEarned = dataInfo.current - sessionStartValue
