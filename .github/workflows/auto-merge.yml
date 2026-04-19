@@ -36,7 +36,13 @@ jobs:
           
           COMMIT_MSGS=$(git log origin/main..origin/develop --pretty=format:"- %s")
           
-          git checkout main
-          git pull origin main
-          git merge origin/develop --no-ff -m "merge: 合并 develop 分支" -m "本次合并包含以下修改:" -m "$COMMIT_MSGS"
+          git checkout -B main origin/main
+
+          if git merge-base --is-ancestor origin/main origin/develop || git merge-base origin/main origin/develop >/dev/null 2>&1; then
+            git merge origin/develop --no-ff -m "merge: 合并 develop 分支" -m "本次合并包含以下修改:" -m "$COMMIT_MSGS"
+          else
+            echo "No shared history between origin/main and origin/develop, merging with --allow-unrelated-histories"
+            git merge origin/develop --allow-unrelated-histories --no-ff -m "merge: 合并 develop 分支" -m "本次合并包含以下修改:" -m "$COMMIT_MSGS"
+          fi
+
           git push origin main
