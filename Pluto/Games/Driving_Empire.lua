@@ -1496,6 +1496,32 @@ end
 local isAutoFarmActive = false
 local autoFarmOriginalPosition = nil
 local performAutoSpawnVehicle
+local autoFarmVehicleId = nil
+
+local function getCurrentVehicleId(localPlayer)
+    local playerRef = localPlayer or Players.LocalPlayer
+    if not playerRef then
+        return nil
+    end
+
+    local vehicles = workspace:FindFirstChild("Vehicles")
+    local vehicle = vehicles and vehicles:FindFirstChild(playerRef.Name)
+    if not vehicle then
+        return nil
+    end
+
+    local vehicleIdValue = vehicle:FindFirstChild("vehicleid")
+    if vehicleIdValue and vehicleIdValue.Value ~= nil and tostring(vehicleIdValue.Value) ~= "" then
+        return tostring(vehicleIdValue.Value)
+    end
+
+    local vehicleIdAttr = vehicle:GetAttribute("vehicleid")
+    if vehicleIdAttr ~= nil and tostring(vehicleIdAttr) ~= "" then
+        return tostring(vehicleIdAttr)
+    end
+
+    return nil
+end
 
 local function performAutoFarm()
     if not autoFarmEnabled then return end
@@ -1601,6 +1627,11 @@ local function performAutoFarm()
                     if vehicleMissingStartTime then
                         PlutoX.debug("[AutoFarm] 车辆已恢复")
                         vehicleMissingStartTime = nil
+                    end
+
+                    local currentVehicleId = getCurrentVehicleId(localPlayer)
+                    if currentVehicleId then
+                        autoFarmVehicleId = currentVehicleId
                     end
                 end
                 
@@ -1748,20 +1779,32 @@ performAutoSpawnVehicle = function(forceSpawn)
         return
     end
 
+    local spawnVehicleId = autoFarmVehicleId
     local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
     local searchTime = tick() - startTime
     
+    if not spawnVehicleId or spawnVehicleId == "" then
+        spawnVehicleId = fastestName
+    end
 
-    if fastestName and fastestSpeed > 0 then
+    if spawnVehicleId and spawnVehicleId ~= "" then
         local success, err = pcall(function()
-            VehicleEvent:FireServer("Spawn", fastestName)
+            VehicleEvent:FireServer("Spawn", spawnVehicleId)
         end)
         
         if success then
+            if autoFarmVehicleId and autoFarmVehicleId ~= "" then
+                PlutoX.debug("[AutoSpawnVehicle] 使用已锁定车辆重生: " .. autoFarmVehicleId)
+            elseif fastestName and fastestName ~= "" then
+                PlutoX.debug("[AutoSpawnVehicle] 未锁定当前车辆，回退到最快车辆: " .. fastestName)
+            end
+
             UILibrary:Notify({
                 Title = "自动生成",
-                Text = string.format("已生成最快车辆: %s (速度: %s) 耗时: %.2fs", 
-                    fastestName, tostring(fastestSpeed), searchTime),
+                Text = string.format("已生成车辆: %s%s耗时: %.2fs",
+                    spawnVehicleId,
+                    fastestSpeed > 0 and string.format(" (最快车速度参考: %s) ", tostring(fastestSpeed)) or " ",
+                    searchTime),
                 Duration = 5
             })
         else
@@ -2246,6 +2289,12 @@ UILibrary:CreateToggle(autoFarmCard, {
         autoFarmEnabled = state
         -- 不保存到配置文件
         if state then
+            autoFarmVehicleId = getCurrentVehicleId(Players.LocalPlayer)
+            if autoFarmVehicleId then
+                PlutoX.debug("[AutoFarm] 已锁定当前车辆ID: " .. autoFarmVehicleId)
+            else
+                PlutoX.warn("[AutoFarm] 未读取到当前车辆ID，补车时将回退到最快车辆")
+            end
             spawn(performAutoFarm)
             UILibrary:Notify({
                 Title = "AutoFarm 已启动",
@@ -2254,6 +2303,7 @@ UILibrary:CreateToggle(autoFarmCard, {
             })
         else
             isAutoFarmActive = false
+            autoFarmVehicleId = nil
             UILibrary:Notify({
                 Title = "AutoFarm 已停止",
                 Text = "autofarm已关闭",
