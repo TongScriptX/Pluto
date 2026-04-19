@@ -1,5 +1,13 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- README 开发路线图已更新，标记“数据在线查看”和 `Driving Empire` 的 `Auto Farm` 为已完成
+
+### Fixed
+- 修复 `.github/workflows/auto-merge.yml` 在 `main` 与 `develop` 没有共同历史时直接报错 `fatal: refusing to merge unrelated histories`
+
 ## [Driving Empire] - 2026-01-27
 
 ### Fixed
