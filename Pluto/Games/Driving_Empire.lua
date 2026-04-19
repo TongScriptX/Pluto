@@ -1495,6 +1495,7 @@ end
 -- AutoFarm
 local isAutoFarmActive = false
 local autoFarmOriginalPosition = nil
+local performAutoSpawnVehicle
 
 local function performAutoFarm()
     if not autoFarmEnabled then return end
@@ -1539,6 +1540,7 @@ local function performAutoFarm()
 
     -- 车辆检测和自动重新生成
     local vehicleMissingStartTime = nil
+    local lastAutoSpawnAttempt = 0
     
     spawn(function()
         while isAutoFarmActive and autoFarmEnabled do
@@ -1555,6 +1557,14 @@ local function performAutoFarm()
 
                 local vehicle = vehicles:FindFirstChild(localPlayer.Name)
                 if not vehicle then
+                    local now = tick()
+
+                    if now - lastAutoSpawnAttempt >= 3 then
+                        lastAutoSpawnAttempt = now
+                        PlutoX.debug("[AutoFarm] 未找到车辆，立即尝试重新生成...")
+                        performAutoSpawnVehicle(true)
+                    end
+
                     -- 车辆不存在，记录开始时间
                     if not vehicleMissingStartTime then
                         vehicleMissingStartTime = tick()
@@ -1569,7 +1579,7 @@ local function performAutoFarm()
                             vehicleMissingStartTime = nil
                             
                             -- 调用自动生成车辆
-                            performAutoSpawnVehicle()
+                            performAutoSpawnVehicle(true)
                             
                             -- 等待车辆生成
                             task.wait(3)
@@ -1684,8 +1694,8 @@ local function performAutoFarm()
     end)
 end
 
-local function performAutoSpawnVehicle()
-    if not config.autoSpawnVehicleEnabled then
+performAutoSpawnVehicle = function(forceSpawn)
+    if not forceSpawn and not config.autoSpawnVehicleEnabled then
         return
     end
 
