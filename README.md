@@ -37,9 +37,15 @@ Pluto-X 是一个先进的游戏增强框架，旨在提供高性能、可扩展
 
 ## 🗺️ 开发路线图
 
-- [ ] 数据在线查看
+- [x] 数据在线查看
 - [ ] 更新部分已有游戏
-- [ ] Driving Empire - Auto Farm 功能
+- [x] Driving Empire - Auto Farm 功能
+
+## 📌 当前进度
+
+- 已完成数据在线查看相关能力
+- 已完成 `Driving Empire` 的 `Auto Farm` 功能
+- 自动合并工作流已兼容 `develop` 和 `main` 无共同历史时的合并场景
 
 ## 🤝 贡献指南
 
