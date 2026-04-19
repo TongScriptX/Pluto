@@ -1,9 +1,6 @@
 name: Auto Merge to Main
 
 on:
-  push:
-    branches:
-      - develop
   workflow_dispatch:
 
 permissions:
