@@ -460,6 +460,65 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                 PlutoX.debug("[Config] 删除不再需要的配置项: " .. oldKey)
             end
         end
+
+        -- 补齐目标调整功能所需的追踪字段，兼容旧版目标配置
+        for _, dataType in ipairs(dataTypes) do
+            if dataType.supportTarget then
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                local targetKey = "target" .. keyUpper
+                local baseKey = "base" .. keyUpper
+                local savedCurrentKey = "savedCurrentValue" .. keyUpper
+                local savedTargetKey = "savedTargetValue" .. keyUpper
+                local targetStartKey = "targetStart" .. keyUpper
+
+                local targetValue = tonumber(userConfig[targetKey]) or 0
+                local baseValue = tonumber(userConfig[baseKey]) or 0
+                local savedCurrentValue = tonumber(userConfig[savedCurrentKey]) or 0
+                local savedTargetValue = tonumber(userConfig[savedTargetKey]) or 0
+                local targetStartValue = tonumber(userConfig[targetStartKey]) or 0
+
+                local referenceCurrentValue = 0
+                if savedCurrentValue > 0 then
+                    referenceCurrentValue = savedCurrentValue
+                elseif targetStartValue > 0 then
+                    referenceCurrentValue = targetStartValue
+                end
+
+                if targetValue > 0 and savedTargetValue <= 0 then
+                    userConfig[savedTargetKey] = targetValue
+                    savedTargetValue = targetValue
+                    migrated = true
+                    PlutoX.debug("[Config] 补齐配置项: " .. savedTargetKey .. " = " .. tostring(targetValue))
+                end
+
+                if targetValue > 0 and baseValue <= 0 and referenceCurrentValue > 0 and targetValue > referenceCurrentValue then
+                    userConfig[baseKey] = targetValue - referenceCurrentValue
+                    baseValue = userConfig[baseKey]
+                    migrated = true
+                    PlutoX.debug("[Config] 反推配置项: " .. baseKey .. " = " .. tostring(baseValue))
+                end
+
+                if targetValue <= 0 and baseValue > 0 and referenceCurrentValue > 0 then
+                    userConfig[targetKey] = baseValue + referenceCurrentValue
+                    targetValue = userConfig[targetKey]
+                    migrated = true
+                    PlutoX.debug("[Config] 反推配置项: " .. targetKey .. " = " .. tostring(targetValue))
+                end
+
+                if targetValue > 0 and baseValue > 0 and savedCurrentValue <= 0 then
+                    local inferredCurrentValue = referenceCurrentValue
+                    if inferredCurrentValue <= 0 then
+                        inferredCurrentValue = targetValue - baseValue
+                    end
+
+                    if inferredCurrentValue > 0 and targetValue > inferredCurrentValue then
+                        userConfig[savedCurrentKey] = inferredCurrentValue
+                        migrated = true
+                        PlutoX.debug("[Config] 补齐配置项: " .. savedCurrentKey .. " = " .. tostring(inferredCurrentValue))
+                    end
+                end
+            end
+        end
         
         return migrated
     end
