@@ -1562,7 +1562,12 @@ local function performAutoFarm()
                     if now - lastAutoSpawnAttempt >= 3 then
                         lastAutoSpawnAttempt = now
                         PlutoX.debug("[AutoFarm] 未找到车辆，立即尝试重新生成...")
-                        performAutoSpawnVehicle(true)
+                        local spawnSuccess, spawnErr = pcall(function()
+                            performAutoSpawnVehicle(true)
+                        end)
+                        if not spawnSuccess then
+                            PlutoX.warn("[AutoFarm] 自动补车失败: " .. tostring(spawnErr))
+                        end
                     end
 
                     -- 车辆不存在，记录开始时间
@@ -1579,7 +1584,12 @@ local function performAutoFarm()
                             vehicleMissingStartTime = nil
                             
                             -- 调用自动生成车辆
-                            performAutoSpawnVehicle(true)
+                            local spawnSuccess, spawnErr = pcall(function()
+                                performAutoSpawnVehicle(true)
+                            end)
+                            if not spawnSuccess then
+                                PlutoX.warn("[AutoFarm] 长时间缺车补车失败: " .. tostring(spawnErr))
+                            end
                             
                             -- 等待车辆生成
                             task.wait(3)
@@ -3190,6 +3200,18 @@ spawn(function()
 
         -- 掉线检测（传入已收集的数据，避免在掉线时重新获取）
         disconnectDetector:checkAndNotify(collectedData)
+
+        -- 目标值调整（Driving Empire 也需要在重连或掉现金后自动修正目标值）
+        for _, dataType in ipairs(dataTypes) do
+            if dataType.supportTarget then
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                if config["base" .. keyUpper] > 0 and config["target" .. keyUpper] > 0 then
+                    pcall(function()
+                        dataMonitor:adjustTargetValue(function() configManager:saveConfig() end, dataType.id)
+                    end)
+                end
+            end
+        end
 
         -- 目标值达成检测
         local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
