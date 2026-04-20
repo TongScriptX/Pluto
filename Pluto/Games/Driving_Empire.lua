@@ -1441,8 +1441,20 @@ local function getGameUserId()
     return _G.PLUTO_GAME_USER_ID
 end
 
-local function listExcludedVehiclesFromDatabase()
+local function waitForGameUserId(timeoutSeconds)
+    local timeoutAt = tick() + (timeoutSeconds or 10)
     local gameUserId = getGameUserId()
+
+    while not gameUserId and tick() < timeoutAt do
+        task.wait(0.25)
+        gameUserId = getGameUserId()
+    end
+
+    return gameUserId
+end
+
+local function listExcludedVehiclesFromDatabase()
+    local gameUserId = waitForGameUserId(10)
     if not gameUserId then
         return false, "Missing game_user_id"
     end
@@ -2537,6 +2549,12 @@ UILibrary:CreateLabel(autoSpawnCard, {
 
 local selectedExcludedVehicleId = nil
 local excludedVehicleDropdown = nil
+local excludedVehicleDropdownHost = Instance.new("Frame")
+excludedVehicleDropdownHost.Name = "ExcludedVehicleDropdownHost"
+excludedVehicleDropdownHost.Size = UDim2.new(1, 0, 0, 28)
+excludedVehicleDropdownHost.BackgroundTransparency = 1
+excludedVehicleDropdownHost.BorderSizePixel = 0
+excludedVehicleDropdownHost.Parent = autoSpawnCard
 
 local function refreshExcludedVehicleDropdown()
     if excludedVehicleDropdown and excludedVehicleDropdown.Parent then
@@ -2553,13 +2571,15 @@ local function refreshExcludedVehicleDropdown()
     if #dropdownOptions == 0 then
         dropdownOptions = { "暂无排除车辆" }
         selectedExcludedVehicleId = nil
+    elseif selectedExcludedVehicleId and table.find(dropdownOptions, selectedExcludedVehicleId) then
+        selectedExcludedVehicleId = selectedExcludedVehicleId
     else
         selectedExcludedVehicleId = dropdownOptions[1]
     end
 
-    excludedVehicleDropdown = UILibrary:CreateDropdown(autoSpawnCard, {
+    excludedVehicleDropdown = UILibrary:CreateDropdown(excludedVehicleDropdownHost, {
         Text = "排除列表",
-        DefaultOption = dropdownOptions[1],
+        DefaultOption = selectedExcludedVehicleId or dropdownOptions[1],
         Options = dropdownOptions,
         Callback = function(selectedOption)
             if selectedOption == "暂无排除车辆" then
@@ -2616,9 +2636,18 @@ UILibrary:CreateButton(autoSpawnCard, {
         end
 
         spawn(function()
+            local ok, err = pcall(function()
+                performAutoSpawnVehicle(true)
+            end)
+            if not ok then
+                PlutoX.warn("[AutoSpawnVehicle] 排除当前车辆后重新生成失败: " .. tostring(err))
+            end
+        end)
+
+        spawn(function()
             local success, result = addExcludedVehicleToDatabase(currentVehicleId)
             if not success then
-                PlutoX.warn("[AutoSpawnVehicle] 同步排除车辆失败: " .. tostring(result))
+                PlutoX.warn("[AutoSpawnVehicle] 同步排除车辆失败: " .. formatRequestError(result))
             end
         end)
 
@@ -2658,7 +2687,7 @@ UILibrary:CreateButton(autoSpawnCard, {
         spawn(function()
             local success, result = removeExcludedVehicleFromDatabase(removedVehicleId)
             if not success then
-                PlutoX.warn("[AutoSpawnVehicle] 删除排除车辆同步失败: " .. tostring(result))
+                PlutoX.warn("[AutoSpawnVehicle] 删除排除车辆同步失败: " .. formatRequestError(result))
             end
         end)
 
@@ -2676,7 +2705,7 @@ spawn(function()
         refreshExcludedVehicleDropdown()
         PlutoX.debug("[AutoSpawnVehicle] 已从数据库同步排除车辆数量: " .. tostring(#getExcludedVehicleList()))
     else
-        PlutoX.warn("[AutoSpawnVehicle] 从数据库同步排除车辆失败: " .. tostring(result))
+        PlutoX.warn("[AutoSpawnVehicle] 从数据库同步排除车辆失败: " .. formatRequestError(result))
     end
 end)
 
