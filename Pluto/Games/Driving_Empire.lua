@@ -1020,6 +1020,8 @@ PlutoX.registerDataType({
 })
 
 -- 自动生成
+local getExcludedVehicleLookup
+
 local function fetchVehicleStatsConcurrent(vehicleNames, GetVehicleStats)
     local results = {}
     local threads = {}
@@ -1068,10 +1070,13 @@ end
 local function findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
     local ownedVehicles = {}
     local vehicleCount = 0
+    local excludedVehicleLookup = getExcludedVehicleLookup()
     
     for _, vehicleValue in pairs(vehiclesFolder:GetChildren()) do
         if vehicleValue:IsA("BoolValue") and vehicleValue.Value == true then
-            table.insert(ownedVehicles, vehicleValue.Name)
+            if not excludedVehicleLookup[vehicleValue.Name] then
+                table.insert(ownedVehicles, vehicleValue.Name)
+            end
             vehicleCount = vehicleCount + 1
         end
     end
@@ -1275,6 +1280,7 @@ local defaultConfig = {
     notificationInterval = 30,
     onlineRewardEnabled = false,
     autoSpawnVehicleEnabled = false,
+    autoSpawnExcludedVehicles = {},
     autoFarmSpeed = 300,
     robTargetAmount = 0,
     notifyCash = false,
@@ -1291,6 +1297,175 @@ end
 
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
+
+local EXCLUDED_VEHICLES_API_BASE = "https://api.959966.xyz/api/game/excluded-vehicles"
+
+local function normalizeVehicleId(vehicleId)
+    if vehicleId == nil then
+        return nil
+    end
+
+    local normalized = tostring(vehicleId):match("^%s*(.-)%s*$")
+    if not normalized or normalized == "" then
+        return nil
+    end
+
+    return normalized
+end
+
+local function sanitizeExcludedVehicleList(list)
+    local sanitized = {}
+    local seen = {}
+
+    if type(list) ~= "table" then
+        return sanitized
+    end
+
+    for _, vehicleId in ipairs(list) do
+        local normalized = normalizeVehicleId(vehicleId)
+        if normalized and not seen[normalized] then
+            seen[normalized] = true
+            table.insert(sanitized, normalized)
+        end
+    end
+
+    table.sort(sanitized)
+    return sanitized
+end
+
+local function getExcludedVehicleList()
+    config.autoSpawnExcludedVehicles = sanitizeExcludedVehicleList(config.autoSpawnExcludedVehicles)
+    return config.autoSpawnExcludedVehicles
+end
+
+getExcludedVehicleLookup = function()
+    local lookup = {}
+    for _, vehicleId in ipairs(getExcludedVehicleList()) do
+        lookup[vehicleId] = true
+    end
+    return lookup
+end
+
+local function setExcludedVehicleList(list, shouldSave)
+    config.autoSpawnExcludedVehicles = sanitizeExcludedVehicleList(list)
+    if shouldSave then
+        configManager:saveConfig()
+    end
+end
+
+local function isVehicleExcluded(vehicleId)
+    local normalized = normalizeVehicleId(vehicleId)
+    if not normalized then
+        return false
+    end
+
+    for _, excludedVehicleId in ipairs(getExcludedVehicleList()) do
+        if excludedVehicleId == normalized then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function performJsonRequest(method, url, body)
+    local headers = {
+        ["Content-Type"] = "application/json"
+    }
+
+    local encodedBody = body and HttpService:JSONEncode(body) or nil
+    local requestFunc = (syn and syn.request) or (http and http.request) or request
+
+    local response
+    if requestFunc then
+        response = requestFunc({
+            Url = url,
+            Method = method,
+            Headers = headers,
+            Body = encodedBody
+        })
+    else
+        response = HttpService:RequestAsync({
+            Url = url,
+            Method = method,
+            Headers = headers,
+            Body = encodedBody
+        })
+    end
+
+    if not response then
+        return false, "No response"
+    end
+
+    local success = response.Success
+    if success == nil then
+        success = (response.StatusCode or 0) >= 200 and (response.StatusCode or 0) < 300
+    end
+
+    local bodyText = response.Body or response.body or ""
+    local decodedBody = nil
+    if bodyText ~= "" then
+        pcall(function()
+            decodedBody = HttpService:JSONDecode(bodyText)
+        end)
+    end
+
+    if not success then
+        return false, decodedBody or bodyText or ("HTTP " .. tostring(response.StatusCode))
+    end
+
+    return true, decodedBody
+end
+
+local function getGameUserId()
+    return _G.PLUTO_GAME_USER_ID
+end
+
+local function listExcludedVehiclesFromDatabase()
+    local gameUserId = getGameUserId()
+    if not gameUserId then
+        return false, "Missing game_user_id"
+    end
+
+    local url = string.format("%s/list?game_user_id=%s", EXCLUDED_VEHICLES_API_BASE, HttpService:UrlEncode(gameUserId))
+    return performJsonRequest("GET", url)
+end
+
+local function addExcludedVehicleToDatabase(vehicleId)
+    local gameUserId = getGameUserId()
+    local normalizedVehicleId = normalizeVehicleId(vehicleId)
+    if not gameUserId or not normalizedVehicleId then
+        return false, "Missing required parameters"
+    end
+
+    return performJsonRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/add", {
+        game_user_id = gameUserId,
+        vehicle_id = normalizedVehicleId
+    })
+end
+
+local function removeExcludedVehicleFromDatabase(vehicleId)
+    local gameUserId = getGameUserId()
+    local normalizedVehicleId = normalizeVehicleId(vehicleId)
+    if not gameUserId or not normalizedVehicleId then
+        return false, "Missing required parameters"
+    end
+
+    return performJsonRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/delete", {
+        game_user_id = gameUserId,
+        vehicle_id = normalizedVehicleId
+    })
+end
+
+local function refreshExcludedVehiclesFromDatabase()
+    local success, result = listExcludedVehiclesFromDatabase()
+    if not success or type(result) ~= "table" or not result.success then
+        return false, result
+    end
+
+    setExcludedVehicleList(result.vehicles or {}, true)
+    return true, result.vehicles or {}
+end
 
 -- 出售
 local function sellMoney()
@@ -1783,6 +1958,12 @@ performAutoSpawnVehicle = function(forceSpawn)
     local fastestName, fastestSpeed, vehicleCount = findFastestVehicleFast(vehiclesFolder, GetVehicleStats)
     local searchTime = tick() - startTime
     
+    if spawnVehicleId and isVehicleExcluded(spawnVehicleId) then
+        PlutoX.warn("[AutoSpawnVehicle] 当前锁定车辆已在排除列表中，改用未排除的最快车辆")
+        spawnVehicleId = nil
+        autoFarmVehicleId = nil
+    end
+
     if not spawnVehicleId or spawnVehicleId == "" then
         spawnVehicleId = fastestName
     end
@@ -1811,7 +1992,18 @@ performAutoSpawnVehicle = function(forceSpawn)
             PlutoX.warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
         end
     else
-        PlutoX.warn("[AutoSpawnVehicle] 未找到有效车辆数据")
+        if vehicleCount > 0 and #getExcludedVehicleList() > 0 then
+            PlutoX.warn("[AutoSpawnVehicle] 所有可用车辆都已被排除，无法自动生成")
+            if UILibrary then
+                UILibrary:Notify({
+                    Title = "自动生成失败",
+                    Text = "没有可生成的车辆，请检查排除列表",
+                    Duration = 5
+                })
+            end
+        else
+            PlutoX.warn("[AutoSpawnVehicle] 未找到有效车辆数据")
+        end
     end
 end
 
@@ -2246,7 +2438,48 @@ UILibrary:CreateToggle(onlineRewardCard, {
 })
 
 -- 自动生成
-local autoSpawnCard = UILibrary:CreateCard(utilityContent)
+local autoSpawnCard = UILibrary:CreateCard(utilityContent, { IsMultiElement = true })
+UILibrary:CreateLabel(autoSpawnCard, {
+    Text = "自动生成车辆",
+})
+
+local selectedExcludedVehicleId = nil
+local excludedVehicleDropdown = nil
+
+local function refreshExcludedVehicleDropdown()
+    if excludedVehicleDropdown and excludedVehicleDropdown.Parent then
+        excludedVehicleDropdown:Destroy()
+        excludedVehicleDropdown = nil
+    end
+
+    local excludedVehicles = getExcludedVehicleList()
+    local dropdownOptions = {}
+    for _, vehicleId in ipairs(excludedVehicles) do
+        table.insert(dropdownOptions, vehicleId)
+    end
+
+    if #dropdownOptions == 0 then
+        dropdownOptions = { "暂无排除车辆" }
+        selectedExcludedVehicleId = nil
+    else
+        selectedExcludedVehicleId = dropdownOptions[1]
+    end
+
+    excludedVehicleDropdown = UILibrary:CreateDropdown(autoSpawnCard, {
+        Text = "排除列表",
+        DefaultOption = dropdownOptions[1],
+        Options = dropdownOptions,
+        Callback = function(selectedOption)
+            if selectedOption == "暂无排除车辆" then
+                selectedExcludedVehicleId = nil
+                return
+            end
+
+            selectedExcludedVehicleId = normalizeVehicleId(selectedOption)
+        end
+    })
+end
+
 UILibrary:CreateToggle(autoSpawnCard, {
     Text = "自动生成车辆",
     DefaultState = config.autoSpawnVehicleEnabled or false,
@@ -2258,6 +2491,102 @@ UILibrary:CreateToggle(autoSpawnCard, {
         end
     end
 })
+
+UILibrary:CreateButton(autoSpawnCard, {
+    Text = "排除当前车辆",
+    Callback = function()
+        local currentVehicleId = normalizeVehicleId(getCurrentVehicleId(Players.LocalPlayer) or autoFarmVehicleId)
+        if not currentVehicleId then
+            UILibrary:Notify({
+                Title = "排除失败",
+                Text = "未找到当前车辆ID",
+                Duration = 4
+            })
+            return
+        end
+
+        if isVehicleExcluded(currentVehicleId) then
+            UILibrary:Notify({
+                Title = "无需重复排除",
+                Text = "该车辆已在排除列表中",
+                Duration = 4
+            })
+            return
+        end
+
+        local excludedVehicles = getExcludedVehicleList()
+        table.insert(excludedVehicles, currentVehicleId)
+        setExcludedVehicleList(excludedVehicles, true)
+        refreshExcludedVehicleDropdown()
+
+        if autoFarmVehicleId == currentVehicleId then
+            autoFarmVehicleId = nil
+        end
+
+        spawn(function()
+            local success, result = addExcludedVehicleToDatabase(currentVehicleId)
+            if not success then
+                PlutoX.warn("[AutoSpawnVehicle] 同步排除车辆失败: " .. tostring(result))
+            end
+        end)
+
+        UILibrary:Notify({
+            Title = "已加入排除列表",
+            Text = "车辆ID: " .. currentVehicleId,
+            Duration = 4
+        })
+    end
+})
+
+refreshExcludedVehicleDropdown()
+
+UILibrary:CreateButton(autoSpawnCard, {
+    Text = "移除选中排除车辆",
+    Callback = function()
+        if not selectedExcludedVehicleId then
+            UILibrary:Notify({
+                Title = "移除失败",
+                Text = "当前没有可移除的排除车辆",
+                Duration = 4
+            })
+            return
+        end
+
+        local removedVehicleId = selectedExcludedVehicleId
+        local excludedVehicles = {}
+        for _, vehicleId in ipairs(getExcludedVehicleList()) do
+            if vehicleId ~= removedVehicleId then
+                table.insert(excludedVehicles, vehicleId)
+            end
+        end
+
+        setExcludedVehicleList(excludedVehicles, true)
+        refreshExcludedVehicleDropdown()
+
+        spawn(function()
+            local success, result = removeExcludedVehicleFromDatabase(removedVehicleId)
+            if not success then
+                PlutoX.warn("[AutoSpawnVehicle] 删除排除车辆同步失败: " .. tostring(result))
+            end
+        end)
+
+        UILibrary:Notify({
+            Title = "已移除排除车辆",
+            Text = "车辆ID: " .. removedVehicleId,
+            Duration = 4
+        })
+    end
+})
+
+spawn(function()
+    local success, result = refreshExcludedVehiclesFromDatabase()
+    if success then
+        refreshExcludedVehicleDropdown()
+        PlutoX.debug("[AutoSpawnVehicle] 已从数据库同步排除车辆数量: " .. tostring(#getExcludedVehicleList()))
+    else
+        PlutoX.warn("[AutoSpawnVehicle] 从数据库同步排除车辆失败: " .. tostring(result))
+    end
+end)
 
 -- autofarm
 local autofarmContent = featuresSubTabs.GetContent(2)
