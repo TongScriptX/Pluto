@@ -1437,8 +1437,44 @@ local function performJsonRequest(method, url, body)
     return true, decodedBody
 end
 
+local function performExcludedVehiclesRequest(method, url, body)
+    local payload = body and HttpService:JSONEncode(body) or nil
+
+    local ok, responseBody = pcall(function()
+        if method == "GET" then
+            return game:HttpGet(url)
+        end
+
+        if method == "POST" then
+            return game:HttpPost(url, payload or "{}", false)
+        end
+
+        error("Unsupported method: " .. tostring(method))
+    end)
+
+    if not ok then
+        return false, tostring(responseBody)
+    end
+
+    local decodedBody = nil
+    if responseBody and responseBody ~= "" then
+        local decodeOk, decodeResult = pcall(function()
+            return HttpService:JSONDecode(responseBody)
+        end)
+        if decodeOk then
+            decodedBody = decodeResult
+        end
+    end
+
+    if type(decodedBody) == "table" and decodedBody.error then
+        return false, decodedBody
+    end
+
+    return true, decodedBody
+end
+
 local function listExcludedVehiclesFromDatabase()
-    return performJsonRequest("GET", EXCLUDED_VEHICLES_API_BASE .. "/list")
+    return performExcludedVehiclesRequest("GET", EXCLUDED_VEHICLES_API_BASE .. "/list")
 end
 
 local function addExcludedVehicleToDatabase(vehicleId)
@@ -1447,7 +1483,7 @@ local function addExcludedVehicleToDatabase(vehicleId)
         return false, "Missing required parameter: vehicle_id"
     end
 
-    return performJsonRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/add", {
+    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/add", {
         vehicle_id = normalizedVehicleId
     })
 end
@@ -1458,7 +1494,7 @@ local function removeExcludedVehicleFromDatabase(vehicleId)
         return false, "Missing required parameter: vehicle_id"
     end
 
-    return performJsonRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/delete", {
+    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/delete", {
         vehicle_id = normalizedVehicleId
     })
 end
