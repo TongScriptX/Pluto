@@ -26,6 +26,17 @@ end
 
 -- Pluto 主体逻辑
 local placeId = game.PlaceId
+local branch = "main"
+
+if type(env.tongblx_branch) == "string" and env.tongblx_branch ~= "" then
+    branch = string.lower(env.tongblx_branch)
+elseif type(env.tongblx) == "table" and type(env.tongblx.branch) == "string" and env.tongblx.branch ~= "" then
+    branch = string.lower(env.tongblx.branch)
+end
+
+if branch ~= "develop" then
+    branch = "main"
+end
 
 local gameScripts = {
     [3351674303] = "Driving_Empire",
@@ -57,7 +68,7 @@ end
 
 local gameName = gameScripts[placeId]
 if gameName then
-    local baseUrl = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/Games/"
+    local baseUrl = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/" .. branch .. "/Pluto/Games/"
     local scriptUrl = baseUrl .. gameName .. ".lua"
     loadRemoteScript(scriptUrl)
 else
