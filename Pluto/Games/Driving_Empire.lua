@@ -1474,27 +1474,16 @@ local function performExcludedVehiclesRequest(method, url, body)
 end
 
 local function listExcludedVehiclesFromDatabase()
-    return performExcludedVehiclesRequest("GET", EXCLUDED_VEHICLES_API_BASE .. "/list")
+    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/sync", {
+        action = "list"
+    })
 end
 
-local function addExcludedVehicleToDatabase(vehicleId)
-    local normalizedVehicleId = normalizeVehicleId(vehicleId)
-    if not normalizedVehicleId then
-        return false, "Missing required parameter: vehicle_id"
-    end
-
-    local url = EXCLUDED_VEHICLES_API_BASE .. "/add?vehicle_id=" .. HttpService:UrlEncode(normalizedVehicleId)
-    return performExcludedVehiclesRequest("GET", url)
-end
-
-local function removeExcludedVehicleFromDatabase(vehicleId)
-    local normalizedVehicleId = normalizeVehicleId(vehicleId)
-    if not normalizedVehicleId then
-        return false, "Missing required parameter: vehicle_id"
-    end
-
-    local url = EXCLUDED_VEHICLES_API_BASE .. "/delete?vehicle_id=" .. HttpService:UrlEncode(normalizedVehicleId)
-    return performExcludedVehiclesRequest("GET", url)
+local function syncExcludedVehiclesToDatabase()
+    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/sync", {
+        action = "set",
+        vehicles = getExcludedVehicleList()
+    })
 end
 
 local function refreshExcludedVehiclesFromDatabase()
@@ -2658,7 +2647,7 @@ UILibrary:CreateButton(autoSpawnCard, {
         end)
 
         spawn(function()
-            local success, result = addExcludedVehicleToDatabase(currentVehicleId)
+            local success, result = syncExcludedVehiclesToDatabase()
             if not success then
                 PlutoX.warn("[AutoSpawnVehicle] 同步排除车辆失败: " .. formatRequestError(result))
             end
@@ -2698,7 +2687,7 @@ UILibrary:CreateButton(autoSpawnCard, {
         refreshExcludedVehicleDropdown()
 
         spawn(function()
-            local success, result = removeExcludedVehicleFromDatabase(removedVehicleId)
+            local success, result = syncExcludedVehiclesToDatabase()
             if not success then
                 PlutoX.warn("[AutoSpawnVehicle] 删除排除车辆同步失败: " .. formatRequestError(result))
             end
