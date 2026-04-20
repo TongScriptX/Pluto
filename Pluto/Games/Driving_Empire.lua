@@ -1353,6 +1353,26 @@ local function setExcludedVehicleList(list, shouldSave)
     end
 end
 
+local function formatRequestError(result)
+    if type(result) ~= "table" then
+        return tostring(result)
+    end
+
+    local message = result.error or result.message or result.Message or result.statusText
+    if message then
+        return tostring(message)
+    end
+
+    local ok, encoded = pcall(function()
+        return HttpService:JSONEncode(result)
+    end)
+    if ok and encoded and encoded ~= "" then
+        return encoded
+    end
+
+    return tostring(result)
+end
+
 local function isVehicleExcluded(vehicleId)
     local normalized = normalizeVehicleId(vehicleId)
     if not normalized then
@@ -1673,6 +1693,29 @@ local autoFarmOriginalPosition = nil
 local performAutoSpawnVehicle
 local autoFarmVehicleId = nil
 
+local function getOwnedVehicleLookup()
+    local lookup = {}
+    local localPlayer = Players.LocalPlayer
+    if not localPlayer then
+        return lookup
+    end
+
+    local playerGui = localPlayer:FindFirstChild("PlayerGui")
+    local statsPanel = playerGui and playerGui:FindFirstChild(localPlayer.Name .. "'s Stats")
+    local vehiclesFolder = statsPanel and statsPanel:FindFirstChild("Vehicles")
+    if not vehiclesFolder then
+        return lookup
+    end
+
+    for _, vehicleValue in ipairs(vehiclesFolder:GetChildren()) do
+        if vehicleValue:IsA("BoolValue") and vehicleValue.Value == true then
+            lookup[vehicleValue.Name] = true
+        end
+    end
+
+    return lookup
+end
+
 local function getCurrentVehicleId(localPlayer)
     local playerRef = localPlayer or Players.LocalPlayer
     if not playerRef then
@@ -1685,14 +1728,63 @@ local function getCurrentVehicleId(localPlayer)
         return nil
     end
 
-    local vehicleIdValue = vehicle:FindFirstChild("vehicleid")
-    if vehicleIdValue and vehicleIdValue.Value ~= nil and tostring(vehicleIdValue.Value) ~= "" then
-        return tostring(vehicleIdValue.Value)
+    local ownedVehicleLookup = getOwnedVehicleLookup()
+    local candidateKeys = {
+        "vehicleid",
+        "vehicleId",
+        "VehicleId",
+        "VehicleID",
+        "vehicle_id",
+        "VehicleName",
+        "vehicleName",
+        "Name"
+    }
+
+    local function resolveCandidate(rawValue)
+        local normalized = normalizeVehicleId(rawValue)
+        if not normalized then
+            return nil
+        end
+
+        if ownedVehicleLookup[normalized] then
+            return normalized
+        end
+
+        if normalized ~= playerRef.Name and normalized ~= vehicle.Name then
+            return normalized
+        end
+
+        return nil
     end
 
-    local vehicleIdAttr = vehicle:GetAttribute("vehicleid")
-    if vehicleIdAttr ~= nil and tostring(vehicleIdAttr) ~= "" then
-        return tostring(vehicleIdAttr)
+    for _, key in ipairs(candidateKeys) do
+        local child = vehicle:FindFirstChild(key, true)
+        if child and child.Value ~= nil then
+            local resolved = resolveCandidate(child.Value)
+            if resolved then
+                return resolved
+            end
+        end
+    end
+
+    for _, key in ipairs(candidateKeys) do
+        local attrValue = vehicle:GetAttribute(key)
+        local resolved = resolveCandidate(attrValue)
+        if resolved then
+            return resolved
+        end
+    end
+
+    for _, descendant in ipairs(vehicle:GetDescendants()) do
+        if descendant:IsA("StringValue") or descendant:IsA("IntValue") or descendant:IsA("NumberValue") then
+            local descendantName = string.lower(descendant.Name)
+            if descendantName:find("vehicle") or descendantName:find("model") or descendantName:find("car") then
+                local resolved = resolveCandidate(descendant.Value)
+                if resolved then
+                    return resolved
+                end
+            end
+        end
     end
 
     return nil
