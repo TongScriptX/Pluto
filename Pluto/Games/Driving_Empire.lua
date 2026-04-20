@@ -2562,9 +2562,14 @@ local excludedVehicleDropdown = nil
 local excludedVehicleDropdownHost = Instance.new("Frame")
 excludedVehicleDropdownHost.Name = "ExcludedVehicleDropdownHost"
 excludedVehicleDropdownHost.Size = UDim2.new(1, 0, 0, 28)
-excludedVehicleDropdownHost.BackgroundTransparency = 1
 excludedVehicleDropdownHost.BorderSizePixel = 0
 excludedVehicleDropdownHost.Parent = autoSpawnCard
+
+task.spawn(function()
+    game:GetService("RunService").Heartbeat:Wait()
+    excludedVehicleDropdownHost.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+    excludedVehicleDropdownHost.BackgroundTransparency = 0.999
+end)
 
 local function refreshExcludedVehicleDropdown()
     if excludedVehicleDropdown and excludedVehicleDropdown.Parent then
