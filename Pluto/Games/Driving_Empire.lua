@@ -1298,7 +1298,7 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
-local EXCLUDED_VEHICLES_API_BASE = "https://api.959966.xyz/api/excluded-vehicles"
+local EXCLUDED_VEHICLES_API_URL = "https://api.959966.xyz/api/dashboard/excluded-vehicles"
 
 local function normalizeVehicleId(vehicleId)
     if vehicleId == nil then
@@ -1438,25 +1438,25 @@ local function performJsonRequest(method, url, body)
 end
 
 local function performExcludedVehiclesRequest(method, url, body)
-    local payload = body and HttpService:JSONEncode(body) or nil
-
-    local ok, responseBody = pcall(function()
-        if method == "GET" then
-            return game:HttpGet(url)
-        end
-
-        if method == "POST" then
-            return game:HttpPost(url, payload or "{}", false)
-        end
-
-        error("Unsupported method: " .. tostring(method))
+    local ok, response = pcall(function()
+        return HttpService:RequestAsync({
+            Url = url,
+            Method = method,
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = body and HttpService:JSONEncode(body) or nil
+        })
     end)
 
     if not ok then
-        return false, tostring(responseBody)
+        return false, tostring(response)
     end
 
+    local statusCode = response.StatusCode
+    local responseBody = response.Body
     local decodedBody = nil
+
     if responseBody and responseBody ~= "" then
         local decodeOk, decodeResult = pcall(function()
             return HttpService:JSONDecode(responseBody)
@@ -1464,6 +1464,10 @@ local function performExcludedVehiclesRequest(method, url, body)
         if decodeOk then
             decodedBody = decodeResult
         end
+    end
+
+    if statusCode ~= 200 and statusCode ~= 201 then
+        return false, decodedBody or ("HTTP " .. tostring(statusCode))
     end
 
     if type(decodedBody) == "table" and decodedBody.error then
@@ -1474,14 +1478,11 @@ local function performExcludedVehiclesRequest(method, url, body)
 end
 
 local function listExcludedVehiclesFromDatabase()
-    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/sync", {
-        action = "list"
-    })
+    return performExcludedVehiclesRequest("GET", EXCLUDED_VEHICLES_API_URL)
 end
 
 local function syncExcludedVehiclesToDatabase()
-    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/sync", {
-        action = "set",
+    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_URL, {
         vehicles = getExcludedVehicleList()
     })
 end
