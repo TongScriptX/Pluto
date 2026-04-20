@@ -1298,7 +1298,7 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
-local EXCLUDED_VEHICLES_API_BASE = "https://api.959966.xyz/api/game/excluded-vehicles"
+local EXCLUDED_VEHICLES_API_BASE = "https://pluto-x-api.tongblx.workers.dev/api/game/excluded-vehicles"
 
 local function normalizeVehicleId(vehicleId)
     if vehicleId == nil then
