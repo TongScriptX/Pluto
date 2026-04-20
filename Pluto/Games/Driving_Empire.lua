@@ -1437,54 +1437,28 @@ local function performJsonRequest(method, url, body)
     return true, decodedBody
 end
 
-local function getGameUserId()
-    return _G.PLUTO_GAME_USER_ID
-end
-
-local function waitForGameUserId(timeoutSeconds)
-    local timeoutAt = tick() + (timeoutSeconds or 10)
-    local gameUserId = getGameUserId()
-
-    while not gameUserId and tick() < timeoutAt do
-        task.wait(0.25)
-        gameUserId = getGameUserId()
-    end
-
-    return gameUserId
-end
-
 local function listExcludedVehiclesFromDatabase()
-    local gameUserId = waitForGameUserId(10)
-    if not gameUserId then
-        return false, "Missing game_user_id"
-    end
-
-    local url = string.format("%s/list?game_user_id=%s", EXCLUDED_VEHICLES_API_BASE, HttpService:UrlEncode(gameUserId))
-    return performJsonRequest("GET", url)
+    return performJsonRequest("GET", EXCLUDED_VEHICLES_API_BASE .. "/list")
 end
 
 local function addExcludedVehicleToDatabase(vehicleId)
-    local gameUserId = getGameUserId()
     local normalizedVehicleId = normalizeVehicleId(vehicleId)
-    if not gameUserId or not normalizedVehicleId then
-        return false, "Missing required parameters"
+    if not normalizedVehicleId then
+        return false, "Missing required parameter: vehicle_id"
     end
 
     return performJsonRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/add", {
-        game_user_id = gameUserId,
         vehicle_id = normalizedVehicleId
     })
 end
 
 local function removeExcludedVehicleFromDatabase(vehicleId)
-    local gameUserId = getGameUserId()
     local normalizedVehicleId = normalizeVehicleId(vehicleId)
-    if not gameUserId or not normalizedVehicleId then
-        return false, "Missing required parameters"
+    if not normalizedVehicleId then
+        return false, "Missing required parameter: vehicle_id"
     end
 
     return performJsonRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/delete", {
-        game_user_id = gameUserId,
         vehicle_id = normalizedVehicleId
     })
 end
