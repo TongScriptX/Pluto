@@ -1483,9 +1483,8 @@ local function addExcludedVehicleToDatabase(vehicleId)
         return false, "Missing required parameter: vehicle_id"
     end
 
-    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/add", {
-        vehicle_id = normalizedVehicleId
-    })
+    local url = EXCLUDED_VEHICLES_API_BASE .. "/add?vehicle_id=" .. HttpService:UrlEncode(normalizedVehicleId)
+    return performExcludedVehiclesRequest("GET", url)
 end
 
 local function removeExcludedVehicleFromDatabase(vehicleId)
@@ -1494,9 +1493,8 @@ local function removeExcludedVehicleFromDatabase(vehicleId)
         return false, "Missing required parameter: vehicle_id"
     end
 
-    return performExcludedVehiclesRequest("POST", EXCLUDED_VEHICLES_API_BASE .. "/delete", {
-        vehicle_id = normalizedVehicleId
-    })
+    local url = EXCLUDED_VEHICLES_API_BASE .. "/delete?vehicle_id=" .. HttpService:UrlEncode(normalizedVehicleId)
+    return performExcludedVehiclesRequest("GET", url)
 end
 
 local function refreshExcludedVehiclesFromDatabase()
