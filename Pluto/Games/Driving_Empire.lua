@@ -1298,7 +1298,7 @@ end
 local configManager = PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
 local config = configManager:loadConfig()
 
-local EXCLUDED_VEHICLES_API_URL = "https://api.959966.xyz/api/dashboard/excluded-vehicles"
+local EXCLUDED_VEHICLES_API_URL = "https://api.959966.xyz/api/DrivingRmpire/excluded-vehicles"
 
 local function normalizeVehicleId(vehicleId)
     if vehicleId == nil then
