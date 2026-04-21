@@ -25,12 +25,14 @@ local ui = uiModule.CreateUI(playerGui)
 -- 性能优化配置
 local UPDATE_THROTTLE = 0.05 -- UI更新节流时间（秒）
 local MAX_VISIBLE_LOGS = 150 -- 最大可见日志数
+local MAX_CHARS_PER_SEGMENT = 110
 
 -- 保存日志（按时间顺序存储）
 local logHistory = {}
 local pendingLogs = {}
 local lastUpdateTime = 0
 local isUpdating = false
+local consoleEnabled = true
 local nextLayoutOrder = 1000000  -- 从大数字开始递减，使新日志显示在上面
 
 -- 对象池（重用TextLabel）
@@ -63,20 +65,65 @@ local function getColor(msgType)
     end
 end
 
+local function hardWrapSegment(segment)
+    if #segment <= MAX_CHARS_PER_SEGMENT then
+        return segment
+    end
+
+    local parts = {}
+    local index = 1
+    while index <= #segment do
+        table.insert(parts, segment:sub(index, index + MAX_CHARS_PER_SEGMENT - 1))
+        index = index + MAX_CHARS_PER_SEGMENT
+    end
+
+    return table.concat(parts, "\n")
+end
+
+local function normalizeMessageText(msgType, msg)
+    local prefix = ("[%s] "):format(msgType.Name)
+    local normalized = tostring(msg or ""):gsub("\r\n", "\n")
+    local wrappedLines = {}
+
+    for line in (normalized .. "\n"):gmatch("(.-)\n") do
+        if line == "" then
+            table.insert(wrappedLines, "")
+        else
+            local rebuilt = {}
+            for segment in line:gmatch("%S+") do
+                table.insert(rebuilt, hardWrapSegment(segment))
+            end
+            table.insert(wrappedLines, table.concat(rebuilt, " "))
+        end
+    end
+
+    return prefix .. table.concat(wrappedLines, "\n")
+end
+
+local function clearVisibleLogs()
+    for _, child in ipairs(ui.Scroll:GetChildren()) do
+        if child:IsA("TextLabel") then
+            returnLabel(child)
+        end
+    end
+    nextLayoutOrder = 1000000
+end
+
 -- 批量更新UI
 local function updateUI()
-    if isUpdating then return end
+    if isUpdating or not consoleEnabled then return end
     isUpdating = true
     
     -- 处理待处理的日志
     for _, logData in ipairs(pendingLogs) do
         local msg, msgType = logData.msg, logData.msgType
+        local formattedText = normalizeMessageText(msgType, msg)
         
         -- 添加到历史记录
-        table.insert(logHistory, ("[%s] %s"):format(msgType.Name, msg))
+        table.insert(logHistory, formattedText)
 
         local line = getLabel()
-        line.Size = UDim2.new(1, 0, 0, 0)
+        line.Size = UDim2.new(1, -8, 0, 0)
         line.AutomaticSize = Enum.AutomaticSize.Y
         line.BackgroundTransparency = 1
         line.TextColor3 = getColor(msgType)
@@ -84,8 +131,9 @@ local function updateUI()
         line.TextYAlignment = Enum.TextYAlignment.Top
         line.Font = Enum.Font.Code
         line.TextSize = 14
-        line.Text = ("[%s] %s"):format(msgType.Name, msg)
+        line.Text = formattedText
         line.TextWrapped = true
+        line.TextTruncate = Enum.TextTruncate.None
         line.TextScaled = false
         line.LayoutOrder = nextLayoutOrder
         nextLayoutOrder = nextLayoutOrder - 1  -- 递减，使新日志显示在上面
@@ -126,6 +174,10 @@ end
 
 -- 添加日志到队列
 local function appendLog(msg, msgType)
+    if not consoleEnabled then
+        return
+    end
+
     table.insert(pendingLogs, {msg = msg, msgType = msgType})
     
     -- 检查是否需要更新UI
@@ -172,38 +224,41 @@ ui.CopyBtn.MouseButton1Click:Connect(function()
     -- 清空日志
     logHistory = {}
     pendingLogs = {}
-    
-    -- 返回所有标签到对象池
-    for _, child in ipairs(ui.Scroll:GetChildren()) do
-        if child:IsA("TextLabel") then
-            returnLabel(child)
-        end
-    end
-    
-    nextLayoutOrder = 1000000  -- 重置为初始值
+    clearVisibleLogs()
 end)
 
 -- 点击清空按钮
 ui.ClearBtn.MouseButton1Click:Connect(function()
     logHistory = {}
     pendingLogs = {}
-    
-    -- 返回所有标签到对象池
-    for _, child in ipairs(ui.Scroll:GetChildren()) do
-        if child:IsA("TextLabel") then
-            returnLabel(child)
-        end
-    end
-    
-    nextLayoutOrder = 1000000  -- 重置为初始值
+    clearVisibleLogs()
     ui.Notice.Text = "🗑️ 日志已清空"
+end)
+
+local function setConsoleEnabled(enabled)
+    consoleEnabled = enabled
+    ui.ToggleBtn.Text = consoleEnabled and "控制台: 开" or "控制台: 关"
+    ui.ToggleBtn.BackgroundColor3 = consoleEnabled and Color3.fromRGB(50, 50, 50) or Color3.fromRGB(90, 45, 45)
+
+    if consoleEnabled then
+        ui.Notice.Text = "✅ 控制台功能已开启"
+    else
+        pendingLogs = {}
+        clearVisibleLogs()
+        ui.Frame.Visible = false
+        ui.Notice.Text = "⏸️ 控制台功能已关闭"
+    end
+end
+
+ui.ToggleBtn.MouseButton1Click:Connect(function()
+    setConsoleEnabled(not consoleEnabled)
 end)
 
 -- 定期更新UI（确保待处理的日志被处理）
 spawn(function()
     while true do
         task.wait(UPDATE_THROTTLE)
-        if #pendingLogs > 0 then
+        if consoleEnabled and #pendingLogs > 0 then
             updateUI()
         end
     end

@@ -1251,7 +1251,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
             if dataType.fetchFunc then
                 local success, value = pcall(dataType.fetchFunc)
                 warn("[DataMonitor] fetchFunc " .. dataType.id .. ": success=" .. tostring(success) .. ", value=" .. tostring(value))
-                if success and value then
+                if success and value ~= nil then
                     local keyUpper = dataType.id:gsub("^%l", string.upper)
                     -- 只有数值类型才设置基准值，避免存储字符串导致比较错误
                     if type(value) == "number" then
@@ -1268,6 +1268,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                         warn("[DataMonitor] " .. dataType.id .. " 返回非数值类型，设置默认值0，当前值: " .. tostring(value))
                         table.insert(initInfo, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
                     end
+                elseif success then
+                    self.lastValues[dataType.id] = value
+                    warn("[DataMonitor] fetchFunc " .. dataType.id .. " 无结果，当前值: " .. tostring(dataType.formatFunc(value)))
+                    table.insert(initInfo, string.format("%s: %s", dataType.icon .. dataType.name, dataType.formatFunc(value)))
                 else
                     warn("[DataMonitor] fetchFunc " .. dataType.id .. " 失败: " .. tostring(value))
                 end

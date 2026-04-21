@@ -2,6 +2,8 @@
 local module = {}
 
 function module.CreateUI(playerGui)
+    local UserInputService = game:GetService("UserInputService")
+
     local gui = Instance.new("ScreenGui", playerGui)
     gui.Name = "OneTimeConsoleGui"
     gui.ResetOnSpawn = false
@@ -33,10 +35,17 @@ function module.CreateUI(playerGui)
     -- 清空按钮
     local clearBtn = Instance.new("TextButton", frame)
     clearBtn.Size = UDim2.new(0, 100, 0, 40)
-    clearBtn.Position = UDim2.new(1, -260, 0.85, 0)
+    clearBtn.Position = UDim2.new(1, -370, 0.85, 0)
     clearBtn.Text = "清空"
     clearBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
     clearBtn.ZIndex = 12  -- 按钮层级
+
+    local toggleBtn = Instance.new("TextButton", frame)
+    toggleBtn.Size = UDim2.new(0, 100, 0, 40)
+    toggleBtn.Position = UDim2.new(1, -480, 0.85, 0)
+    toggleBtn.Text = "控制台: 开"
+    toggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    toggleBtn.ZIndex = 12
 
     local copyBtn = Instance.new("TextButton", frame)
     copyBtn.Size = UDim2.new(0, 140, 0, 40)
@@ -64,34 +73,42 @@ function module.CreateUI(playerGui)
     floatBtn.TextSize = 24
     floatBtn.ZIndex = 20  -- 悬浮按钮层级（最高）
 
-    -- 拖动逻辑
-    local dragging, dragInput, dragStart, startPos
-    floatBtn.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = floatBtn.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    floatBtn.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            floatBtn.Position = UDim2.new(
-                startPos.X.Scale, startPos.X.Offset + delta.X,
-                startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            )
-        end
-    end)
+    local function bindDrag(button)
+        local dragging, dragInput, dragStart, startPos
+
+        button.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1
+                or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = button.Position
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+
+        button.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement
+                or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+
+        UserInputService.InputChanged:Connect(function(input)
+            if input == dragInput and dragging then
+                local delta = input.Position - dragStart
+                button.Position = UDim2.new(
+                    startPos.X.Scale, startPos.X.Offset + delta.X,
+                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
+                )
+            end
+        end)
+    end
+
+    bindDrag(floatBtn)
 
     floatBtn.MouseButton1Click:Connect(function()
         frame.Visible = not frame.Visible
@@ -100,6 +117,8 @@ function module.CreateUI(playerGui)
     return {
         Gui = gui,
         Frame = frame,
+        FloatBtn = floatBtn,
+        ToggleBtn = toggleBtn,
         CopyBtn = copyBtn,
         ClearBtn = clearBtn,
         Notice = notice,
