@@ -1239,6 +1239,9 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
     monitor.sessionStartValues = {}
     monitor.checkInterval = 1
     monitor.beforeSendCallback = nil -- 发送前的回调函数
+    monitor.targetCurrentValueSyncInterval = 30 * 60
+    monitor.lastTargetCurrentValueSaveTime = os.time()
+    monitor.hasPendingTargetCurrentValueSync = false
     
     -- 保存上传器引用
     PlutoX.uploaderDataMonitor = monitor
@@ -1755,9 +1758,10 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         return false
     end
 
-    function monitor:syncTargetCurrentValues(saveConfig, collectedData)
+    function monitor:syncTargetCurrentValues(saveConfig, collectedData, forceSave)
         local changed = false
         local data = collectedData or self:collectData()
+        local currentTime = os.time()
 
         for _, dataType in ipairs(self.dataTypes) do
             if dataType.supportTarget then
@@ -1778,12 +1782,25 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                     ))
                     self.config["savedCurrentValue" .. keyUpper] = currentValue
                     changed = true
+                    self.hasPendingTargetCurrentValueSync = true
                 end
             end
         end
 
-        if changed and saveConfig then
+        if self.hasPendingTargetCurrentValueSync
+            and saveConfig
+            and (
+                forceSave
+                or (currentTime - self.lastTargetCurrentValueSaveTime) >= self.targetCurrentValueSyncInterval
+            ) then
+            if forceSave then
+                PlutoX.debug("[目标调整] 检测到异常断开，立即写入配置当前值")
+            else
+                PlutoX.debug("[目标调整] 运行中配置当前值达到落盘间隔，写入配置文件")
+            end
             saveConfig()
+            self.lastTargetCurrentValueSaveTime = currentTime
+            self.hasPendingTargetCurrentValueSync = false
         end
 
         return changed

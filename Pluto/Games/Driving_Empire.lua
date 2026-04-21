@@ -3705,7 +3705,11 @@ spawn(function()
         disconnectDetector:checkAndNotify(collectedData)
 
         -- 运行中仅同步配置中的当前值，不在运行时自动调整目标值
-        dataMonitor:syncTargetCurrentValues(function() configManager:saveConfig() end, collectedData)
+        dataMonitor:syncTargetCurrentValues(
+            function() configManager:saveConfig() end,
+            collectedData,
+            disconnectDetector and disconnectDetector.disconnected
+        )
 
         -- 目标值达成检测
         local achieved = dataMonitor:checkTargetAchieved(function() configManager:saveConfig() end)
