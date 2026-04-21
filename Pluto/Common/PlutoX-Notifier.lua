@@ -1656,16 +1656,43 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
         local savedCurrentValue = self.config["savedCurrentValue" .. keyUpper] or 0
         local savedTargetValue = self.config["savedTargetValue" .. keyUpper] or 0
         
-        if baseValue <= 0 or targetValue <= 0 or savedCurrentValue <= 0 or savedTargetValue <= 0 then
+        if baseValue <= 0 or targetValue <= 0 or savedTargetValue <= 0 then
+            PlutoX.debug(string.format(
+                "[目标调整] %s 跳过: base=%s, target=%s, savedTarget=%s",
+                dataType.id,
+                tostring(baseValue),
+                tostring(targetValue),
+                tostring(savedTargetValue)
+            ))
             return false
         end
         
         local currentValue = self:fetchValue(dataType)
         if not currentValue then
+            PlutoX.debug("[目标调整] " .. dataType.id .. " 跳过: 当前值获取失败")
+            return false
+        end
+
+        if savedCurrentValue <= 0 then
+            self.config["savedCurrentValue" .. keyUpper] = currentValue
+            PlutoX.debug(string.format(
+                "[目标调整] %s 初始化配置当前值: %s",
+                dataType.id,
+                tostring(currentValue)
+            ))
+            if saveConfig then saveConfig() end
             return false
         end
         
         local decrease = savedCurrentValue - currentValue
+        PlutoX.debug(string.format(
+            "[目标调整] %s 检查: 配置当前值=%s, 实时当前值=%s, 配置目标值=%s, 减少值=%s",
+            dataType.id,
+            tostring(savedCurrentValue),
+            tostring(currentValue),
+            tostring(savedTargetValue),
+            tostring(decrease)
+        ))
         
         if decrease > 0 then
             local newTarget = savedTargetValue - decrease
@@ -1707,8 +1734,55 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                 return true
             end
         end
+
+        if currentValue ~= savedCurrentValue then
+            self.config["savedCurrentValue" .. keyUpper] = currentValue
+            PlutoX.debug(string.format(
+                "[目标调整] %s 更新配置当前值: %s -> %s",
+                dataType.id,
+                tostring(savedCurrentValue),
+                tostring(currentValue)
+            ))
+            if saveConfig then saveConfig() end
+        else
+            PlutoX.debug("[目标调整] " .. dataType.id .. " 无变化，保持当前配置值")
+        end
         
         return false
+    end
+
+    function monitor:syncTargetCurrentValues(saveConfig, collectedData)
+        local changed = false
+        local data = collectedData or self:collectData()
+
+        for _, dataType in ipairs(self.dataTypes) do
+            if dataType.supportTarget then
+                local keyUpper = dataType.id:gsub("^%l", string.upper)
+                local currentData = data[dataType.id]
+                local currentValue = currentData and currentData.current
+                local savedCurrentValue = self.config["savedCurrentValue" .. keyUpper] or 0
+
+                if self.config["base" .. keyUpper] > 0
+                    and self.config["target" .. keyUpper] > 0
+                    and type(currentValue) == "number"
+                    and currentValue ~= savedCurrentValue then
+                    PlutoX.debug(string.format(
+                        "[目标调整] %s 运行中同步配置当前值: %s -> %s",
+                        dataType.id,
+                        tostring(savedCurrentValue),
+                        tostring(currentValue)
+                    ))
+                    self.config["savedCurrentValue" .. keyUpper] = currentValue
+                    changed = true
+                end
+            end
+        end
+
+        if changed and saveConfig then
+            saveConfig()
+        end
+
+        return changed
     end
     
     -- 检查目标是否达成（通用）
