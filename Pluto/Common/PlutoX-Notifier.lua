@@ -17,6 +17,8 @@ PlutoX.uploaderConfig = nil
 PlutoX.uploaderHttpService = nil
 PlutoX.uploaderDataMonitor = nil
 PlutoX.uploader = nil  -- 全局上传器引用
+PlutoX.errorReportApiBase = "https://api.959966.xyz/api/client/error-reports"
+PlutoX.errorReportChunkSize = 120000
 
 -- 设置游戏信息
 function PlutoX.setGameInfo(gameName, username, HttpService)
@@ -235,6 +237,151 @@ function PlutoX.warn(...)
 
     -- 输出到控制台（通过重写的 print 函数）
     print(logMessage:gsub("\n$", ""))
+end
+
+function PlutoX.getHttpService()
+    if PlutoX.uploaderHttpService then
+        return PlutoX.uploaderHttpService
+    end
+
+    local success, service = pcall(function()
+        return game:GetService("HttpService")
+    end)
+
+    if success then
+        PlutoX.uploaderHttpService = service
+        return service
+    end
+
+    return nil
+end
+
+function PlutoX.readCurrentLogContent()
+    if not PlutoX.currentLogFile or not isfile or not readfile then
+        return false, "日志文件不可用"
+    end
+
+    if not isfile(PlutoX.currentLogFile) then
+        return false, "日志文件不存在"
+    end
+
+    local success, content = pcall(function()
+        return readfile(PlutoX.currentLogFile)
+    end)
+
+    if not success then
+        return false, tostring(content)
+    end
+
+    if type(content) ~= "string" or content == "" then
+        return false, "日志内容为空"
+    end
+
+    return true, content
+end
+
+function PlutoX.sendJsonRequest(url, payload)
+    local httpService = PlutoX.getHttpService()
+    if not httpService then
+        return false, "HttpService 不可用"
+    end
+
+    local requestSuccess, response = pcall(function()
+        return httpService:RequestAsync({
+            Url = url,
+            Method = "POST",
+            Headers = {
+                ["Content-Type"] = "application/json"
+            },
+            Body = httpService:JSONEncode(payload)
+        })
+    end)
+
+    if not requestSuccess then
+        return false, tostring(response)
+    end
+
+    if not response.Success then
+        local message = "HTTP " .. tostring(response.StatusCode or "未知状态")
+        if response.Body and response.Body ~= "" then
+            local decodeSuccess, decoded = pcall(function()
+                return httpService:JSONDecode(response.Body)
+            end)
+            if decodeSuccess and type(decoded) == "table" and decoded.error then
+                message = tostring(decoded.error)
+            else
+                message = message .. ": " .. tostring(response.Body)
+            end
+        end
+        return false, message, response
+    end
+
+    local decodedBody = nil
+    if response.Body and response.Body ~= "" then
+        pcall(function()
+            decodedBody = httpService:JSONDecode(response.Body)
+        end)
+    end
+
+    return true, decodedBody, response
+end
+
+function PlutoX.uploadCurrentLogReport()
+    local logSuccess, logContentOrError = PlutoX.readCurrentLogContent()
+    if not logSuccess then
+        return false, "读取日志失败: " .. tostring(logContentOrError)
+    end
+
+    local logContent = logContentOrError
+    local totalSize = #logContent
+    local chunkSize = PlutoX.errorReportChunkSize
+    local totalChunks = math.max(1, math.ceil(totalSize / chunkSize))
+    local preview = logContent:sub(1, 1000)
+
+    local startSuccess, startBodyOrError = PlutoX.sendJsonRequest(PlutoX.errorReportApiBase .. "/start", {
+        game_name = PlutoX.gameName or "Unknown",
+        username = PlutoX.username or "Unknown",
+        game_user_id = _G.PLUTO_GAME_USER_ID,
+        log_file_name = tostring(PlutoX.currentLogFile or "runtime.log"),
+        total_size = totalSize,
+        total_chunks = totalChunks,
+        preview = preview
+    })
+
+    if not startSuccess then
+        return false, "创建上报失败: " .. tostring(startBodyOrError)
+    end
+
+    local reportId = startBodyOrError and startBodyOrError.report_id
+    if not reportId then
+        return false, "创建上报失败: 未返回 report_id"
+    end
+
+    for chunkIndex = 0, totalChunks - 1 do
+        local startPos = chunkIndex * chunkSize + 1
+        local endPos = math.min((chunkIndex + 1) * chunkSize, totalSize)
+        local chunkContent = logContent:sub(startPos, endPos)
+
+        local chunkSuccess, chunkBodyOrError = PlutoX.sendJsonRequest(PlutoX.errorReportApiBase .. "/chunk", {
+            report_id = reportId,
+            chunk_index = chunkIndex,
+            content = chunkContent
+        })
+
+        if not chunkSuccess then
+            return false, "上传日志分片失败: " .. tostring(chunkBodyOrError), reportId
+        end
+    end
+
+    local finishSuccess, finishBodyOrError = PlutoX.sendJsonRequest(PlutoX.errorReportApiBase .. "/finish", {
+        report_id = reportId
+    })
+
+    if not finishSuccess then
+        return false, "完成上报失败: " .. tostring(finishBodyOrError), reportId
+    end
+
+    return true, reportId, finishBodyOrError
 end
 
 -- Webhook Footer
@@ -3157,6 +3304,46 @@ function PlutoX.createAboutPage(parent, UILibrary)
                     Duration = 2,
                 })
             end
+        end,
+    })
+
+    UILibrary:CreateButton(parent, {
+        Text = "上报错误",
+        Icon = "alert-triangle",
+        Callback = function()
+            UILibrary:Notify({
+                Title = "开始上报",
+                Text = "正在上传本次运行日志",
+                Duration = 2,
+            })
+
+            task.spawn(function()
+                local success, resultOrError = PlutoX.uploadCurrentLogReport()
+
+                if success then
+                    local reportId = tostring(resultOrError)
+                    local message = "日志已上报\nID: " .. reportId
+
+                    if setclipboard then
+                        pcall(function()
+                            setclipboard(reportId)
+                        end)
+                        message = message .. "\n已复制 ID"
+                    end
+
+                    UILibrary:Notify({
+                        Title = "上报成功",
+                        Text = message,
+                        Duration = 6,
+                    })
+                else
+                    UILibrary:Notify({
+                        Title = "上报失败",
+                        Text = tostring(resultOrError),
+                        Duration = 4,
+                    })
+                end
+            end)
         end,
     })
 end
