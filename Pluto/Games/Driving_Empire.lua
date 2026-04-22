@@ -256,6 +256,8 @@ PlutoX.registerDataType({
     supportTarget = true
 })
 
+local performJsonRequest
+
 -- API 排行榜
 local function fetchLeaderboardFromAPI()
     if not PlutoX.uploaderHttpService then
@@ -267,15 +269,13 @@ local function fetchLeaderboardFromAPI()
         local queryParams = string.format("?game_name=%s&username=%s", 
             PlutoX.uploaderHttpService:UrlEncode(gameName), 
             PlutoX.uploaderHttpService:UrlEncode(username))
-        
-        local response = game:HttpGet(apiUrl .. queryParams, false)
-        local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
-        
-        if responseJson.success and responseJson.data then
+
+        local requestSuccess, responseJson = performJsonRequest("GET", apiUrl .. queryParams)
+        if requestSuccess and type(responseJson) == "table" and responseJson.success and responseJson.data then
             return responseJson.data, true
-        else
-            return nil, false
         end
+
+        return nil, false
     end)
     
     if success then
@@ -324,17 +324,18 @@ local function uploadLeaderboardToWebsiteWithEntries(leaderboardEntries)
         local retryDelay = 2
         
         for attempt = 1, maxRetries do
-            local response = game:HttpPost(uploadUrl, PlutoX.uploaderHttpService:JSONEncode(requestBody), false)
-            local responseJson = PlutoX.uploaderHttpService:JSONDecode(response)
-            
-            if responseJson.success then
+            local requestSuccess, responseJson = performJsonRequest("POST", uploadUrl, requestBody)
+
+            if requestSuccess and type(responseJson) == "table" and responseJson.success then
                 return true
             elseif attempt < maxRetries then
-                PlutoX.warn("[排行榜] 上传失败（尝试 " .. attempt .. "/" .. maxRetries .. "），" .. retryDelay .. "秒后重试: " .. tostring(responseJson.error))
+                local errorMessage = type(responseJson) == "table" and tostring(responseJson.error or responseJson.message or "未知错误") or tostring(responseJson)
+                PlutoX.warn("[排行榜] 上传失败（尝试 " .. attempt .. "/" .. maxRetries .. "），" .. retryDelay .. "秒后重试: " .. errorMessage)
                 task.wait(retryDelay)
                 retryDelay = retryDelay * 2
             else
-                PlutoX.warn("[排行榜] 排行榜数据上传失败: " .. tostring(responseJson.error))
+                local errorMessage = type(responseJson) == "table" and tostring(responseJson.error or responseJson.message or "未知错误") or tostring(responseJson)
+                PlutoX.warn("[排行榜] 排行榜数据上传失败: " .. errorMessage)
                 return false
             end
         end
@@ -1388,7 +1389,7 @@ local function isVehicleExcluded(vehicleId)
     return false
 end
 
-local function performJsonRequest(method, url, body)
+performJsonRequest = function(method, url, body)
     local headers = {
         ["Content-Type"] = "application/json"
     }

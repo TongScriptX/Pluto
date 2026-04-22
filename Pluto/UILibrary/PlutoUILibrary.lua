@@ -192,6 +192,7 @@ UILibrary.Icons = {
     -- 状态/反馈
     alertCircle = "rbxassetid://7733658271",
     alertTriangle = "rbxassetid://7733658504",
+    bug = "rbxassetid://7733701545",
     info = "rbxassetid://7733964719",
     checkCircle = "rbxassetid://7733919427",
     xCircle = "rbxassetid://7743878496",

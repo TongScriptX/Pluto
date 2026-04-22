@@ -326,9 +326,32 @@ function PlutoX.sendJsonRequest(url, payload)
     return true, decodedBody, response
 end
 
+function PlutoX.encodeTextForJsonTransport(text)
+    local httpService = PlutoX.getHttpService()
+    if not httpService then
+        return false, "HttpService 不可用"
+    end
+
+    if type(text) ~= "string" then
+        text = tostring(text or "")
+    end
+
+    local encodeSuccess, encoded = pcall(function()
+        return httpService:Base64Encode(text)
+    end)
+
+    if not encodeSuccess or type(encoded) ~= "string" or encoded == "" then
+        return false, tostring(encoded)
+    end
+
+    return true, encoded
+end
+
 function PlutoX.uploadCurrentLogReport()
+    PlutoX.debug("[ErrorReport] 开始上报当前日志")
     local logSuccess, logContentOrError = PlutoX.readCurrentLogContent()
     if not logSuccess then
+        PlutoX.warn("[ErrorReport] 读取日志失败: " .. tostring(logContentOrError))
         return false, "读取日志失败: " .. tostring(logContentOrError)
     end
 
@@ -337,6 +360,15 @@ function PlutoX.uploadCurrentLogReport()
     local chunkSize = PlutoX.errorReportChunkSize
     local totalChunks = math.max(1, math.ceil(totalSize / chunkSize))
     local preview = logContent:sub(1, 1000)
+    PlutoX.debug(string.format("[ErrorReport] 日志读取成功: file=%s, size=%s, chunks=%s, chunkSize=%s", tostring(PlutoX.currentLogFile), tostring(totalSize), tostring(totalChunks), tostring(chunkSize)))
+    local previewEncodeSuccess, encodedPreviewOrError = PlutoX.encodeTextForJsonTransport(preview)
+
+    if not previewEncodeSuccess then
+        PlutoX.warn("[ErrorReport] 编码日志预览失败: " .. tostring(encodedPreviewOrError))
+        return false, "编码日志预览失败: " .. tostring(encodedPreviewOrError)
+    end
+
+    PlutoX.debug("[ErrorReport] 日志预览编码成功")
 
     local startSuccess, startBodyOrError = PlutoX.sendJsonRequest(PlutoX.errorReportApiBase .. "/start", {
         game_name = PlutoX.gameName or "Unknown",
@@ -345,32 +377,47 @@ function PlutoX.uploadCurrentLogReport()
         log_file_name = tostring(PlutoX.currentLogFile or "runtime.log"),
         total_size = totalSize,
         total_chunks = totalChunks,
-        preview = preview
+        preview_base64 = encodedPreviewOrError
     })
 
     if not startSuccess then
+        PlutoX.warn("[ErrorReport] 创建上报失败: " .. tostring(startBodyOrError))
         return false, "创建上报失败: " .. tostring(startBodyOrError)
     end
 
     local reportId = startBodyOrError and startBodyOrError.report_id
     if not reportId then
+        PlutoX.warn("[ErrorReport] 创建上报失败: 未返回 report_id")
         return false, "创建上报失败: 未返回 report_id"
     end
+
+    PlutoX.debug("[ErrorReport] 创建上报成功: reportId=" .. tostring(reportId))
 
     for chunkIndex = 0, totalChunks - 1 do
         local startPos = chunkIndex * chunkSize + 1
         local endPos = math.min((chunkIndex + 1) * chunkSize, totalSize)
         local chunkContent = logContent:sub(startPos, endPos)
+        local chunkEncodeSuccess, encodedChunkOrError = PlutoX.encodeTextForJsonTransport(chunkContent)
+
+        if not chunkEncodeSuccess then
+            PlutoX.warn("[ErrorReport] 编码日志分片失败: chunk=" .. tostring(chunkIndex) .. ", error=" .. tostring(encodedChunkOrError))
+            return false, "编码日志分片失败: " .. tostring(encodedChunkOrError), reportId
+        end
+
+        PlutoX.debug(string.format("[ErrorReport] 开始上传分片: reportId=%s, chunk=%s/%s, rawSize=%s", tostring(reportId), tostring(chunkIndex + 1), tostring(totalChunks), tostring(#chunkContent)))
 
         local chunkSuccess, chunkBodyOrError = PlutoX.sendJsonRequest(PlutoX.errorReportApiBase .. "/chunk", {
             report_id = reportId,
             chunk_index = chunkIndex,
-            content = chunkContent
+            content_base64 = encodedChunkOrError
         })
 
         if not chunkSuccess then
+            PlutoX.warn("[ErrorReport] 上传日志分片失败: chunk=" .. tostring(chunkIndex) .. ", error=" .. tostring(chunkBodyOrError))
             return false, "上传日志分片失败: " .. tostring(chunkBodyOrError), reportId
         end
+
+        PlutoX.debug("[ErrorReport] 上传日志分片成功: chunk=" .. tostring(chunkIndex))
     end
 
     local finishSuccess, finishBodyOrError = PlutoX.sendJsonRequest(PlutoX.errorReportApiBase .. "/finish", {
@@ -378,8 +425,11 @@ function PlutoX.uploadCurrentLogReport()
     })
 
     if not finishSuccess then
+        PlutoX.warn("[ErrorReport] 完成上报失败: reportId=" .. tostring(reportId) .. ", error=" .. tostring(finishBodyOrError))
         return false, "完成上报失败: " .. tostring(finishBodyOrError), reportId
     end
+
+    PlutoX.debug("[ErrorReport] 完成上报成功: reportId=" .. tostring(reportId))
 
     return true, reportId, finishBodyOrError
 end
@@ -3309,8 +3359,9 @@ function PlutoX.createAboutPage(parent, UILibrary)
 
     UILibrary:CreateButton(parent, {
         Text = "上报错误",
-        Icon = "alert-triangle",
+        Icon = "bug",
         Callback = function()
+            PlutoX.debug("[AboutPage] 点击上报错误按钮")
             UILibrary:Notify({
                 Title = "开始上报",
                 Text = "正在上传本次运行日志",
@@ -3321,6 +3372,7 @@ function PlutoX.createAboutPage(parent, UILibrary)
                 local success, resultOrError = PlutoX.uploadCurrentLogReport()
 
                 if success then
+                    PlutoX.debug("[AboutPage] 日志上报成功: reportId=" .. tostring(resultOrError))
                     local reportId = tostring(resultOrError)
                     local message = "日志已上报\nID: " .. reportId
 
@@ -3337,6 +3389,7 @@ function PlutoX.createAboutPage(parent, UILibrary)
                         Duration = 6,
                     })
                 else
+                    PlutoX.warn("[AboutPage] 日志上报失败: " .. tostring(resultOrError))
                     UILibrary:Notify({
                         Title = "上报失败",
                         Text = tostring(resultOrError),
