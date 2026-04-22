@@ -3125,6 +3125,29 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     local targetValue = self.config["target" .. keyUpper] or 0
                     local baseValue = self.config["base" .. keyUpper] or 0
                     local initial_value = self.config["sessionStart" .. keyUpper] or dataInfo.current
+                    local totalEarned = dataInfo.totalEarned or (dataInfo.current - initial_value)
+                    local changeValue = dataInfo.change or 0
+                    local avgPerHour = 0
+
+                    if dataType.calculateAvg and elapsedTime > 0 and totalEarned ~= 0 then
+                        avgPerHour = math.floor(totalEarned / (elapsedTime / 3600) + 0.5)
+                    end
+
+                    local estimatedCompletion = nil
+                    if dataType.supportTarget and targetValue > 0 and avgPerHour > 0 then
+                        local remaining = targetValue - dataInfo.current
+                        if remaining > 0 then
+                            local hoursNeeded = remaining / avgPerHour
+                            local completionTimestamp = currentTime + math.floor(hoursNeeded * 3600)
+
+                            estimatedCompletion = {
+                                days = math.floor(hoursNeeded / 24),
+                                hours = math.floor((hoursNeeded % 24)),
+                                minutes = math.floor((hoursNeeded * 60) % 60),
+                                timestamp = completionTimestamp
+                            }
+                        end
+                    end
 
                     -- 检查目标是否完成
                     local targetCompleted = false
@@ -3140,12 +3163,16 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
 
                     dataObject[id] = {
                         current = dataInfo.current,
+                        change = changeValue,
+                        total_earned = totalEarned,
+                        avg_per_hour = avgPerHour,
                         target_value = targetValue,
                         base_value = baseValue,
                         session_start = self.sessionStartTime,  -- 使用会话开始时间戳
                         initial_value = initial_value,  -- 游戏数据初始值
                         gained = dataInfo.current - initial_value,
                         elapsed_time = elapsedTime,
+                        estimated_completion = estimatedCompletion,
                         target_completed = targetCompleted,  -- 目标完成状态
                         notify_enabled = notifyEnabled
                     }
@@ -3309,7 +3336,7 @@ function PlutoX.createAboutPage(parent, UILibrary)
 
     UILibrary:CreateButton(parent, {
         Text = "上报错误",
-        Icon = "alert-triangle",
+        Icon = "alertTriangle",
         Callback = function()
             UILibrary:Notify({
                 Title = "开始上报",
