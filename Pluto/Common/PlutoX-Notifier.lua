@@ -18,7 +18,7 @@ PlutoX.uploaderHttpService = nil
 PlutoX.uploaderDataMonitor = nil
 PlutoX.uploader = nil  -- 全局上传器引用
 PlutoX.errorReportApiBase = "https://api.959966.xyz/api/client/error-reports"
-PlutoX.errorReportChunkSize = 120000
+PlutoX.errorReportChunkSize = 30000
 
 -- 设置游戏信息
 function PlutoX.setGameInfo(gameName, username, HttpService)
@@ -286,6 +286,17 @@ function PlutoX.sendJsonRequest(url, payload)
         return false, "HttpService 不可用"
     end
 
+    local encodeSuccess, requestBody = pcall(function()
+        return httpService:JSONEncode(payload)
+    end)
+
+    if not encodeSuccess then
+        PlutoX.warn("[ErrorReport] JSONEncode 失败: url=" .. tostring(url) .. ", error=" .. tostring(requestBody))
+        return false, "无法转换 JSON: " .. tostring(requestBody)
+    end
+
+    PlutoX.debug("[ErrorReport] 发送 JSON 请求: url=" .. tostring(url) .. ", bodySize=" .. tostring(#requestBody))
+
     local requestSuccess, response = pcall(function()
         return httpService:RequestAsync({
             Url = url,
@@ -293,11 +304,12 @@ function PlutoX.sendJsonRequest(url, payload)
             Headers = {
                 ["Content-Type"] = "application/json"
             },
-            Body = httpService:JSONEncode(payload)
+            Body = requestBody
         })
     end)
 
     if not requestSuccess then
+        PlutoX.warn("[ErrorReport] 请求发送失败: url=" .. tostring(url) .. ", error=" .. tostring(response))
         return false, tostring(response)
     end
 
@@ -313,6 +325,7 @@ function PlutoX.sendJsonRequest(url, payload)
                 message = message .. ": " .. tostring(response.Body)
             end
         end
+        PlutoX.warn("[ErrorReport] 请求返回失败: url=" .. tostring(url) .. ", status=" .. tostring(response.StatusCode) .. ", message=" .. tostring(message))
         return false, message, response
     end
 
@@ -323,6 +336,7 @@ function PlutoX.sendJsonRequest(url, payload)
         end)
     end
 
+    PlutoX.debug("[ErrorReport] 请求成功: url=" .. tostring(url) .. ", status=" .. tostring(response.StatusCode))
     return true, decodedBody, response
 end
 
