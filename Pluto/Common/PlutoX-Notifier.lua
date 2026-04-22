@@ -19,6 +19,7 @@ PlutoX.uploaderDataMonitor = nil
 PlutoX.uploader = nil  -- 全局上传器引用
 PlutoX.errorReportApiBase = "https://api.959966.xyz/api/client/error-reports"
 PlutoX.errorReportChunkSize = 30000
+PlutoX.errorReportAttempted = false
 
 -- 设置游戏信息
 function PlutoX.setGameInfo(gameName, username, HttpService)
@@ -3375,6 +3376,17 @@ function PlutoX.createAboutPage(parent, UILibrary)
         Text = "上报错误",
         Icon = "bug",
         Callback = function()
+            if PlutoX.errorReportAttempted then
+                PlutoX.debug("[AboutPage] 拒绝重复上报: 本次运行已执行过一次")
+                UILibrary:Notify({
+                    Title = "已上报过",
+                    Text = "本次运行只允许上报一次错误",
+                    Duration = 3,
+                })
+                return
+            end
+
+            PlutoX.errorReportAttempted = true
             PlutoX.debug("[AboutPage] 点击上报错误按钮")
             UILibrary:Notify({
                 Title = "开始上报",
