@@ -275,6 +275,205 @@ function UILibrary:DestroyExistingInstances()
     UILibrary._notificationId = 0
 end
 
+function UILibrary:CreateLoaderOverlay(options)
+    options = options or {}
+
+    local player = Players.LocalPlayer
+    if not player then
+        return nil
+    end
+
+    local playerGui = player:FindFirstChild("PlayerGui") or player:WaitForChild("PlayerGui", 30)
+    if not playerGui then
+        return nil
+    end
+
+    local existing = playerGui:FindFirstChild("PlutoLoaderOverlay")
+    if existing then
+        existing:Destroy()
+    end
+
+    local accent = options.AccentColor or THEME.Accent or THEME.Primary
+    local titleText = options.Title or "PLUTO"
+    local statusText = options.Status or "Initializing"
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PlutoLoaderOverlay"
+    screenGui.ResetOnSpawn = false
+    screenGui.IgnoreGuiInset = true
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder = 1000
+    screenGui.Parent = playerGui
+
+    local backdrop = Instance.new("Frame")
+    backdrop.Name = "Backdrop"
+    backdrop.Size = UDim2.fromScale(1, 1)
+    backdrop.BackgroundColor3 = Color3.fromRGB(10, 12, 18)
+    backdrop.BorderSizePixel = 0
+    backdrop.Parent = screenGui
+
+    local vignette = Instance.new("Frame")
+    vignette.Name = "Vignette"
+    vignette.AnchorPoint = Vector2.new(0.5, 0.5)
+    vignette.Position = UDim2.fromScale(0.5, 0.5)
+    vignette.Size = UDim2.new(0, 420, 0, 220)
+    vignette.BackgroundColor3 = Color3.fromRGB(16, 20, 28)
+    vignette.BackgroundTransparency = 0.18
+    vignette.BorderSizePixel = 0
+    vignette.Parent = backdrop
+
+    local vignetteCorner = Instance.new("UICorner")
+    vignetteCorner.CornerRadius = UDim.new(0, 20)
+    vignetteCorner.Parent = vignette
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(255, 255, 255)
+    stroke.Transparency = 0.88
+    stroke.Thickness = 1
+    stroke.Parent = vignette
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.AnchorPoint = Vector2.new(0.5, 0.5)
+    title.Position = UDim2.fromScale(0.5, 0.34)
+    title.Size = UDim2.new(1, -40, 0, 42)
+    title.BackgroundTransparency = 1
+    title.Text = titleText
+    title.TextColor3 = Color3.fromRGB(245, 247, 250)
+    title.TextSize = 30
+    title.Font = Enum.Font.GothamBold
+    title.Parent = vignette
+
+    local subtitle = Instance.new("TextLabel")
+    subtitle.Name = "Subtitle"
+    subtitle.AnchorPoint = Vector2.new(0.5, 0.5)
+    subtitle.Position = UDim2.fromScale(0.5, 0.5)
+    subtitle.Size = UDim2.new(1, -48, 0, 24)
+    subtitle.BackgroundTransparency = 1
+    subtitle.Text = statusText
+    subtitle.TextColor3 = Color3.fromRGB(164, 174, 192)
+    subtitle.TextSize = 14
+    subtitle.Font = Enum.Font.GothamMedium
+    subtitle.Parent = vignette
+
+    local barTrack = Instance.new("Frame")
+    barTrack.Name = "BarTrack"
+    barTrack.AnchorPoint = Vector2.new(0.5, 0.5)
+    barTrack.Position = UDim2.fromScale(0.5, 0.72)
+    barTrack.Size = UDim2.new(1, -72, 0, 4)
+    barTrack.BackgroundColor3 = Color3.fromRGB(42, 48, 60)
+    barTrack.BorderSizePixel = 0
+    barTrack.Parent = vignette
+
+    local barTrackCorner = Instance.new("UICorner")
+    barTrackCorner.CornerRadius = UDim.new(1, 0)
+    barTrackCorner.Parent = barTrack
+
+    local barFill = Instance.new("Frame")
+    barFill.Name = "BarFill"
+    barFill.Size = UDim2.new(0, 0, 1, 0)
+    barFill.BackgroundColor3 = accent
+    barFill.BorderSizePixel = 0
+    barFill.Parent = barTrack
+
+    local barFillCorner = Instance.new("UICorner")
+    barFillCorner.CornerRadius = UDim.new(1, 0)
+    barFillCorner.Parent = barFill
+
+    local shimmer = Instance.new("Frame")
+    shimmer.Name = "Shimmer"
+    shimmer.Size = UDim2.new(0, 60, 1, 0)
+    shimmer.Position = UDim2.new(0, -60, 0, 0)
+    shimmer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    shimmer.BackgroundTransparency = 0.72
+    shimmer.BorderSizePixel = 0
+    shimmer.Parent = barFill
+
+    local shimmerCorner = Instance.new("UICorner")
+    shimmerCorner.CornerRadius = UDim.new(1, 0)
+    shimmerCorner.Parent = shimmer
+
+    local progressText = Instance.new("TextLabel")
+    progressText.Name = "Progress"
+    progressText.AnchorPoint = Vector2.new(0.5, 0.5)
+    progressText.Position = UDim2.fromScale(0.5, 0.84)
+    progressText.Size = UDim2.new(1, -48, 0, 20)
+    progressText.BackgroundTransparency = 1
+    progressText.Text = "0%"
+    progressText.TextColor3 = Color3.fromRGB(119, 130, 150)
+    progressText.TextSize = 12
+    progressText.Font = Enum.Font.Gotham
+    progressText.Parent = vignette
+
+    local overlay = {
+        Gui = screenGui,
+        Backdrop = backdrop,
+        Container = vignette,
+        Title = title,
+        Subtitle = subtitle,
+        BarFill = barFill,
+        Shimmer = shimmer,
+        Progress = progressText,
+        CurrentProgress = 0
+    }
+
+    function overlay:SetStatus(text, progress)
+        if typeof(text) == "string" and self.Subtitle then
+            self.Subtitle.Text = text
+        end
+
+        if type(progress) == "number" then
+            local clamped = math.clamp(progress, 0, 1)
+            self.CurrentProgress = clamped
+
+            if self.Progress then
+                self.Progress.Text = string.format("%d%%", math.floor(clamped * 100 + 0.5))
+            end
+
+            if self.BarFill then
+                TweenService:Create(self.BarFill, TweenInfo.new(0.25, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                    Size = UDim2.new(clamped, 0, 1, 0)
+                }):Play()
+            end
+        end
+    end
+
+    function overlay:Destroy()
+        if not self.Gui or not self.Gui.Parent then
+            return
+        end
+
+        local fadeInfo = TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        pcall(function()
+            TweenService:Create(self.Backdrop, fadeInfo, { BackgroundTransparency = 1 }):Play()
+            TweenService:Create(self.Container, fadeInfo, { BackgroundTransparency = 1 }):Play()
+            TweenService:Create(self.Title, fadeInfo, { TextTransparency = 1 }):Play()
+            TweenService:Create(self.Subtitle, fadeInfo, { TextTransparency = 1 }):Play()
+            TweenService:Create(self.Progress, fadeInfo, { TextTransparency = 1 }):Play()
+        end)
+
+        task.delay(0.25, function()
+            if self.Gui then
+                self.Gui:Destroy()
+            end
+        end)
+    end
+
+    task.spawn(function()
+        while screenGui.Parent and shimmer.Parent do
+            shimmer.Position = UDim2.new(0, -60, 0, 0)
+            local tween = TweenService:Create(shimmer, TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+                Position = UDim2.new(1, 0, 0, 0)
+            })
+            tween:Play()
+            tween.Completed:Wait()
+            task.wait(0.15)
+        end
+    end)
+
+    return overlay
+end
+
 -- 通知容器
 local notificationContainer = nil
 local screenGui = nil
