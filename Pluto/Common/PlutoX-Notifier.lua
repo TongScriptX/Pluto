@@ -2848,7 +2848,7 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     dataObject[id] = {
                         current = dataInfo.current,
                         change = dataInfo.change or 0,
-                        total_earned = totalEarned,
+                        total_earned = sessionEarned,
                         avg_per_hour = avgPerHour,
                         session_start = self.sessionStartTime,
                         estimated_completion = estimatedCompletion,
@@ -2998,23 +2998,30 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
         -- 最后上传一次，设置 is_active 为 false
         local currentTime = os.time()
         local data = self.dataMonitor:collectData()
-        
+
         if data and next(data) then
             local dataObject = {}
             local elapsedTime = currentTime - self.sessionStartTime
-            
+
             for id, dataInfo in pairs(data) do
                 if dataInfo.current ~= nil then
                     local dataType = dataInfo.type
-                    local avgPerHour = 0
-                    if dataType.calculateAvg and elapsedTime > 0 and dataInfo.totalEarned ~= 0 then
-                        avgPerHour = math.floor(dataInfo.totalEarned / (elapsedTime / 3600) + 0.5)
+
+                    -- 计算本次运行获取的金额
+                    local sessionEarned = 0
+                    if self.sessionStartValues[id] then
+                        sessionEarned = dataInfo.current - self.sessionStartValues[id]
                     end
-                    
+
+                    local avgPerHour = 0
+                    if dataType.calculateAvg and elapsedTime > 0 and sessionEarned ~= 0 then
+                        avgPerHour = math.floor(sessionEarned / (elapsedTime / 3600) + 0.5)
+                    end
+
                     dataObject[id] = {
                         current = dataInfo.current,
                         change = dataInfo.change or 0,
-                        total_earned = dataInfo.totalEarned or 0,
+                        total_earned = sessionEarned,
                         avg_per_hour = avgPerHour,
                         session_start = self.sessionStartTime,
                         estimated_completion = nil
@@ -3125,7 +3132,15 @@ function PlutoX.createDataUploader(config, HttpService, gameName, username, data
                     local targetValue = self.config["target" .. keyUpper] or 0
                     local baseValue = self.config["base" .. keyUpper] or 0
                     local initial_value = self.config["sessionStart" .. keyUpper] or dataInfo.current
-                    local totalEarned = dataInfo.totalEarned or (dataInfo.current - initial_value)
+
+                    -- 计算本次运行获取的金额（使用 sessionStartValues）
+                    local totalEarned = 0
+                    if self.sessionStartValues[id] then
+                        totalEarned = dataInfo.current - self.sessionStartValues[id]
+                    else
+                        totalEarned = dataInfo.current - initial_value
+                    end
+
                     local changeValue = dataInfo.change or 0
                     local avgPerHour = 0
 
