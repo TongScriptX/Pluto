@@ -192,7 +192,6 @@ UILibrary.Icons = {
     -- 状态/反馈
     alertCircle = "rbxassetid://7733658271",
     alertTriangle = "rbxassetid://7733658504",
-    bug = "rbxassetid://7733701545",
     info = "rbxassetid://7733964719",
     checkCircle = "rbxassetid://7733919427",
     xCircle = "rbxassetid://7743878496",
@@ -360,7 +359,7 @@ function UILibrary:CreateLoaderOverlay(options)
     local barTrack = Instance.new("Frame")
     barTrack.Name = "BarTrack"
     barTrack.AnchorPoint = Vector2.new(0.5, 0.5)
-    barTrack.Position = UDim2.fromScale(0.5, 0.72)
+    barTrack.Position = UDim2.fromScale(0.5, 0.62)
     barTrack.Size = UDim2.new(1, -72, 0, 4)
     barTrack.BackgroundColor3 = Color3.fromRGB(42, 48, 60)
     barTrack.BorderSizePixel = 0
@@ -397,7 +396,7 @@ function UILibrary:CreateLoaderOverlay(options)
     local progressText = Instance.new("TextLabel")
     progressText.Name = "Progress"
     progressText.AnchorPoint = Vector2.new(0.5, 0.5)
-    progressText.Position = UDim2.fromScale(0.5, 0.84)
+    progressText.Position = UDim2.fromScale(0.5, 0.72)
     progressText.Size = UDim2.new(1, -48, 0, 20)
     progressText.BackgroundTransparency = 1
     progressText.Text = "0%"
