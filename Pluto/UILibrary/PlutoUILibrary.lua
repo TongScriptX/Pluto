@@ -363,6 +363,7 @@ function UILibrary:CreateLoaderOverlay(options)
     barTrack.Size = UDim2.new(1, -72, 0, 4)
     barTrack.BackgroundColor3 = Color3.fromRGB(42, 48, 60)
     barTrack.BorderSizePixel = 0
+    barTrack.ClipsDescendants = true
     barTrack.Parent = vignette
 
     local barTrackCorner = Instance.new("UICorner")
@@ -374,6 +375,7 @@ function UILibrary:CreateLoaderOverlay(options)
     barFill.Size = UDim2.new(0, 0, 1, 0)
     barFill.BackgroundColor3 = accent
     barFill.BorderSizePixel = 0
+    barFill.ClipsDescendants = true
     barFill.Parent = barTrack
 
     local barFillCorner = Instance.new("UICorner")
@@ -396,7 +398,7 @@ function UILibrary:CreateLoaderOverlay(options)
     local progressText = Instance.new("TextLabel")
     progressText.Name = "Progress"
     progressText.AnchorPoint = Vector2.new(0.5, 0.5)
-    progressText.Position = UDim2.fromScale(0.5, 0.72)
+    progressText.Position = UDim2.fromScale(0.5, 0.84)
     progressText.Size = UDim2.new(1, -48, 0, 20)
     progressText.BackgroundTransparency = 1
     progressText.Text = "0%"
