@@ -359,7 +359,7 @@ function UILibrary:CreateLoaderOverlay(options)
     local barTrack = Instance.new("Frame")
     barTrack.Name = "BarTrack"
     barTrack.AnchorPoint = Vector2.new(0.5, 0.5)
-    barTrack.Position = UDim2.fromScale(0.5, 0.62)
+    barTrack.Position = UDim2.fromScale(0.5, 0.72)
     barTrack.Size = UDim2.new(1, -72, 0, 4)
     barTrack.BackgroundColor3 = Color3.fromRGB(42, 48, 60)
     barTrack.BorderSizePixel = 0
