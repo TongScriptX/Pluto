@@ -1703,6 +1703,7 @@ local isAutoFarmActive = false
 local autoFarmOriginalPosition = nil
 local performAutoSpawnVehicle
 local autoFarmVehicleId = nil
+local spawnFailCount = 0
 
 local function getOwnedVehicleLookup()
     local lookup = {}
@@ -2075,24 +2076,49 @@ performAutoSpawnVehicle = function(forceSpawn)
         local success, err = pcall(function()
             VehicleEvent:FireServer("Spawn", spawnVehicleId)
         end)
-        
-        if success then
-            if autoFarmVehicleId and autoFarmVehicleId ~= "" then
-                PlutoX.debug("[AutoSpawnVehicle] 使用已锁定车辆重生: " .. autoFarmVehicleId)
-            elseif fastestName and fastestName ~= "" then
-                PlutoX.debug("[AutoSpawnVehicle] 未锁定当前车辆，回退到最快车辆: " .. fastestName)
-            end
 
-            UILibrary:Notify({
-                Title = "自动生成",
-                Text = string.format("已生成车辆: %s%s耗时: %.2fs",
-                    spawnVehicleId,
-                    fastestSpeed > 0 and string.format(" (最快车速度参考: %s) ", tostring(fastestSpeed)) or " ",
-                    searchTime),
-                Duration = 5
-            })
+        if success then
+            -- 等待验证车辆是否成功生成
+            task.wait(2)
+            local vehicles = workspace:FindFirstChild("Vehicles")
+            local vehicle = vehicles and vehicles:FindFirstChild(localPlayer.Name)
+
+            if vehicle then
+                spawnFailCount = 0
+                if autoFarmVehicleId and autoFarmVehicleId ~= "" then
+                    PlutoX.debug("[AutoSpawnVehicle] 使用已锁定车辆重生: " .. autoFarmVehicleId)
+                elseif fastestName and fastestName ~= "" then
+                    PlutoX.debug("[AutoSpawnVehicle] 未锁定当前车辆，回退到最快车辆: " .. fastestName)
+                end
+
+                UILibrary:Notify({
+                    Title = "自动生成",
+                    Text = string.format("已生成车辆: %s%s耗时: %.2fs",
+                        spawnVehicleId,
+                        fastestSpeed > 0 and string.format(" (最快车速度参考: %s) ", tostring(fastestSpeed)) or " ",
+                        searchTime),
+                    Duration = 5
+                })
+            else
+                spawnFailCount = spawnFailCount + 1
+                PlutoX.warn("[AutoSpawnVehicle] 车辆生成失败 (" .. spawnFailCount .. "/3)")
+
+                if spawnFailCount >= 3 and isAutoFarmActive then
+                    PlutoX.warn("[AutoSpawnVehicle] 连续3次生成失败，传送到起点后重试")
+                    spawnFailCount = 0
+
+                    local character = localPlayer.Character
+                    if character then
+                        local loopPos = Vector3.new(-25453.49, 34.09, -14927.61)
+                        character:PivotTo(CFrame.new(loopPos))
+                        task.wait(1)
+                        VehicleEvent:FireServer("Spawn", spawnVehicleId)
+                    end
+                end
+            end
         else
             PlutoX.warn("[AutoSpawnVehicle] 生成车辆时出错:", err)
+            spawnFailCount = spawnFailCount + 1
         end
     else
         if vehicleCount > 0 and #getExcludedVehicleList() > 0 then
