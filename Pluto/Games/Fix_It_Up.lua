@@ -91,6 +91,8 @@ end
 local isFarming = false
 local platformFolder = nil
 local farmTask = nil
+local startPosition = nil
+local currentCarModel = nil
 
 local function stopAutoFarm()
     isFarming = false
@@ -98,10 +100,20 @@ local function stopAutoFarm()
         task.cancel(farmTask)
         farmTask = nil
     end
+
+    -- 传送回起始位置
+    if currentCarModel and startPosition then
+        PlutoX.debug("[Fix It Up] 传送回起始位置")
+        currentCarModel:PivotTo(CFrame.new(startPosition))
+    end
+
     if platformFolder then
         platformFolder:Destroy()
         platformFolder = nil
     end
+
+    startPosition = nil
+    currentCarModel = nil
 end
 
 local function performAutoFarm()
@@ -146,6 +158,10 @@ local function performAutoFarm()
     end
 
     PlutoX.debug("[Fix It Up] 找到 DriveSeat，位置: " .. tostring(driveSeat.Position))
+
+    -- 保存起始位置和车辆引用
+    startPosition = driveSeat.Position
+    currentCarModel = carModel
 
     carModel.PrimaryPart = driveSeat
     PlutoX.debug("[Fix It Up] 设置 PrimaryPart 完成")
