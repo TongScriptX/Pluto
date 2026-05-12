@@ -43,9 +43,29 @@ local gameName = "Fix It Up"
 PlutoX.setGameInfo(gameName, username, HttpService)
 
 -- 配置
-local config = {}
+local config = {
+    farmSpeed = 600,
+    webhookUrl = "",
+    notifyMoney = false,
+    notifyInterval = 60
+}
 
 local LocalPlayer = Players.LocalPlayer
+
+-- 获取金额
+local function getMoney()
+    local success, result = pcall(function()
+        local hud = LocalPlayer.PlayerGui:FindFirstChild("HUD")
+        if not hud then return 0 end
+        local moneyLabel = hud:FindFirstChild("Money")
+        if not moneyLabel then return 0 end
+        local text = moneyLabel.ContentText
+        -- 移除 € 符号和逗号
+        local numStr = text:gsub("€", ""):gsub(",", ""):gsub("%s", "")
+        return tonumber(numStr) or 0
+    end)
+    return success and result or 0
+end
 
 -- 获取玩家车辆
 local function getPlayerVehicle()
@@ -155,7 +175,7 @@ local function performAutoFarm()
     )
     PlutoX.debug("[Fix It Up] 起始位置: " .. tostring(originPos))
 
-    local speed = 600
+    local speed = config.farmSpeed
     local interval = 0.05
     local distancePerTick = speed * interval
     local currentPosX = originPos.X
@@ -198,7 +218,6 @@ local function performAutoFarm()
     PlutoX.debug("[Fix It Up] AutoFarm 已启动")
 end
 
--- 获取车库车辆列表
 -- UI 创建
 local window = UILibrary:CreateUIWindow()
 if not window then
@@ -217,12 +236,31 @@ local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
     Text = "菜单"
 })
 
--- 创建主标签页
+-- 主要标签页
 local mainTab, mainContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
-    Text = "AutoFarm",
+    Text = "主要",
     Icon = "home",
     Active = true
 })
+
+-- 游戏信息卡片
+local infoCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
+UILibrary:CreateLabel(infoCard, {
+    Text = "游戏: " .. gameName
+})
+
+local moneyLabel = UILibrary:CreateLabel(infoCard, {
+    Text = "金额: 加载中..."
+})
+
+-- 更新金额显示
+task.spawn(function()
+    while true do
+        local money = getMoney()
+        moneyLabel.Text = string.format("金额: €%s", string.format("%d", money):reverse():gsub("(%d%d%d)", "%1,"):reverse():gsub("^,", ""))
+        task.wait(1)
+    end
+end)
 
 -- AutoFarm 控制卡片
 local farmCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
@@ -243,6 +281,48 @@ UILibrary:CreateToggle(farmCard, {
         end
     end
 })
+
+-- 速度滑块
+local speedCard = UILibrary:CreateCard(mainContent)
+UILibrary:CreateSlider(speedCard, {
+    Text = "AutoFarm 速度",
+    Min = 100,
+    Max = 1000,
+    Default = config.farmSpeed,
+    Suffix = "",
+    Callback = function(value)
+        config.farmSpeed = value
+        PlutoX.debug("[Fix It Up] AutoFarm 速度设置为: " .. value)
+    end
+})
+
+-- 通知标签页
+local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "通知",
+    Icon = "bell"
+})
+
+-- Webhook 卡片
+PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() end, nil)
+
+-- 监测金额
+local moneyNotifyCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateToggle(moneyNotifyCard, {
+    Text = "监测金额变化",
+    DefaultState = config.notifyMoney,
+    Callback = function(state)
+        if state and config.webhookUrl == "" then
+            UILibrary:Notify({ Title = "Webhook 错误", Text = "请先设置 Webhook 地址", Duration = 5 })
+            config.notifyMoney = false
+            return
+        end
+        config.notifyMoney = state
+        UILibrary:Notify({ Title = "配置更新", Text = "金额变化监测: " .. (state and "开启" or "关闭"), Duration = 5 })
+    end
+})
+
+-- 通知间隔
+PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() end)
 
 -- 脚本加载完成
 PlutoX.debug("[" .. gameName .. "] 脚本加载完成")
