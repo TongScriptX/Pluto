@@ -322,7 +322,7 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
 
 -- Webhook 卡片
 local webhookCard = UILibrary:CreateCard(notifyContent)
-UILibrary:CreateInput(webhookCard, {
+UILibrary:CreateTextBox(webhookCard, {
     Text = "Webhook 地址",
     PlaceholderText = "输入 Discord Webhook URL",
     DefaultText = config.webhookUrl,
