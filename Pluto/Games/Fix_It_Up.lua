@@ -272,7 +272,7 @@ local function getGarageCars()
 end
 
 -- UI 创建
-local window = UILibrary:CreateWindow({
+local window = UILibrary:CreateUIWindow({
     Title = "Pluto - " .. gameName
 })
 
