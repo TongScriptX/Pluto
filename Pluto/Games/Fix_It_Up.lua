@@ -273,8 +273,7 @@ end
 
 -- UI 创建
 local window = UILibrary:CreateWindow({
-    Title = "Pluto - " .. gameName,
-    AccentColor = PlutoX.theme.Primary
+    Title = "Pluto - " .. gameName
 })
 
 local mainTab = window:AddTab({ Name = "AutoFarm" })
