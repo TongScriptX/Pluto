@@ -44,23 +44,10 @@ PlutoX.setGameInfo(gameName, username, HttpService)
 
 -- 配置
 local config = {
-    autoFarmEnabled = false,
-    selectedCar = nil,
-    pathName = "JunkyardToRepairv3"
+    selectedCar = nil
 }
 
 local LocalPlayer = Players.LocalPlayer
-local isAutoFarmActive = false
-
--- 默认路径
-local defaultPaths = {
-    JunkyardToRepairv3 = {
-        Vector3.new(-1626.6254882812, 3.5604448318481, -315.85256958008),
-        Vector3.new(-1611.2081298828, 3.3032665252686, -327.68154907227),
-        Vector3.new(-1582.7303466797, 3.1615476608276, -319.58898925781),
-        Vector3.new(-1360.5404052734, 3.1766638755798, -67.149131774902)
-    }
-}
 
 -- 获取玩家车辆
 local function getPlayerVehicle()
@@ -100,155 +87,130 @@ local function loadVehicle(carName)
     end
 end
 
--- 沿路径移动车辆
-local function driveAlongPath(pathPoints)
-    PlutoX.debug("[Fix It Up] 开始沿路径移动，共 " .. #pathPoints .. " 个点")
-
-    local vehicle = getPlayerVehicle()
-    if not vehicle then
-        PlutoX.debug("[Fix It Up] 未找到车辆，无法移动")
-        return false
-    end
-
-    for i, point in ipairs(pathPoints) do
-        if not config.autoFarmEnabled then
-            PlutoX.debug("[Fix It Up] AutoFarm 已停止")
-            return false
-        end
-
-        PlutoX.debug("[Fix It Up] 移动到路径点 " .. i .. "/" .. #pathPoints)
-
-        -- 传送车辆到路径点
-        vehicle:PivotTo(CFrame.new(point))
-        task.wait(0.5)
-    end
-
-    PlutoX.debug("[Fix It Up] 路径移动完成")
-    return true
-end
-
--- 拆卸零件
-local function stripParts()
-    PlutoX.debug("[Fix It Up] 开始拆卸零件")
-
-    local vehicle = getPlayerVehicle()
-    if not vehicle then
-        PlutoX.debug("[Fix It Up] 未找到车辆")
-        return
-    end
-
-    local misc = vehicle:FindFirstChild("Misc")
-    if not misc then
-        PlutoX.debug("[Fix It Up] 车辆没有 Misc 文件夹")
-        return
-    end
-
-    local strippedCount = 0
-    for _, part in ipairs(misc:GetChildren()) do
-        if part:FindFirstChild("ClickDetector") then
-            PlutoX.debug("[Fix It Up] 拆卸零件: " .. part.Name)
-            fireclickdetector(part.ClickDetector)
-            strippedCount = strippedCount + 1
-            task.wait(0.1)
-        end
-    end
-
-    PlutoX.debug("[Fix It Up] 拆卸完成，共 " .. strippedCount .. " 个零件")
-end
-
--- 自动安装零件
-local function installParts()
-    PlutoX.debug("[Fix It Up] 开始自动安装零件")
-
-    local moveableParts = Workspace:FindFirstChild("MoveableParts")
-    if not moveableParts then
-        PlutoX.debug("[Fix It Up] 未找到 MoveableParts")
-        return
-    end
-
-    local installedCount = 0
-    for _, part in ipairs(moveableParts:GetChildren()) do
-        if not part:IsA("Model") then
-            local owner = part:GetAttribute("Owner")
-            local wear = part:GetAttribute("Wear")
-
-            if owner and tostring(owner) == LocalPlayer.Name and wear and wear ~= 0 then
-                PlutoX.debug("[Fix It Up] 安装零件: " .. part.Name)
-
-                local binds = ReplicatedStorage:WaitForChild("ClientScripts"):WaitForChild("Client"):WaitForChild("Binds"):WaitForChild("Cache")
-                local installPart = binds:FindFirstChild("InstallPart")
-                if installPart then
-                    installPart:FireServer(part)
-                    installedCount = installedCount + 1
-                    task.wait(0.1)
-                end
-            end
-        end
-    end
-
-    PlutoX.debug("[Fix It Up] 安装完成，共 " .. installedCount .. " 个零件")
-end
-
 -- AutoFarm 主循环
+local isFarming = false
+local platformFolder = nil
+local farmTask = nil
+
+local function stopAutoFarm()
+    isFarming = false
+    if farmTask then
+        task.cancel(farmTask)
+        farmTask = nil
+    end
+    if platformFolder then
+        platformFolder:Destroy()
+        platformFolder = nil
+    end
+end
+
 local function performAutoFarm()
-    if not config.autoFarmEnabled then return end
-    isAutoFarmActive = true
+    if not config.selectedCar then
+        PlutoX.debug("[Fix It Up] 未选择车辆")
+        return
+    end
 
-    PlutoX.debug("[Fix It Up] AutoFarm 开始")
+    -- 加载车辆
+    if not loadVehicle(config.selectedCar) then
+        PlutoX.debug("[Fix It Up] 车辆加载失败")
+        UILibrary:Notify({Title="AutoFarm错误", Text="车辆加载失败", Duration=5})
+        stopAutoFarm()
+        return
+    end
 
-    spawn(function()
-        while config.autoFarmEnabled and isAutoFarmActive do
-            local success, err = pcall(function()
-                -- 1. 加载车辆
-                if config.selectedCar then
-                    if not loadVehicle(config.selectedCar) then
-                        PlutoX.debug("[Fix It Up] 车辆加载失败，等待重试")
-                        task.wait(5)
-                        return
-                    end
-                else
-                    PlutoX.debug("[Fix It Up] 未选择车辆")
-                    task.wait(5)
-                    return
-                end
+    task.wait(2)
 
-                -- 2. 前往垃圾场
-                PlutoX.debug("[Fix It Up] 前往垃圾场")
-                local pathPoints = defaultPaths[config.pathName] or defaultPaths.JunkyardToRepairv3
-                if not driveAlongPath(pathPoints) then
-                    return
-                end
+    -- 查找玩家车辆
+    local vehicles = Workspace:FindFirstChild("Vehicles")
+    if not vehicles then
+        PlutoX.debug("[Fix It Up] 未找到 Vehicles 文件夹")
+        UILibrary:Notify({Title="AutoFarm错误", Text="未找到车辆", Duration=5})
+        stopAutoFarm()
+        return
+    end
 
-                -- 3. 拆卸零件
-                stripParts()
-                task.wait(2)
-
-                -- 4. 返回修理店（反向路径）
-                PlutoX.debug("[Fix It Up] 返回修理店")
-                local reversePath = {}
-                for i = #pathPoints, 1, -1 do
-                    table.insert(reversePath, pathPoints[i])
-                end
-                if not driveAlongPath(reversePath) then
-                    return
-                end
-
-                -- 5. 安装零件
-                installParts()
-                task.wait(2)
-
-                PlutoX.debug("[Fix It Up] AutoFarm 循环完成")
-            end)
-
-            if not success then
-                PlutoX.debug("[Fix It Up] AutoFarm 错误: " .. tostring(err))
-                task.wait(5)
-            end
+    local carModel = nil
+    for _, vehicle in ipairs(vehicles:GetChildren()) do
+        local owner = vehicle:GetAttribute("Owner")
+        if owner and owner == LocalPlayer then
+            carModel = vehicle
+            break
         end
+    end
 
-        PlutoX.debug("[Fix It Up] AutoFarm 停止")
-        isAutoFarmActive = false
+    if not carModel then
+        PlutoX.debug("[Fix It Up] 未找到玩家车辆")
+        UILibrary:Notify({Title="AutoFarm错误", Text="未找到玩家车辆", Duration=5})
+        stopAutoFarm()
+        return
+    end
+
+    local driveSeat = carModel:FindFirstChild("DriveSeat")
+    if not driveSeat then
+        PlutoX.debug("[Fix It Up] 未找到 DriveSeat")
+        UILibrary:Notify({Title="AutoFarm错误", Text="未找到驾驶座位", Duration=5})
+        stopAutoFarm()
+        return
+    end
+
+    carModel.PrimaryPart = driveSeat
+
+    -- 创建平台
+    platformFolder = Instance.new("Folder", Workspace)
+    platformFolder.Name = "AutoPlatform"
+
+    local platform = Instance.new("Part", platformFolder)
+    platform.Anchored = true
+    platform.Size = Vector3.new(100000, 10, 10000)
+    platform.BrickColor = BrickColor.new("Dark stone grey")
+    platform.Material = Enum.Material.SmoothPlastic
+    platform.Position = Vector3.new(
+        driveSeat.Position.X + 50000,
+        driveSeat.Position.Y + 5,
+        driveSeat.Position.Z
+    )
+
+    local originPos = Vector3.new(
+        driveSeat.Position.X,
+        platform.Position.Y + 5000,
+        driveSeat.Position.Z
+    )
+    local speed = 600
+    local interval = 0.05
+    local distancePerTick = speed * interval
+    local currentPosX = originPos.X
+    local lastTpTime = tick()
+
+    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
+
+    isFarming = true
+    farmTask = task.spawn(function()
+        while isFarming do
+            currentPosX = currentPosX + distancePerTick
+            local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
+            carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
+
+            if carModel.PrimaryPart then
+                carModel.PrimaryPart.Velocity = Vector3.zero
+                carModel.PrimaryPart.RotVelocity = Vector3.zero
+            end
+
+            if tick() - lastTpTime > 5 then
+                currentPosX = originPos.X
+                carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
+                lastTpTime = tick()
+            end
+
+            task.wait(interval)
+        end
+        if platformFolder then
+            platformFolder:Destroy()
+            platformFolder = nil
+        end
     end)
+
+    PlutoX.debug("[Fix It Up] AutoFarm 已启动")
+end
 end
 
 -- 获取车库车辆列表
@@ -348,9 +310,6 @@ UILibrary:CreateToggle(farmCard, {
     Text = "启用 AutoFarm",
     DefaultState = false,
     Callback = function(value)
-        config.autoFarmEnabled = value
-        PlutoX.debug("[Fix It Up] AutoFarm 状态: " .. tostring(value))
-
         if value then
             if not config.selectedCar then
                 PlutoX.debug("[Fix It Up] 请先选择车辆")
@@ -361,9 +320,10 @@ UILibrary:CreateToggle(farmCard, {
                 })
                 return
             end
+            isFarming = true
             performAutoFarm()
         else
-            isAutoFarmActive = false
+            stopAutoFarm()
         end
     end
 })
