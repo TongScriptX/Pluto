@@ -47,14 +47,8 @@ local config = {
     farmSpeed = 600,
     webhookUrl = "",
     notifyMoney = false,
-    notifyInterval = 60,
-    baseMoney = 0,
-    targetMoney = 0,
-    enableMoneyKick = false
+    notifyInterval = 60
 }
-
--- Webhook 管理器
-local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, nil)
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -172,7 +166,7 @@ local function performAutoFarm()
     carModel.PrimaryPart = driveSeat
     PlutoX.debug("[Fix It Up] 设置 PrimaryPart 完成")
 
-    -- 创建平台（在高空1000单位）
+    -- 创建平台
     PlutoX.debug("[Fix It Up] 开始创建平台...")
     platformFolder = Instance.new("Folder", Workspace)
     platformFolder.Name = "AutoPlatform"
@@ -180,62 +174,58 @@ local function performAutoFarm()
     local platform = Instance.new("Part", platformFolder)
     platform.Anchored = true
     platform.Size = Vector3.new(100000, 10, 10000)
-    platform.BrickColor = BrickColor.new("Bright red")
-    platform.Material = Enum.Material.Neon
-    platform.Transparency = 0.3
+    platform.BrickColor = BrickColor.new("Dark stone grey")
+    platform.Material = Enum.Material.SmoothPlastic
     platform.Position = Vector3.new(
-        driveSeat.Position.X,
-        driveSeat.Position.Y + 1000,
+        driveSeat.Position.X + 50000,
+        driveSeat.Position.Y + 5,
         driveSeat.Position.Z
     )
-    platform.CanCollide = true
 
     PlutoX.debug("[Fix It Up] 平台创建完成，位置: " .. tostring(platform.Position))
 
-    -- 车辆起始位置（平台上方10单位）
     local originPos = Vector3.new(
-        platform.Position.X,
-        platform.Position.Y + 10,
-        platform.Position.Z
+        driveSeat.Position.X,
+        platform.Position.Y + 5000,
+        driveSeat.Position.Z
     )
-    PlutoX.debug("[Fix It Up] 车辆起始位置: " .. tostring(originPos))
-
-    -- 传送车辆到起始位置
-    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
-    PlutoX.debug("[Fix It Up] 车辆传送完成")
+    PlutoX.debug("[Fix It Up] 起始位置: " .. tostring(originPos))
 
     local speed = config.farmSpeed
-    local interval = 0.05
+    local interval = 0.01  -- 更短的间隔以实现更平滑的移动
     local distancePerTick = speed * interval
     local currentPosX = originPos.X
-    local lastTpTime = tick()
+    local resetDistance = 50000  -- 移动50000单位后重置
+
+    PlutoX.debug("[Fix It Up] 传送车辆到起始位置...")
+    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
+    PlutoX.debug("[Fix It Up] 车辆传送完成")
 
     isFarming = true
     PlutoX.debug("[Fix It Up] 启动 farmTask...")
     farmTask = task.spawn(function()
         PlutoX.debug("[Fix It Up] farmTask 开始运行")
         while isFarming do
-            if not carModel or not carModel.Parent then break end
-
+            -- 持续向前移动
             currentPosX = currentPosX + distancePerTick
             local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
             carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
 
+            -- 清零速度防止物理干扰
             if carModel.PrimaryPart then
                 carModel.PrimaryPart.Velocity = Vector3.zero
                 carModel.PrimaryPart.RotVelocity = Vector3.zero
             end
 
-            if tick() - lastTpTime > 5 then
+            -- 移动足够远后重置位置
+            if math.abs(currentPosX - originPos.X) > resetDistance then
                 PlutoX.debug("[Fix It Up] 重置位置")
                 currentPosX = originPos.X
                 carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
-                lastTpTime = tick()
             end
 
             task.wait(interval)
         end
-
         PlutoX.debug("[Fix It Up] farmTask 结束")
         if platformFolder then
             platformFolder:Destroy()
@@ -314,7 +304,7 @@ UILibrary:CreateToggle(farmCard, {
 local speedCard = UILibrary:CreateCard(mainContent)
 UILibrary:CreateSlider(speedCard, {
     Text = "AutoFarm 速度",
-    Min = 0,
+    Min = 500,
     Max = 5000,
     Default = config.farmSpeed,
     Suffix = "",
@@ -330,15 +320,21 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
     Icon = "bell"
 })
 
--- Webhook
-PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() end, webhookManager)
-
--- 通知间隔
-PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() end)
+-- Webhook 卡片
+local webhookCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateInput(webhookCard, {
+    Text = "Webhook 地址",
+    PlaceholderText = "输入 Discord Webhook URL",
+    DefaultText = config.webhookUrl,
+    Callback = function(value)
+        config.webhookUrl = value
+        PlutoX.debug("[Fix It Up] Webhook 地址已设置")
+    end
+})
 
 -- 监测金额
-local currencyNotifyCard = UILibrary:CreateCard(notifyContent)
-UILibrary:CreateToggle(currencyNotifyCard, {
+local moneyNotifyCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateToggle(moneyNotifyCard, {
     Text = "监测金额变化",
     DefaultState = config.notifyMoney,
     Callback = function(state)
@@ -352,42 +348,17 @@ UILibrary:CreateToggle(currencyNotifyCard, {
     end
 })
 
--- 金额数据设置
-local separatorCard = UILibrary:CreateCard(notifyContent)
-PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, {
-    name = "金额",
-    icon = "dollar-sign"
-})
-
-local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
-    notifyContent, UILibrary, config, function() end,
-    getMoney,
-    "Money",
-    "dollar-sign"
-)
-
-local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
-    notifyContent, UILibrary, config, function() end,
-    getMoney,
-    "Money"
-)
-
-setTargetValueLabel(targetValueLabel)
-
--- 重新计算目标值
-local recalculateCard = UILibrary:CreateCard(notifyContent)
-UILibrary:CreateButton(recalculateCard, {
-    Text = "重新计算目标值",
-    Callback = function()
-        local currentMoney = getMoney()
-        config.baseMoney = currentMoney
-        config.targetMoney = 0
-        targetValueLabel.Text = "目标值: 未设置"
-        UILibrary:Notify({
-            Title = "目标值已重置",
-            Text = "基础值: €" .. string.format("%d", currentMoney),
-            Duration = 5
-        })
+-- 通知间隔
+local intervalCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateSlider(intervalCard, {
+    Text = "通知间隔（分钟）",
+    Min = 1,
+    Max = 120,
+    Default = config.notifyInterval,
+    Suffix = " 分钟",
+    Callback = function(value)
+        config.notifyInterval = value
+        PlutoX.debug("[Fix It Up] 通知间隔设置为: " .. value .. " 分钟")
     end
 })
 
