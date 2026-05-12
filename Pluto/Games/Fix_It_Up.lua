@@ -176,10 +176,10 @@ local function performAutoFarm()
     PlutoX.debug("[Fix It Up] 起始位置: " .. tostring(originPos))
 
     local speed = config.farmSpeed
-    local interval = 0.05
+    local interval = 0.01  -- 更短的间隔以实现更平滑的移动
     local distancePerTick = speed * interval
     local currentPosX = originPos.X
-    local lastTpTime = tick()
+    local resetDistance = 50000  -- 移动50000单位后重置
 
     PlutoX.debug("[Fix It Up] 传送车辆到起始位置...")
     carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
@@ -190,20 +190,22 @@ local function performAutoFarm()
     farmTask = task.spawn(function()
         PlutoX.debug("[Fix It Up] farmTask 开始运行")
         while isFarming do
+            -- 持续向前移动
             currentPosX = currentPosX + distancePerTick
             local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
             carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
 
+            -- 清零速度防止物理干扰
             if carModel.PrimaryPart then
                 carModel.PrimaryPart.Velocity = Vector3.zero
                 carModel.PrimaryPart.RotVelocity = Vector3.zero
             end
 
-            if tick() - lastTpTime > 5 then
+            -- 移动足够远后重置位置
+            if math.abs(currentPosX - originPos.X) > resetDistance then
                 PlutoX.debug("[Fix It Up] 重置位置")
                 currentPosX = originPos.X
                 carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
-                lastTpTime = tick()
             end
 
             task.wait(interval)
@@ -286,8 +288,8 @@ UILibrary:CreateToggle(farmCard, {
 local speedCard = UILibrary:CreateCard(mainContent)
 UILibrary:CreateSlider(speedCard, {
     Text = "AutoFarm 速度",
-    Min = 100,
-    Max = 1000,
+    Min = 500,
+    Max = 5000,
     Default = config.farmSpeed,
     Suffix = "",
     Callback = function(value)
