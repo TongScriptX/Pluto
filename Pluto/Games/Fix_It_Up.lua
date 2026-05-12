@@ -5,40 +5,42 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
--- 加载 PlutoX
-local PlutoX
-do
-    local success, result = pcall(function()
-        local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/Common/PlutoX-Notifier.lua"
-        local source = game:HttpGet(url)
-        return loadstring(source)()
-    end)
-
-    if success and result then
-        PlutoX = result
-    else
-        error("[PlutoX] 模块加载失败：" .. tostring(result))
-    end
-end
-
--- 加载 UILibrary
+-- UI
 local UILibrary
-do
-    local success, result = pcall(function()
-        local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
-        local source = game:HttpGet(url)
-        return loadstring(source)()
-    end)
+local success, result = pcall(function()
+    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
+end)
 
-    if success and result then
-        UILibrary = result
-    else
-        error("[PlutoUILibrary] 加载失败：" .. tostring(result))
-    end
+if success and result then
+    UILibrary = result
+else
+    error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
 end
 
--- 游戏信息
+-- PlutoX
+local success, PlutoX = pcall(function()
+    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/Common/PlutoX-Notifier.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
+end)
+
+if not success or not PlutoX then
+    error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
+end
+
+-- 玩家信息
+local player = Players.LocalPlayer
+if not player then
+    error("无法获取当前玩家")
+end
+
+local username = player.Name
 local gameName = "Fix It Up"
+
+-- 初始化调试系统
+PlutoX.setGameInfo(gameName, username, HttpService)
 
 PlutoX.info("[" .. gameName .. "] 脚本加载中...")
 
