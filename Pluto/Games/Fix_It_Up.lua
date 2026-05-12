@@ -7,7 +7,25 @@ local Workspace = game:GetService("Workspace")
 
 -- PlutoX 核心引用
 local PlutoX = _G.PlutoX
-local UILibrary = PlutoX.UILibrary
+
+-- 加载 UILibrary
+local UILibrary
+local success, result = pcall(function()
+    local url
+    if PlutoX.debugEnabled then
+        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
+    else
+        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    end
+    local source = game:HttpGet(url)
+    return loadstring(source)()
+end)
+
+if success and result then
+    UILibrary = result
+else
+    error("[PlutoUILibrary] 加载失败！请检查网络连接或链接是否有效：" .. tostring(result))
+end
 
 -- 游戏信息
 local gameName = "Fix It Up"
