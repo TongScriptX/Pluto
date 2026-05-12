@@ -95,7 +95,7 @@ local function loadVehicle(carName)
         PlutoX.debug("[Fix It Up] 车辆加载成功")
         return true
     else
-        PlutoX.warn("[Fix It Up] 车辆加载失败")
+        PlutoX.debug("[Fix It Up] 车辆加载失败")
         return false
     end
 end
@@ -106,7 +106,7 @@ local function driveAlongPath(pathPoints)
 
     local vehicle = getPlayerVehicle()
     if not vehicle then
-        PlutoX.warn("[Fix It Up] 未找到车辆，无法移动")
+        PlutoX.debug("[Fix It Up] 未找到车辆，无法移动")
         return false
     end
 
@@ -133,7 +133,7 @@ local function stripParts()
 
     local vehicle = getPlayerVehicle()
     if not vehicle then
-        PlutoX.warn("[Fix It Up] 未找到车辆")
+        PlutoX.debug("[Fix It Up] 未找到车辆")
         return
     end
 
@@ -202,12 +202,12 @@ local function performAutoFarm()
                 -- 1. 加载车辆
                 if config.selectedCar then
                     if not loadVehicle(config.selectedCar) then
-                        PlutoX.warn("[Fix It Up] 车辆加载失败，等待重试")
+                        PlutoX.debug("[Fix It Up] 车辆加载失败，等待重试")
                         task.wait(5)
                         return
                     end
                 else
-                    PlutoX.warn("[Fix It Up] 未选择车辆")
+                    PlutoX.debug("[Fix It Up] 未选择车辆")
                     task.wait(5)
                     return
                 end
@@ -241,7 +241,7 @@ local function performAutoFarm()
             end)
 
             if not success then
-                PlutoX.warn("[Fix It Up] AutoFarm 错误: " .. tostring(err))
+                PlutoX.debug("[Fix It Up] AutoFarm 错误: " .. tostring(err))
                 task.wait(5)
             end
         end
@@ -299,20 +299,44 @@ local mainTab, mainContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, 
 -- 车辆选择卡片
 local carCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
 
-local carDropdown = UILibrary:CreateDropdown(carCard, {
+local function refreshCarList()
+    local cars = getGarageCars()
+    if #cars > 0 then
+        -- 清空旧的 dropdown
+        for _, child in ipairs(carCard:GetChildren()) do
+            if child.Name:match("^Dropdown_") then
+                child:Destroy()
+            end
+        end
+
+        -- 创建新的 dropdown
+        table.insert(cars, 1, "刷新车辆列表")
+        UILibrary:CreateDropdown(carCard, {
+            Text = "选择车辆",
+            Options = cars,
+            DefaultOption = "刷新车辆列表",
+            Callback = function(value)
+                if value ~= "刷新车辆列表" then
+                    config.selectedCar = value
+                    PlutoX.debug("[Fix It Up] 已选择车辆: " .. value)
+                else
+                    refreshCarList()
+                end
+            end
+        })
+
+        PlutoX.debug("[Fix It Up] 车辆列表已刷新，共 " .. (#cars - 1) .. " 辆")
+    end
+end
+
+-- 初始创建
+UILibrary:CreateDropdown(carCard, {
     Text = "选择车辆",
     Options = {"刷新车辆列表"},
-    Default = "刷新车辆列表",
+    DefaultOption = "刷新车辆列表",
     Callback = function(value)
-        if value ~= "刷新车辆列表" then
-            config.selectedCar = value
-            PlutoX.debug("[Fix It Up] 已选择车辆: " .. value)
-        else
-            local cars = getGarageCars()
-            if #cars > 0 then
-                carDropdown:Refresh(cars, true)
-                PlutoX.debug("[Fix It Up] 车辆列表已刷新，共 " .. #cars .. " 辆")
-            end
+        if value == "刷新车辆列表" then
+            refreshCarList()
         end
     end
 })
@@ -322,7 +346,7 @@ local farmCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
 
 UILibrary:CreateToggle(farmCard, {
     Text = "启用 AutoFarm",
-    Default = false,
+    DefaultState = false,
     Callback = function(value)
         config.autoFarmEnabled = value
         PlutoX.debug("[Fix It Up] AutoFarm 状态: " .. tostring(value))
