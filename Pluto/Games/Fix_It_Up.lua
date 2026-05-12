@@ -303,7 +303,16 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
 })
 
 -- Webhook 卡片
-PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() end, nil)
+local webhookCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateInput(webhookCard, {
+    Text = "Webhook 地址",
+    PlaceholderText = "输入 Discord Webhook URL",
+    DefaultText = config.webhookUrl,
+    Callback = function(value)
+        config.webhookUrl = value
+        PlutoX.debug("[Fix It Up] Webhook 地址已设置")
+    end
+})
 
 -- 监测金额
 local moneyNotifyCard = UILibrary:CreateCard(notifyContent)
@@ -322,7 +331,18 @@ UILibrary:CreateToggle(moneyNotifyCard, {
 })
 
 -- 通知间隔
-PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() end)
+local intervalCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateSlider(intervalCard, {
+    Text = "通知间隔（分钟）",
+    Min = 1,
+    Max = 120,
+    Default = config.notifyInterval,
+    Suffix = " 分钟",
+    Callback = function(value)
+        config.notifyInterval = value
+        PlutoX.debug("[Fix It Up] 通知间隔设置为: " .. value .. " 分钟")
+    end
+})
 
 -- 脚本加载完成
 PlutoX.debug("[" .. gameName .. "] 脚本加载完成")
