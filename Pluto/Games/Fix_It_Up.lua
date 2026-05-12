@@ -7,16 +7,14 @@ local Workspace = game:GetService("Workspace")
 
 -- PlutoX 核心引用
 local PlutoX = _G.PlutoX
+if not PlutoX then
+    error("[Fix It Up] PlutoX 未加载")
+end
 
 -- 加载 UILibrary
 local UILibrary
 local success, result = pcall(function()
-    local url
-    if PlutoX.debugEnabled then
-        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
-    else
-        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
-    end
+    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)
