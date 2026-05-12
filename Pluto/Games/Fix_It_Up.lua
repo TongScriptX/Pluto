@@ -56,7 +56,8 @@ local function getPlayerVehicle()
     end
 
     for _, vehicle in ipairs(vehicles:GetChildren()) do
-        if vehicle:GetAttribute("Owner") == LocalPlayer then
+        local owner = vehicle:GetAttribute("Owner")
+        if owner and tostring(owner) == LocalPlayer.Name then
             PlutoX.debug("[Fix It Up] 找到玩家车辆")
             return vehicle
         end
@@ -101,8 +102,8 @@ local function performAutoFarm()
     local carModel = nil
     for _, vehicle in ipairs(vehicles:GetChildren()) do
         local owner = vehicle:GetAttribute("Owner")
-        PlutoX.debug("[Fix It Up] 检查车辆: " .. vehicle.Name .. ", Owner: " .. tostring(owner) .. ", LocalPlayer: " .. tostring(LocalPlayer))
-        if owner and owner == LocalPlayer then
+        PlutoX.debug("[Fix It Up] 检查车辆: " .. vehicle.Name .. ", Owner: " .. tostring(owner) .. ", LocalPlayer.Name: " .. LocalPlayer.Name)
+        if owner and tostring(owner) == LocalPlayer.Name then
             carModel = vehicle
             PlutoX.debug("[Fix It Up] 找到玩家车辆: " .. vehicle.Name)
             break
