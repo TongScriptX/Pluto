@@ -191,44 +191,68 @@ local function performAutoFarm()
     PlutoX.debug("[Fix It Up] 平台创建完成，位置: " .. tostring(platform.Position))
 
     local originPos = Vector3.new(
-        driveSeat.Position.X,
-        platform.Position.Y + 5000,
+        driveSeat.Position.X + 50000,
+        platform.Position.Y + 10,
         driveSeat.Position.Z
     )
     PlutoX.debug("[Fix It Up] 起始位置: " .. tostring(originPos))
 
-    local speed = config.farmSpeed
-    local interval = 0.05
-    local distancePerTick = speed * interval
-    local currentPosX = originPos.X
-    local lastTpTime = tick()
-
-    PlutoX.debug("[Fix It Up] 传送车辆到起始位置...")
-    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
+    -- 传送车辆到平台上
+    PlutoX.debug("[Fix It Up] 传送车辆到平台...")
+    local direction = Vector3.new(1, 0, 0)
+    carModel:PivotTo(CFrame.lookAt(originPos, originPos + direction))
     PlutoX.debug("[Fix It Up] 车辆传送完成")
+
+    -- 缓存车辆部件
+    local baseParts = {}
+    for _, part in ipairs(carModel:GetDescendants()) do
+        if part:IsA("BasePart") then
+            table.insert(baseParts, part)
+        end
+    end
+
+    -- 设置速度函数
+    local function setVehicleVelocity(dir, spd)
+        for _, part in ipairs(baseParts) do
+            if part.Parent then
+                part.AssemblyLinearVelocity = dir * spd
+                part.AssemblyAngularVelocity = Vector3.zero
+            end
+        end
+    end
+
+    local speed = config.farmSpeed
+    local moveDuration = 10
+    local RunService = game:GetService("RunService")
 
     isFarming = true
     PlutoX.debug("[Fix It Up] 启动 farmTask...")
     farmTask = task.spawn(function()
         PlutoX.debug("[Fix It Up] farmTask 开始运行")
         while isFarming do
-            currentPosX = currentPosX + distancePerTick
-            local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
-            carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
+            if not carModel or not carModel.Parent then break end
 
-            if carModel.PrimaryPart then
-                carModel.PrimaryPart.Velocity = Vector3.zero
-                carModel.PrimaryPart.RotVelocity = Vector3.zero
+            -- 向前移动
+            local startTime = tick()
+            while tick() - startTime < moveDuration and isFarming do
+                if not carModel or not carModel.Parent then break end
+                local primaryPart = carModel.PrimaryPart
+                if not primaryPart then break end
+
+                local currentPos = primaryPart.Position
+                carModel:PivotTo(CFrame.lookAt(currentPos, currentPos + direction))
+                setVehicleVelocity(direction, speed)
+
+                RunService.Heartbeat:Wait()
             end
 
-            if tick() - lastTpTime > 5 then
-                PlutoX.debug("[Fix It Up] 重置位置")
-                currentPosX = originPos.X
-                carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
-                lastTpTime = tick()
-            end
+            -- 停止并反向
+            setVehicleVelocity(Vector3.zero, 0)
+            for _ = 1, 3 do RunService.Heartbeat:Wait() end
 
-            task.wait(interval)
+            direction = -direction
+
+            task.wait(0.1)
         end
         PlutoX.debug("[Fix It Up] farmTask 结束")
         if platformFolder then
