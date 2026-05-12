@@ -43,9 +43,7 @@ local gameName = "Fix It Up"
 PlutoX.setGameInfo(gameName, username, HttpService)
 
 -- 配置
-local config = {
-    selectedCar = nil
-}
+local config = {}
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -58,7 +56,7 @@ local function getPlayerVehicle()
     end
 
     for _, vehicle in ipairs(vehicles:GetChildren()) do
-        if vehicle:GetAttribute("Owner") == LocalPlayer.Name then
+        if vehicle:GetAttribute("Owner") == LocalPlayer then
             PlutoX.debug("[Fix It Up] 找到玩家车辆")
             return vehicle
         end
@@ -66,25 +64,6 @@ local function getPlayerVehicle()
 
     PlutoX.debug("[Fix It Up] 未找到玩家车辆")
     return nil
-end
-
--- 加载车辆
-local function loadVehicle(carName)
-    PlutoX.debug("[Fix It Up] 尝试加载车辆: " .. tostring(carName))
-
-    local remoteLoad = ReplicatedStorage:WaitForChild("Events"):WaitForChild("Vehicles"):WaitForChild("RemoteLoad")
-    remoteLoad:FireServer(carName)
-
-    task.wait(3)
-
-    local vehicle = getPlayerVehicle()
-    if vehicle then
-        PlutoX.debug("[Fix It Up] 车辆加载成功")
-        return true
-    else
-        PlutoX.debug("[Fix It Up] 车辆加载失败")
-        return false
-    end
 end
 
 -- AutoFarm 主循环
@@ -107,31 +86,12 @@ end
 local function performAutoFarm()
     PlutoX.debug("[Fix It Up] performAutoFarm 开始执行")
 
-    if not config.selectedCar then
-        PlutoX.debug("[Fix It Up] 未选择车辆")
-        return
-    end
-
-    PlutoX.debug("[Fix It Up] 选择的车辆: " .. tostring(config.selectedCar))
-
-    -- 加载车辆
-    PlutoX.debug("[Fix It Up] 开始加载车辆...")
-    if not loadVehicle(config.selectedCar) then
-        PlutoX.debug("[Fix It Up] 车辆加载失败")
-        UILibrary:Notify({Title="AutoFarm错误", Text="车辆加载失败", Duration=5})
-        stopAutoFarm()
-        return
-    end
-
-    PlutoX.debug("[Fix It Up] 车辆加载成功，等待2秒...")
-    task.wait(2)
-
     -- 查找玩家车辆
     PlutoX.debug("[Fix It Up] 开始查找玩家车辆...")
     local vehicles = Workspace:FindFirstChild("Vehicles")
     if not vehicles then
         PlutoX.debug("[Fix It Up] 未找到 Vehicles 文件夹")
-        UILibrary:Notify({Title="AutoFarm错误", Text="未找到车辆", Duration=5})
+        UILibrary:Notify({Title="AutoFarm错误", Text="未找到车辆文件夹", Duration=5})
         stopAutoFarm()
         return
     end
@@ -150,8 +110,8 @@ local function performAutoFarm()
     end
 
     if not carModel then
-        PlutoX.debug("[Fix It Up] 未找到玩家车辆")
-        UILibrary:Notify({Title="AutoFarm错误", Text="未找到玩家车辆", Duration=5})
+        PlutoX.debug("[Fix It Up] 未找到玩家车辆，请先进入车辆")
+        UILibrary:Notify({Title="AutoFarm错误", Text="请先进入车辆", Duration=5})
         stopAutoFarm()
         return
     end
@@ -238,25 +198,6 @@ local function performAutoFarm()
 end
 
 -- 获取车库车辆列表
-local function getGarageCars()
-    local cars = {}
-    local playerData = LocalPlayer:FindFirstChild("PlayerData")
-    if not playerData then return cars end
-
-    local garage = playerData:FindFirstChild("Garage")
-    if not garage then return cars end
-
-    for _, car in ipairs(garage:GetChildren()) do
-        local model = car:FindFirstChild("Model")
-        if model and model.Value and model.Value ~= "" then
-            table.insert(cars, model.Value)
-            PlutoX.debug("[Fix It Up] 发现车辆: " .. model.Value)
-        end
-    end
-
-    return cars
-end
-
 -- UI 创建
 local window = UILibrary:CreateUIWindow()
 if not window then
@@ -282,68 +223,18 @@ local mainTab, mainContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, 
     Active = true
 })
 
--- 车辆选择卡片
-local carCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
-
-local function refreshCarList()
-    local cars = getGarageCars()
-    if #cars > 0 then
-        -- 清空旧的 dropdown
-        for _, child in ipairs(carCard:GetChildren()) do
-            if child.Name:match("^Dropdown_") then
-                child:Destroy()
-            end
-        end
-
-        -- 创建新的 dropdown
-        table.insert(cars, 1, "刷新车辆列表")
-        UILibrary:CreateDropdown(carCard, {
-            Text = "选择车辆",
-            Options = cars,
-            DefaultOption = "刷新车辆列表",
-            Callback = function(value)
-                if value ~= "刷新车辆列表" then
-                    config.selectedCar = value
-                    PlutoX.debug("[Fix It Up] 已选择车辆: " .. value)
-                else
-                    refreshCarList()
-                end
-            end
-        })
-
-        PlutoX.debug("[Fix It Up] 车辆列表已刷新，共 " .. (#cars - 1) .. " 辆")
-    end
-end
-
--- 初始创建
-UILibrary:CreateDropdown(carCard, {
-    Text = "选择车辆",
-    Options = {"刷新车辆列表"},
-    DefaultOption = "刷新车辆列表",
-    Callback = function(value)
-        if value == "刷新车辆列表" then
-            refreshCarList()
-        end
-    end
-})
-
 -- AutoFarm 控制卡片
 local farmCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
+
+UILibrary:CreateLabel(farmCard, {
+    Text = "请先进入车辆，然后启用 AutoFarm"
+})
 
 UILibrary:CreateToggle(farmCard, {
     Text = "启用 AutoFarm",
     DefaultState = false,
     Callback = function(value)
         if value then
-            if not config.selectedCar then
-                PlutoX.debug("[Fix It Up] 请先选择车辆")
-                UILibrary:Notify({
-                    Title = "错误",
-                    Text = "请先选择车辆",
-                    Duration = 3
-                })
-                return
-            end
             isFarming = true
             performAutoFarm()
         else
