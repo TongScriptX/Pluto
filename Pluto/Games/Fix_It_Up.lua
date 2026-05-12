@@ -272,14 +272,27 @@ local function getGarageCars()
 end
 
 -- UI 创建
-local window = UILibrary:CreateUIWindow({
-    Title = "Pluto - " .. gameName
+local window = UILibrary:CreateUIWindow()
+if not window then
+    error("无法创建 UI 窗口")
+end
+
+local sidebar = window.Sidebar
+local titleLabel = window.TitleLabel
+local mainPage = window.MainPage
+
+-- 创建主标签页
+local mainTab, mainContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
+    Text = "AutoFarm",
+    Icon = "home",
+    Active = true
 })
 
-local mainTab = window:AddTab({ Name = "AutoFarm" })
+-- 车辆选择卡片
+local carCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
 
-local carDropdown = mainTab:AddDropdown({
-    Name = "选择车辆",
+local carDropdown = UILibrary:CreateDropdown(carCard, {
+    Text = "选择车辆",
     Options = {"刷新车辆列表"},
     Default = "刷新车辆列表",
     Callback = function(value)
@@ -296,8 +309,11 @@ local carDropdown = mainTab:AddDropdown({
     end
 })
 
-mainTab:AddToggle({
-    Name = "启用 AutoFarm",
+-- AutoFarm 控制卡片
+local farmCard = UILibrary:CreateCard(mainContent, { IsMultiElement = true })
+
+UILibrary:CreateToggle(farmCard, {
+    Text = "启用 AutoFarm",
     Default = false,
     Callback = function(value)
         config.autoFarmEnabled = value
@@ -305,7 +321,7 @@ mainTab:AddToggle({
 
         if value then
             if not config.selectedCar then
-                PlutoX.warn("[Fix It Up] 请先选择车辆")
+                PlutoX.debug("[Fix It Up] 请先选择车辆")
                 UILibrary:Notify({
                     Title = "错误",
                     Text = "请先选择车辆",
