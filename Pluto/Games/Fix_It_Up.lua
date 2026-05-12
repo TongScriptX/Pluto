@@ -53,6 +53,9 @@ local config = {
     enableMoneyKick = false
 }
 
+-- Webhook 管理器
+local webhookManager = PlutoX.createWebhookManager(config, HttpService, UILibrary, gameName, username, nil)
+
 local LocalPlayer = Players.LocalPlayer
 
 -- 获取金额
@@ -325,7 +328,7 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
 })
 
 -- Webhook
-PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() end, nil)
+PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() end, webhookManager)
 
 -- 通知间隔
 PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() end)
