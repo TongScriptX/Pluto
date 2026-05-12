@@ -179,52 +179,54 @@ local function performAutoFarm()
 
     local platform = Instance.new("Part", platformFolder)
     platform.Anchored = true
-    platform.Size = Vector3.new(200000, 10, 10000)
+    platform.Size = Vector3.new(100000, 10, 10000)
     platform.BrickColor = BrickColor.new("Bright red")
     platform.Material = Enum.Material.Neon
     platform.Transparency = 0.3
     platform.Position = Vector3.new(
-        driveSeat.Position.X + 100000,
+        driveSeat.Position.X + 50000,
         driveSeat.Position.Y + 5,
         driveSeat.Position.Z
     )
 
-    PlutoX.debug("[Fix It Up] 平台创建完成")
-    PlutoX.debug("[Fix It Up] 平台位置: " .. tostring(platform.Position))
-    PlutoX.debug("[Fix It Up] 平台大小: " .. tostring(platform.Size))
+    PlutoX.debug("[Fix It Up] 平台创建完成，位置: " .. tostring(platform.Position))
 
     local originPos = Vector3.new(
-        platform.Position.X - 90000,
-        platform.Position.Y + 10,
-        platform.Position.Z
+        driveSeat.Position.X,
+        platform.Position.Y + 5000,
+        driveSeat.Position.Z
     )
-    PlutoX.debug("[Fix It Up] 车辆起始位置: " .. tostring(originPos))
-
-    -- 传送车辆到平台上
-    PlutoX.debug("[Fix It Up] 传送车辆到平台...")
-    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
-    PlutoX.debug("[Fix It Up] 车辆传送完成")
+    PlutoX.debug("[Fix It Up] 起始位置: " .. tostring(originPos))
 
     local speed = config.farmSpeed
     local interval = 0.05
     local distancePerTick = speed * interval
     local currentPosX = originPos.X
+    local lastTpTime = tick()
+
+    PlutoX.debug("[Fix It Up] 传送车辆到起始位置...")
+    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
+    PlutoX.debug("[Fix It Up] 车辆传送完成")
 
     isFarming = true
     PlutoX.debug("[Fix It Up] 启动 farmTask...")
     farmTask = task.spawn(function()
         PlutoX.debug("[Fix It Up] farmTask 开始运行")
         while isFarming do
-            if not carModel or not carModel.Parent then break end
-
             currentPosX = currentPosX + distancePerTick
             local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
             carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
 
-            -- 重置位置
-            if currentPosX > originPos.X + 180000 then
+            if carModel.PrimaryPart then
+                carModel.PrimaryPart.Velocity = Vector3.zero
+                carModel.PrimaryPart.RotVelocity = Vector3.zero
+            end
+
+            if tick() - lastTpTime > 5 then
                 PlutoX.debug("[Fix It Up] 重置位置")
                 currentPosX = originPos.X
+                carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
+                lastTpTime = tick()
             end
 
             task.wait(interval)
