@@ -320,21 +320,15 @@ local notifyTab, notifyContent = UILibrary:CreateTab(sidebar, titleLabel, mainPa
     Icon = "bell"
 })
 
--- Webhook 卡片
-local webhookCard = UILibrary:CreateCard(notifyContent)
-UILibrary:CreateTextBox(webhookCard, {
-    Text = "Webhook 地址",
-    PlaceholderText = "输入 Discord Webhook URL",
-    DefaultText = config.webhookUrl,
-    Callback = function(value)
-        config.webhookUrl = value
-        PlutoX.debug("[Fix It Up] Webhook 地址已设置")
-    end
-})
+-- Webhook
+PlutoX.createWebhookCard(notifyContent, UILibrary, config, function() end, nil)
+
+-- 通知间隔
+PlutoX.createIntervalCard(notifyContent, UILibrary, config, function() end)
 
 -- 监测金额
-local moneyNotifyCard = UILibrary:CreateCard(notifyContent)
-UILibrary:CreateToggle(moneyNotifyCard, {
+local currencyNotifyCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateToggle(currencyNotifyCard, {
     Text = "监测金额变化",
     DefaultState = config.notifyMoney,
     Callback = function(state)
@@ -345,20 +339,6 @@ UILibrary:CreateToggle(moneyNotifyCard, {
         end
         config.notifyMoney = state
         UILibrary:Notify({ Title = "配置更新", Text = "金额变化监测: " .. (state and "开启" or "关闭"), Duration = 5 })
-    end
-})
-
--- 通知间隔
-local intervalCard = UILibrary:CreateCard(notifyContent)
-UILibrary:CreateSlider(intervalCard, {
-    Text = "通知间隔（分钟）",
-    Min = 1,
-    Max = 120,
-    Default = config.notifyInterval,
-    Suffix = " 分钟",
-    Callback = function(value)
-        config.notifyInterval = value
-        PlutoX.debug("[Fix It Up] 通知间隔设置为: " .. value .. " 分钟")
     end
 })
 
