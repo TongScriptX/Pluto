@@ -172,7 +172,7 @@ local function performAutoFarm()
     carModel.PrimaryPart = driveSeat
     PlutoX.debug("[Fix It Up] 设置 PrimaryPart 完成")
 
-    -- 创建平台
+    -- 创建平台（在当前位置下方）
     PlutoX.debug("[Fix It Up] 开始创建平台...")
     platformFolder = Instance.new("Folder", Workspace)
     platformFolder.Name = "AutoPlatform"
@@ -184,53 +184,41 @@ local function performAutoFarm()
     platform.Material = Enum.Material.Neon
     platform.Transparency = 0.3
     platform.Position = Vector3.new(
-        driveSeat.Position.X + 50000,
-        driveSeat.Position.Y + 5,
+        driveSeat.Position.X,
+        driveSeat.Position.Y - 5,
         driveSeat.Position.Z
     )
+    platform.CanCollide = true
 
     PlutoX.debug("[Fix It Up] 平台创建完成，位置: " .. tostring(platform.Position))
+    PlutoX.debug("[Fix It Up] 车辆位置: " .. tostring(driveSeat.Position))
 
-    local originPos = Vector3.new(
-        driveSeat.Position.X,
-        platform.Position.Y + 5000,
-        driveSeat.Position.Z
-    )
-    PlutoX.debug("[Fix It Up] 起始位置: " .. tostring(originPos))
+    -- 启用车辆物理
+    for _, part in ipairs(carModel:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = true
+        end
+    end
 
-    local speed = config.farmSpeed
-    local interval = 0.05
-    local distancePerTick = speed * interval
-    local currentPosX = originPos.X
-    local lastTpTime = tick()
-
-    PlutoX.debug("[Fix It Up] 传送车辆到起始位置...")
-    carModel:PivotTo(CFrame.new(originPos, originPos + Vector3.new(1, 0, 0)))
-    PlutoX.debug("[Fix It Up] 车辆传送完成")
+    -- 模拟长按W键
+    local VirtualInputManager = game:GetService("VirtualInputManager")
 
     isFarming = true
     PlutoX.debug("[Fix It Up] 启动 farmTask...")
     farmTask = task.spawn(function()
         PlutoX.debug("[Fix It Up] farmTask 开始运行")
         while isFarming do
-            currentPosX = currentPosX + distancePerTick
-            local pos = Vector3.new(currentPosX, originPos.Y, originPos.Z)
-            carModel:PivotTo(CFrame.new(pos, pos + Vector3.new(1, 0, 0)))
+            if not carModel or not carModel.Parent then break end
 
-            if carModel.PrimaryPart then
-                carModel.PrimaryPart.Velocity = Vector3.zero
-                carModel.PrimaryPart.RotVelocity = Vector3.zero
-            end
+            -- 模拟按下W键
+            VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.W, false, game)
 
-            if tick() - lastTpTime > 5 then
-                PlutoX.debug("[Fix It Up] 重置位置")
-                currentPosX = originPos.X
-                carModel:PivotTo(CFrame.new(Vector3.new(currentPosX, originPos.Y, originPos.Z), Vector3.new(currentPosX + 1, originPos.Y, originPos.Z)))
-                lastTpTime = tick()
-            end
-
-            task.wait(interval)
+            task.wait(0.1)
         end
+
+        -- 停止时释放W键
+        VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.W, false, game)
+
         PlutoX.debug("[Fix It Up] farmTask 结束")
         if platformFolder then
             platformFolder:Destroy()
