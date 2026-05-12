@@ -47,7 +47,10 @@ local config = {
     farmSpeed = 600,
     webhookUrl = "",
     notifyMoney = false,
-    notifyInterval = 60
+    notifyInterval = 60,
+    baseMoney = 0,
+    targetMoney = 0,
+    enableMoneyKick = false
 }
 
 local LocalPlayer = Players.LocalPlayer
@@ -339,6 +342,45 @@ UILibrary:CreateToggle(currencyNotifyCard, {
         end
         config.notifyMoney = state
         UILibrary:Notify({ Title = "配置更新", Text = "金额变化监测: " .. (state and "开启" or "关闭"), Duration = 5 })
+    end
+})
+
+-- 金额数据设置
+local separatorCard = UILibrary:CreateCard(notifyContent)
+PlutoX.createDataTypeSectionLabel(separatorCard, UILibrary, {
+    name = "金额",
+    icon = "dollar-sign"
+})
+
+local baseValueCard, baseValueInput, setTargetValueLabel, getTargetValueToggle, setLabelCallback = PlutoX.createBaseValueCard(
+    notifyContent, UILibrary, config, function() end,
+    getMoney,
+    "Money",
+    "dollar-sign"
+)
+
+local targetValueCard, targetValueLabel, setTargetValueToggle2 = PlutoX.createTargetValueCardSimple(
+    notifyContent, UILibrary, config, function() end,
+    getMoney,
+    "Money"
+)
+
+setTargetValueLabel(targetValueLabel)
+
+-- 重新计算目标值
+local recalculateCard = UILibrary:CreateCard(notifyContent)
+UILibrary:CreateButton(recalculateCard, {
+    Text = "重新计算目标值",
+    Callback = function()
+        local currentMoney = getMoney()
+        config.baseMoney = currentMoney
+        config.targetMoney = 0
+        targetValueLabel.Text = "目标值: 未设置"
+        UILibrary:Notify({
+            Title = "目标值已重置",
+            Text = "基础值: €" .. string.format("%d", currentMoney),
+            Duration = 5
+        })
     end
 })
 
