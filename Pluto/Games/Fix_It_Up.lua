@@ -5,16 +5,26 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
--- PlutoX 核心引用
-local PlutoX = _G.PlutoX
-if not PlutoX then
-    error("[Fix It Up] PlutoX 未加载")
+-- 加载 PlutoX
+local plutoSuccess, PlutoX = pcall(function()
+    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/Common/PlutoX-Notifier.lua"
+    local source = game:HttpGet(url)
+    return loadstring(source)()
+end)
+
+if not plutoSuccess or not PlutoX then
+    error("[PlutoX] 模块加载失败！请检查网络连接或链接是否有效：" .. tostring(PlutoX))
 end
 
 -- 加载 UILibrary
 local UILibrary
 local success, result = pcall(function()
-    local url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    local url
+    if PlutoX.debugEnabled then
+        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/develop/Pluto/UILibrary/PlutoUILibrary.lua"
+    else
+        url = "https://api.959966.xyz/github/raw/TongScriptX/Pluto/refs/heads/main/Pluto/UILibrary/PlutoUILibrary.lua"
+    end
     local source = game:HttpGet(url)
     return loadstring(source)()
 end)
