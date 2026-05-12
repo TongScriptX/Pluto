@@ -211,7 +211,6 @@ local function performAutoFarm()
 
     PlutoX.debug("[Fix It Up] AutoFarm 已启动")
 end
-end
 
 -- 获取车库车辆列表
 local function getGarageCars()
