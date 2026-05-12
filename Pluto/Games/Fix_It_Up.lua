@@ -180,22 +180,26 @@ local function performAutoFarm()
     local platform = Instance.new("Part", platformFolder)
     platform.Anchored = true
     platform.Size = Vector3.new(100000, 10, 10000)
-    platform.BrickColor = BrickColor.new("Dark stone grey")
-    platform.Material = Enum.Material.SmoothPlastic
+    platform.BrickColor = BrickColor.new("Bright red")
+    platform.Material = Enum.Material.Neon
+    platform.Transparency = 0.3
     platform.Position = Vector3.new(
         driveSeat.Position.X + 50000,
         driveSeat.Position.Y + 5,
         driveSeat.Position.Z
     )
 
-    PlutoX.debug("[Fix It Up] 平台创建完成，位置: " .. tostring(platform.Position))
+    PlutoX.debug("[Fix It Up] 平台创建完成")
+    PlutoX.debug("[Fix It Up] 平台位置: " .. tostring(platform.Position))
+    PlutoX.debug("[Fix It Up] 平台大小: " .. tostring(platform.Size))
 
     local originPos = Vector3.new(
         driveSeat.Position.X + 50000,
         platform.Position.Y + 10,
         driveSeat.Position.Z
     )
-    PlutoX.debug("[Fix It Up] 起始位置: " .. tostring(originPos))
+    PlutoX.debug("[Fix It Up] 车辆起始位置: " .. tostring(originPos))
+    PlutoX.debug("[Fix It Up] 车辆相对平台高度: " .. (originPos.Y - platform.Position.Y))
 
     -- 传送车辆到平台上
     PlutoX.debug("[Fix It Up] 传送车辆到平台...")
