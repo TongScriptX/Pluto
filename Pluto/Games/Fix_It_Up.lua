@@ -277,9 +277,17 @@ if not window then
     error("无法创建 UI 窗口")
 end
 
+local mainFrame = window.MainFrame
+local screenGui = window.ScreenGui
 local sidebar = window.Sidebar
 local titleLabel = window.TitleLabel
 local mainPage = window.MainPage
+
+-- 悬浮按钮
+local toggleButton = UILibrary:CreateFloatingButton(screenGui, {
+    MainFrame = mainFrame,
+    Text = "菜单"
+})
 
 -- 创建主标签页
 local mainTab, mainContent = UILibrary:CreateTab(sidebar, titleLabel, mainPage, {
