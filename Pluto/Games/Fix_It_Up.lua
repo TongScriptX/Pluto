@@ -172,7 +172,7 @@ local function performAutoFarm()
     carModel.PrimaryPart = driveSeat
     PlutoX.debug("[Fix It Up] 设置 PrimaryPart 完成")
 
-    -- 创建平台（在当前位置下方）
+    -- 创建平台（在高空）
     PlutoX.debug("[Fix It Up] 开始创建平台...")
     platformFolder = Instance.new("Folder", Workspace)
     platformFolder.Name = "AutoPlatform"
@@ -185,13 +185,21 @@ local function performAutoFarm()
     platform.Transparency = 0.3
     platform.Position = Vector3.new(
         driveSeat.Position.X,
-        driveSeat.Position.Y - 5,
+        driveSeat.Position.Y + 5000,
         driveSeat.Position.Z
     )
     platform.CanCollide = true
 
     PlutoX.debug("[Fix It Up] 平台创建完成，位置: " .. tostring(platform.Position))
-    PlutoX.debug("[Fix It Up] 车辆位置: " .. tostring(driveSeat.Position))
+
+    -- 传送车辆到平台上方
+    local carPos = Vector3.new(
+        platform.Position.X,
+        platform.Position.Y + 10,
+        platform.Position.Z
+    )
+    carModel:PivotTo(CFrame.new(carPos, carPos + Vector3.new(1, 0, 0)))
+    PlutoX.debug("[Fix It Up] 车辆传送到平台上: " .. tostring(carPos))
 
     -- 启用车辆物理
     for _, part in ipairs(carModel:GetDescendants()) do
