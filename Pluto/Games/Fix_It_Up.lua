@@ -42,8 +42,6 @@ local gameName = "Fix It Up"
 -- 初始化调试系统
 PlutoX.setGameInfo(gameName, username, HttpService)
 
-PlutoX.info("[" .. gameName .. "] 脚本加载中...")
-
 -- 配置
 local config = {
     autoFarmEnabled = false,
@@ -323,4 +321,5 @@ mainTab:AddToggle({
     end
 })
 
-PlutoX.info("[" .. gameName .. "] 脚本加载完成")
+-- 脚本加载完成
+PlutoX.debug("[" .. gameName .. "] 脚本加载完成")
