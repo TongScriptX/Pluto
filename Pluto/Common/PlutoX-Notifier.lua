@@ -879,6 +879,8 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             if self.UILibrary then
                 self.UILibrary:Notify({ Title = "配置已加载", Text = "云端配置加载成功", Duration = 5 })
             end
+            -- 回传云端，确保迁移后的配置同步
+            self:saveCloudConfig()
             return self.config
         end
 
@@ -887,6 +889,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             if self.UILibrary then
                 self.UILibrary:Notify({ Title = "配置提示", Text = "创建新配置文件", Duration = 5 })
             end
+            -- saveConfig 内部会调用 saveCloudConfig
             self:saveConfig()
             return self.config
         end
@@ -910,18 +913,14 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                 for k, v in pairs(userConfig) do
                     self.config[k] = v
                 end
-                -- 本地配置存在，上传到云端
-                self:saveCloudConfig()
                 if self.UILibrary then
                     self.UILibrary:Notify({ Title = "配置已加载", Text = "本地配置加载成功", Duration = 5 })
                 end
-            else
-                self:saveConfig()
             end
-        else
-            self:saveConfig()
         end
 
+        -- 无论哪条路径，加载完成后都上传到云端
+        self:saveCloudConfig()
         return self.config
     end
     
