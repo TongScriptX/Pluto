@@ -1442,7 +1442,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
     monitor.sessionStartValues = {}
     monitor.checkInterval = 1
     monitor.beforeSendCallback = nil -- 发送前的回调函数
-    monitor.targetCurrentValueSyncInterval = 30 * 60
+    monitor.targetCurrentValueSyncInterval = 5 * 60
     monitor.lastTargetCurrentValueSaveTime = os.time()
     monitor.hasPendingTargetCurrentValueSync = false
     
