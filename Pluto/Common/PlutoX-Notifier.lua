@@ -601,13 +601,20 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             "lastSavedLeaderboard",
             "enableLeaderboardKick"
         }
-        
+
         for _, oldKey in ipairs(leaderboardOldKeys) do
             if userConfig[oldKey] ~= nil then
                 userConfig[oldKey] = nil
                 migrated = true
                 PlutoX.debug("[Config] 删除不再需要的配置项: " .. oldKey)
             end
+        end
+
+        -- 通知间隔默认值从 30 分钟迁移到 5 分钟
+        if (userConfig.notificationInterval or 0) >= 30 then
+            userConfig.notificationInterval = 5
+            migrated = true
+            PlutoX.debug("[Config] 通知间隔已更新为 5 分钟")
         end
 
         -- 补齐目标调整功能所需的追踪字段，兼容旧版目标配置
