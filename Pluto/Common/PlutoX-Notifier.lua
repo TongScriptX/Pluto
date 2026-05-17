@@ -610,13 +610,6 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             end
         end
 
-        -- 通知间隔默认值从 30 分钟迁移到 5 分钟
-        if (userConfig.notificationInterval or 0) >= 30 then
-            userConfig.notificationInterval = 5
-            migrated = true
-            PlutoX.debug("[Config] 通知间隔已更新为 5 分钟")
-        end
-
         -- 补齐目标调整功能所需的追踪字段，兼容旧版目标配置
         for _, dataType in ipairs(dataTypes) do
             if dataType.supportTarget then
@@ -1449,7 +1442,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
     monitor.sessionStartValues = {}
     monitor.checkInterval = 1
     monitor.beforeSendCallback = nil -- 发送前的回调函数
-    monitor.targetCurrentValueSyncInterval = 30 * 60
+    monitor.targetCurrentValueSyncInterval = 5 * 60
     monitor.lastTargetCurrentValueSaveTime = os.time()
     monitor.hasPendingTargetCurrentValueSync = false
     
