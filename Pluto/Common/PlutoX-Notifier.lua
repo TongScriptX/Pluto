@@ -509,13 +509,15 @@ end
 
 function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username, defaultConfig)
     local manager = {}
-    
+
     manager.defaultConfig = defaultConfig or {}
     manager.config = {}
     manager.configFile = configFile
     manager.HttpService = HttpService
     manager.UILibrary = UILibrary
     manager.username = username
+    -- 从 configFile 路径提取游戏名，例如 "PlutoX/Greenville_config.json" -> "Greenville"
+    manager.gameName = configFile:match("PlutoX/(.-)_config%.json") or configFile
     
     -- 旧配置项到新配置项的映射（根据数据类型动态生成）
     local function getMigrationMap()
@@ -677,6 +679,46 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             self.config[key] = defaultValue
         end
     end
+
+    -- 从云端加载配置，返回配置表或 nil
+    function manager:loadCloudConfig()
+        local ok, result = pcall(function()
+            local url = "https://api.959966.xyz/api/config?username=" .. self.HttpService:UrlEncode(self.username) .. "&game=" .. self.HttpService:UrlEncode(self.gameName)
+            local response = self.HttpService:RequestAsync({
+                Url = url,
+                Method = "GET",
+                Headers = { ["Content-Type"] = "application/json" }
+            })
+            if response.StatusCode == 200 then
+                local data = self.HttpService:JSONDecode(response.Body)
+                if data and data.success and type(data.config) == "table" then
+                    return data.config
+                end
+            end
+            return nil
+        end)
+        if ok then return result end
+        PlutoX.debug("[Config] 云端配置加载失败: " .. tostring(result))
+        return nil
+    end
+
+    -- 将当前配置保存到云端（异步，失败不影响本地）
+    function manager:saveCloudConfig()
+        pcall(function()
+            local body = self.HttpService:JSONEncode({
+                username = self.username,
+                game = self.gameName,
+                config = self.config
+            })
+            self.HttpService:RequestAsync({
+                Url = "https://api.959966.xyz/api/config",
+                Method = "POST",
+                Headers = { ["Content-Type"] = "application/json" },
+                Body = body
+            })
+            PlutoX.debug("[Config] 云端配置已同步: " .. self.gameName)
+        end)
+    end
     
     -- 保存配置
     function manager:saveConfig()
@@ -684,10 +726,10 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
         -- 打印调用堆栈
         local stack = debug.traceback("", 2)
         PlutoX.debug("[DEBUG] 调用堆栈:\n" .. stack)
-        
+
         pcall(function()
             local allConfigs = {}
-            
+
             if isfile(self.configFile) then
                 local ok, content = pcall(function()
                     return self.HttpService:JSONDecode(readfile(self.configFile))
@@ -696,7 +738,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                     allConfigs = content
                 end
             end
-            
+
             allConfigs[self.username] = self.config
             writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
             PlutoX.debug("配置已写入文件: " .. self.configFile)
@@ -709,6 +751,9 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
                 })
             end
         end)
+
+        -- 同步到云端
+        self:saveCloudConfig()
     end
     
     -- 加载配置
@@ -811,13 +856,36 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
             end
         end
 
+        -- 1. 优先从云端加载配置
+        local cloudConfig = self:loadCloudConfig()
+        if cloudConfig then
+            PlutoX.debug("[Config] 使用云端配置")
+            migrateConfig(cloudConfig)
+            for k, v in pairs(cloudConfig) do
+                self.config[k] = v
+            end
+            -- 同步到本地文件
+            pcall(function()
+                local allConfigs = {}
+                if isfile(self.configFile) then
+                    local ok, content = pcall(function()
+                        return self.HttpService:JSONDecode(readfile(self.configFile))
+                    end)
+                    if ok and type(content) == "table" then allConfigs = content end
+                end
+                allConfigs[self.username] = self.config
+                writefile(self.configFile, self.HttpService:JSONEncode(allConfigs))
+            end)
+            if self.UILibrary then
+                self.UILibrary:Notify({ Title = "配置已加载", Text = "云端配置加载成功", Duration = 5 })
+            end
+            return self.config
+        end
+
+        -- 2. 云端无配置，尝试本地文件
         if not isfile(self.configFile) then
             if self.UILibrary then
-                self.UILibrary:Notify({
-                    Title = "配置提示",
-                    Text = "创建新配置文件",
-                    Duration = 5,
-                })
+                self.UILibrary:Notify({ Title = "配置提示", Text = "创建新配置文件", Duration = 5 })
             end
             self:saveConfig()
             return self.config
@@ -830,33 +898,22 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
         if success and type(result) == "table" then
             local userConfig = result[self.username]
             if userConfig and type(userConfig) == "table" then
-                -- 迁移旧配置项
                 local migrated = migrateConfig(userConfig)
-                
                 if migrated then
-                    -- 如果有迁移，保存新格式
                     result[self.username] = userConfig
                     writefile(self.configFile, self.HttpService:JSONEncode(result))
                     PlutoX.debug("[Config] 配置项已迁移并保存")
-                    
                     if self.UILibrary then
-                        self.UILibrary:Notify({
-                            Title = "配置迁移",
-                            Text = "旧配置项已迁移到新格式",
-                            Duration = 5,
-                        })
+                        self.UILibrary:Notify({ Title = "配置迁移", Text = "旧配置项已迁移到新格式", Duration = 5 })
                     end
                 end
-                
                 for k, v in pairs(userConfig) do
                     self.config[k] = v
                 end
+                -- 本地配置存在，上传到云端
+                self:saveCloudConfig()
                 if self.UILibrary then
-                    self.UILibrary:Notify({
-                        Title = "配置已加载",
-                        Text = "用户配置加载成功",
-                        Duration = 5,
-                    })
+                    self.UILibrary:Notify({ Title = "配置已加载", Text = "本地配置加载成功", Duration = 5 })
                 end
             else
                 self:saveConfig()
