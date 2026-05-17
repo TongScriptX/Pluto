@@ -702,22 +702,29 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
         return nil
     end
 
-    -- 将当前配置保存到云端（异步，失败不影响本地）
+    -- 将当前配置保存到云端（失败时输出错误）
     function manager:saveCloudConfig()
-        pcall(function()
+        local ok, err = pcall(function()
             local body = self.HttpService:JSONEncode({
                 username = self.username,
                 game = self.gameName,
                 config = self.config
             })
-            self.HttpService:RequestAsync({
+            local response = self.HttpService:RequestAsync({
                 Url = "https://api.959966.xyz/api/config",
                 Method = "POST",
                 Headers = { ["Content-Type"] = "application/json" },
                 Body = body
             })
-            PlutoX.debug("[Config] 云端配置已同步: " .. self.gameName)
+            if response.StatusCode ~= 200 then
+                warn("[Config] 云端配置上传失败，状态码: " .. tostring(response.StatusCode) .. " 响应: " .. tostring(response.Body))
+            else
+                PlutoX.debug("[Config] 云端配置已同步: " .. self.gameName)
+            end
         end)
+        if not ok then
+            warn("[Config] saveCloudConfig 异常: " .. tostring(err))
+        end
     end
     
     -- 保存配置
@@ -920,6 +927,7 @@ function PlutoX.createConfigManager(configFile, HttpService, UILibrary, username
         end
 
         -- 无论哪条路径，加载完成后都上传到云端
+        warn("[Config] 准备上传云端配置，用户: " .. tostring(self.username) .. "，游戏: " .. tostring(self.gameName))
         self:saveCloudConfig()
         return self.config
     end
