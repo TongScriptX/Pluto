@@ -1442,7 +1442,7 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
     monitor.sessionStartValues = {}
     monitor.checkInterval = 1
     monitor.beforeSendCallback = nil -- 发送前的回调函数
-    monitor.targetCurrentValueSyncInterval = 5 * 60
+    monitor.targetCurrentValueSyncInterval = 30 * 60
     monitor.lastTargetCurrentValueSaveTime = os.time()
     monitor.hasPendingTargetCurrentValueSync = false
     
@@ -1977,12 +1977,6 @@ function PlutoX.createDataMonitor(config, UILibrary, webhookManager, dataTypes, 
                     and self.config["target" .. keyUpper] > 0
                     and type(currentValue) == "number"
                     and currentValue ~= savedCurrentValue then
-                    PlutoX.debug(string.format(
-                        "[目标调整] %s 运行中同步配置当前值: %s -> %s",
-                        dataType.id,
-                        tostring(savedCurrentValue),
-                        tostring(currentValue)
-                    ))
                     self.config["savedCurrentValue" .. keyUpper] = currentValue
                     changed = true
                     self.hasPendingTargetCurrentValueSync = true
